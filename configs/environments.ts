@@ -1,0 +1,10 @@
+interface IENVIRONMENT {
+  EXPO_PUBLIC_STAGING_BASE_URL: string;
+  EXPO_PUBLIC_SOCKET_URL: string;
+}
+
+export const ENVIRONMENTS: IENVIRONMENT = {
+  EXPO_PUBLIC_STAGING_BASE_URL:
+    (process.env.EXPO_PUBLIC_STAGING_BASE_URL as string) || "",
+  EXPO_PUBLIC_SOCKET_URL: (process.env.EXPO_PUBLIC_SOCKET_URL as string) || "",
+};
