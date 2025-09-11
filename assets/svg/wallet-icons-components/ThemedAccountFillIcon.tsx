@@ -1,0 +1,48 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedAccountFillIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedAccountFillIcon: React.FC<ThemedAccountFillIconProps> = ({ 
+  width = 24, 
+  height = 24, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M21.17 6.90845C21.4195 7.03302 21.6294 7.22468 21.776 7.46192C21.9226 7.69915 22.0002 7.97256 22 8.25145V8.69145C22 9.38145 21.44 9.94145 20.75 9.94145H20H4H3.25C2.56 9.94145 2 9.38145 2 8.69145V8.25145C2 7.72945 2.27 7.24945 2.706 6.97745L11.329 2.15845C11.5373 2.05425 11.7671 2 12 2C12.2329 2 12.4617 2.05425 12.67 2.15845L21.17 6.90845ZM12 8C12.5523 8 13 7.55228 13 7C13 6.44772 12.5523 6 12 6C11.4477 6 11 6.44772 11 7C11 7.55228 11.4477 8 12 8Z" fill="${fillColor}"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M5 11C4.44772 11 4 11.4477 4 12V19H3C2.44772 19 2 19.4477 2 20C2 20.5523 2.44772 21 3 21H5H19H21C21.5523 21 22 20.5523 22 20C22 19.4477 21.5523 19 21 19H20V12C20 11.4477 19.5523 11 19 11H5ZM15 19V13H13V19H15ZM11 19V13H9V19H11Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedAccountFillIcon;

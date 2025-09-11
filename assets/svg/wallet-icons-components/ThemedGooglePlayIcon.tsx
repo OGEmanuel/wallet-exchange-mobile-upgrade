@@ -1,0 +1,50 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedGooglePlayIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedGooglePlayIcon: React.FC<ThemedGooglePlayIconProps> = ({ 
+  width = 15, 
+  height = 16, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 15 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M6.76244 7.62781L0.0631866 14.6466C0.138419 14.9132 0.273613 15.1591 0.458435 15.3655C0.643256 15.5718 0.872812 15.7332 1.12956 15.8372C1.3863 15.9413 1.66343 15.9852 1.93977 15.9657C2.2161 15.9463 2.48433 15.8639 2.72394 15.7248L10.2619 11.4317L6.76244 7.62781Z" fill="#EA4335"/>
+<path d="M13.5365 6.43471L10.2769 4.56763L6.60774 7.78742L10.2918 11.4216L13.5266 9.57455C13.8132 9.4245 14.0532 9.19887 14.2207 8.92213C14.3882 8.64538 14.4767 8.32808 14.4767 8.0046C14.4767 7.68113 14.3882 7.36382 14.2207 7.08708C14.0532 6.81033 13.8132 6.58471 13.5266 6.43465L13.5365 6.43471Z" fill="#FBBC04"/>
+<path d="M0.0631817 1.32788C0.022712 1.47759 0.00255502 1.63205 0.00325235 1.78713V14.1872C0.00365196 14.3423 0.0237904 14.4966 0.0631817 14.6466L6.99209 7.80749L0.0631817 1.32788Z" fill="#4285F4"/>
+<path d="M6.81236 7.98723L10.2768 4.56769L2.74892 0.25459C2.46569 0.0887218 2.14356 0.000877776 1.81533 3.46744e-06C1.0008 -0.00157957 0.284699 0.539028 0.0631866 1.32292L6.81236 7.98723Z" fill="#34A853"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedGooglePlayIcon;

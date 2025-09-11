@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedSwapIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedSwapIcon: React.FC<ThemedSwapIconProps> = ({ 
+  width = 24, 
+  height = 24, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M10.8 7.20002C10.8 5.92699 11.3057 4.70609 12.2059 3.80591C13.1061 2.90574 14.327 2.40002 15.6 2.40002C16.873 2.40002 18.0939 2.90574 18.9941 3.80591C19.8943 4.70609 20.4 5.92699 20.4 7.20002V16.8H24L19.2 21.6L14.4 16.8H18V7.20002C18 6.56351 17.7471 5.95306 17.2971 5.50297C16.847 5.05288 16.2365 4.80002 15.6 4.80002C14.9635 4.80002 14.353 5.05288 13.9029 5.50297C13.4529 5.95306 13.2 6.56351 13.2 7.20002V16.8C13.2 18.0731 12.6943 19.294 11.7941 20.1941C10.8939 21.0943 9.67304 21.6 8.4 21.6C7.12696 21.6 5.90606 21.0943 5.00589 20.1941C4.10571 19.294 3.6 18.0731 3.6 16.8V7.20002H0L4.8 2.40002L9.6 7.20002H6V16.8C6 17.4365 6.25286 18.047 6.70294 18.4971C7.15303 18.9472 7.76348 19.2 8.4 19.2C9.03652 19.2 9.64697 18.9472 10.0971 18.4971C10.5471 18.047 10.8 17.4365 10.8 16.8V7.20002Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedSwapIcon;
