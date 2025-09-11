@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedCardFilledIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedCardFilledIcon: React.FC<ThemedCardFilledIconProps> = ({ 
+  width = 16, 
+  height = 16, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M1 11.75C1 12.2141 1.18437 12.6592 1.51256 12.9874C1.84075 13.3156 2.28587 13.5 2.75 13.5H13.25C13.7141 13.5 14.1592 13.3156 14.4874 12.9874C14.8156 12.6592 15 12.2141 15 11.75V6.9375H1V11.75ZM3.0625 9.375C3.0625 9.12636 3.16127 8.8879 3.33709 8.71209C3.5129 8.53627 3.75136 8.4375 4 8.4375H5.5C5.74864 8.4375 5.9871 8.53627 6.16291 8.71209C6.33873 8.8879 6.4375 9.12636 6.4375 9.375V10C6.4375 10.2486 6.33873 10.4871 6.16291 10.6629C5.9871 10.8387 5.74864 10.9375 5.5 10.9375H4C3.75136 10.9375 3.5129 10.8387 3.33709 10.6629C3.16127 10.4871 3.0625 10.2486 3.0625 10V9.375ZM13.25 2.5H2.75C2.28587 2.5 1.84075 2.68437 1.51256 3.01256C1.18437 3.34075 1 3.78587 1 4.25V5.0625H15V4.25C15 3.78587 14.8156 3.34075 14.4874 3.01256C14.1592 2.68437 13.7141 2.5 13.25 2.5Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedCardFilledIcon;

@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedHourglassIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedHourglassIcon: React.FC<ThemedHourglassIconProps> = ({ 
+  width = 24, 
+  height = 25, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 25" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M18.968 17.9188L15.318 12.3788L18.688 7.95877C19.1314 7.35927 19.3731 6.63444 19.378 5.88877V4.19877C19.3772 4.0311 19.3432 3.86524 19.278 3.71077C19.2128 3.5563 19.1176 3.41627 18.998 3.29877C18.8803 3.18006 18.7401 3.08615 18.5855 3.0226C18.4309 2.95904 18.2651 2.92714 18.098 2.92877H5.92799C5.76084 2.92744 5.5951 2.95938 5.44041 3.02273C5.28573 3.08608 5.14519 3.17958 5.027 3.29778C4.9088 3.41597 4.8153 3.55651 4.75195 3.71119C4.6886 3.86588 4.65666 4.03162 4.65799 4.19877V5.86877C4.66015 6.61183 4.90215 7.33433 5.34799 7.92877L8.70799 12.5088L5.03799 17.9188C4.61732 18.5457 4.42005 19.296 4.47799 20.0488L4.58799 21.7488C4.61292 22.0672 4.756 22.3648 4.98913 22.5831C5.22227 22.8015 5.52861 22.9248 5.84799 22.9288H18.258C18.5537 22.902 18.8302 22.7708 19.038 22.5588C19.2528 22.3407 19.3839 22.0539 19.408 21.7488L19.518 20.0688C19.5867 19.3102 19.3925 18.5511 18.968 17.9188ZM14.658 20.1188H9.42799C9.16277 20.1188 8.90842 20.0134 8.72088 19.8259C8.53335 19.6383 8.42799 19.384 8.42799 19.1188C8.42799 18.8536 8.53335 18.5992 8.72088 18.4117C8.90842 18.2241 9.16277 18.1188 9.42799 18.1188H14.708C14.9732 18.1188 15.2276 18.2241 15.4151 18.4117C15.6026 18.5992 15.708 18.8536 15.708 19.1188C15.708 19.384 15.6026 19.6383 15.4151 19.8259C15.2276 20.0134 14.9732 20.1188 14.708 20.1188H14.658Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedHourglassIcon;

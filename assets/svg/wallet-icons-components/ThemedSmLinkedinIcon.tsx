@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedSmLinkedinIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedSmLinkedinIcon: React.FC<ThemedSmLinkedinIconProps> = ({ 
+  width = 24, 
+  height = 24, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M4.5696 19.68H7.7088C7.776 19.4688 7.728 17.52 7.728 17.1264C7.728 14.6016 7.776 11.9232 7.728 9.43682H4.5696V19.68ZM16.4928 19.68H19.6896V13.6416C19.7376 12.816 19.488 11.5488 19.1616 10.896C18.8064 10.1568 18.2688 9.66722 17.4048 9.38882C16.1664 8.98562 14.5536 9.10082 13.5456 9.97442C13.3728 10.1184 13.2864 10.2144 13.1424 10.3872C13.0848 10.4448 13.0272 10.5312 12.9792 10.608C12.7968 10.8864 12.9312 10.8 12.7872 10.8288L12.768 9.41762H9.7536C9.7056 9.57122 9.7056 19.536 9.7536 19.68H12.8928C12.9408 19.5168 12.912 15.4752 12.912 14.928C12.912 13.3536 13.0848 12.048 14.6976 11.9712C16.464 11.8848 16.4928 13.4016 16.4928 14.928C16.4928 15.3216 16.512 19.392 16.4832 19.6704L16.4928 19.68ZM5.9136 4.33922C4.9632 4.48322 4.1568 5.28962 4.32 6.44162C4.4544 7.36322 5.3184 8.16962 6.4224 7.99682C7.3344 7.85282 8.1408 7.00802 7.9776 5.90402C7.8336 4.99202 6.9792 4.16642 5.904 4.33922" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedSmLinkedinIcon;

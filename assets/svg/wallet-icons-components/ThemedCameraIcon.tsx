@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedCameraIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedCameraIcon: React.FC<ThemedCameraIconProps> = ({ 
+  width = 20, 
+  height = 20, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M16.6667 3.33329H14.025L12.5 1.66663H7.5L5.97501 3.33329H3.33334C2.41667 3.33329 1.66667 4.08329 1.66667 4.99996V15C1.66667 15.9166 2.41667 16.6666 3.33334 16.6666H16.6667C17.5833 16.6666 18.3333 15.9166 18.3333 15V4.99996C18.3333 4.08329 17.5833 3.33329 16.6667 3.33329ZM16.6667 15H3.33334V4.99996H6.70834L8.23334 3.33329H11.7667L13.2917 4.99996H16.6667V15ZM10 5.83329C7.70001 5.83329 5.83334 7.69996 5.83334 9.99996C5.83334 12.3 7.70001 14.1666 10 14.1666C12.3 14.1666 14.1667 12.3 14.1667 9.99996C14.1667 7.69996 12.3 5.83329 10 5.83329ZM10 12.5C8.625 12.5 7.5 11.375 7.5 9.99996C7.5 8.62496 8.625 7.49996 10 7.49996C11.375 7.49996 12.5 8.62496 12.5 9.99996C12.5 11.375 11.375 12.5 10 12.5Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedCameraIcon;

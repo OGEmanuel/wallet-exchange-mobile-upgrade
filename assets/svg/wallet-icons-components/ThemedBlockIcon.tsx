@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedBlockIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedBlockIcon: React.FC<ThemedBlockIconProps> = ({ 
+  width = 24, 
+  height = 24, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M12 2C6.477 2 2 6.477 2 12C2 17.523 6.477 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM4 12C4 9.87827 4.84285 7.84344 6.34315 6.34315C7.84344 4.84285 9.87827 4 12 4C13.848 4 15.545 4.633 16.9 5.686L5.686 16.9C4.5932 15.5004 3.99974 13.7757 4 12ZM12 20C10.2243 20.0003 8.49956 19.4068 7.1 18.314L18.314 7.1C19.4068 8.49956 20.0003 10.2243 20 12C20 14.1217 19.1571 16.1566 17.6569 17.6569C16.1566 19.1571 14.1217 20 12 20Z" fill="${fillColor}"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedBlockIcon;

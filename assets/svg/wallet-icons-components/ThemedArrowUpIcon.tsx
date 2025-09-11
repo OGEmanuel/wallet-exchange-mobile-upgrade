@@ -1,0 +1,47 @@
+import React from 'react';
+import { SvgXml } from 'react-native-svg';
+import { useColorScheme } from 'react-native';
+
+interface ThemedArrowUpIconProps {
+  width?: number;
+  height?: number;
+  style?: any;
+  lightModeColor?: string;
+  darkModeColor?: string;
+}
+
+const ThemedArrowUpIcon: React.FC<ThemedArrowUpIconProps> = ({ 
+  width = 24, 
+  height = 24, 
+  style,
+  lightModeColor = '#121212',
+  darkModeColor = '#FFFFFF'
+}) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
+  // Define colors for light and dark modes
+  const lightColor = lightModeColor;
+  const darkColor = darkModeColor;
+  
+  // Select color based on theme
+  const strokeColor = isDark ? darkColor : lightColor;
+  const fillColor = isDark ? darkColor : lightColor;
+  
+  // SVG content with dynamic color
+  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+<path d="M16.21 8.0833H7.78999C7.45758 8.08282 7.13183 8.17649 6.85044 8.35346C6.56905 8.53044 6.34353 8.78348 6.19999 9.0833C6.03196 9.43904 5.96724 9.83484 6.01321 10.2256C6.05918 10.6163 6.21399 10.9863 6.45999 11.2933L10.67 16.3933C10.8352 16.5839 11.0395 16.7368 11.2689 16.8416C11.4984 16.9464 11.7477 17.0006 12 17.0006C12.2523 17.0006 12.5016 16.9464 12.731 16.8416C12.9605 16.7368 13.1648 16.5839 13.33 16.3933L17.54 11.2933C17.786 10.9863 17.9408 10.6163 17.9868 10.2256C18.0327 9.83484 17.968 9.43904 17.8 9.0833C17.6565 8.78348 17.4309 8.53044 17.1495 8.35346C16.8682 8.17649 16.5424 8.08282 16.21 8.0833Z" fill="#5A5D64"/>
+</svg>
+`;
+
+  return (
+    <SvgXml
+      xml={svgContent}
+      width={width}
+      height={height}
+      style={style}
+    />
+  );
+};
+
+export default ThemedArrowUpIcon;
