@@ -17,7 +17,7 @@ const WhatIsSeedPhraseModal = ({
   onClose: () => void;
 }) => {
   const theme = useTheme<Theme>();
-  const activeTheme = useActiveTheme();
+  const { colorTheme: activeTheme } = useActiveTheme();
 
   return (
     <FullPageModalWrapper

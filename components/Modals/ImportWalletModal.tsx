@@ -56,7 +56,7 @@ const ImportCard = ({
   type: "IMPORT" | "CLOUD" | "WATCH";
   close: () => void;
 }) => {
-  const colorTheme = useActiveTheme();
+  const { colorTheme } = useActiveTheme();
   const theme = useTheme<Theme>();
   const getImage = () => {
     switch (type) {
@@ -141,7 +141,7 @@ const ImportWalletModal = ({
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  const activeTheme = useActiveTheme();
+  const { colorTheme: activeTheme } = useActiveTheme();
   console.log(activeTheme);
   return (
     <FullPaperModalWrapper

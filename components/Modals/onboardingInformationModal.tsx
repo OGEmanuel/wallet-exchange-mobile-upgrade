@@ -19,7 +19,7 @@ const OnboardingInformationModal = ({
   type: "SeedPhrase" | "Wallet" | "PrivateKey";
 }) => {
   const theme = useTheme<Theme>();
-  const activeTheme = useActiveTheme();
+  const { colorTheme: activeTheme } = useActiveTheme();
   const handleImage = () => {
     switch (type) {
       case "PrivateKey": {

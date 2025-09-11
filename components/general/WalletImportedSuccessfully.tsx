@@ -17,7 +17,7 @@ const WalletImportSuccessfullyPage = ({
   onContinue: () => void;
 }) => {
   const theme = useTheme<Theme>();
-  const activeTheme = useActiveTheme();
+  const { colorTheme: activeTheme } = useActiveTheme();
 
   // Animation values for each card
   const card1Anim = useRef(new Animated.Value(0)).current;
