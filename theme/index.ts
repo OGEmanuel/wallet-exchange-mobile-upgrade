@@ -19,6 +19,7 @@ const COLOR_PALLET = {
   inActiveBtnColor: "#5A5D64",
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
+  fadedPrimaryColor: "#CFD1FF",
 };
 
 const DARK_COLOR_PALLET = {
@@ -40,6 +41,7 @@ const DARK_COLOR_PALLET = {
   inActiveBtnColor: "#5A5D64",
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
+  fadedPrimaryColor: "#CFD1FF",
 };
 
 const theme = createTheme({
@@ -86,25 +88,25 @@ const theme = createTheme({
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Bold",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     bodySubheader: {
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_SemiBold",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     bodyMedium: {
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Medium",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     body: {
       fontSize: 14,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Regular",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     light: {
       fontSize: 14,
@@ -168,25 +170,25 @@ export const darkTheme = createTheme({
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Bold",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     bodySubheader: {
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_SemiBold",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     bodyMedium: {
       fontSize: 16,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Medium",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     body: {
       fontSize: 14,
       color: "bodyTextColor",
       fontFamily: "PlusJakartaSans_Regular",
-      lineHeight: 22.4,
+      // lineHeight: 22.4,
     },
     light: {
       fontSize: 14,
