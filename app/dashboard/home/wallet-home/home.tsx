@@ -11,7 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Bank } from "iconsax-react-nativejs";
 import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
-import { Pressable } from "react-native";
+import { Platform, Pressable } from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
   ThemedQrCodeIcon,
@@ -26,6 +26,7 @@ import { router } from "expo-router";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const OS = Platform.OS;
 
   const theme = useTheme<Theme>();
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
@@ -43,6 +44,7 @@ const Home = () => {
       >
         <AppBar
           backgroundColor="transparent"
+          height={OS === "android" ? 150 : 50}
           leading={
             <Pressable>
               <ThemedSettingsOutlineIcon
@@ -88,6 +90,7 @@ const Home = () => {
             </Pressable>
           }
         />
+        <Box height={30} />
         <BalanceCard />
         <Box
           width={"100%"}
@@ -144,7 +147,13 @@ const Home = () => {
           />
         </Box>
 
-        <Box width="100%" alignItems="center" overflow="hidden">
+        <Box
+          width="100%"
+          alignItems="center"
+          overflow="hidden"
+          justifyContent="flex-end"
+          flex={1}
+        >
           <Image
             source={require("@/assets/images/cardds.png")}
             style={{
