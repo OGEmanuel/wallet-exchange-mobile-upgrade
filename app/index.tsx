@@ -161,7 +161,7 @@ export default function HomeScreen() {
           borderRadius={55}
           height={55}
           shouldVibrate
-          onPress={() => router.push("/setup")}
+          onPress={() => router.push("/select-track")}
         />
       </LinearGradient>
     </Box>

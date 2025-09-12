@@ -186,7 +186,7 @@ const _layout = () => {
           tabBarIcon: ({ focused }) => (
             <TabBarIcon
               focused={focused}
-              label="Explore"
+              label="More"
               icon={
                 <Image
                   source={require("@/assets/svg/wallet-icons/more.svg")}
