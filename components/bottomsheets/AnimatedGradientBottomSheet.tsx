@@ -49,7 +49,7 @@ const AnimatedGradientBottomSheet = forwardRef<
       children,
       title,
       subtitle,
-      snapPoints = ["90%"],
+      snapPoints = ["100%"],
       enablePanDownToClose = true,
       showGradientHandle = true,
       gradientColors = ["#6045FF", "#8B5CF6", "#A855F7"] as const,
@@ -71,10 +71,15 @@ const AnimatedGradientBottomSheet = forwardRef<
 
     const open = useCallback(() => {
       "worklet";
-      translateY.value = withTiming(0, { duration: 300 });
+      // For 100% snap point, position at the top of the screen
+      const targetY =
+        snapPointsArray[0] === SCREEN_HEIGHT
+          ? 0
+          : SCREEN_HEIGHT - snapPointsArray[0];
+      translateY.value = withTiming(targetY, { duration: 300 });
       backdropOpacity.value = withTiming(1, { duration: 300 });
       isOpen.value = true;
-    }, []);
+    }, [snapPointsArray]);
 
     const close = useCallback(() => {
       "worklet";
@@ -251,13 +256,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: "flex-end",
   },
   gradientContainer: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    minHeight: SCREEN_HEIGHT * 0.5,
-    maxHeight: SCREEN_HEIGHT * 0.9,
+    flex: 1,
   },
   handleContainer: {
     alignItems: "center",

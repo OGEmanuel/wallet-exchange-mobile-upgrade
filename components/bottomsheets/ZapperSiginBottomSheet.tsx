@@ -4,7 +4,7 @@ import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, View } from "react-native";
-import { Box } from "../general";
+import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -20,23 +20,29 @@ export default function ZapperSiginBottomSheet({
     <>
       <AnimatedGradientBottomSheet
         ref={ref}
-        snapPoints={["100%"]}
+        snapPoints={["90%"]}
         enablePanDownToClose={true}
         showGradientHandle={true}
-        gradientColors={[colors.primaryColor, colors.mainBackgroundColor]}
+        gradientColors={[
+          colors.primaryColor,
+          colors.mainBackgroundColor,
+          colors.mainBackgroundColor,
+          colors.mainBackgroundColor,
+        ]}
       >
         <View style={styles.handle} />
-        <Box
-          alignItems="center"
-          justifyContent="center"
-          style={styles.container}
-        >
-          <Image
-            source={zapLogoWithNameDark}
-            style={{ height: 40, width: 120 }}
-            resizeMode="contain"
-          />
-        </Box>
+        <View style={styles.backContainer}></View>
+        <Image
+          source={zapLogoWithNameDark}
+          style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
+          resizeMode="contain"
+        />
+        <CustomInputWithoutForm
+          value=""
+          onChange={() => {}}
+          placeholder="Email"
+          noBorder={true}
+        />
       </AnimatedGradientBottomSheet>
     </>
   );
@@ -54,5 +60,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "#FFF",
     alignSelf: "center",
+  },
+  backContainer: {
+    width: "100%",
+    height: 40,
   },
 });
