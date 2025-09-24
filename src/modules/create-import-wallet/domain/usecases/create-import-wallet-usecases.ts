@@ -1,10 +1,10 @@
 import { ApiRequest } from "@/src/core/api/api-models";
+import { CreateImportWalletRepo } from "../create-import-wallet-repo";
 import { CreateWalletParams } from "../entities/params/create-wallet-params";
 import { ImportPrivateKeyParams } from "../entities/params/import-private-key-params";
 import { ImportSeedPhraseParams } from "../entities/params/import-seedphrase-params";
 import { RestoreFromCloudParams } from "../entities/params/restore-from-cloud";
 import { WatchAddressParams } from "../entities/params/watch-address-params";
-import { CreateImportWalletRepo } from "../repo/create-import-wallet-repo";
 
 export class CreateImportWalletUsecases {
   constructor(private readonly repo: CreateImportWalletRepo) {}

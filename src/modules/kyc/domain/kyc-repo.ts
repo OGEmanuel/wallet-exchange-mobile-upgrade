@@ -1,12 +1,12 @@
 import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
-import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
-import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
-import { CreditDocumentDataParam } from "../../domain/entities/params/credit-document-data-param";
-import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
-import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-phone-number-otp-params";
+import { AddUsernameParams } from "./entities/params/add-username-params";
+import { AuthEmailParams } from "./entities/params/auth-email-params";
+import { AuthPhoneNumberParams } from "./entities/params/auth-phone-number-params";
+import { CreditDocumentDataParam } from "./entities/params/credit-document-data-param";
+import { VerifyEmailParams } from "./entities/params/verify-email-params";
+import { VerifyPhoneNumberOtpParams } from "./entities/params/verify-phone-number-otp-params";
 
-export abstract class KycRemoteDatasource {
+export abstract class KycRepo {
   abstract authEmail(payload: ApiRequest<AuthEmailParams>): Promise<ApiResponse<unknown>>;
   abstract verifyEmail(payload: ApiRequest<VerifyEmailParams>): Promise<ApiResponse<unknown>>;
   abstract addUsername(payload: ApiRequest<AddUsernameParams>): Promise<ApiResponse<unknown>>;
@@ -14,4 +14,4 @@ export abstract class KycRemoteDatasource {
   abstract verifyPhoneNumberOtp(payload: ApiRequest<VerifyPhoneNumberOtpParams>): Promise<ApiResponse<unknown>>;
   abstract uploadCreditDocument(payload: ApiRequest<CreditDocumentDataParam>): Promise<ApiResponse<unknown>>;
   abstract uploadIdentityDocument(payload: ApiRequest<FormData>): Promise<ApiResponse<unknown>>;
-} 
+}

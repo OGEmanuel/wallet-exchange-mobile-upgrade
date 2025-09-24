@@ -4,7 +4,7 @@ import { AuthEmailParams } from "../entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../entities/params/auth-phone-number-params";
 import { VerifyEmailParams } from "../entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../entities/params/verify-phone-number-otp-params";
-import { KycRepo } from "../repo/kyc-repo";
+import { KycRepo } from "../kyc-repo";
 
 export class KycUsecases {
   constructor(private readonly repo: KycRepo) {}

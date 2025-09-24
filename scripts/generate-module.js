@@ -26,12 +26,10 @@ function generateModuleStructure(moduleName) {
       }
     },
     'domain': {
+      [`${moduleName}-repo.ts`]: generateRepo(moduleName),
       'entities': {
         'models': {},
         'params': {}
-      },
-      'repo': {
-        [`${moduleName}-repo.ts`]: generateRepo(moduleName)
       },
       'usecases': {
         [`${moduleName}-usecases.ts`]: generateUsecases(moduleName)
@@ -58,7 +56,7 @@ function generateModuleStructure(moduleName) {
   console.log(`   - data/local/${moduleName}-local-datasource.ts`);
   console.log(`   - data/remote/${moduleName}-remote-datasource-impl.ts`);
   console.log(`   - data/remote/${moduleName}-remote-datasource.ts`);
-  console.log(`   - domain/repo/${moduleName}-repo.ts`);
+  console.log(`   - domain/${moduleName}-repo.ts`);
   console.log(`   - domain/usecases/${moduleName}-usecases.ts`);
   console.log(`   - presentation/state/${moduleName}-slice.ts`);
   console.log(`\n📁 Empty directories:`);
@@ -115,8 +113,8 @@ export class ${className}RemoteDataSourceImpl implements ${className}RemoteDataS
 function generateRemoteRepoImpl(moduleName) {
   const className = toPascalCase(moduleName);
   return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { ${className}Repo } from "../../domain/repo/${moduleName}-repo";
-import { ${className}RemoteDataSource } from "./${moduleName}-remote-datasource";
+import { ${className}Repo } from "../domain/${moduleName}-repo";
+import { ${className}RemoteDataSource } from "./remote/${moduleName}-remote-datasource";
 
 export class ${className}RemoteRepoImpl implements ${className}Repo {
   constructor(private readonly remoteDataSource: ${className}RemoteDataSource) {}
@@ -145,7 +143,7 @@ export abstract class ${className}Repo {
 function generateUsecases(moduleName) {
   const className = toPascalCase(moduleName);
   return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { ${className}Repo } from "../repo/${moduleName}-repo";
+import { ${className}Repo } from "../${moduleName}-repo";
 
 export class ${className}Usecases {
   constructor(private readonly repo: ${className}Repo) {}

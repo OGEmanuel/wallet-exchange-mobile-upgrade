@@ -2,9 +2,10 @@ import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../domain/entities/params/auth-phone-number-params";
+import { CreditDocumentDataParam } from "../domain/entities/params/credit-document-data-param";
 import { VerifyEmailParams } from "../domain/entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../domain/entities/params/verify-phone-number-otp-params";
-import { KycRepo } from "../domain/repo/kyc-repo";
+import { KycRepo } from "../domain/kyc-repo";
 import { KycRemoteDatasource } from "./remote/kyc-remote-datasource";
 
 export class KycRepoImpl implements KycRepo {
@@ -28,5 +29,13 @@ export class KycRepoImpl implements KycRepo {
 
   async verifyPhoneNumberOtp(payload: ApiRequest<VerifyPhoneNumberOtpParams>): Promise<ApiResponse<unknown>> {
     return this.remoteDatasource.verifyPhoneNumberOtp(payload);
+  }
+
+  async uploadCreditDocument(payload: ApiRequest<CreditDocumentDataParam>): Promise<ApiResponse<unknown>> {
+    return this.remoteDatasource.uploadCreditDocument(payload);
+  }
+
+  async uploadIdentityDocument(payload: ApiRequest<FormData>): Promise<ApiResponse<unknown>> {
+    return this.remoteDatasource.uploadIdentityDocument(payload);
   }
 }

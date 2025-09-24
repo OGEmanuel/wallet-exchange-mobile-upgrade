@@ -42,11 +42,10 @@ src/modules/<module-name>/
 │       ├── <module-name>-remote-datasource.ts
 │       └── <module-name>-remote-datasource-impl.ts
 ├── domain/
+│   ├── <module-name>-repo.ts                # Repository interface
 │   ├── entities/
 │   │   ├── models/              # Empty directory for entity models
 │   │   └── params/              # Empty directory for parameter types
-│   ├── repo/
-│   │   └── <module-name>-repo.ts
 │   └── usecases/
 │       └── <module-name>-usecases.ts
 └── presentation/
@@ -59,9 +58,10 @@ src/modules/<module-name>/
 
 ## Generated Files
 
-### 1. Repository Interface (`domain/repo/<module-name>-repo.ts`)
+### 1. Repository Interface (`domain/<module-name>-repo.ts`)
 - Abstract class defining the repository contract
 - Contains method signatures for data operations
+- Located directly in domain folder to show connection with data layer
 
 ### 2. Local Data Source (`data/local/<module-name>-local-datasource.ts`)
 - Abstract class defining local data source contract
