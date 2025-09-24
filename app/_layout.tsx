@@ -59,17 +59,19 @@ export default function RootLayout() {
 
   React.useEffect(() => {
     let subscription: NativeEventSubscription;
-    
+
     const initializeTheme = async () => {
       // Check if user has manually set a preference (we'll use a separate key for this)
-      const userSetTheme = await SecureStore.getItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET);
+      const userSetTheme = await SecureStore.getItemAsync(
+        STORAGE_KEYS.COLOR_THEME_USER_SET
+      );
       const savedTheme: "dark" | "light" | null =
         (await SecureStore.getItemAsync(STORAGE_KEYS.COLOR_THEME)) as
           | "dark"
           | "light"
           | null;
-      
-      if (userSetTheme === 'true' && savedTheme) {
+
+      if (userSetTheme === "true" && savedTheme) {
         // User has manually set a preference, use it
         setColorTheme(savedTheme);
       } else {
@@ -80,11 +82,13 @@ export default function RootLayout() {
         // Save the current system preference but don't mark as user-set
         await SecureStore.setItemAsync(STORAGE_KEYS.COLOR_THEME, theme);
       }
-      
+
       // Always listen for system theme changes
       subscription = Appearance.addChangeListener(async ({ colorScheme }) => {
-        const isUserSet = await SecureStore.getItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET);
-        if (isUserSet !== 'true') {
+        const isUserSet = await SecureStore.getItemAsync(
+          STORAGE_KEYS.COLOR_THEME_USER_SET
+        );
+        if (isUserSet !== "true") {
           // Only follow system changes if user hasn't manually set a preference
           const newTheme = colorScheme === "dark" ? "dark" : "light";
           setColorTheme(newTheme);
@@ -92,7 +96,7 @@ export default function RootLayout() {
         }
       });
     };
-    
+
     initializeTheme();
 
     return () => {
