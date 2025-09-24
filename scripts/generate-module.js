@@ -37,7 +37,14 @@ function generateModuleStructure(moduleName) {
         [`${moduleName}-usecases.ts`]: generateUsecases(moduleName)
       }
     },
-    'presentation': {}
+    'presentation': {
+      'components': {},
+      'hooks': {},
+      'screens': {},
+      'state': {
+        [`${moduleName}-slice.ts`]: generateSlice(moduleName)
+      }
+    }
   };
 
   // Create the directory structure
@@ -53,10 +60,13 @@ function generateModuleStructure(moduleName) {
   console.log(`   - data/remote/${moduleName}-remote-datasource.ts`);
   console.log(`   - domain/repo/${moduleName}-repo.ts`);
   console.log(`   - domain/usecases/${moduleName}-usecases.ts`);
+  console.log(`   - presentation/state/${moduleName}-slice.ts`);
   console.log(`\n📁 Empty directories:`);
   console.log(`   - domain/entities/models/`);
   console.log(`   - domain/entities/params/`);
-  console.log(`   - presentation/`);
+  console.log(`   - presentation/components/`);
+  console.log(`   - presentation/hooks/`);
+  console.log(`   - presentation/screens/`);
 }
 
 function createDirectoryStructure(basePath, structure) {
@@ -203,6 +213,13 @@ export class ${className}LocalDataSourceImpl implements ${className}LocalDataSou
 `;
 }
 
+
+function generateSlice(moduleName) {
+  const className = toPascalCase(moduleName);
+  return `// Redux slice for ${moduleName} module
+// Add your state management logic here
+`;
+}
 
 function toPascalCase(str) {
   return str

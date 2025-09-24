@@ -49,7 +49,12 @@ src/modules/<module-name>/
 │   │   └── <module-name>-repo.ts
 │   └── usecases/
 │       └── <module-name>-usecases.ts
-└── presentation/                 # Empty directory for UI components
+└── presentation/
+    ├── components/              # Empty directory for UI components
+    ├── hooks/                   # Empty directory for custom hooks
+    ├── screens/                 # Empty directory for screen components
+    └── state/
+        └── <module-name>-slice.ts
 ```
 
 ## Generated Files
@@ -83,6 +88,11 @@ src/modules/<module-name>/
 ### 7. Use Cases (`domain/usecases/<module-name>-usecases.ts`)
 - Contains business logic and orchestration
 - Uses the repository to execute operations
+
+### 8. Redux Slice (`presentation/state/<module-name>-slice.ts`)
+- Redux slice for state management
+- Contains module-specific state logic
+- Ready for Redux Toolkit integration
 
 ## Naming Convention
 
