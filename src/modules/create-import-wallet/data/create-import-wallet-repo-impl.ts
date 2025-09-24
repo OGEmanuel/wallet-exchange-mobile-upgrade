@@ -1,13 +1,13 @@
 import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { CreateWalletParams } from "../../domain/entities/params/create-wallet-params";
-import { ImportPrivateKeyParams } from "../../domain/entities/params/import-private-key-params";
-import { ImportSeedPhraseParams } from "../../domain/entities/params/import-seedphrase-params";
-import { RestoreFromCloudParams } from "../../domain/entities/params/restore-from-cloud";
-import { WatchAddressParams } from "../../domain/entities/params/watch-address-params";
-import { CreateImportWalletRepo } from "../../domain/repo/create-import-wallet-repo";
-import { CreateImportWalletRemoteDatasource } from "./create-import-wallet-remote-datasource";
+import { CreateWalletParams } from "../domain/entities/params/create-wallet-params";
+import { ImportPrivateKeyParams } from "../domain/entities/params/import-private-key-params";
+import { ImportSeedPhraseParams } from "../domain/entities/params/import-seedphrase-params";
+import { RestoreFromCloudParams } from "../domain/entities/params/restore-from-cloud";
+import { WatchAddressParams } from "../domain/entities/params/watch-address-params";
+import { CreateImportWalletRepo } from "../domain/repo/create-import-wallet-repo";
+import { CreateImportWalletRemoteDatasource } from "./remote/create-import-wallet-remote-datasource";
 
-export class CreateImportWalletRemoteRepoImpl implements CreateImportWalletRepo {
+export class CreateImportWalletRepoImpl implements CreateImportWalletRepo {
   constructor(private readonly remoteDatasource: CreateImportWalletRemoteDatasource) {}
 
   async createWallet(payload: ApiRequest<CreateWalletParams>): Promise<ApiResponse<unknown>> {

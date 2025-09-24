@@ -1,13 +1,13 @@
 import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
-import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
-import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
-import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
-import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-phone-number-otp-params";
-import { KycRepo } from "../../domain/repo/kyc-repo";
-import { KycRemoteDatasource } from "./kyc-remote-datasource";
+import { AddUsernameParams } from "../domain/entities/params/add-username-params";
+import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
+import { AuthPhoneNumberParams } from "../domain/entities/params/auth-phone-number-params";
+import { VerifyEmailParams } from "../domain/entities/params/verify-email-params";
+import { VerifyPhoneNumberOtpParams } from "../domain/entities/params/verify-phone-number-otp-params";
+import { KycRepo } from "../domain/repo/kyc-repo";
+import { KycRemoteDatasource } from "./remote/kyc-remote-datasource";
 
-export class KycRemoteRepoImpl implements KycRepo {
+export class KycRepoImpl implements KycRepo {
   constructor(private readonly remoteDatasource: KycRemoteDatasource) {}
 
   async authEmail(payload: ApiRequest<AuthEmailParams>): Promise<ApiResponse<unknown>> {

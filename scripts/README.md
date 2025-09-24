@@ -34,11 +34,13 @@ The script creates the following folder structure:
 ```
 src/modules/<module-name>/
 ├── data/
-│   ├── local/                    # Empty directory for local data sources
+│   ├── <module-name>-repo-impl.ts           # Repository implementation
+│   ├── local/
+│   │   ├── <module-name>-local-datasource.ts
+│   │   └── <module-name>-local-datasource-impl.ts
 │   └── remote/
 │       ├── <module-name>-remote-datasource.ts
-│       ├── <module-name>-remote-datasource-impl.ts
-│       └── <module-name>-remote-repo-impl.ts
+│       └── <module-name>-remote-datasource-impl.ts
 ├── domain/
 │   ├── entities/
 │   │   ├── models/              # Empty directory for entity models
@@ -56,19 +58,29 @@ src/modules/<module-name>/
 - Abstract class defining the repository contract
 - Contains method signatures for data operations
 
-### 2. Remote Data Source (`data/remote/<module-name>-remote-datasource.ts`)
+### 2. Local Data Source (`data/local/<module-name>-local-datasource.ts`)
+- Abstract class defining local data source contract
+- Contains method signatures for local storage operations
+
+### 3. Local Data Source Implementation (`data/local/<module-name>-local-datasource-impl.ts`)
+- Concrete implementation of the local data source
+- Uses `expo-secure-store` for secure local storage
+- Implements caching, storing, and clearing operations
+
+### 4. Remote Data Source (`data/remote/<module-name>-remote-datasource.ts`)
 - Abstract class defining remote data source contract
 - Contains method signatures for API calls
 
-### 3. Remote Data Source Implementation (`data/remote/<module-name>-remote-datasource-impl.ts`)
+### 5. Remote Data Source Implementation (`data/remote/<module-name>-remote-datasource-impl.ts`)
 - Concrete implementation of the remote data source
-- Implements actual API calls
+- Implements actual API calls using the base service
 
-### 4. Remote Repository Implementation (`data/remote/<module-name>-remote-repo-impl.ts`)
+### 6. Repository Implementation (`data/<module-name>-repo-impl.ts`)
 - Concrete implementation of the repository
 - Uses the remote data source to fulfill repository contract
+- Located directly in the `data/` folder
 
-### 5. Use Cases (`domain/usecases/<module-name>-usecases.ts`)
+### 7. Use Cases (`domain/usecases/<module-name>-usecases.ts`)
 - Contains business logic and orchestration
 - Uses the repository to execute operations
 
@@ -98,7 +110,15 @@ After generating a module:
 1. **Add entity models** in `domain/entities/models/`
 2. **Add parameter types** in `domain/entities/params/`
 3. **Implement repository methods** in `domain/repo/<module-name>-repo.ts`
-4. **Implement data source methods** in `data/remote/<module-name>-remote-datasource-impl.ts`
-5. **Implement use case methods** in `domain/usecases/<module-name>-usecases.ts`
-6. **Add UI components** in `presentation/`
-7. **Add local data sources** in `data/local/` if needed
+4. **Implement local data source methods** in `data/local/<module-name>-local-datasource-impl.ts`
+5. **Implement remote data source methods** in `data/remote/<module-name>-remote-datasource-impl.ts`
+6. **Implement use case methods** in `domain/usecases/<module-name>-usecases.ts`
+7. **Add UI components** in `presentation/`
+
+### Local Storage Features
+
+The generated local data source includes:
+- **Secure Storage**: Uses `expo-secure-store` for encrypted local storage
+- **Caching Methods**: `getCachedData()`, `setCachedData()`, `clearCachedData()`
+- **Error Handling**: Proper try-catch blocks with console logging
+- **JSON Serialization**: Automatic JSON parsing and stringification

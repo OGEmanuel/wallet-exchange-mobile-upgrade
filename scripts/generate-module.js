@@ -15,11 +15,14 @@ function generateModuleStructure(moduleName) {
   // Define the folder structure
   const structure = {
     'data': {
-      'local': {},
+      [`${moduleName}-repo-impl.ts`]: generateRemoteRepoImpl(moduleName),
+      'local': {
+        [`${moduleName}-local-datasource-impl.ts`]: generateLocalDataSourceImpl(moduleName),
+        [`${moduleName}-local-datasource.ts`]: generateLocalDataSource(moduleName)
+      },
       'remote': {
         [`${moduleName}-remote-datasource-impl.ts`]: generateRemoteDataSourceImpl(moduleName),
-        [`${moduleName}-remote-datasource.ts`]: generateRemoteDataSource(moduleName),
-        [`${moduleName}-remote-repo-impl.ts`]: generateRemoteRepoImpl(moduleName)
+        [`${moduleName}-remote-datasource.ts`]: generateRemoteDataSource(moduleName)
       }
     },
     'domain': {
@@ -43,13 +46,14 @@ function generateModuleStructure(moduleName) {
   console.log(`✅ Module '${moduleName}' generated successfully!`);
   console.log(`📁 Location: src/modules/${moduleName}`);
   console.log(`\n📋 Generated files:`);
+  console.log(`   - data/${moduleName}-repo-impl.ts`);
+  console.log(`   - data/local/${moduleName}-local-datasource-impl.ts`);
+  console.log(`   - data/local/${moduleName}-local-datasource.ts`);
   console.log(`   - data/remote/${moduleName}-remote-datasource-impl.ts`);
   console.log(`   - data/remote/${moduleName}-remote-datasource.ts`);
-  console.log(`   - data/remote/${moduleName}-remote-repo-impl.ts`);
   console.log(`   - domain/repo/${moduleName}-repo.ts`);
   console.log(`   - domain/usecases/${moduleName}-usecases.ts`);
   console.log(`\n📁 Empty directories:`);
-  console.log(`   - data/local/`);
   console.log(`   - domain/entities/models/`);
   console.log(`   - domain/entities/params/`);
   console.log(`   - presentation/`);
@@ -144,6 +148,61 @@ export class ${className}Usecases {
 }
 `;
 }
+
+function generateLocalDataSource(moduleName) {
+  const className = toPascalCase(moduleName);
+  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+
+export abstract class ${className}LocalDataSource {
+  // Add your local data source methods here
+  // Example:
+  // abstract getCachedData(key: string): Promise<unknown>;
+  // abstract setCachedData(key: string, data: unknown): Promise<void>;
+  // abstract clearCachedData(key: string): Promise<void>;
+}
+`;
+}
+
+function generateLocalDataSourceImpl(moduleName) {
+  const className = toPascalCase(moduleName);
+  return `import * as SecureStore from "expo-secure-store";
+import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { ${className}LocalDataSource } from "./${moduleName}-local-datasource";
+
+export class ${className}LocalDataSourceImpl implements ${className}LocalDataSource {
+  // Implement your local data source methods here
+  // Example:
+  // async getCachedData(key: string): Promise<unknown> {
+  //   try {
+  //     const data = await SecureStore.getItemAsync(key);
+  //     return data ? JSON.parse(data) : null;
+  //   } catch (error) {
+  //     console.error('Error getting cached data:', error);
+  //     return null;
+  //   }
+  // }
+
+  // async setCachedData(key: string, data: unknown): Promise<void> {
+  //   try {
+  //     await SecureStore.setItemAsync(key, JSON.stringify(data));
+  //   } catch (error) {
+  //     console.error('Error setting cached data:', error);
+  //     throw error;
+  //   }
+  // }
+
+  // async clearCachedData(key: string): Promise<void> {
+  //   try {
+  //     await SecureStore.deleteItemAsync(key);
+  //   } catch (error) {
+  //     console.error('Error clearing cached data:', error);
+  //     throw error;
+  //   }
+  // }
+}
+`;
+}
+
 
 function toPascalCase(str) {
   return str
