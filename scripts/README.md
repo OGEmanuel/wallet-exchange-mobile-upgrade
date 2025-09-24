@@ -1,0 +1,104 @@
+# Module Generator Script
+
+This script generates a complete module folder structure following the project's architecture pattern.
+
+## Usage
+
+### Using npm script (recommended):
+```bash
+npm run generate-module <module-name>
+```
+
+### Using node directly:
+```bash
+node scripts/generate-module.js <module-name>
+```
+
+## Examples
+
+```bash
+# Generate a user profile module
+npm run generate-module user-profile
+
+# Generate an authentication module
+npm run generate-module auth-service
+
+# Generate a payment module
+npm run generate-module payment-gateway
+```
+
+## Generated Structure
+
+The script creates the following folder structure:
+
+```
+src/modules/<module-name>/
+├── data/
+│   ├── local/                    # Empty directory for local data sources
+│   └── remote/
+│       ├── <module-name>-remote-datasource.ts
+│       ├── <module-name>-remote-datasource-impl.ts
+│       └── <module-name>-remote-repo-impl.ts
+├── domain/
+│   ├── entities/
+│   │   ├── models/              # Empty directory for entity models
+│   │   └── params/              # Empty directory for parameter types
+│   ├── repo/
+│   │   └── <module-name>-repo.ts
+│   └── usecases/
+│       └── <module-name>-usecases.ts
+└── presentation/                 # Empty directory for UI components
+```
+
+## Generated Files
+
+### 1. Repository Interface (`domain/repo/<module-name>-repo.ts`)
+- Abstract class defining the repository contract
+- Contains method signatures for data operations
+
+### 2. Remote Data Source (`data/remote/<module-name>-remote-datasource.ts`)
+- Abstract class defining remote data source contract
+- Contains method signatures for API calls
+
+### 3. Remote Data Source Implementation (`data/remote/<module-name>-remote-datasource-impl.ts`)
+- Concrete implementation of the remote data source
+- Implements actual API calls
+
+### 4. Remote Repository Implementation (`data/remote/<module-name>-remote-repo-impl.ts`)
+- Concrete implementation of the repository
+- Uses the remote data source to fulfill repository contract
+
+### 5. Use Cases (`domain/usecases/<module-name>-usecases.ts`)
+- Contains business logic and orchestration
+- Uses the repository to execute operations
+
+## Naming Convention
+
+- Module names should be in **kebab-case** (e.g., `user-profile`, `auth-service`)
+- Class names are automatically converted to **PascalCase** (e.g., `UserProfile`, `AuthService`)
+- File names follow the pattern: `<module-name>-<type>.ts`
+
+## Requirements
+
+- Node.js (comes with npm)
+- Module name must be in kebab-case format
+- Module name cannot already exist in `src/modules/`
+
+## Error Handling
+
+The script includes validation for:
+- Missing module name
+- Invalid naming format (must be kebab-case)
+- File system errors during creation
+
+## Next Steps
+
+After generating a module:
+
+1. **Add entity models** in `domain/entities/models/`
+2. **Add parameter types** in `domain/entities/params/`
+3. **Implement repository methods** in `domain/repo/<module-name>-repo.ts`
+4. **Implement data source methods** in `data/remote/<module-name>-remote-datasource-impl.ts`
+5. **Implement use case methods** in `domain/usecases/<module-name>-usecases.ts`
+6. **Add UI components** in `presentation/`
+7. **Add local data sources** in `data/local/` if needed
