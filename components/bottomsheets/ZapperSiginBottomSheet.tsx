@@ -4,7 +4,7 @@ import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, View } from "react-native";
-import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
+import LoginToZap from "../onboarding/LoginToZap";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -28,6 +28,7 @@ export default function ZapperSiginBottomSheet({
           colors.mainBackgroundColor,
           colors.mainBackgroundColor,
           colors.mainBackgroundColor,
+          colors.mainBackgroundColor,
         ]}
       >
         <View style={styles.handle} />
@@ -37,12 +38,7 @@ export default function ZapperSiginBottomSheet({
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />
-        <CustomInputWithoutForm
-          value=""
-          onChange={() => {}}
-          placeholder="Email"
-          noBorder={true}
-        />
+        <LoginToZap />
       </AnimatedGradientBottomSheet>
     </>
   );
