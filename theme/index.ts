@@ -20,6 +20,9 @@ const COLOR_PALLET = {
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
+  placeholderTextColor: "#A7A7AF",
+  usernamePlaceholderTextColor: "#60617D",
+  secondaryColor: "#C7E64D",
 };
 
 const DARK_COLOR_PALLET = {
@@ -42,6 +45,9 @@ const DARK_COLOR_PALLET = {
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
+  placeholderTextColor: "#A7A7AF",
+  usernamePlaceholderTextColor: "#60617D",
+  secondaryColor: "#C7E64D",
 };
 
 const theme = createTheme({

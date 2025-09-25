@@ -1,3 +1,4 @@
+import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
 import {
   Box,
   CustomButton,
@@ -6,11 +7,12 @@ import {
 } from "@/components/general";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, useRef } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
@@ -84,6 +86,9 @@ const Card = ({
 };
 
 const SelectTrack = () => {
+  const zapperBottomSheetRef = useRef<BottomSheet>(null);
+  const { colors } = useTheme<Theme>();
+
   const item: {
     title: string;
     body: string;
@@ -128,7 +133,7 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => router.push("/dashboard/home/wallet-home/home"),
+      onPress: () => zapperBottomSheetRef.current?.snapToIndex(0),
     },
   ];
   return (
@@ -143,6 +148,8 @@ const SelectTrack = () => {
           ))}
         </ScrollView>
       </Box>
+
+      <ZapperSiginBottomSheet ref={zapperBottomSheetRef} />
     </Wrapper>
   );
 };
