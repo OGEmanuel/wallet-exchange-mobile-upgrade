@@ -14,7 +14,15 @@ export default function LoginToZap() {
   const { authEmail } = useKyc();
 
   const handleLogin = () => {
-    authEmail({ email });
+    authEmail({ email }).then((res) => {
+      console.log(res);
+      // navigate to email verification
+    }).catch((err) => {
+      // If you need to do anything with error.
+      // But there's already a default toast mechanism for each API call
+    }).finally(() => {
+      // End your loading state
+    });
   };
 
   return (
