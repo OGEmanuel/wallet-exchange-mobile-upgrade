@@ -1,40 +1,13 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
-import { CreateImportWalletRepo } from "../create-import-wallet-repo";
+import { CreateImportWalletRepoImpl } from "../../data/create-import-wallet-repo-impl";
 import { CreateWalletParams, CreateWalletResponse } from "../entities/params/create-wallet-params";
 import { ImportPrivateKeyParams } from "../entities/params/import-private-key-params";
 import { ImportSeedPhraseParams } from "../entities/params/import-seedphrase-params";
 import { RestoreFromCloudParams } from "../entities/params/restore-from-cloud";
 import { WatchAddressParams } from "../entities/params/watch-address-params";
-
-/**
- * Create Import Wallet Use Cases
- * 
- * Handles business logic for wallet creation and import operations
- * 
- * Features:
- * - Input validation
- * - Business rule enforcement
- * - Error handling
- * - Transaction management
- * 
- * @example
- * ```typescript
- * const usecases = new CreateImportWalletUsecases(repo);
- * const result = await usecases.executeCreateWallet({
- *   body: walletParams,
- *   params: null,
- *   extra: null
- * });
- * ```
- */
 export class CreateImportWalletUsecases {
-  constructor(private readonly repo: CreateImportWalletRepo) {}
+  private readonly repo = new CreateImportWalletRepoImpl();
 
-  /**
-   * Creates a new wallet
-   * @param payload - Wallet creation parameters
-   * @returns Promise<GeneralResponseModel<CreateWalletResponse>> - Creation result
-   */
   async executeCreateWallet(
     payload: GeneralRequestModel<CreateWalletParams, unknown, unknown>
   ): Promise<GeneralResponseModel<CreateWalletResponse>> {
@@ -44,11 +17,6 @@ export class CreateImportWalletUsecases {
     return this.repo.createWallet(payload);
   }
 
-  /**
-   * Imports wallet from seed phrase
-   * @param payload - Seed phrase import parameters
-   * @returns Promise<GeneralResponseModel<CreateWalletResponse>> - Import result
-   */
   async executeImportSeedPhrase(
     payload: GeneralRequestModel<ImportSeedPhraseParams, unknown, unknown>
   ): Promise<GeneralResponseModel<CreateWalletResponse>> {
@@ -58,11 +26,6 @@ export class CreateImportWalletUsecases {
     return this.repo.importSeedPhrase(payload);
   }
 
-  /**
-   * Imports wallet from private key
-   * @param payload - Private key import parameters
-   * @returns Promise<GeneralResponseModel<CreateWalletResponse>> - Import result
-   */
   async executeImportPrivateKey(
     payload: GeneralRequestModel<ImportPrivateKeyParams, unknown, unknown>
   ): Promise<GeneralResponseModel<CreateWalletResponse>> {
@@ -72,11 +35,6 @@ export class CreateImportWalletUsecases {
     return this.repo.importPrivateKey(payload);
   }
   
-  /**
-   * Restores wallet from cloud backup
-   * @param payload - Cloud restore parameters
-   * @returns Promise<GeneralResponseModel<CreateWalletResponse>> - Restore result
-   */
   async executeRestoreFromCloud(
     payload: GeneralRequestModel<RestoreFromCloudParams, unknown, unknown>
   ): Promise<GeneralResponseModel<CreateWalletResponse>> {
@@ -86,11 +44,6 @@ export class CreateImportWalletUsecases {
     return this.repo.restoreFromCloud(payload);
   }
 
-  /**
-   * Adds an address to watch list
-   * @param payload - Watch address parameters
-   * @returns Promise<GeneralResponseModel<unknown>> - Watch result
-   */
   async executeWatchAddress(
     payload: GeneralRequestModel<WatchAddressParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
@@ -100,11 +53,6 @@ export class CreateImportWalletUsecases {
     return this.repo.watchAddress(payload);
   }
 
-  /**
-   * Validates create wallet parameters
-   * @param params - Parameters to validate
-   * @throws Error if validation fails
-   */
   private validateCreateWalletParams(params: CreateWalletParams | null): void {
     if (!params) {
       throw new Error('Wallet parameters are required');
@@ -135,11 +83,6 @@ export class CreateImportWalletUsecases {
     }
   }
 
-  /**
-   * Validates seed phrase format
-   * @param seedPhrase - Seed phrase to validate
-   * @throws Error if validation fails
-   */
   private validateSeedPhrase(seedPhrase: string | null | undefined): void {
     if (!seedPhrase || seedPhrase.trim().length === 0) {
       throw new Error('Seed phrase is required');
@@ -155,11 +98,6 @@ export class CreateImportWalletUsecases {
     }
   }
 
-  /**
-   * Validates private key format
-   * @param privateKey - Private key to validate
-   * @throws Error if validation fails
-   */
   private validatePrivateKey(privateKey: string | null | undefined): void {
     if (!privateKey || privateKey.trim().length === 0) {
       throw new Error('Private key is required');
@@ -171,11 +109,6 @@ export class CreateImportWalletUsecases {
     }
   }
 
-  /**
-   * Validates cloud restore parameters
-   * @param params - Parameters to validate
-   * @throws Error if validation fails
-   */
   private validateCloudRestoreParams(params: RestoreFromCloudParams | null): void {
     if (!params) {
       throw new Error('Cloud restore parameters are required');
@@ -190,11 +123,6 @@ export class CreateImportWalletUsecases {
     }
   }
 
-  /**
-   * Validates wallet address format
-   * @param address - Address to validate
-   * @throws Error if validation fails
-   */
   private validateWalletAddress(address: string | null | undefined): void {
     if (!address || address.trim().length === 0) {
       throw new Error('Wallet address is required');

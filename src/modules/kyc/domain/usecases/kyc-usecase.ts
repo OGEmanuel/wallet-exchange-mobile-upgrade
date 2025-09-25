@@ -3,6 +3,7 @@ import { KycRepoImpl } from "../../data/kyc-repo-impl";
 import { AddUsernameParams } from "../entities/params/add-username-params";
 import { AuthEmailParams } from "../entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../entities/params/auth-phone-number-params";
+import { CreditDocumentDataParam } from "../entities/params/credit-document-data-param";
 import { VerifyEmailParams } from "../entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../entities/params/verify-phone-number-otp-params";
 
@@ -28,5 +29,13 @@ export class KycUsecases {
 
   async executeVerifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.repo.verifyPhoneNumberOtp(payload);
+  }
+
+  async executeUploadCreditDocument(payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+    return this.repo.uploadCreditDocument(payload);
+  }
+
+  async executeUploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+    return this.repo.uploadIdentityDocument(payload);
   }
 }

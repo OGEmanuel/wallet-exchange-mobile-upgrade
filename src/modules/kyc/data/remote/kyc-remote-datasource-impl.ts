@@ -11,51 +11,43 @@ import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
 export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       getOnboardingOtpEndpoint,
       payload.body,
       {},
       {
         // showErrorToast: false
-        
       }
     );
     return response.data;
   }
 
   async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/verify-email", payload);
     return response.data;
   }
 
   async addUsername(payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/add-username", payload);
     return response.data;
   }
 
   async authPhoneNumber(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/phone-number", payload);
     return response.data;
   }
 
   async verifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/verify-phone-number-otp", payload);
     return response.data;
   }
 
   async uploadCreditDocument(payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/kyc/upload-credit-document", payload);
     return response.data;
   }
 
   async uploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    // TODO: Add the correct endpoint and implement
     const response = await httpClient.post<GeneralResponseModel<unknown>>("/kyc/upload-identity-document", payload);
     return response.data;
   }
