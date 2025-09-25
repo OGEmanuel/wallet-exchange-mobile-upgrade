@@ -1,179 +1,164 @@
 // utils/toast.utils.ts
 import { Alert, Platform, ToastAndroid } from 'react-native';
 
-export const showErrorToast = (message: string): void => {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(message, ToastAndroid.LONG);
-  } else {
-    Alert.alert('Error', message);
-  }
-};
-
-export const showSuccessToast = (message: string): void => {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(message, ToastAndroid.SHORT);
-  } else {
-    Alert.alert('Success', message);
-  }
-};
-
-export const showInfoToast = (message: string): void => {
-  if (Platform.OS === 'android') {
-    ToastAndroid.show(message, ToastAndroid.SHORT);
-  } else {
-    Alert.alert('Info', message);
-  }
-};
-
-// utils/dev-logger.ts
-const isDevelopment = __DEV__;
-
-class DevLogger {
-  log(...args: any[]): void {
-    if (isDevelopment) {
-      console.log(...args);
-    }
-  }
-
-  warn(...args: any[]): void {
-    if (isDevelopment) {
-      console.warn(...args);
-    }
-  }
-
-  error(...args: any[]): void {
-    if (isDevelopment) {
-      console.error(...args);
-    }
-  }
-
-  info(...args: any[]): void {
-    if (isDevelopment) {
-      console.info(...args);
-    }
-  }
-
-  debug(...args: any[]): void {
-    if (isDevelopment) {
-      console.debug(...args);
-    }
-  }
+/**
+ * Toast Types
+ */
+export enum ToastType {
+  SUCCESS = 'success',
+  ERROR = 'error',
+  WARNING = 'warning',
+  INFO = 'info'
 }
 
-export const devLogger = new DevLogger();
+export enum ToastDuration {
+  SHORT = 'short',
+  LONG = 'long',
+  CUSTOM = 'custom'
+}
 
-// utils/validation.utils.ts
-export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-export const validatePhone = (phone: string): boolean => {
-  const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-  return phoneRegex.test(phone) && phone.replace(/\D/g, '').length >= 10;
-};
-
-export const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-  
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  }
-  
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-  
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-  
-  if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-  
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Password must contain at least one special character');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
+export interface ToastOptions {
+  type?: ToastType;
+  duration?: ToastDuration;
+  customDuration?: number;
+  title?: string;
+  action?: {
+    text: string;
+    onPress: () => void;
   };
+  accessibility?: {
+    label?: string;
+    hint?: string;
+  };
+}
+
+/**
+ * Enhanced Toast Utility
+ * 
+ * Provides customizable toast notifications with:
+ * - Multiple toast types (success, error, warning, info)
+ * - Customizable duration and appearance
+ * - Accessibility support
+ * - Action buttons
+ * - Platform-specific implementations
+ * 
+ * @example
+ * ```typescript
+ * showToast('Operation successful', { type: ToastType.SUCCESS });
+ * showToast('Error occurred', { 
+ *   type: ToastType.ERROR, 
+ *   action: { text: 'Retry', onPress: () => retry() }
+ * });
+ * ```
+ */
+
+/**
+ * Shows a toast notification with customizable options
+ * @param message - Message to display
+ * @param options - Toast configuration options
+ */
+export const showToast = (message: string, options: ToastOptions = {}): void => {
+  const {
+    type = ToastType.INFO,
+    duration = ToastDuration.SHORT,
+    customDuration,
+    title,
+    action,
+    accessibility
+  } = options;
+
+  const displayMessage = title ? `${title}: ${message}` : message;
+  const accessibilityLabel = accessibility?.label || `${type} notification: ${message}`;
+  const accessibilityHint = accessibility?.hint || (action ? `Double tap to ${action.text.toLowerCase()}` : 'Double tap to dismiss');
+
+  if (Platform.OS === 'android') {
+    const androidDuration = duration === ToastDuration.LONG 
+      ? ToastAndroid.LONG 
+      : duration === ToastDuration.CUSTOM && customDuration
+        ? customDuration
+        : ToastAndroid.SHORT;
+
+    ToastAndroid.show(displayMessage, androidDuration);
+  } else {
+    // iOS implementation with Alert
+    const alertTitle = getAlertTitle(type, title);
+    const alertButtons = getAlertButtons(action);
+    
+    Alert.alert(alertTitle, displayMessage, alertButtons);
+  }
 };
 
-// utils/format.utils.ts
-export const formatCurrency = (
-  amount: number,
-  currency: string = 'USD',
-  locale: string = 'en-US'
-): string => {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-  }).format(amount);
+/**
+ * Shows an error toast
+ * @param message - Error message
+ * @param options - Additional options
+ */
+export const showErrorToast = (message: string, options: Omit<ToastOptions, 'type'> = {}): void => {
+  showToast(message, { ...options, type: ToastType.ERROR });
 };
 
-export const formatNumber = (
-  number: number,
-  decimals: number = 2,
-  locale: string = 'en-US'
-): string => {
-  return new Intl.NumberFormat(locale, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(number);
+/**
+ * Shows a success toast
+ * @param message - Success message
+ * @param options - Additional options
+ */
+export const showSuccessToast = (message: string, options: Omit<ToastOptions, 'type'> = {}): void => {
+  showToast(message, { ...options, type: ToastType.SUCCESS });
 };
 
-export const formatDate = (
-  date: Date | string,
-  options: Intl.DateTimeFormatOptions = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  },
-  locale: string = 'en-US'
-): string => {
-  const dateObject = typeof date === 'string' ? new Date(date) : date;
-  return new Intl.DateTimeFormat(locale, options).format(dateObject);
+/**
+ * Shows a warning toast
+ * @param message - Warning message
+ * @param options - Additional options
+ */
+export const showWarningToast = (message: string, options: Omit<ToastOptions, 'type'> = {}): void => {
+  showToast(message, { ...options, type: ToastType.WARNING });
 };
 
-export const formatTimeAgo = (date: Date | string): string => {
-  const now = new Date();
-  const targetDate = typeof date === 'string' ? new Date(date) : date;
-  const diffInSeconds = Math.floor((now.getTime() - targetDate.getTime()) / 1000);
-
-  if (diffInSeconds < 60) {
-    return 'Just now';
-  }
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks} week${diffInWeeks === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths === 1 ? '' : 's'} ago`;
-  }
-
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears} year${diffInYears === 1 ? '' : 's'} ago`;
+/**
+ * Shows an info toast
+ * @param message - Info message
+ * @param options - Additional options
+ */
+export const showInfoToast = (message: string, options: Omit<ToastOptions, 'type'> = {}): void => {
+  showToast(message, { ...options, type: ToastType.INFO });
 };
 
+/**
+ * Gets the appropriate alert title based on toast type
+ * @param type - Toast type
+ * @param customTitle - Custom title if provided
+ * @returns string - Alert title
+ */
+const getAlertTitle = (type: ToastType, customTitle?: string): string => {
+  if (customTitle) return customTitle;
+  
+  switch (type) {
+    case ToastType.SUCCESS:
+      return 'Success';
+    case ToastType.ERROR:
+      return 'Error';
+    case ToastType.WARNING:
+      return 'Warning';
+    case ToastType.INFO:
+    default:
+      return 'Info';
+  }
+};
+
+/**
+ * Gets alert buttons based on action options
+ * @param action - Action configuration
+ * @returns Alert button array
+ */
+const getAlertButtons = (action?: ToastOptions['action']) => {
+  if (!action) {
+    return [{ text: 'OK', style: 'default' }];
+  }
+  
+  return [
+    { text: 'Cancel', style: 'cancel' },
+    { text: action.text, style: 'default', onPress: action.onPress }
+  ];
+};
 

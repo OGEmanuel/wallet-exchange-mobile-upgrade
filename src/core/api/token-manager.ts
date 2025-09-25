@@ -5,16 +5,44 @@ import { StorageKeys } from '../storage/storage-types';
 import { GeneralResponseModel, RefreshTokenResponse } from './http-types';
 import { TokenData } from './models';
 
+/**
+ * Pending request interface for queuing requests during token refresh
+ */
+interface PendingRequest {
+  resolve: (value: unknown) => void;
+  reject: (reason?: any) => void;
+  config: any;
+}
+
+/**
+ * TokenManager - Handles authentication token management and refresh
+ * 
+ * Features:
+ * - Automatic token refresh with retry logic
+ * - Request queuing during token refresh
+ * - Secure token storage and retrieval
+ * - Configurable refresh endpoints
+ * 
+ * @example
+ * ```typescript
+ * const tokenManager = new TokenManager('https://api.example.com', 30000);
+ * const token = await tokenManager.getToken();
+ * ```
+ */
 export class TokenManager {
   private refreshTokenAxiosInstance: AxiosInstance;
   private isRefreshingToken = false;
-  private pendingRequests: {
-    resolve: (value: unknown) => void;
-    reject: (reason?: any) => void;
-    config: any;
-  }[] = [];
+  private pendingRequests: PendingRequest[] = [];
+  private refreshEndpoint: string;
+  private maxRetries: number = 3;
+  private retryDelay: number = 1000;
 
-  constructor(baseURL: string, timeout: number = 20000) {
+  constructor(
+    baseURL: string, 
+    timeout: number = 20000,
+    refreshEndpoint: string = '/auth/refresh-token'
+  ) {
+    this.refreshEndpoint = refreshEndpoint;
     this.refreshTokenAxiosInstance = axios.create({
       baseURL,
       timeout,
@@ -22,19 +50,25 @@ export class TokenManager {
   }
 
   /**
-   * Refreshes the authentication token
+   * Refreshes the authentication token with retry logic
+   * @param retryCount - Current retry attempt (internal use)
    * @returns Promise<string | null> - New token or null if refresh failed
    */
-  async refreshToken(): Promise<string | null> {
+  async refreshToken(retryCount: number = 0): Promise<string | null> {
     try {
-      const tokenData = await storageService.get<TokenData>(StorageKeys.TOKEN_DATA);
+      const tokenData = await this.getToken();
       
       if (!tokenData?.refreshToken) {
         throw new Error('No refresh token available');
       }
 
+      // Check if token is expired and needs refresh
+      if (tokenData.expiresAt && Date.now() < tokenData.expiresAt) {
+        return tokenData.token;
+      }
+
       const response = await this.refreshTokenAxiosInstance.post<GeneralResponseModel<RefreshTokenResponse>>(
-        '/auth/refresh-token',
+        this.refreshEndpoint,
         { refreshToken: tokenData.refreshToken },
         {
           headers: {
@@ -44,16 +78,30 @@ export class TokenManager {
         }
       );
 
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error('Invalid refresh token response');
+      }
+
       const newTokenData: TokenData = {
-        token: response.data?.data?.token || null,
-        refreshToken: response.data?.data?.refreshToken || null,
+        token: response.data.data.token || null,
+        refreshToken: response.data.data.refreshToken || tokenData.refreshToken,
         expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
       };
 
       await storageService.save(StorageKeys.TOKEN_DATA, newTokenData);
-      return newTokenData?.token || null;
+      return newTokenData.token;
     } catch (error) {
-      console.error('Token refresh failed:', error);
+      console.error(`Token refresh failed (attempt ${retryCount + 1}):`, error);
+      
+      // Retry logic with exponential backoff
+      if (retryCount < this.maxRetries) {
+        const delay = this.retryDelay * Math.pow(2, retryCount);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.refreshToken(retryCount + 1);
+      }
+      
+      // Clear invalid tokens on final failure
+      await this.clearTokens();
       throw error;
     }
   }
@@ -76,12 +124,23 @@ export class TokenManager {
    */
   async handleAuthFailure(): Promise<void> {
     try {
-      await storageService.remove(StorageKeys.TOKEN_DATA);
+      await this.clearTokens();
       await storageService.remove(StorageKeys.USER_PROFILE);
       // Navigate to login screen - you'll need to implement this based on your navigation
       // NavigationService.navigate('Login');
     } catch (error) {
       console.error('Failed to handle auth failure:', error);
+    }
+  }
+
+  /**
+   * Clears all stored tokens
+   */
+  private async clearTokens(): Promise<void> {
+    try {
+      await storageService.remove(StorageKeys.TOKEN_DATA);
+    } catch (error) {
+      console.error('Failed to clear tokens:', error);
     }
   }
 
@@ -105,11 +164,7 @@ export class TokenManager {
    * Adds a pending request to the queue
    * @param request - The pending request
    */
-  addPendingRequest(request: {
-    resolve: (value: unknown) => void;
-    reject: (reason?: any) => void;
-    config: any;
-  }): void {
+  addPendingRequest(request: PendingRequest): void {
     this.pendingRequests.push(request);
   }
 
