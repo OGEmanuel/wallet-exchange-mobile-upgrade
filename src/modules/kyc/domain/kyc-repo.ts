@@ -1,4 +1,4 @@
-import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { AddUsernameParams } from "./entities/params/add-username-params";
 import { AuthEmailParams } from "./entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "./entities/params/auth-phone-number-params";
@@ -7,11 +7,11 @@ import { VerifyEmailParams } from "./entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "./entities/params/verify-phone-number-otp-params";
 
 export abstract class KycRepo {
-  abstract authEmail(payload: ApiRequest<AuthEmailParams>): Promise<ApiResponse<unknown>>;
-  abstract verifyEmail(payload: ApiRequest<VerifyEmailParams>): Promise<ApiResponse<unknown>>;
-  abstract addUsername(payload: ApiRequest<AddUsernameParams>): Promise<ApiResponse<unknown>>;
-  abstract authPhoneNumber(payload: ApiRequest<AuthPhoneNumberParams>): Promise<ApiResponse<unknown>>;
-  abstract verifyPhoneNumberOtp(payload: ApiRequest<VerifyPhoneNumberOtpParams>): Promise<ApiResponse<unknown>>;
-  abstract uploadCreditDocument(payload: ApiRequest<CreditDocumentDataParam>): Promise<ApiResponse<unknown>>;
-  abstract uploadIdentityDocument(payload: ApiRequest<FormData>): Promise<ApiResponse<unknown>>;
+  abstract authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract addUsername(payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract authPhoneNumber(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract verifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract uploadCreditDocument(payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract uploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
 }

@@ -1,5 +1,5 @@
-import api from "@/services/base.service";
-import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { httpClient } from "@/src/core/api/http-client";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
@@ -9,45 +9,45 @@ import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
 export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
-  async authEmail(payload: ApiRequest<AuthEmailParams>): Promise<ApiResponse<unknown>> {
+  async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/auth/email", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/email", payload);
     return response.data;
   }
 
-  async verifyEmail(payload: ApiRequest<VerifyEmailParams>): Promise<ApiResponse<unknown>> {
+  async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/auth/verify-email", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/verify-email", payload);
     return response.data;
   }
 
-  async addUsername(payload: ApiRequest<AddUsernameParams>): Promise<ApiResponse<unknown>> {
+  async addUsername(payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/auth/add-username", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/add-username", payload);
     return response.data;
   }
 
-  async authPhoneNumber(payload: ApiRequest<AuthPhoneNumberParams>): Promise<ApiResponse<unknown>> {
+  async authPhoneNumber(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/auth/phone-number", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/phone-number", payload);
     return response.data;
   }
 
-  async verifyPhoneNumberOtp(payload: ApiRequest<VerifyPhoneNumberOtpParams>): Promise<ApiResponse<unknown>> {
+  async verifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/auth/verify-phone-number-otp", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/verify-phone-number-otp", payload);
     return response.data;
   }
 
-  async uploadCreditDocument(payload: ApiRequest<CreditDocumentDataParam>): Promise<ApiResponse<unknown>> {
+  async uploadCreditDocument(payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/kyc/upload-credit-document", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/kyc/upload-credit-document", payload);
     return response.data;
   }
 
-  async uploadIdentityDocument(payload: ApiRequest<FormData>): Promise<ApiResponse<unknown>> {
+  async uploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/kyc/upload-identity-document", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/kyc/upload-identity-document", payload);
     return response.data;
   }
 } 

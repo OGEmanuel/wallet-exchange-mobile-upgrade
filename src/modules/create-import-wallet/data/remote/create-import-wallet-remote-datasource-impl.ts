@@ -1,5 +1,5 @@
-import api from "@/services/base.service";
-import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { httpClient } from "@/src/core/api/http-client";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { CreateWalletParams } from "../../domain/entities/params/create-wallet-params";
 import { ImportPrivateKeyParams } from "../../domain/entities/params/import-private-key-params";
 import { ImportSeedPhraseParams } from "../../domain/entities/params/import-seedphrase-params";
@@ -9,34 +9,34 @@ import { CreateImportWalletRemoteDatasource } from "./create-import-wallet-remot
 
 
 export class CreateImportWalletRemoteDatasourceImpl implements CreateImportWalletRemoteDatasource {
-  async createWallet(payload: ApiRequest<CreateWalletParams>): Promise<ApiResponse<unknown>> {
+  async createWallet(payload: GeneralRequestModel<CreateWalletParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/wallet/create", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/wallet/create", payload);
     return response.data;
   }
 
-  async importSeedPhrase(payload: ApiRequest<ImportSeedPhraseParams>): Promise<ApiResponse<unknown>> {
+  async importSeedPhrase(payload: GeneralRequestModel<ImportSeedPhraseParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/wallet/import-seed-phrase", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/wallet/import-seed-phrase", payload);
     return response.data;
   }
   
-  async importPrivateKey(payload: ApiRequest<ImportPrivateKeyParams>): Promise<ApiResponse<unknown>> {
+  async importPrivateKey(payload: GeneralRequestModel<ImportPrivateKeyParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/wallet/import-private-key", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/wallet/import-private-key", payload);
     return response.data;
   }
   
-  async restorFromCloud(payload: ApiRequest<RestoreFromCloudParams>): Promise<ApiResponse<unknown>> {
+  async restorFromCloud(payload: GeneralRequestModel<RestoreFromCloudParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/wallet/restore-from-cloud", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/wallet/restore-from-cloud", payload);
     return response.data;
   }
   
   
-  async watchAddress(payload: ApiRequest<WatchAddressParams>): Promise<ApiResponse<unknown>> {
+  async watchAddress(payload: GeneralRequestModel<WatchAddressParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await api.post("/wallet/watch-address", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>("/wallet/watch-address", payload);
     return response.data;
   }
 }

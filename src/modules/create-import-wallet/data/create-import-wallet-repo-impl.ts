@@ -1,4 +1,4 @@
-import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { CreateImportWalletRepo } from "../domain/create-import-wallet-repo";
 import { CreateWalletParams } from "../domain/entities/params/create-wallet-params";
 import { ImportPrivateKeyParams } from "../domain/entities/params/import-private-key-params";
@@ -10,23 +10,23 @@ import { CreateImportWalletRemoteDatasource } from "./remote/create-import-walle
 export class CreateImportWalletRepoImpl implements CreateImportWalletRepo {
   constructor(private readonly remoteDatasource: CreateImportWalletRemoteDatasource) {}
 
-  async createWallet(payload: ApiRequest<CreateWalletParams>): Promise<ApiResponse<unknown>> {
+  async createWallet(payload: GeneralRequestModel<CreateWalletParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.createWallet(payload);
   }
 
-  async importSeedPhrase(payload: ApiRequest<ImportSeedPhraseParams>): Promise<ApiResponse<unknown>> {
+  async importSeedPhrase(payload: GeneralRequestModel<ImportSeedPhraseParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.importSeedPhrase(payload);
   }
 
-  async importPrivateKey(payload: ApiRequest<ImportPrivateKeyParams>): Promise<ApiResponse<unknown>> {
+  async importPrivateKey(payload: GeneralRequestModel<ImportPrivateKeyParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.importPrivateKey(payload);
   }
 
-  async restoreFromCloud(payload: ApiRequest<RestoreFromCloudParams>): Promise<ApiResponse<unknown>> {
+  async restoreFromCloud(payload: GeneralRequestModel<RestoreFromCloudParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.restorFromCloud(payload);
   }
 
-  async watchAddress(payload: ApiRequest<WatchAddressParams>): Promise<ApiResponse<unknown>> {
+  async watchAddress(payload: GeneralRequestModel<WatchAddressParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.watchAddress(payload);
   }
 }
