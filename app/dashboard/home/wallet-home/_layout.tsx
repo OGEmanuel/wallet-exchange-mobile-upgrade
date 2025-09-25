@@ -87,7 +87,7 @@ const _layout = () => {
           tabBarIcon: ({ focused }) => (
             <TabBarIcon
               focused={focused}
-              label="Explore"
+              label="Cards"
               activeIcon={
                 <ThemedCardFilledIcon
                   width={24}

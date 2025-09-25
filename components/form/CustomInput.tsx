@@ -1,16 +1,10 @@
-import {
-  TextInputProps,
-  TextInput,
-  StyleSheet,
-  Alert,
-  ViewStyle,
-} from "react-native";
-import { Controller, useFormContext } from "react-hook-form";
-import React from "react";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
 import CustomText from "@/components/general/CustomText";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Theme } from "@/theme";
+import { Feather } from "@expo/vector-icons";
+import { useTheme } from "@shopify/restyle";
+import React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import { StyleSheet, TextInput, TextInputProps, ViewStyle } from "react-native";
 import Box from "../general/Box";
 
 interface IProps {
@@ -77,12 +71,13 @@ export const CustomTextInput = (props: IProps & TextInputProps) => {
               style={[
                 Style.parent,
                 {
+                  borderWidth: focused ? 1.5 : 0,
                   borderColor:
                     focused && !errors[props.name]
                       ? theme.colors.primaryColor
                       : errors[props.name]
-                        ? theme.colors.error
-                        : theme.colors.borderColor,
+                      ? theme.colors.error
+                      : theme.colors.borderColor,
                 },
               ]}
             >
@@ -116,7 +111,7 @@ export const CustomTextInput = (props: IProps & TextInputProps) => {
                   }}
                 />
               </Box>
-              
+
               {props.suffix && props.suffix}
 
               {props.isPassword && (
