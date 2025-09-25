@@ -1,8 +1,9 @@
 import { Theme } from "@/theme";
+import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { ConfettiMethods } from "react-native-fast-confetti";
 
 export default function UsernameSuccess({
@@ -11,26 +12,28 @@ export default function UsernameSuccess({
   confettiRef: React.RefObject<ConfettiMethods | null>;
 }) {
   const spinValue = useRef(new Animated.Value(0)).current;
+  const [hasConfettiRun, setHasConfettiRun] = useState(false);
 
-  useEffect(() => {
-    // Small delay to ensure the component is fully mounted and visible
-    const timer = setTimeout(() => {
-      confettiRef.current?.restart();
-    }, 500);
+  // useEffect(() => {
+  //   // Small delay to ensure the component is fully mounted and visible
+  //   if (!hasConfettiRun) {
+  //     // const timer = setTimeout(() => {
+  //     //   confettiRef.current?.start();
+  //     //   setHasConfettiRun(true);
+  //     // }, 500);
 
-    return () => clearTimeout(timer);
-  }, []);
+  //     // return () => clearTimeout(timer);
+  //   }
+  // }, [hasConfettiRun]);
 
   useEffect(() => {
     // Start the spin animation
-    Animated.loop(
-      Animated.timing(spinValue, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [spinValue]);
+    Animated.timing(spinValue, {
+      toValue: 1,
+      duration: 2000,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const theme = useTheme<Theme>();
   const gradientColors = [theme.colors.primaryColor, "#1B1251"];
@@ -48,6 +51,8 @@ export default function UsernameSuccess({
             backgroundColor: theme.colors.primaryColor,
             borderWidth: 0,
             transform: [{ rotateY: spin }],
+            alignSelf: "center",
+            marginTop: 100,
           },
         ]}
       >
@@ -57,8 +62,24 @@ export default function UsernameSuccess({
           end={{ x: 1, y: 1 }}
           style={styles.userCard}
         >
-          <View style={styles.profilePic}></View>
+          <Image
+            source={require("@/assets/images/avatar.png")}
+            style={styles.profilePic}
+          />
         </LinearGradient>
+
+        <Text
+          style={[
+            styles.suffix,
+            {
+              color: theme.colors.bodyTextColor,
+              width: SCREEN_WIDTH * 0.9,
+              marginTop: 20,
+            },
+          ]}
+        >
+          Mofe.zap
+        </Text>
       </Animated.View>
     </View>
   );
@@ -78,5 +99,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#23F9A1",
     borderRadius: 50,
     alignSelf: "center",
+    marginTop: 50,
+  },
+  suffix: {
+    fontSize: 38,
+    fontWeight: "400",
+    fontFamily: "PlusJakartaSans_Regular",
+    lineHeight: 48,
   },
 });
