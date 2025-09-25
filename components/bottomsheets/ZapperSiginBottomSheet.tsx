@@ -5,7 +5,7 @@ import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { Confetti, ConfettiMethods } from "react-native-fast-confetti";
-import LoginToZap from "../onboarding/LoginToZap";
+import UsernameSuccess from "../onboarding/UsernameSuccess";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -45,10 +45,10 @@ export default function ZapperSiginBottomSheet({
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />
-        <LoginToZap />
+        {/* <LoginToZap /> */}
         {/* <EmailVerification /> */}
         {/* <EnterUsername /> */}
-        {/* <UsernameSuccess confettiRef={confettiRef} /> */}
+        <UsernameSuccess confettiRef={confettiRef} />
       </AnimatedGradientBottomSheet>
     </>
   );
