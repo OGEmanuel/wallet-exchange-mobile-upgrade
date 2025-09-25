@@ -1,13 +1,5 @@
-// import { AccountModel } from "../../modules/accounts/models/account-model";
-// import { AddressModel } from "../../modules/accounts/models/address-model";
-// import { PriceAlertModel } from "../../modules/auth/models/price-alert-model";
-// import { UserModel } from "../../modules/auth/models/user-model";
-// import { TogglePriceAlertParams } from "../../modules/auth/types/toggle-price-alert-params";
-// import { WatchlistTokenModel } from "../../modules/markets/models/watchlist-token-model";
-// import { SupportConversationModel } from "../../modules/support/models/support-models";
-// import { VerifyWithdrawalAddressParams } from "../../modules/swap/types/verify-withdrawal-address-params";
-// import { CurrencyModel } from "../models/currency-model";
-// import { VerifiedCountryModel } from "../models/verified-country-model";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
 
 // Auth Endpoints
 export const getOnboardingOtpEndpoint = "/auth/login";
@@ -18,11 +10,11 @@ export const appleLoginEndpoint = "/auth/apple";
 export const requestNewOtpEndpoint = "/auth/login";
 export const updatePhoneNumberEndpoint = "/auth/phone";
 export const authenticatePhoneNumberOtpEndpoint = "/auth/otp/verify";
-// export const updateUserDetailsEndpoint = (user?: UserModel | null): string => `/users/${user?._id}`;
+export const updateUserDetailsEndpoint = (user?: UserModel | null): string => `/users/${user?._id}`;
 export const sendVerificationDocumentDataEndpoint = "/verifications";
-// export const fetchUserByIdEndpoint = (user?: UserModel | null): string => `/users/${user?._id}`;
-// export const referralUsernameVerificationEndpoint = (user?: UserModel | null): string => `/users/onboarding/${user?._id}`;
-// export const fetchDocumentTypesEndpoint = (countryData?: VerifiedCountryModel | null): string => `/country-verifications/${countryData?._id}`;
+export const fetchUserByIdEndpoint = (user?: UserModel | null): string => `/users/${user?._id}`;
+export const usernameOnboardingEndpoint = (user?: UserModel | null): string => `/users/onboarding/${user?._id}`;
+export const fetchDocumentTypesEndpoint = (countryData?: VerifiedCountryModel | null): string => `/country-verifications/${countryData?._id}`;
 export const refreshTokenEndpoint = "/auth/refresh";
 export const submitVerificationEndpoint = "/verifications/submit";
 export const generate2FASecretDataEndpoint = "/auth/2fa/generate";
@@ -30,16 +22,16 @@ export const verify2FACodeEndpoint = "/auth/2fa/verify";
 export const loginWith2FACodeEndpoint = "/auth/2fa/login";
 export const disable2FACodeEndpoint = "/auth/2fa/disable";
 export const fetchAllAvatarsEndpoint = "/avatar";
-// export const fetchNotificationPreferenceEndpoint = (user?: UserModel | null): string => `/users/settings/${user?._id}`;
-// export const updateNotificationPreferenceEndpoint = (user?: UserModel | null): string => `/users/settings/${user?._id}`;
+export const fetchNotificationPreferenceEndpoint = (user?: UserModel | null): string => `/users/settings/${user?._id}`;
+export const updateNotificationPreferenceEndpoint = (user?: UserModel | null): string => `/users/settings/${user?._id}`;
 export const createPriceAlertEndpoint = "/priceAlerts";
 // export const activatePriceAlertEndpoint = (priceAlert?: TogglePriceAlertParams | null): string => `/priceAlerts/${priceAlert?.user?._id}/activate`;
 // export const deactivatePriceAlertEndpoint = (priceAlert?: TogglePriceAlertParams | null): string => `/priceAlerts/${priceAlert?.user?._id}/deactivate`;
 // export const deletePriceAlertEndpoint = (priceAlert?: PriceAlertModel | null): string => `/priceAlerts/${priceAlert?.id}`;
 export const updatePriceAlertEndpoint = (priceAlertId?: string | null): string => `/priceAlerts/${priceAlertId}`;
-// export const fetchPriceAlertsEndpoint = (user?: UserModel | null): string => `/priceAlerts/user/${user?._id}`;
-// export const fetchActivityLogEndpoint = (user?: UserModel | null): string => `/activities/${user?._id}`;
-// export const fetchTransactionsEndpoint = (user?: UserModel | null): string => `/orders/user/${user?._id}`;
+export const fetchPriceAlertsEndpoint = (user?: UserModel | null): string => `/priceAlerts/user/${user?._id}`;
+export const fetchActivityLogEndpoint = (user?: UserModel | null): string => `/activities/${user?._id}`;
+export const fetchTransactionsEndpoint = (user?: UserModel | null): string => `/orders/user/${user?._id}`;
 export const fetchSumsubReviewResultEndpoint = "/verifications/sb/status";
 export const resetSumsubVerificationEndpoint = "/verifications/sb/reset";
 
@@ -49,7 +41,7 @@ export const createOrderTransactionEndpoint = "/orders";
 // export const verifyWithdrawalAddressEndpoint = (payload?: VerifyWithdrawalAddressParams | null): string => `/orders/validateAddress/${payload?.currencyId}/${payload?.tokenAddress}`;
 
 // Accounts Endpoints
-// export const fetchAccountsEndpoint = (user?: UserModel | null): string => `/accounts/user/${user?._id}`;
+export const fetchAccountsEndpoint = (user?: UserModel | null): string => `/accounts/user/${user?._id}`;
 export const fetchAccountDetailsEndpoint = "/banks/resolve";
 export const addBankAccountEndpoint = "/accounts";
 // export const deleteBankAccountEndpoint = (account?: AccountModel | null): string => `/accounts/${account?._id}`;
