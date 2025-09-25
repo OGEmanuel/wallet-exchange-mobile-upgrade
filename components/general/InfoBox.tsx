@@ -30,11 +30,12 @@ export default function InfoBox({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
+    width: "80%",
     height: 54,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
+    alignSelf: "center",
   },
 });
