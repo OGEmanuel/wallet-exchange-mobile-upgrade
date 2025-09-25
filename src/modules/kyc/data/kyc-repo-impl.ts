@@ -6,10 +6,10 @@ import { CreditDocumentDataParam } from "../domain/entities/params/credit-docume
 import { VerifyEmailParams } from "../domain/entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../domain/entities/params/verify-phone-number-otp-params";
 import { KycRepo } from "../domain/kyc-repo";
-import { KycRemoteDatasource } from "./remote/kyc-remote-datasource";
+import { KycRemoteDatasourceImpl } from "./remote/kyc-remote-datasource-impl";
 
 export class KycRepoImpl implements KycRepo {
-  constructor(private readonly remoteDatasource: KycRemoteDatasource) {}
+  private readonly remoteDatasource = new KycRemoteDatasourceImpl();
 
   async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.authEmail(payload);

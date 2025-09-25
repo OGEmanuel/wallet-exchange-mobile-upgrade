@@ -20,12 +20,12 @@
  * Controls behavior like error handling, token refresh, and request tracking
  */
 export interface ApiRequestMetadata {
-  showErrorToast: boolean | null;      // Whether to show error toasts
-  skipRefreshToken: boolean | null;    // Skip automatic token refresh
-  requestId: string | null;            // Unique request identifier
-  context: any | null;                 // Additional context data
-  retryCount: number | null;           // Number of retry attempts
-  timeout: number | null;              // Request timeout in ms
+  showErrorToast?: boolean | null;      // Whether to show error toasts
+  skipRefreshToken?: boolean | null;    // Skip automatic token refresh
+  requestId?: string | null;            // Unique request identifier
+  context?: any | null;                 // Additional context data
+  retryCount?: number | null;           // Number of retry attempts
+  timeout?: number | null;              // Request timeout in ms
   // [key: string]: any;
 }
 

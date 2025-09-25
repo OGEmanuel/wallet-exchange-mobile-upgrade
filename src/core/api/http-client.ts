@@ -4,6 +4,7 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { HttpInterceptors } from './http-interceptors';
 import { HttpMethods } from './http-methods';
 import { HttpClientConfig } from './http-types';
+import { ApiRequestMetadata } from './models';
 import { TokenManager } from './token-manager';
 
 
@@ -72,7 +73,7 @@ class HttpClient {
     url: string,
     params?: any,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<any> {
     return this.methods.get<T>(url, params, options, metadata);
   }
@@ -81,7 +82,7 @@ class HttpClient {
     url: string,
     data?: any,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.post<T>(url, data, options, metadata);
   }
@@ -90,7 +91,7 @@ class HttpClient {
     url: string,
     data?: any,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.put<T>(url, data, options, metadata);
   }
@@ -99,7 +100,7 @@ class HttpClient {
     url: string,
     data?: any,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.patch<T>(url, data, options, metadata);
   }
@@ -108,7 +109,7 @@ class HttpClient {
     url: string,
     params?: any,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.delete<T>(url, params, options, metadata);
   }
@@ -116,7 +117,7 @@ class HttpClient {
   async head<T>(
     url: string,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.head<T>(url, options, metadata);
   }
@@ -124,7 +125,7 @@ class HttpClient {
   async options<T>(
     url: string,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.options<T>(url, options, metadata);
   }
@@ -133,7 +134,7 @@ class HttpClient {
     url: string,
     file: File | Blob,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<AxiosResponse<T>> {
     return this.methods.uploadFile<T>(url, file, options, metadata);
   }
@@ -141,7 +142,7 @@ class HttpClient {
   async downloadFile(
     url: string,
     options?: any,
-    metadata?: any
+    metadata?: ApiRequestMetadata
   ): Promise<any> {
     return this.methods.downloadFile(url, options, metadata);
   }

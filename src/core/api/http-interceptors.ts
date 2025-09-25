@@ -77,6 +77,7 @@ export class HttpInterceptors {
             data: customConfig.data,
             params: customConfig.params,
             headers: customConfig.headers,
+            metadata: customConfig.metadata
           });
         }
 
@@ -105,14 +106,14 @@ export class HttpInterceptors {
 
         // Log API response in development
         if (__DEV__) {
-          // console.log('✅ API Response:', {
-          //   method: config.method?.toUpperCase(),
-          //   url: config.url,
-          //   status: response.status,
-          //   statusText: response.statusText,
-          //   data: response.data,
-          //   headers: response.headers,
-          // });
+          console.log('✅ API Response:', {
+            method: config.method?.toUpperCase(),
+            url: config.url,
+            status: response.status,
+            statusText: response.statusText,
+            data: response.data,
+            headers: response.headers,
+          });
         }
 
         return response;

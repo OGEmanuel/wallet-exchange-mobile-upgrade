@@ -1,3 +1,4 @@
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
@@ -10,9 +11,10 @@ export default function LoginToZap() {
   const [email, setEmail] = useState("");
   const theme = useTheme<Theme>();
 
+  const { authEmail } = useKyc();
+
   const handleLogin = () => {
-    // Handle login logic here
-    console.log("Login with email:", email);
+    authEmail({ email });
   };
 
   return (

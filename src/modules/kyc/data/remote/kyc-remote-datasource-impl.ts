@@ -1,5 +1,6 @@
 import { httpClient } from "@/src/core/api/http-client";
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { getOnboardingOtpEndpoint } from "../../../../core/api/api_endpoints";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
@@ -11,7 +12,15 @@ import { KycRemoteDatasource } from "./kyc-remote-datasource";
 export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     // TODO: Add the correct endpoint and implement
-    const response = await httpClient.post<GeneralResponseModel<unknown>>("/auth/email", payload);
+    const response = await httpClient.post<GeneralResponseModel<unknown>>(
+      getOnboardingOtpEndpoint,
+      payload.body,
+      {},
+      {
+        // showErrorToast: false
+        
+      }
+    );
     return response.data;
   }
 

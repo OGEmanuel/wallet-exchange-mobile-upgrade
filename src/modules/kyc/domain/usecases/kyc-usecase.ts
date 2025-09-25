@@ -1,13 +1,14 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { KycRepoImpl } from "../../data/kyc-repo-impl";
 import { AddUsernameParams } from "../entities/params/add-username-params";
 import { AuthEmailParams } from "../entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../entities/params/auth-phone-number-params";
 import { VerifyEmailParams } from "../entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../entities/params/verify-phone-number-otp-params";
-import { KycRepo } from "../kyc-repo";
 
 export class KycUsecases {
-  constructor(private readonly repo: KycRepo) {}
+  // constructor(private readonly repo: KycRepo) {}
+  private readonly repo = new KycRepoImpl();
 
   async executeAuthEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.repo.authEmail(payload);

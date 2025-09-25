@@ -34,6 +34,8 @@ export class HttpErrorHandler {
     // Report error to external services
     await this.reportError(error, errorSeverity, errorCategory, metadata);
 
+    console.log("metadata", metadata);
+
     // Show error toast if enabled
     if (metadata?.showErrorToast !== false) {
       showErrorToast(errorMessage);

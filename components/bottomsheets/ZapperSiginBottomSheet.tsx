@@ -1,10 +1,10 @@
 import { zapLogoWithNameDark } from "@/assets/images";
-import { EnterUsername } from "@/components";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, View } from "react-native";
+import LoginToZap from "../onboarding/LoginToZap";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -38,9 +38,9 @@ export default function ZapperSiginBottomSheet({
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />
-        {/* <LoginToZap /> */}
+        <LoginToZap />
         {/* <EmailVerification /> */}
-        <EnterUsername />
+        {/* <EnterUsername /> */}
       </AnimatedGradientBottomSheet>
     </>
   );
