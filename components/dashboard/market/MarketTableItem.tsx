@@ -12,7 +12,6 @@ interface MarketTableItemProps {
   index: number;
 }
 
-
 export function formatToSigFigMax6Digits(value: number): string {
   try {
     // Take absolute value to remove negative sign
@@ -41,10 +40,10 @@ const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index }) => {
 
   const handleAssetPress = (asset: any) => {
     router.push({
-      pathname: "/dashboard/home/wallet-home/cards/[id]",
-      params: { 
+      pathname: "/dashboard/home/market/[id]",
+      params: {
         id: asset.id || index.toString(),
-        asset: JSON.stringify(asset) 
+        asset: JSON.stringify(asset),
       },
     });
   };
@@ -70,7 +69,11 @@ const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index }) => {
           </CustomText>
           <Box flexDirection="row" gap="s" paddingLeft="s" alignItems="center">
             <TokenImage uri={item.logo} name={item.symbol} size={20} />
-            <CustomText variant="bodyMedium" fontSize={12} color="bodyTextColor">
+            <CustomText
+              variant="bodyMedium"
+              fontSize={12}
+              color="bodyTextColor"
+            >
               {item.symbol}
             </CustomText>
           </Box>

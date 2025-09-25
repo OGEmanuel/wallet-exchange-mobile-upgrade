@@ -20,7 +20,10 @@ const SwitchTab: React.FC<SwitchTabProps> = ({
   secondText,
 }) => {
   const theme = useTheme<Theme>();
-  
+
+  // Detect if we're in dark mode by checking theme colors
+  const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
+
   // Animation values
   const slideAnim = useRef(new Animated.Value(active ? 0 : 1)).current;
   const firstTextOpacity = useRef(new Animated.Value(active ? 1 : 0.8)).current;
@@ -95,16 +98,16 @@ const SwitchTab: React.FC<SwitchTabProps> = ({
             justifyContent: "center",
             zIndex: 10,
           }}
-          android_ripple={{ 
-            color: "rgba(255,255,255,0.1)", 
-            borderless: true 
+          android_ripple={{
+            color: "rgba(255,255,255,0.1)",
+            borderless: true,
           }}
         >
           <Animated.View style={{ opacity: firstTextOpacity }}>
             <CustomText
               variant="bodySubheader"
               fontSize={12}
-              color={active ? "white" : "bodyTextColor"}
+              color={active ? (isDark ? "black" : "white") : "bodyTextColor"}
             >
               {firstText}
             </CustomText>
@@ -120,16 +123,16 @@ const SwitchTab: React.FC<SwitchTabProps> = ({
             justifyContent: "center",
             zIndex: 10,
           }}
-          android_ripple={{ 
-            color: "rgba(255,255,255,0.1)", 
-            borderless: true 
+          android_ripple={{
+            color: "rgba(255,255,255,0.1)",
+            borderless: true,
           }}
         >
           <Animated.View style={{ opacity: secondTextOpacity }}>
             <CustomText
               variant="bodySubheader"
               fontSize={12}
-              color={!active ? "white" : "bodyTextColor"}
+              color={!active ? (isDark ? "black" : "white") : "bodyTextColor"}
             >
               {secondText}
             </CustomText>

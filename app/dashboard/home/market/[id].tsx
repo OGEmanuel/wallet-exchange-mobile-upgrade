@@ -254,7 +254,7 @@ export default function AssetInfo() {
 
   return (
     <PageWrapper>
-      <Box flex={1}>
+      <Box flex={1} paddingBottom="xl">
         <AssetHeader asset={selectedAsset} />
         <Box width="100%" paddingVertical="m">
           <SwitchTab
@@ -269,7 +269,10 @@ export default function AssetInfo() {
           containerHeight={SIZES.height * 0.9}
           active={isAssetInfo}
           firstContent={
-            <ScrollView style={{ height: SIZES.height - 250 }}>
+            <ScrollView
+              style={{ height: SIZES.height - 250 }}
+              contentContainerStyle={{ paddingBottom: 150 }}
+            >
               <AssetChartDetails />
 
               <Box width="100%" paddingHorizontal="m" marginTop="m">
@@ -459,21 +462,6 @@ export default function AssetInfo() {
             </Box>
           }
         />
-
-        <Box
-          paddingHorizontal="m"
-          paddingVertical="m"
-          style={{ marginBottom: 100 }}
-        >
-          <CustomButton
-            text="Zap Now"
-            color="white"
-            onPress={() => {
-              router.push("/dashboard/home/wallet-home/home");
-            }}
-            width="100%"
-          />
-        </Box>
       </Box>
     </PageWrapper>
   );

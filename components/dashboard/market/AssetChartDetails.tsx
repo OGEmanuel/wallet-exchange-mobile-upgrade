@@ -1,5 +1,7 @@
 import { Box, CustomText } from "@/components/general";
 import { SIZES } from "@/data";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
 import CurrencyTab from "./CurrencyTab";
@@ -64,25 +66,31 @@ const formatToSigFigMax6Digits = (value: number): string => {
   }
 };
 
-// Mock chart config
-const chartConfig = {
-  backgroundColor: "#ffffff",
-  backgroundGradientFrom: "#ffffff",
-  backgroundGradientTo: "#ffffff",
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(96, 69, 255, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-  style: {
-    borderRadius: 16,
-  },
-  propsForDots: {
-    r: "6",
-    strokeWidth: "2",
-    stroke: "#6045FF",
-  },
-};
-
 export default function AssetChartDetails() {
+  const theme = useTheme<Theme>();
+
+  // Detect if we're in dark mode by checking theme colors
+  const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
+
+  // Theme-aware chart config
+  const chartConfig = {
+    backgroundColor: isDark ? "#2F333D" : "#ffffff",
+    backgroundGradientFrom: isDark ? "#2F333D" : "#ffffff",
+    backgroundGradientTo: isDark ? "#2F333D" : "#ffffff",
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(96, 69, 255, ${opacity})`,
+    labelColor: (opacity = 1) =>
+      isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: "6",
+      strokeWidth: "2",
+      stroke: "#6045FF",
+    },
+  };
+
   // Use passed asset data instead of directly accessing via useParams
   const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
     "USD"
