@@ -37,7 +37,9 @@ function generateModuleStructure(moduleName) {
     },
     'presentation': {
       'components': {},
-      'hooks': {},
+      'hooks': {
+        [`use${toPascalCase(moduleName)}.ts`]: generateHook(moduleName)
+      },
       'screens': {},
       'state': {
         [`${moduleName}-slice.ts`]: generateSlice(moduleName)
@@ -58,12 +60,12 @@ function generateModuleStructure(moduleName) {
   console.log(`   - data/remote/${moduleName}-remote-datasource.ts`);
   console.log(`   - domain/${moduleName}-repo.ts`);
   console.log(`   - domain/usecases/${moduleName}-usecases.ts`);
+  console.log(`   - presentation/hooks/use${toPascalCase(moduleName)}.ts`);
   console.log(`   - presentation/state/${moduleName}-slice.ts`);
   console.log(`\n📁 Empty directories:`);
   console.log(`   - domain/entities/models/`);
   console.log(`   - domain/entities/params/`);
   console.log(`   - presentation/components/`);
-  console.log(`   - presentation/hooks/`);
   console.log(`   - presentation/screens/`);
 }
 
@@ -84,25 +86,25 @@ function createDirectoryStructure(basePath, structure) {
 
 function generateRemoteDataSource(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 
 export abstract class ${className}RemoteDataSource {
   // Add your remote data source methods here
   // Example:
-  // abstract getData(payload: ApiRequest<unknown>): Promise<ApiResponse<unknown>>;
+  // abstract getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
 }
 `;
 }
 
 function generateRemoteDataSourceImpl(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { ${className}RemoteDataSource } from "./${moduleName}-remote-datasource";
 
 export class ${className}RemoteDataSourceImpl implements ${className}RemoteDataSource {
   // Implement your remote data source methods here
   // Example:
-  // async getData(payload: ApiRequest<unknown>): Promise<ApiResponse<unknown>> {
+  // async getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
   //   // Implementation here
   //   throw new Error("Method not implemented.");
   // }
@@ -112,17 +114,22 @@ export class ${className}RemoteDataSourceImpl implements ${className}RemoteDataS
 
 function generateRemoteRepoImpl(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { ${className}Repo } from "../domain/${moduleName}-repo";
-import { ${className}RemoteDataSource } from "./remote/${moduleName}-remote-datasource";
+import { ${className}RemoteDataSourceImpl } from "./remote/${moduleName}-remote-datasource-impl";
 
-export class ${className}RemoteRepoImpl implements ${className}Repo {
-  constructor(private readonly remoteDataSource: ${className}RemoteDataSource) {}
+export class ${className}RepoImpl implements ${className}Repo {
+  private readonly remoteDatasource = new ${className}RemoteDataSourceImpl();
 
   // Implement your repository methods here
   // Example:
-  // async getData(payload: ApiRequest<unknown>): Promise<ApiResponse<unknown>> {
-  //   return this.remoteDataSource.getData(payload);
+  // async getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  //   try {
+  //     return await this.remoteDatasource.getData(payload);
+  //   } catch (error) {
+  //     console.error('Failed to get data:', error);
+  //     throw error;
+  //   }
   // }
 }
 `;
@@ -130,28 +137,39 @@ export class ${className}RemoteRepoImpl implements ${className}Repo {
 
 function generateRepo(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 
 export abstract class ${className}Repo {
   // Add your repository methods here
   // Example:
-  // abstract getData(payload: ApiRequest<unknown>): Promise<ApiResponse<unknown>>;
+  // abstract getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
 }
 `;
 }
 
 function generateUsecases(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
-import { ${className}Repo } from "../${moduleName}-repo";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { ${className}RepoImpl } from "../../data/${moduleName}-repo-impl";
 
 export class ${className}Usecases {
-  constructor(private readonly repo: ${className}Repo) {}
+  private readonly repo = new ${className}RepoImpl();
 
   // Add your use case methods here
   // Example:
-  // async executeGetData(payload: ApiRequest<unknown>): Promise<ApiResponse<unknown>> {
+  // async executeGetData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  //   // Validate input parameters
+  //   this.validateGetDataParams(payload.body);
+  //   
   //   return this.repo.getData(payload);
+  // }
+
+  // Add private validation methods here
+  // Example:
+  // private validateGetDataParams(params: unknown): void {
+  //   if (!params) {
+  //     throw new Error('Parameters are required');
+  //   }
   // }
 }
 `;
@@ -159,7 +177,7 @@ export class ${className}Usecases {
 
 function generateLocalDataSource(moduleName) {
   const className = toPascalCase(moduleName);
-  return `import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 
 export abstract class ${className}LocalDataSource {
   // Add your local data source methods here
@@ -174,7 +192,7 @@ export abstract class ${className}LocalDataSource {
 function generateLocalDataSourceImpl(moduleName) {
   const className = toPascalCase(moduleName);
   return `import * as SecureStore from "expo-secure-store";
-import { ApiRequest, ApiResponse } from "@/src/core/api/api-models";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { ${className}LocalDataSource } from "./${moduleName}-local-datasource";
 
 export class ${className}LocalDataSourceImpl implements ${className}LocalDataSource {
@@ -214,8 +232,69 @@ export class ${className}LocalDataSourceImpl implements ${className}LocalDataSou
 
 function generateSlice(moduleName) {
   const className = toPascalCase(moduleName);
-  return `// Redux slice for ${moduleName} module
-// Add your state management logic here
+  return `import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+
+interface ${className}State {
+  // Add your state properties here
+  // Example:
+  // data: unknown[] | null;
+  // loading: boolean;
+  // error: string | null;
+}
+
+const initialState: ${className}State = {
+  // Initialize your state here
+  // Example:
+  // data: null,
+  // loading: false,
+  // error: null,
+};
+
+const ${moduleName}Slice = createSlice({
+  name: '${moduleName}',
+  initialState,
+  reducers: {
+    // Add your reducers here
+    // Example:
+    // setData: (state, action: PayloadAction<unknown[]>) => {
+    //   state.data = action.payload;
+    // },
+    // setLoading: (state, action: PayloadAction<boolean>) => {
+    //   state.loading = action.payload;
+    // },
+    // setError: (state, action: PayloadAction<string | null>) => {
+    //   state.error = action.payload;
+    // },
+  },
+});
+
+export const { /* Add your action creators here */ } = ${moduleName}Slice.actions;
+export default ${moduleName}Slice.reducer;
+`;
+}
+
+function generateHook(moduleName) {
+  const className = toPascalCase(moduleName);
+  return `import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { ${className}Usecases } from "../../domain/usecases/${moduleName}-usecases";
+
+const use${className} = () => {
+  return {
+    // Add your hook methods here
+    // Example:
+    // getData: async (payload: unknown): Promise<GeneralResponseModel<unknown>> => {
+    //   const usecase = new ${className}Usecases();
+    //   const response = await usecase.executeGetData({
+    //     body: payload,
+    //     params: null,
+    //     extra: null,
+    //   });
+    //   return response;
+    // },
+  };
+};
+
+export default use${className};
 `;
 }
 

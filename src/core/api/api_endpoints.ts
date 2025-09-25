@@ -1,5 +1,6 @@
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
+import { WatchlistTokenModel } from "@/src/modules/market/domain/entities/models/watchlist-token-model";
 
 // Auth Endpoints
 export const getOnboardingOtpEndpoint = "/auth/login";
@@ -55,11 +56,12 @@ export const addAddressEndpoint = "/address-book";
 // export const updateAddressEndpoint = (address?: AddressModel | null): string => `/address-book/${address?._id}`;
 
 // Markets Endpoint
-export const fetchMarketTokens = "/markets"
+export const fetchMarketTokensEndpoint = "/markets"
 export const addTokenToWatchlistEndpoint = "/watchlists"
 export const tokenDetailsEndpoint = (tokenId?: string | null): string => `/markets/${tokenId}`
 export const tokenHistoryEndpoint = (tokenId?: string | null): string => `/markets/history/${tokenId}`
-// export const removeTokenFromWatchlistEndpoint = (watchlistToken?: WatchlistTokenModel | null): string => `/watchlists/${watchlistToken?._id}`
+export const removeTokenFromWatchlistEndpoint = (watchlistToken?: WatchlistTokenModel | null): string => `/watchlists/${watchlistToken?._id}`
+export const fetchWatchlistTokensEndpoint = (user?: UserModel | null): string => `/watchlists/user/${user?._id}`;
 
 // Utility Endpoints
 export const getVerifiedCountriesEndpoint = "/countries";
