@@ -1,3 +1,6 @@
+import { glass } from "@/assets/images";
+import { CustomText } from "@/components/general";
+import CustomButton from "@/components/general/CustomButton";
 import React from "react";
 import {
   GestureResponderEvent,
@@ -5,9 +8,6 @@ import {
   ImageSourcePropType,
 } from "react-native";
 import Animated, { Easing, FadeInUp } from "react-native-reanimated";
-
-import { CustomText } from "@/components/general";
-import CustomButton from "@/components/general/CustomButton";
 
 const DURATION = 600;
 const BASE_DELAY = 100;
@@ -29,8 +29,6 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   source,
   hasNoBtn,
 }) => {
-  const glass = require("../../../assets/images/glass.png");
-
   return (
     <Animated.View
       style={{ alignItems: "center", gap: 8 }}
@@ -86,10 +84,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             .easing(Easing.bezierFn(0.16, 1, 0.3, 1))}
         >
           <CustomButton
-            text={children?.toString() || "Zap Now"}
+            text={(children as string) || "Zap Now"}
             onPress={() => onPress?.({} as GestureResponderEvent)}
-            width={133}
+            width={hasNoBtn ? 133 : 200}
             borderRadius={50}
+            paddingHorizontal={24}
+            paddingVertical={12}
           />
         </Animated.View>
       )}

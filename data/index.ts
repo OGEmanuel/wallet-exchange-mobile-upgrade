@@ -1,3 +1,5 @@
+import { Currency } from "@/interfaces/account.interface";
+
 // Dummy market data
 export const marketData = [
   {
@@ -205,3 +207,22 @@ export const SIZES = {
   width: 0,
   height: 0,
 };
+
+
+export const currencies: Currency[] = [
+  { code: "NGN", name: "Nigeria Naira", country: "Nigeria", flag: "🇳🇬" },
+  {
+    code: "GBP",
+    name: "British Pound Sterling",
+    country: "United Kingdom",
+    flag: "🇬🇧",
+  },
+  {
+    code: "USD",
+    name: "United States Dollar",
+    country: "United States",
+    flag: "🇺🇸",
+  },
+  { code: "CAD", name: "Canadian Dollar", country: "Canada", flag: "🇨🇦" },
+  { code: "EUR", name: "Euro", country: "European Union", flag: "🇪🇺" },
+];
