@@ -2,6 +2,7 @@ export { default as KYCBottomSheet } from "./bottomsheets/KYCBottomSheet";
 export { default as ZapperSiginBottomSheet } from "./bottomsheets/ZapperSiginBottomSheet";
 
 export { default as IdentityVerification } from "./kyc/IdentityVerification";
+export { default as IDVerification } from "./kyc/IDVerification";
 export { default as PhoneNumber } from "./kyc/PhoneNumber";
 
 export { default as EmailVerification } from "./onboarding/EmailVerification";

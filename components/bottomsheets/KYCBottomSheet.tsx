@@ -2,7 +2,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import VerifiyBVN from "../kyc/VerifiyBVN";
+import IDVerification from "../kyc/IDVerification";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -28,7 +28,8 @@ export default function KYCBottomSheet({
       {/* <PhoneVerification /> */}
       {/* <PhoneNumber /> */}
       {/* <IdentityVerification /> */}
-      <VerifiyBVN />
+      {/* <VerifiyBVN /> */}
+      <IDVerification />
     </AnimatedGradientBottomSheet>
   );
 }
