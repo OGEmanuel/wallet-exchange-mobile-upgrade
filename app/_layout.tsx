@@ -1,3 +1,5 @@
+import BottomSheetManager from "@/components/BottomSheetManager";
+import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
@@ -119,14 +121,17 @@ export default function RootLayout() {
               theme={colorTheme === "dark" ? darkTheme : darkTheme}
             >
               <QueryClientProvider client={queryClient}>
-                <StatusBar
-                  barStyle={
-                    colorTheme === "dark" ? "light-content" : "dark-content"
-                  }
-                />
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" options={{ title: "Home" }} />
-                </Stack>
+                <BottomSheetProvider>
+                  <StatusBar
+                    barStyle={
+                      colorTheme === "dark" ? "light-content" : "dark-content"
+                    }
+                  />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" options={{ title: "Home" }} />
+                  </Stack>
+                  <BottomSheetManager />
+                </BottomSheetProvider>
               </QueryClientProvider>
             </ThemeProvider>
           </Provider>

@@ -1,3 +1,4 @@
+import { LoginToZap } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import PhoneVerificationBottomSheet from "@/components/bottomsheets/KYCBottomSheet";
 import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
@@ -7,6 +8,7 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -91,6 +93,7 @@ const SelectTrack = () => {
   const phoneVerificationBottomSheetRef =
     useRef<AnimatedGradientBottomSheetRef>(null);
   const { colors } = useTheme<Theme>();
+  const { showBottomSheet } = useAppBottomSheet();
 
   const item: {
     title: string;
@@ -136,7 +139,15 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => zapperBottomSheetRef.current?.snapToIndex(0),
+      onPress: () => {
+        // zapperBottomSheetRef.current?.snapToIndex(0);
+        showBottomSheet({
+          component: <LoginToZap />,
+          props: {
+            snapPoints: ["80%"],
+          },
+        });
+      },
     },
   ];
   return (

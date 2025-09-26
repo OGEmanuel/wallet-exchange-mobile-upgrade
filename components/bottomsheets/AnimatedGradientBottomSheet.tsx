@@ -31,6 +31,7 @@ interface AnimatedGradientBottomSheetProps {
   showGradientHandle?: boolean;
   gradientColors?: string[];
   backgroundColor?: string;
+  locations?: number[];
   onClose?: () => void;
 }
 
@@ -54,6 +55,7 @@ const AnimatedGradientBottomSheet = forwardRef<
       showGradientHandle = true,
       gradientColors = ["#6045FF", "#8B5CF6", "#A855F7"] as const,
       backgroundColor = "rgba(0,0,0,0.5)",
+      locations = [0, 0.6, 1],
       onClose,
     },
     ref
@@ -189,6 +191,7 @@ const AnimatedGradientBottomSheet = forwardRef<
           <Animated.View style={[styles.container, animatedSheetStyle]}>
             <LinearGradient
               colors={gradientColors as any}
+              locations={locations || [0, 0.6, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.gradientContainer}

@@ -1,4 +1,9 @@
 import { GeneralResponseModel } from "@/src/core/api/http-types";
+import { AppDispatch, AppRootState } from "@/state";
+import { kycActions } from "@/state/reducers/kyc-reducer";
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
 import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
@@ -8,7 +13,22 @@ import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-
 import { KycUsecases } from "../../domain/usecases/kyc-usecase";
 
 const useKyc = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const [fetchingUserDetails, setFetchingUserDetails] = useState<boolean>(false);
+  
   return {
+    updateUser: async (payload: UserModel) => {
+      dispatch(kycActions.setUser(payload));
+
+      // const userData = appGetFromLocalStorage<UserModel>(StorageKeys.USER_PROFILE);
+
+
+      if (user?._id || !user?.isGuest || !fetchingUserDetails) {
+        // fetchUserProfile();
+      }
+    },
+
     authEmail: async (payload: AuthEmailParams): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeAuthEmail({

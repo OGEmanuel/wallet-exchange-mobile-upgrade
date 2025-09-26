@@ -1,6 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { RootState } from "..";
+import { createSlice } from "@reduxjs/toolkit";
+import { AppRootState } from "..";
 
 interface State {
   currentPage: number;
@@ -32,10 +32,10 @@ export const currentPageSlice = createSlice({
 export const { setCurrentPage, resetCurrentPage, setWalletName } =
   currentPageSlice.actions;
 
-export const selectWalletName = (state: RootState) =>
+export const selectWalletName = (state: AppRootState) =>
   state.currentPage.walletName;
 
 export default currentPageSlice.reducer;
 
-export const selectCurrentPage = (state: RootState) =>
+export const selectCurrentPage = (state: AppRootState) =>
   state.currentPage.currentPage;

@@ -9,7 +9,7 @@ import { ConfettiMethods } from "react-native-fast-confetti";
 export default function UsernameSuccess({
   confettiRef,
 }: {
-  confettiRef: React.RefObject<ConfettiMethods | null>;
+  confettiRef?: React.RefObject<ConfettiMethods | null>;
 }) {
   const spinValue = useRef(new Animated.Value(0)).current;
   const [hasConfettiRun, setHasConfettiRun] = useState(false);
