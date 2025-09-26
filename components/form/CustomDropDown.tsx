@@ -26,7 +26,11 @@ export default function CustomDropDown({
   const theme = useTheme<Theme>();
   return (
     <Box width={"100%"} height={"auto"}>
-      <CustomText variant={"body"} marginBottom="s">
+      <CustomText
+        variant={"body"}
+        marginBottom="s"
+        style={{ color: theme.colors.placeholderTextColor, fontSize: 12 }}
+      >
         {label}
       </CustomText>
       <Dropdown
