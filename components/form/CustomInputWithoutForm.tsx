@@ -2,7 +2,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Eye, EyeOff } from "lucide-react-native";
 import React, { JSX } from "react";
-import { TextInputProps } from "react-native";
+import { TextInputProps, ViewStyle } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
@@ -16,6 +16,7 @@ interface Props {
   iconLeft?: JSX.Element;
   color?: string;
   noBorder?: boolean;
+  boxStyle?: ViewStyle;
   // placeholderTextColor?: string;
 }
 
@@ -55,6 +56,7 @@ export default function CustomInputWithoutForm(
             alignItems: "center",
             gap: 10,
           },
+          props?.boxStyle,
         ]}
       >
         {props?.iconLeft && props.iconLeft}
@@ -75,7 +77,7 @@ export default function CustomInputWithoutForm(
           keyboardType={props.keyboardType}
           secureTextEntry={showPassword ? false : true}
           placeholderTextColor={
-            props.placeholderTextColor ?? theme.colors.placeholderTextColor
+            props.placeholderTextColor ?? theme.colors.bodyTextColor
           }
         />
         {props.iconRight && props.iconRight}

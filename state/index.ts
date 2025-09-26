@@ -2,6 +2,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import activityPageReducer from "./reducers/activityPage.reducer";
 import currentPageReducer from "./reducers/currentPage.reducer";
 import kycReducer from "./reducers/kyc-reducer";
+import { recievePageSlice } from "./reducers/recievePage.reducer";
+import { sendPageSlice } from "./reducers/sendPage.reducer";
 import walletConnectedReducer from "./reducers/wallet.reducer";
 
 export const store = configureStore({
@@ -10,6 +12,8 @@ export const store = configureStore({
     currentPage: currentPageReducer,
     walletConnected: walletConnectedReducer,
     activityPage: activityPageReducer,
+    sendPage: sendPageSlice.reducer,
+    recievePage: recievePageSlice.reducer,
   },
 });
 
