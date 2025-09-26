@@ -2,22 +2,32 @@ import { zapLogoWithNameDark } from "@/assets/images";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Image, StyleSheet, View } from "react-native";
+import { Confetti, ConfettiMethods } from "react-native-fast-confetti";
 import LoginToZap from "../onboarding/LoginToZap";
+import VerifyYourIdentity from "../onboarding/VerifyYourIdentity";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
 
 export default function ZapperSiginBottomSheet({
   ref,
+  onContinue,
 }: {
   ref: React.RefObject<AnimatedGradientBottomSheetRef | null>;
+  onContinue?: () => void;
 }) {
   const { colors } = useTheme<Theme>();
+  const confettiRef = useRef<ConfettiMethods>(null);
+
+  useEffect(() => {
+    confettiRef.current?.pause();
+  }, []);
 
   return (
     <>
+      <Confetti ref={confettiRef} />
       <AnimatedGradientBottomSheet
         ref={ref}
         snapPoints={["90%"]}
@@ -41,6 +51,8 @@ export default function ZapperSiginBottomSheet({
         <LoginToZap />
         {/* <EmailVerification /> */}
         {/* <EnterUsername /> */}
+        {/* <UsernameSuccess confettiRef={confettiRef} /> */}
+        <VerifyYourIdentity onContinue={onContinue} />
       </AnimatedGradientBottomSheet>
     </>
   );

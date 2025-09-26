@@ -2,8 +2,7 @@ import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
-import { Pressable } from "react-native";
-import CodeInput from "../form/CodeInput";
+import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
 import Box from "../general/Box";
 
@@ -70,52 +69,20 @@ export default function EmailVerification({
         >
           Email Verification
         </CustomText>
-
-        <CustomText
-          variant="body"
-          fontSize={16}
-          color="placeholderTextColor"
-          textAlign="center"
-          lineHeight={22}
-        >
-          Please enter the 6-digit OTP sent to
-        </CustomText>
-
-        <CustomText
-          variant="body"
-          fontSize={16}
-          color="bodyTextColor"
-          textAlign="center"
-          lineHeight={22}
-        >
-          {email}
-        </CustomText>
       </Box>
 
       <Box marginTop="l">
-        <CodeInput
+        <OTPInput
           length={6}
           onCodeChange={handleCodeChange}
           onCodeComplete={handleCodeComplete}
+          onResend={handleResend}
           autoFocus={true}
           disabled={isLoading}
+          resendTimer={resendTimer}
+          instructionText="Please enter the 6-digit OTP sent to"
+          phoneNumber={email}
         />
-      </Box>
-
-      <Box alignItems="flex-start" flexDirection="row">
-        <CustomText variant="body" fontSize={14} color="bodyTextColor">
-          Didn't receive a code?{" "}
-        </CustomText>
-        <Pressable onPress={handleResend} disabled={resendTimer > 0}>
-          <CustomText
-            variant="body"
-            fontSize={14}
-            color={resendTimer > 0 ? "disabledTextColor" : "primaryColor"}
-            style={{ fontWeight: "600" }}
-          >
-            {resendTimer > 0 ? `Resend ${resendTimer}s` : "Resend"}
-          </CustomText>
-        </Pressable>
       </Box>
 
       <Box

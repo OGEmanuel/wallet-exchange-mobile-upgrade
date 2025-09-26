@@ -1,3 +1,5 @@
+import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
+import PhoneVerificationBottomSheet from "@/components/bottomsheets/KYCBottomSheet";
 import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
 import {
   Box,
@@ -7,7 +9,6 @@ import {
 } from "@/components/general";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
-import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -86,7 +87,9 @@ const Card = ({
 };
 
 const SelectTrack = () => {
-  const zapperBottomSheetRef = useRef<BottomSheet>(null);
+  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
+  const phoneVerificationBottomSheetRef =
+    useRef<AnimatedGradientBottomSheetRef>(null);
   const { colors } = useTheme<Theme>();
 
   const item: {
@@ -149,7 +152,14 @@ const SelectTrack = () => {
         </ScrollView>
       </Box>
 
-      <ZapperSiginBottomSheet ref={zapperBottomSheetRef} />
+      <ZapperSiginBottomSheet
+        ref={zapperBottomSheetRef}
+        onContinue={() => {
+          zapperBottomSheetRef.current?.close();
+          phoneVerificationBottomSheetRef.current?.snapToIndex(0);
+        }}
+      />
+      <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} />
     </Wrapper>
   );
 };
