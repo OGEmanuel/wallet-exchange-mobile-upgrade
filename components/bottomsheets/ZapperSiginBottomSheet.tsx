@@ -5,15 +5,17 @@ import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { Confetti, ConfettiMethods } from "react-native-fast-confetti";
-import { VerifyYourIdentity } from "..";
+import VerifyYourIdentity from "../onboarding/VerifyYourIdentity";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
 
 export default function ZapperSiginBottomSheet({
   ref,
+  onContinue,
 }: {
   ref: React.RefObject<AnimatedGradientBottomSheetRef | null>;
+  onContinue?: () => void;
 }) {
   const { colors } = useTheme<Theme>();
   const confettiRef = useRef<ConfettiMethods>(null);
@@ -49,7 +51,7 @@ export default function ZapperSiginBottomSheet({
         {/* <EmailVerification /> */}
         {/* <EnterUsername /> */}
         {/* <UsernameSuccess confettiRef={confettiRef} /> */}
-        <VerifyYourIdentity />
+        <VerifyYourIdentity onContinue={onContinue} />
       </AnimatedGradientBottomSheet>
     </>
   );

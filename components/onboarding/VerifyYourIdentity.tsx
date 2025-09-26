@@ -6,7 +6,11 @@ import React from "react";
 import { Image, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
-export default function VerifyYourIdentity() {
+export default function VerifyYourIdentity({
+  onContinue,
+}: {
+  onContinue?: () => void;
+}) {
   const theme = useTheme<Theme>();
   return (
     <View>
@@ -61,7 +65,7 @@ export default function VerifyYourIdentity() {
             text="Continue"
             bgColor={theme.colors.primaryColor}
             color={theme.colors.white}
-            onPress={() => {}}
+            onPress={() => onContinue?.()}
             disabledColor={theme.colors.borderColor}
           />
         </View>
