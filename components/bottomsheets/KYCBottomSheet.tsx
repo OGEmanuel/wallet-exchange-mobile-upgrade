@@ -2,7 +2,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import PhoneNumber from "../kyc/PhoneNumber";
+import VerifiyBVN from "../kyc/VerifiyBVN";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
@@ -17,22 +17,18 @@ export default function KYCBottomSheet({
   return (
     <AnimatedGradientBottomSheet
       ref={ref}
-      snapPoints={["90%"]}
+      snapPoints={["85%", "95%"]}
       enablePanDownToClose={true}
       showGradientHandle={true}
-      gradientColors={[
-        colors.mainBackgroundColor,
-        colors.mainBackgroundColor,
-        colors.mainBackgroundColor,
-        colors.mainBackgroundColor,
-        colors.mainBackgroundColor,
-      ]}
+      gradientColors={[colors.mainBackgroundColor, colors.mainBackgroundColor]}
     >
       {/* Handle */}
       <View style={styles.handle} />
 
       {/* <PhoneVerification /> */}
-      <PhoneNumber />
+      {/* <PhoneNumber /> */}
+      {/* <IdentityVerification /> */}
+      <VerifiyBVN />
     </AnimatedGradientBottomSheet>
   );
 }

@@ -23,12 +23,13 @@ const COLOR_PALLET = {
   placeholderTextColor: "#A7A7AF",
   usernamePlaceholderTextColor: "#60617D",
   secondaryColor: "#C7E64D",
+  modalBackgroundColor: "#1F232D",
 };
 
 const DARK_COLOR_PALLET = {
   primaryColor: "#6045FF",
   fadedPrimary: "#A0BDF9",
-  mainBackgroundColor: "#1F232D",
+  mainBackgroundColor: "#131722",
   secondaryBackgroundColor: "#2F333D",
   headerTextColor: "#FBFBFB",
   disabledTextColor: "#92969D",
@@ -48,6 +49,7 @@ const DARK_COLOR_PALLET = {
   placeholderTextColor: "#A7A7AF",
   usernamePlaceholderTextColor: "#60617D",
   secondaryColor: "#C7E64D",
+  modalBackgroundColor: "#1F232D",
 };
 
 const theme = createTheme({
