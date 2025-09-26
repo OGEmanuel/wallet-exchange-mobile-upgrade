@@ -44,7 +44,10 @@ const TimeFrame: React.FC<TimeFrameProps> = ({
             ? "primaryColor"
             : disabled
             ? "secondaryBackgroundColor"
-            : "transparent"
+            : undefined
+        }
+        style={
+          !active && !disabled ? { backgroundColor: "transparent" } : undefined
         }
       >
         <CustomText
