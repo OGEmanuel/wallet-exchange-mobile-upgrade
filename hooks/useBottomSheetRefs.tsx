@@ -1,8 +1,7 @@
-import { View, Text } from "react-native";
-import React, { createRef, useCallback, useMemo } from "react";
+import ActivityFilterBottomSheet from "@/components/bottomsheets/ActivityFilterBottomSheet";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
-import ActivityFilterBottomSheet from "@/components/bottomsheets/ActivityFilterBottomSheet";
+import React, { createRef, useCallback } from "react";
 
 // create the ref out side for true singletons
 const activityFilterRef: React.RefObject<BottomSheetMethods | null> =
@@ -11,6 +10,11 @@ const buyActivityRef = createRef<BottomSheet>();
 const sentActivityRef = createRef<BottomSheet>();
 const recieveActivityRef = createRef<BottomSheet>();
 const approvedActivityRef = createRef<BottomSheet>();
+const sendTokenRef = createRef<BottomSheet>();
+const networkFeeRef = createRef<BottomSheet>();
+const confirmSendRef = createRef<BottomSheet>();
+const saveAddressRef = createRef<BottomSheet>();
+const recieveTokenRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -28,6 +32,11 @@ const useBottomSheetRefs = () => {
     sentActivityRef,
     recieveActivityRef,
     approvedActivityRef,
+    sendTokenRef,
+    networkFeeRef,
+    confirmSendRef,
+    saveAddressRef,
+    recieveTokenRef,
     render,
   };
 };

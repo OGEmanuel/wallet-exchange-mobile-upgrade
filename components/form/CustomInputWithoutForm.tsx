@@ -1,11 +1,11 @@
-import { TextInputProps } from "react-native";
-import { TextInput } from "react-native-gesture-handler";
-import React, { JSX } from "react";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { Eye, EyeOff } from "lucide-react-native";
+import React, { JSX } from "react";
+import { TextInputProps, ViewStyle } from "react-native";
+import { TextInput } from "react-native-gesture-handler";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import { Eye, EyeOff } from "lucide-react-native";
 
 interface Props {
   label?: string;
@@ -15,6 +15,7 @@ interface Props {
   iconRight?: JSX.Element;
   iconLeft?: JSX.Element;
   color?: string;
+  boxStyle?: ViewStyle;
   // placeholderTextColor?: string;
 }
 
@@ -34,13 +35,11 @@ export default function CustomInputWithoutForm(
   const theme = useTheme<Theme>();
   return (
     <Box width={"100%"}>
-      {
-        label && (
-          <CustomText variant={"body"} marginBottom={"s"}>
-            {label}
-          </CustomText>
-        )
-      }
+      {label && (
+        <CustomText variant={"body"} marginBottom={"s"}>
+          {label}
+        </CustomText>
+      )}
       <Box
         style={[
           {
@@ -52,12 +51,11 @@ export default function CustomInputWithoutForm(
             backgroundColor: theme.colors.secondaryBackgroundColor,
             height: 50,
             paddingHorizontal: 10,
-            fontFamily: "PlusJakartaSans_Regular",
             flexDirection: "row",
             alignItems: "center",
             gap: 10,
           },
-          style,
+          props?.boxStyle,
         ]}
       >
         {props?.iconLeft && props.iconLeft}
@@ -73,7 +71,9 @@ export default function CustomInputWithoutForm(
           onBlur={() => setFocused(false)}
           keyboardType={props.keyboardType}
           secureTextEntry={showPassword ? false : true}
-          placeholderTextColor={props.placeholderTextColor ?? theme.colors.bodyTextColor}
+          placeholderTextColor={
+            props.placeholderTextColor ?? theme.colors.bodyTextColor
+          }
         />
         {props.iconRight && props.iconRight}
         {props.isPassword && (
