@@ -2,7 +2,7 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
-} from './bottomsheets/AnimatedGradientBottomSheet';
+} from '../bottomsheets/AnimatedGradientBottomSheet';
 
 export interface AppBottomSheetRef {
   open: () => void;

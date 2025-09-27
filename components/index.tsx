@@ -1,5 +1,5 @@
-export { default as AppBottomSheet } from "./AppBottomSheet";
-export { default as BottomSheetManager } from "./BottomSheetManager";
+export { default as AppBottomSheet } from "./bottomsheet/AppBottomSheet";
+export { default as BottomSheetManager } from "./bottomsheet/BottomSheetManager";
 export { default as KYCBottomSheet } from "./bottomsheets/KYCBottomSheet";
 export { default as ZapperSiginBottomSheet } from "./bottomsheets/ZapperSiginBottomSheet";
 

@@ -1,4 +1,4 @@
-import BottomSheetManager from "@/components/BottomSheetManager";
+import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
