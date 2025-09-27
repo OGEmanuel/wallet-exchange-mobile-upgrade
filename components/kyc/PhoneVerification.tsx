@@ -49,9 +49,6 @@ export default function PhoneVerification() {
 
   return (
     <View style={styles.container}>
-      {/* Handle */}
-      <View style={styles.handle} />
-
       {/* Title */}
       <CustomText variant="header" style={styles.title}>
         Phone Verification
@@ -116,7 +113,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#FFFFFF",
     textAlign: "left",

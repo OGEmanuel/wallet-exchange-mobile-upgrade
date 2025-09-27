@@ -1,9 +1,11 @@
+import { Theme } from "@/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { Dropdown } from "react-native-element-dropdown";
+import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { StyleSheet } from "react-native";
-import CustomText from "../general/CustomText";
+import { Dropdown } from "react-native-element-dropdown";
 import Box from "../general/Box";
+import CustomText from "../general/CustomText";
 
 interface ICustomDropDownProps {
   options: Array<{ label: string; value: string }>;
@@ -21,7 +23,7 @@ export default function CustomDropDown({
   label,
 }: ICustomDropDownProps) {
   const [isFocus, setIsFocused] = React.useState(false);
-
+  const theme = useTheme<Theme>();
   return (
     <Box width={"100%"} height={"auto"}>
       <CustomText variant={"body"} marginBottom="s">
@@ -30,16 +32,16 @@ export default function CustomDropDown({
       <Dropdown
         style={[
           Styles.dropdown,
-          isFocus && { borderColor: "#2D66DD", borderWidth: 1 },
+          { backgroundColor: theme.colors.secondaryBackgroundColor },
         ]}
-        selectedTextStyle={{ color: "black" }}
+        selectedTextStyle={{ color: theme.colors.bodyTextColor }}
         iconStyle={Styles.iconStyle}
         fontFamily="Inter_Regular"
         placeholder={placeHolder}
         placeholderStyle={{
           fontFamily: "Inter_Regular",
           fontSize: 14,
-          color: "grey",
+          color: theme.colors.placeholderTextColor,
         }}
         data={options}
         maxHeight={200}
@@ -168,11 +170,9 @@ const Styles = StyleSheet.create({
   dropdown: {
     height: 42,
     borderColor: "lightgrey",
-    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
     fontFamily: "Inter_Regular",
-    backgroundColor: "white",
   },
   icon: {
     marginRight: 5,

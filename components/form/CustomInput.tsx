@@ -38,8 +38,8 @@ export const CustomTextInput = (props: IProps & TextInputProps) => {
           <Box flexDirection="row">
             <CustomText
               variant="body"
-              fontSize={14}
-              color="black"
+              fontSize={12}
+              color="placeholderTextColor"
               marginBottom="s"
             >
               {props.label || props.placeholder}
@@ -78,6 +78,7 @@ export const CustomTextInput = (props: IProps & TextInputProps) => {
                       : errors[props.name]
                       ? theme.colors.error
                       : theme.colors.borderColor,
+                  backgroundColor: theme.colors.secondaryBackgroundColor,
                 },
               ]}
             >
@@ -93,7 +94,7 @@ export const CustomTextInput = (props: IProps & TextInputProps) => {
                 {props.prefix && props.prefix}
                 <TextInput
                   {...props}
-                  placeholderTextColor={theme.colors.bodyTextColor}
+                  placeholderTextColor={theme.colors.placeholderTextColor}
                   cursorColor={theme.colors.bodyTextColor}
                   placeholder={!focused ? props.placeholder || props.name : ""}
                   value={value}
