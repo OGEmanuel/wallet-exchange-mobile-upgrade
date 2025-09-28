@@ -1,5 +1,4 @@
-import { docGuide } from "@/assets/images";
-import { ThemedBackIcon } from "@/assets/svg/wallet-icons-components";
+import { checkTerms, docGuide } from "@/assets/images";
 import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
@@ -204,6 +203,11 @@ export default function DocumentCapure({
             )}
           </View>
         </TouchableOpacity>
+        <Image
+          source={checkTerms}
+          style={{ width: 16, height: 20, marginRight: 8 }}
+          resizeMode="contain"
+        />
         <CustomText style={styles.consentText}>
           I consent to Zap collecting, processing and sharing my information for
           KYC purposes as stated in the{" "}
