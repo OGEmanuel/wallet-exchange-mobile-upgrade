@@ -3,13 +3,22 @@ const zapLogoWithNameLight = require("./zapLogoLight.png");
 const startVerification = require("./startVerification.png");
 const accounts = require("./accounts.png");
 const idCard = require("./id-card.png");
+const docGuide = require("./docGuide.png");
+const checkTerms = require("./checkTerms.png");
 
 const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
 
 export {
-  accounts, glass, idCard, lemonBG, noBank, startVerification,
+  accounts,
+  checkTerms,
+  docGuide,
+  glass,
+  idCard,
+  lemonBG,
+  noBank,
+  startVerification,
   zapLogoWithNameDark,
-  zapLogoWithNameLight
+  zapLogoWithNameLight,
 };
