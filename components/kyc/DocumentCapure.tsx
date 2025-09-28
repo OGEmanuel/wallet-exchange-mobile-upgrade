@@ -5,7 +5,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import { useState } from "react";
 import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
