@@ -6,8 +6,8 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
 interface DocumentCapureProps {
@@ -26,7 +26,8 @@ export default function DocumentCapure({
   const theme = useTheme<Theme>();
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [capturedImageAsset, setCapturedImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [capturedImageAsset, setCapturedImageAsset] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [showCamera, setShowCamera] = useState(false);
 
   const getDocumentTypeLabel = (type: string) => {
@@ -42,18 +43,20 @@ export default function DocumentCapure({
     }
   };
 
-  const createFormDataFromAsset = (asset: ImagePicker.ImagePickerAsset): FormData => {
+  const createFormDataFromAsset = (
+    asset: ImagePicker.ImagePickerAsset
+  ): FormData => {
     const formData = new FormData();
-    
+
     // Create a file object from the asset
     const file = {
       uri: asset.uri,
-      type: asset.mimeType || 'image/jpeg',
+      type: asset.mimeType || "image/jpeg",
       name: asset.fileName || `image_${Date.now()}.jpg`,
     } as any;
 
-    formData.append('file', file);
-    
+    formData.append("file", file);
+
     return formData;
   };
 
