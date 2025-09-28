@@ -1,13 +1,96 @@
-import { checkTerms, docGuide } from "@/assets/images";
+import { docGuide } from "@/assets/images";
+import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
+import ThemedCheckfalseIcon from "@/assets/svg/wallet-icons-components/ThemedCheckfalseIcon";
+import ThemedChecktrueIcon from "@/assets/svg/wallet-icons-components/ThemedChecktrueIcon";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Camera } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
 export default function DocumentCapure() {
   const theme = useTheme<Theme>();
+  const [isConsentChecked, setIsConsentChecked] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+
+  const requestCameraPermission = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission denied",
+        "Camera permission is required to take photos."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const requestMediaLibraryPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission denied",
+        "Media library permission is required to select photos."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const takePhoto = async () => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
+        setShowCamera(false);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo. Please try again.");
+    }
+  };
+
+  const selectFromGallery = async () => {
+    const hasPermission = await requestMediaLibraryPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to select image. Please try again.");
+    }
+  };
+
+  const handleTakePhoto = () => {
+    setShowCamera(true);
+    takePhoto();
+  };
+
+  const handleUploadPhoto = () => {
+    selectFromGallery();
+  };
+
   return (
     <View style={styles.container}>
       <CustomText variant="header" style={styles.title}>
@@ -22,7 +105,26 @@ export default function DocumentCapure() {
           { backgroundColor: theme.colors.bodyTextColorInverse },
         ]}
       >
-        <Image source={docGuide} style={{ height: 125 }} resizeMode="contain" />
+        {capturedImage ? (
+          <Image
+            source={{ uri: capturedImage }}
+            style={styles.capturedImage}
+            resizeMode="contain"
+          />
+        ) : showCamera ? (
+          <View style={styles.cameraPlaceholder}>
+            <ThemedCameraIcon width={48} height={48} />
+            <CustomText variant="body" style={styles.cameraText}>
+              Camera ready
+            </CustomText>
+          </View>
+        ) : (
+          <Image
+            source={docGuide}
+            style={{ height: 110 }}
+            resizeMode="contain"
+          />
+        )}
       </View>
       <View
         style={{
@@ -31,11 +133,16 @@ export default function DocumentCapure() {
           paddingTop: 16,
         }}
       >
-        <Image
-          source={checkTerms}
-          style={{ width: 16, height: 20 }}
-          resizeMode="contain"
-        />
+        <TouchableOpacity
+          onPress={() => setIsConsentChecked(!isConsentChecked)}
+          style={styles.checkboxContainer}
+        >
+          {isConsentChecked ? (
+            <ThemedChecktrueIcon width={16} height={16} />
+          ) : (
+            <ThemedCheckfalseIcon width={16} height={16} />
+          )}
+        </TouchableOpacity>
         <CustomText
           variant="body"
           style={[styles.subtitle, { fontSize: 12, opacity: 1 }]}
@@ -47,7 +154,7 @@ export default function DocumentCapure() {
       <View style={styles.buttonContainer}>
         <CustomButton
           text="Take a photo"
-          onPress={() => {}}
+          onPress={handleTakePhoto}
           width="100%"
           height={56}
           borderRadius={56}
@@ -60,7 +167,7 @@ export default function DocumentCapure() {
         />
         <CustomButton
           text="Upload photo"
-          onPress={() => {}}
+          onPress={handleUploadPhoto}
           width="100%"
           height={56}
           borderRadius={56}
@@ -126,5 +233,23 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
     gap: 16,
+  },
+  checkboxContainer: {
+    padding: 4,
+  },
+  capturedImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+  },
+  cameraPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  cameraText: {
+    marginTop: 8,
+    color: "#FFFFFF",
+    opacity: 0.8,
   },
 });
