@@ -1,146 +1,315 @@
-import { CustomTextInput } from "@/components/form/CustomInput";
-import { SubmitButton } from "@/components/form/SubmitButton";
-import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
+import icons from "@/assets/icons";
+import { ThemedChevronRightIcon } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
-import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
-import { ScrollView, StyleSheet } from "react-native";
-import CustomDropDown from "../form/CustomDropDown";
+import { Image, StyleSheet, View } from "react-native";
+import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
+import { CustomButton, CustomText } from "../general";
+import SimpleDropdown from "./SimpleDropdown";
 
-interface IDVerificationFormData {
-  firstName: string;
-  lastName: string;
-  documentType: string;
-  documentId: string;
-  dateOfBirth: string;
+interface IDVerificationProps {
+  userData: any;
+  onDocumentSelected: (data: any) => void;
+  onBack?: () => void;
 }
 
-const documentTypeOptions = [
-  { label: "International Passport", value: "passport" },
+const documentTypes = [
   { label: "Driver's License", value: "drivers_license" },
   { label: "National ID", value: "national_id" },
-  { label: "Voter's Card", value: "voters_card" },
+  { label: "International Passport", value: "international_passport" },
 ];
 
-export default function IDVerification() {
+export default function IDVerification({
+  userData,
+  onDocumentSelected,
+  onBack,
+}: IDVerificationProps) {
   const theme = useTheme<Theme>();
-  const [selectedDocumentType, setSelectedDocumentType] = useState("passport");
+  const [firstName, setFirstName] = useState(userData?.firstName || "");
+  const [lastName, setLastName] = useState(userData?.lastName || "");
+  const [documentType, setDocumentType] = useState("");
+  const [documentId, setDocumentId] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
 
-  const methods = useForm<IDVerificationFormData>({
-    defaultValues: {
-      firstName: "John",
-      lastName: "Doe",
-      documentType: "passport",
-      documentId: "0123456789",
-      dateOfBirth: "10/09/1999",
-    },
-  });
+  const isFormValid = firstName.trim() && lastName.trim() && documentType;
 
-  const onSubmit = (data: IDVerificationFormData) => {
-    console.log("ID Verification Form Data:", data);
-    // Handle form submission here
+  const handleContinue = () => {
+    if (isFormValid) {
+      onDocumentSelected({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        documentType,
+        documentId: documentId.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+      });
+    }
   };
 
   return (
-    <FormProvider {...methods}>
-      <Box flex={1} backgroundColor="mainBackgroundColor">
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <CustomText variant="header" style={styles.title}>
+          ID Verification
+        </CustomText>
+        <CustomText variant="body" style={styles.subtitle}>
+          We require a photo of a government issued ID to verify your identity.
+        </CustomText>
+      </View>
+
+      <View style={styles.formContainer}>
+        {/* Sumsub Card */}
+        <View
+          style={[
+            styles.sumsubCard,
+            { backgroundColor: theme.colors.secondaryBackgroundColor },
+          ]}
         >
-          <Box paddingTop="l">
-            {/* Header Section */}
-            <Box marginBottom="xl">
-              <CustomText
-                variant="header"
-                style={{
-                  fontSize: 22,
-                  fontWeight: "bold",
-                  textAlign: "left",
-                  marginTop: 20,
-                  marginBottom: 16,
-                  color: "#FFFFFF",
-                }}
-              >
-                ID Verification
-              </CustomText>
-              <CustomText
-                variant="body"
-                style={{
-                  marginBottom: 24,
-                  color: "#FFFFFF",
-                  opacity: 0.8,
-                  lineHeight: 20,
-                }}
-              >
-                We require a photo of a government issued ID to verify your
-                identity.
-              </CustomText>
-            </Box>
-
-            {/* Form Fields */}
-            <Box marginBottom="l" width={SCREEN_WIDTH * 0.9}>
-              <Box flexDirection="row" gap="s" marginBottom="m">
-                <Box flex={1}>
-                  <CustomTextInput
-                    name="firstName"
-                    label="First Name"
-                    placeholder="First Name"
-                  />
-                </Box>
-                <Box flex={1}>
-                  <CustomTextInput
-                    name="lastName"
-                    label="Last Name"
-                    placeholder="Last Name"
-                  />
-                </Box>
-              </Box>
-
-              <Box marginBottom="m">
-                <CustomDropDown
-                  options={documentTypeOptions}
-                  value={selectedDocumentType}
-                  onSelected={setSelectedDocumentType}
-                  placeHolder="Select Document Type"
-                  label="Document Type"
-                />
-              </Box>
-
-              <CustomTextInput
-                name="documentId"
-                label="Document ID"
-                placeholder="Enter Document ID"
-                containerStyle={styles.documentIdInputContainer}
+          <View style={styles.sumsubContent}>
+            <View style={styles.sumsubLeft}>
+              <Image
+                source={icons.sumsub}
+                style={{ width: 40, height: 40, marginRight: 12 }}
               />
-            </Box>
+              <View style={styles.sumsubText}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <CustomText
+                      style={[
+                        styles.sumsubTitle,
+                        { color: theme.colors.bodyTextColor },
+                      ]}
+                    >
+                      Verify using Sumsub
+                    </CustomText>
 
-            {/* Continue Button */}
-            <Box marginTop="xl" marginBottom="l">
-              <SubmitButton onSubmit={onSubmit} label="Continue" width="100%" />
-            </Box>
-          </Box>
-        </ScrollView>
-      </Box>
-    </FormProvider>
+                    <View
+                      style={[
+                        styles.fasterTag,
+                        { backgroundColor: theme.colors.primaryColor },
+                      ]}
+                    >
+                      <Image
+                        source={icons.sumsubLighting}
+                        style={{ width: 10, height: 10, marginRight: 1 }}
+                      />
+                      <CustomText style={styles.fasterText}>Faster</CustomText>
+                    </View>
+                  </View>
+                  <View style={styles.sumsubRight}>
+                    <ThemedChevronRightIcon
+                      lightModeColor={theme.colors.bodyTextColor}
+                      darkModeColor={theme.colors.bodyTextColor}
+                    />
+                  </View>
+                </View>
+                <CustomText
+                  style={[
+                    styles.sumsubSubtitle,
+                    { color: theme.colors.placeholderTextColor },
+                  ]}
+                >
+                  Instant and no hassle verification using Sumsub portal
+                </CustomText>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.nameRow}>
+          <View style={styles.nameField}>
+            <CustomInputWithoutForm
+              label="First Name"
+              placeholder="Enter First Name"
+              value={firstName}
+              onChange={setFirstName}
+              keyboardType="default"
+            />
+          </View>
+          <View style={styles.nameField}>
+            <CustomInputWithoutForm
+              label="Last Name"
+              placeholder="Enter Last Name"
+              value={lastName}
+              onChange={setLastName}
+              keyboardType="default"
+            />
+          </View>
+        </View>
+
+        <SimpleDropdown
+          label="Select document type"
+          placeholder="Select document type"
+          options={documentTypes}
+          onSelect={(value) => setDocumentType(value)}
+          value={documentType}
+        />
+
+        {documentType === "international_passport" && (
+          <>
+            <CustomInputWithoutForm
+              label="Document ID"
+              placeholder="Enter Document ID"
+              value={documentId}
+              onChange={setDocumentId}
+              keyboardType="default"
+            />
+            <CustomInputWithoutForm
+              label="Date of Birth"
+              placeholder="DD/MM/YYYY"
+              value={dateOfBirth}
+              onChange={setDateOfBirth}
+              keyboardType="default"
+            />
+          </>
+        )}
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <CustomButton
+          text="Continue"
+          onPress={handleContinue}
+          width="100%"
+          height={56}
+          borderRadius={56}
+          bgColor={
+            isFormValid ? theme.colors.primaryColor : theme.colors.borderColor
+          }
+          color={theme.colors.white}
+          variant="bodySubheader"
+          fontSize={16}
+          disabled={!isFormValid}
+          disabledColor={theme.colors.borderColor}
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 20,
   },
-  contentContainer: {
-    flexGrow: 1,
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 1,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  documentIdInputContainer: {
-    marginBottom: 16,
+  backArrow: {
+    fontSize: 20,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
-  dateOfBirthInputContainer: {
-    marginBottom: 0,
+  header: {
+    marginBottom: 30,
+    marginTop: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#FFFFFF",
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  formContainer: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginVertical: 16,
+  },
+  nameField: {
+    flex: 1,
+  },
+  sumsubCard: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  sumsubContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sumsubLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  lightningIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  lightningText: {
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
+  sumsubText: {
+    flex: 1,
+  },
+  sumsubTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  sumsubSubtitle: {
+    fontSize: 12,
+    opacity: 0.8,
+    width: "80%",
+  },
+  sumsubRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fasterTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fasterText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  arrowText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  buttonContainer: {
+    paddingBottom: 120,
   },
 });

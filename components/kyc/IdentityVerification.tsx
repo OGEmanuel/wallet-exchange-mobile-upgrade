@@ -1,16 +1,59 @@
 import { accounts, idCard } from "@/assets/images";
-import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
-import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { CustomText } from "../general";
+import BvnInputForm from "./BvnInputForm";
+import IDVerificationFlow from "./IDVerificationFlow";
 import ProgressTrack from "./ProgressTrack";
 import VerificationCard from "./VerifcationCard";
 
-export default function IdentityVerification() {
-  const theme = useTheme<Theme>();
+interface IdentityVerificationProps {
+  onComplete?: () => void;
+  onBack?: () => void;
+}
+
+export default function IdentityVerification({
+  onComplete,
+  onBack,
+}: IdentityVerificationProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [showBvnForm, setShowBvnForm] = useState(false);
+  const [showIdForm, setShowIdForm] = useState(false);
+  const [showIdVerificationFlow, setShowIdVerificationFlow] = useState(false);
+  const [bvnCompleted, setBvnCompleted] = useState(false);
+  const [idCompleted, setIdCompleted] = useState(false);
+
+  const handleBvnPress = () => {
+    setShowBvnForm(true);
+  };
+
+  const handleIdPress = () => {
+    setShowIdVerificationFlow(true);
+  };
+
+  const handleBvnComplete = (data: any) => {
+    setBvnCompleted(true);
+    setShowBvnForm(false);
+    setCurrentStep(2);
+    console.log("BVN completed:", data);
+  };
+
+  const handleIdComplete = (data: any) => {
+    setIdCompleted(true);
+    setShowIdVerificationFlow(false);
+    console.log("ID completed:", data);
+    // Check if both are completed
+    if (bvnCompleted) {
+      onComplete?.();
+    }
+  };
+
+  const handleFormBack = () => {
+    setShowBvnForm(false);
+    setShowIdForm(false);
+    setShowIdVerificationFlow(false);
+  };
 
   // Verification steps data
   const verificationSteps = [
@@ -18,32 +61,40 @@ export default function IdentityVerification() {
       title: "BVN",
       description:
         "This is a unique 11 digit number that is tied to your bank account.",
-      status: "pending",
-      isCompleted: false,
+      status: bvnCompleted ? "completed" : "pending",
+      isCompleted: bvnCompleted,
       isActionable: true,
       icon: accounts,
-
       limit: "₦100,000 Max",
-      onPress: () => {
-        console.log("BVN verification pressed");
-        // Handle BVN verification
-      },
+      onPress: handleBvnPress,
     },
     {
       title: "ID Verification",
       description:
         "Kindly take clear picture of your government issued document.",
-      status: "pending",
-      isCompleted: false,
-      isActionable: false,
+      status: idCompleted ? "completed" : "pending",
+      isCompleted: idCompleted,
+      isActionable: bvnCompleted, // Only actionable after BVN is completed
       limit: "Unlimited",
       icon: idCard,
-      onPress: () => {
-        console.log("ID verification pressed");
-        // Handle ID verification
-      },
+      onPress: handleIdPress,
     },
   ];
+
+  // Show BVN form if selected
+  if (showBvnForm) {
+    return <BvnInputForm onNext={handleBvnComplete} onBack={handleFormBack} />;
+  }
+
+  // Show ID verification flow if selected
+  if (showIdVerificationFlow) {
+    return (
+      <IDVerificationFlow
+        onComplete={handleIdComplete}
+        onBack={handleFormBack}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -52,7 +103,7 @@ export default function IdentityVerification() {
       </CustomText>
       <CustomText variant="body" style={styles.subtitle}>
         Before you can buy BTC we will need to verify who you are. Be sure your
-        data is safe.
+        data is saf
       </CustomText>
       <View style={styles.contentContainer}>
         <ProgressTrack

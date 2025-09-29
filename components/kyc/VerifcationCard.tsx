@@ -1,15 +1,8 @@
+import icons from "@/assets/icons";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CustomText } from "../general";
 
 interface VerificationCardProps {
@@ -33,11 +26,9 @@ const VerificationCard = ({
   limit,
   onPress,
 }: VerificationCardProps) => {
-  const scheme = useColorScheme();
   const theme = useTheme<Theme>();
 
   const isRejected = status === "rejected";
-  const isPending = status === "pending";
 
   return (
     <TouchableOpacity
@@ -55,11 +46,9 @@ const VerificationCard = ({
         source={icon}
         style={styles.icon}
         tintColor={
-          !isActionable && scheme === "dark"
-            ? "#5A5D64"
-            : scheme === "dark"
-            ? "#FBFBFB"
-            : "#000000"
+          !isActionable
+            ? theme.colors.placeholderTextColor
+            : theme.colors.bodyTextColor
         }
       />
       <View style={styles.contentContainer}>
@@ -70,34 +59,20 @@ const VerificationCard = ({
               <View
                 style={[
                   styles.limitBadge,
-                  isCompleted && {
+                  // isCompleted &&
+                  {
                     backgroundColor: theme.colors.secondaryColor,
                   },
-                  !isCompleted && styles.pendingLimitBadge,
+                  // !isCompleted && styles.pendingLimitBadge,
                 ]}
               >
                 <Text style={[styles.limitText]}>{limit}</Text>
               </View>
             )}
-            {isCompleted && (
-              <View
-                style={[
-                  styles.statusBadge,
-                  isCompleted && styles.completedBadge,
-                  isRejected && styles.rejectedBadge,
-                  isPending && styles.pendingBadge,
-                ]}
-              >
-                <Text style={styles.statusText}>
-                  {isCompleted ? "Completed" : status}
-                </Text>
-              </View>
-            )}
           </View>
-          <ChevronRight
-            size={20}
-            color={scheme === "dark" ? "#FBFBFB" : "#000000"}
-          />
+          {isCompleted && (
+            <Image source={icons.checkFill} style={styles.icon} />
+          )}
         </View>
         <CustomText
           variant="body"
@@ -136,7 +111,6 @@ const styles = StyleSheet.create({
   icon: {
     width: 24,
     height: 24,
-    marginTop: 4,
   },
   contentContainer: {
     flex: 1,

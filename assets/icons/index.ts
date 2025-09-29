@@ -60,6 +60,9 @@ const externalLink = require("./externalLink.png");
 const marketSend = require("./marketSend.png");
 const activityLog = require("./activity-log.png");
 const login = require("./login.png");
+const sumsub = require("./sumsub.png");
+const sumsubLighting = require("./lightening-light.png");
+const sumsubLightingDark = require("./lightening.png");
 
 export default {
   apple,
@@ -121,4 +124,7 @@ export default {
   binoculars,
   activityLog,
   login,
+  sumsub,
+  sumsubLighting,
+  sumsubLightingDark,
 };

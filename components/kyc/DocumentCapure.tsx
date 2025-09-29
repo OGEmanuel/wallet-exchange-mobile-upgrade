@@ -1,7 +1,5 @@
 import { docGuide } from "@/assets/images";
 import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
-import ThemedCheckfalseIcon from "@/assets/svg/wallet-icons-components/ThemedCheckfalseIcon";
-import ThemedChecktrueIcon from "@/assets/svg/wallet-icons-components/ThemedChecktrueIcon";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -11,11 +9,34 @@ import React, { useState } from "react";
 import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
-export default function DocumentCapure() {
+interface DocumentCapureProps {
+  userData?: any;
+  onPhotoCaptured?: (photo: any) => void;
+  onBack?: () => void;
+}
+
+export default function DocumentCapure({
+  userData,
+  onPhotoCaptured,
+  onBack,
+}: DocumentCapureProps) {
   const theme = useTheme<Theme>();
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+
+  const getDocumentTypeLabel = (type: string) => {
+    switch (type) {
+      case "drivers_license":
+        return "Driver's License";
+      case "national_id":
+        return "National ID";
+      case "international_passport":
+        return "International Passport";
+      default:
+        return "ID Document";
+    }
+  };
 
   const requestCameraPermission = async () => {
     const { status } = await Camera.requestCameraPermissionsAsync();
@@ -56,6 +77,7 @@ export default function DocumentCapure() {
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
         setShowCamera(false);
+        console.log("Image captured:", result.assets[0]);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to take photo. Please try again.");
@@ -76,6 +98,7 @@ export default function DocumentCapure() {
 
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
+        console.log("Image uploaded:", result.assets[0]);
       }
     } catch (error) {
       Alert.alert("Error", "Failed to select image. Please try again.");
@@ -94,7 +117,9 @@ export default function DocumentCapure() {
   return (
     <View style={styles.container}>
       <CustomText variant="header" style={styles.title}>
-        National ID
+        {userData?.documentType
+          ? getDocumentTypeLabel(userData.documentType)
+          : "National ID"}
       </CustomText>
       <CustomText variant="body" style={styles.subtitle}>
         Make sure you take a clear and complete photo of your card
@@ -109,7 +134,7 @@ export default function DocumentCapure() {
           <Image
             source={{ uri: capturedImage }}
             style={styles.capturedImage}
-            resizeMode="contain"
+            // resizeMode="contain"
           />
         ) : showCamera ? (
           <View style={styles.cameraPlaceholder}>
@@ -126,60 +151,110 @@ export default function DocumentCapure() {
           />
         )}
       </View>
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 8,
-          paddingTop: 16,
-        }}
-      >
+      <View style={styles.consentContainer}>
         <TouchableOpacity
           onPress={() => setIsConsentChecked(!isConsentChecked)}
           style={styles.checkboxContainer}
         >
-          {isConsentChecked ? (
-            <ThemedChecktrueIcon width={16} height={16} />
-          ) : (
-            <ThemedCheckfalseIcon width={16} height={16} />
-          )}
+          <View
+            style={[
+              styles.checkbox,
+              {
+                backgroundColor: isConsentChecked
+                  ? theme.colors.primaryColor
+                  : "transparent",
+                borderColor: isConsentChecked
+                  ? theme.colors.primaryColor
+                  : theme.colors.borderColor,
+              },
+            ]}
+          >
+            {isConsentChecked && (
+              <CustomText style={styles.checkmark}>✓</CustomText>
+            )}
+          </View>
         </TouchableOpacity>
-        <CustomText
-          variant="body"
-          style={[styles.subtitle, { fontSize: 12, opacity: 1 }]}
-        >
+        <CustomText style={styles.consentText}>
           I consent to Zap collecting, processing and sharing my information for
-          KYC purposes as stated in the policy
+          KYC purposes as stated in the{" "}
+          <CustomText
+            style={[styles.policyLink, { color: theme.colors.primaryColor }]}
+          >
+            policy
+          </CustomText>
         </CustomText>
       </View>
       <View style={styles.buttonContainer}>
-        <CustomButton
-          text="Take a photo"
-          onPress={handleTakePhoto}
-          width="100%"
-          height={56}
-          borderRadius={56}
-          bgColor={theme.colors.primaryColor}
-          color={theme.colors.white}
-          variant="bodySubheader"
-          fontSize={14}
-          disabled={false}
-          disabledColor={theme.colors.borderColor}
-        />
-        <CustomButton
-          text="Upload photo"
-          onPress={handleUploadPhoto}
-          width="100%"
-          height={56}
-          borderRadius={56}
-          bgColor={theme.colors.mainBackgroundColor}
-          color={theme.colors.white}
-          variant="bodySubheader"
-          fontSize={14}
-          disabled={false}
-          disabledColor={theme.colors.borderColor}
-          borderWidth={1}
-          borderColor={theme.colors.borderColor}
-        />
+        {capturedImage ? (
+          <>
+            <CustomButton
+              text="Submit Document"
+              onPress={() => {
+                console.log("Submitting document with image:", capturedImage);
+                onPhotoCaptured?.(capturedImage);
+              }}
+              width="100%"
+              height={56}
+              borderRadius={56}
+              bgColor={theme.colors.primaryColor}
+              color={theme.colors.white}
+              variant="bodySubheader"
+              fontSize={14}
+              disabled={!isConsentChecked}
+              disabledColor={theme.colors.borderColor}
+            />
+            <View style={{ marginTop: 12 }}>
+              <CustomButton
+                text="Retake Photo"
+                onPress={() => setCapturedImage(null)}
+                width="100%"
+                height={56}
+                borderRadius={56}
+                bgColor={theme.colors.mainBackgroundColor}
+                color={theme.colors.white}
+                variant="bodySubheader"
+                fontSize={14}
+                disabled={false}
+                disabledColor={theme.colors.borderColor}
+                borderWidth={1}
+                borderColor={theme.colors.borderColor}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <CustomButton
+              text="Take a photo"
+              onPress={handleTakePhoto}
+              width="100%"
+              height={56}
+              borderRadius={56}
+              bgColor={theme.colors.primaryColor}
+              color={theme.colors.white}
+              variant="bodySubheader"
+              fontSize={14}
+              disabled={!isConsentChecked}
+              disabledColor={theme.colors.borderColor}
+            />
+            <View style={{ marginTop: 12 }}>
+              <CustomButton
+                text="Upload photo"
+                onPress={handleUploadPhoto}
+                width="100%"
+                height={56}
+                borderRadius={56}
+                bgColor={theme.colors.mainBackgroundColor}
+                color={theme.colors.white}
+                variant="bodySubheader"
+                fontSize={14}
+                disabled={!isConsentChecked}
+                disabledColor={theme.colors.borderColor}
+                borderWidth={1}
+                borderColor={theme.colors.borderColor}
+              />
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -191,6 +266,17 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
+  },
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 24,
+    zIndex: 1,
+  },
+  backArrow: {
+    fontSize: 24,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   title: {
     fontSize: 22,
@@ -234,8 +320,38 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     gap: 16,
   },
+  consentContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 16,
+    marginBottom: 24,
+  },
   checkboxContainer: {
-    padding: 4,
+    marginRight: 12,
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  consentText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#FFFFFF",
+    opacity: 0.9,
+  },
+  policyLink: {
+    textDecorationLine: "underline",
   },
   capturedImage: {
     width: "100%",

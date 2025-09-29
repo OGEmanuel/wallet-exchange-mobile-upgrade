@@ -6,7 +6,18 @@ import { StyleSheet, View } from "react-native";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
 
-export default function PhoneVerification() {
+interface PhoneVerificationProps {
+  phoneNumber: string;
+  countryCode: string;
+  onOTPVerified: () => void;
+  onBack?: () => void;
+}
+
+export default function PhoneVerification({
+  phoneNumber,
+  countryCode,
+  onOTPVerified,
+}: PhoneVerificationProps) {
   const { colors } = useTheme<Theme>();
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(90);
@@ -44,6 +55,8 @@ export default function PhoneVerification() {
     if (otp.length === 6) {
       // Handle verification logic here
       console.log("Verifying OTP:", otp);
+      // For now, just call the callback - in real app, verify with backend
+      onOTPVerified();
     }
   };
 
@@ -63,7 +76,7 @@ export default function PhoneVerification() {
         autoFocus={true}
         resendTimer={countdown}
         instructionText="Please enter the 6-digit OTP sent to"
-        phoneNumber="+2349000000000"
+        phoneNumber={`${countryCode}${phoneNumber}`}
         textAlign="left"
       />
 
