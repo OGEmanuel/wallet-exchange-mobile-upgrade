@@ -116,6 +116,7 @@ export default function ZapperSiginBottomSheet({
           <UsernameSuccess
             confettiRef={confettiRef}
             onComplete={handleUsernameSuccessComplete}
+            username={username}
           />
         );
       case "verifyIdentity":

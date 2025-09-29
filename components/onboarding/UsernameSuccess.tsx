@@ -9,11 +9,13 @@ import { ConfettiMethods } from "react-native-fast-confetti";
 interface UsernameSuccessProps {
   confettiRef?: React.RefObject<ConfettiMethods | null>;
   onComplete?: () => void;
+  username?: string;
 }
 
 export default function UsernameSuccess({
   confettiRef,
   onComplete,
+  username = "",
 }: UsernameSuccessProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
   const [hasConfettiRun, setHasConfettiRun] = useState(false);
@@ -87,7 +89,7 @@ export default function UsernameSuccess({
             },
           ]}
         >
-          Mofe.zap
+          {username}.zap
         </Text>
       </Animated.View>
     </View>

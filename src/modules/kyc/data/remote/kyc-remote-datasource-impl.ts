@@ -56,7 +56,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       usernameOnboardingEndpoint(payload.extra),
-      payload
+      payload.body
     );
     return response.data;
   }
