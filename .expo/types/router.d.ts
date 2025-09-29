@@ -1,11 +1,12 @@
 /* eslint-disable */
-import * as Router from 'expo-router';
+import * as Router from "expo-router";
 
-export * from 'expo-router';
+export * from "expo-router";
 
-declare module 'expo-router' {
+declare module "expo-router" {
   export namespace ExpoRouter {
     export interface __routes<T extends string | object = string> {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -16,6 +17,8 @@ declare module 'expo-router' {
 =======
 =======
 >>>>>>> 1906027 (chore: remove package-lock.json and update package.json and yarn.lock)
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
       hrefInputParams:
         | {
             pathname: Router.RelativePathString;
@@ -29,6 +32,14 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownInputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownInputParams }
         | {
+<<<<<<< HEAD
+=======
+            pathname: `/dashboard/exchange`;
+            params?: Router.UnknownInputParams;
+          }
+        | { pathname: `/dashboard/wallet`; params?: Router.UnknownInputParams }
+        | {
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownInputParams;
           }
@@ -57,11 +68,19 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownInputParams;
           }
         | {
             pathname: `/dashboard/home/wallet-home/exchange`;
+=======
+            pathname: `/dashboard/home/market`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/activity`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | {
@@ -73,7 +92,11 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/wallet`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | {
@@ -81,7 +104,59 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/more/about`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences/notifications`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/bank`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/about`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/chat`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/faq`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/tutorials`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownInputParams }
@@ -126,6 +201,14 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownOutputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownOutputParams }
         | {
+<<<<<<< HEAD
+=======
+            pathname: `/dashboard/exchange`;
+            params?: Router.UnknownOutputParams;
+          }
+        | { pathname: `/dashboard/wallet`; params?: Router.UnknownOutputParams }
+        | {
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownOutputParams;
           }
@@ -154,11 +237,19 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownOutputParams;
           }
         | {
             pathname: `/dashboard/home/wallet-home/exchange`;
+=======
+            pathname: `/dashboard/home/market`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/activity`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownOutputParams;
           }
         | {
@@ -170,7 +261,11 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/wallet`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownOutputParams;
           }
         | {
@@ -178,7 +273,59 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/more/about`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences/notifications`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/bank`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/about`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/chat`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/faq`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/tutorials`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownOutputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownOutputParams }
@@ -216,6 +363,11 @@ declare module 'expo-router' {
         | `/${`?${string}` | `#${string}` | ""}`
         | `/select-track${`?${string}` | `#${string}` | ""}`
         | `/_sitemap${`?${string}` | `#${string}` | ""}`
+<<<<<<< HEAD
+=======
+        | `/dashboard/exchange${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/wallet${`?${string}` | `#${string}` | ""}`
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/dashboard/home/all-news${`?${string}` | `#${string}` | ""}`
         | `/dashboard/home/receive-token${`?${string}` | `#${string}` | ""}`
         | `/dashboard/home/send-token${`?${string}` | `#${string}` | ""}`
@@ -229,10 +381,15 @@ declare module 'expo-router' {
             | `#${string}`
             | ""}`
         | `/dashboard/home/market/share${`?${string}` | `#${string}` | ""}`
+<<<<<<< HEAD
+=======
+        | `/dashboard/home/market${`?${string}` | `#${string}` | ""}`
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/dashboard/home/wallet-home/activity${
             | `?${string}`
             | `#${string}`
             | ""}`
+<<<<<<< HEAD
         | `/dashboard/home/wallet-home/exchange${
             | `?${string}`
             | `#${string}`
@@ -245,6 +402,64 @@ declare module 'expo-router' {
             | ""}`
         | `/dashboard/home/wallet-home/more${`?${string}` | `#${string}` | ""}`
         | `/dashboard/home/wallet-home/cards${`?${string}` | `#${string}` | ""}`
+=======
+        | `/dashboard/home/wallet-home/home${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/swap${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/cards${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/more${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/more/about${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/preferences${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/preferences/notifications${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile/activtylogs${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile/edit-profile${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile/enable-2fa${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/bank${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/help/about${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/help/chat${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/help/faq${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/help${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/help/tutorials${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/setup${`?${string}` | `#${string}` | ""}`
         | `/setup/import-wallet/importprivatekey${
             | `?${string}`
@@ -273,6 +488,14 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownInputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownInputParams }
         | {
+<<<<<<< HEAD
+=======
+            pathname: `/dashboard/exchange`;
+            params?: Router.UnknownInputParams;
+          }
+        | { pathname: `/dashboard/wallet`; params?: Router.UnknownInputParams }
+        | {
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownInputParams;
           }
@@ -301,11 +524,19 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownInputParams;
           }
         | {
             pathname: `/dashboard/home/wallet-home/exchange`;
+=======
+            pathname: `/dashboard/home/market`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/activity`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | {
@@ -317,7 +548,11 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/wallet`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | {
@@ -325,7 +560,59 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/more/about`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/preferences/notifications`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/bank`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/about`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/chat`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/faq`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/more/help/tutorials`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownInputParams }
@@ -363,6 +650,7 @@ declare module 'expo-router' {
           };
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 00a398a (chore: remove package-lock.json and update package.json and yarn.lock)
 =======
       hrefInputParams: { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/`; params?: Router.UnknownInputParams; } | { pathname: `/select-track`; params?: Router.UnknownInputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/exchange`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/wallet`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/all-news`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/receive-token`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/send-token`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/address-book/add-address`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/address-book`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market/create-price-alert`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market/share`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/activity`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/home`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/swap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/cards`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/about`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences/notifications`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/bank`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/about`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/chat`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/faq`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/tutorials`; params?: Router.UnknownInputParams; } | { pathname: `/setup`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/importprivatekey`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/importseedphrase`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/restorefromcloud`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/watchaddress`; params?: Router.UnknownInputParams; } | { pathname: `/setup/wallet-setup/pinsetup`; params?: Router.UnknownInputParams; } | { pathname: `/setup/wallet-setup/success`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market/[id]`, params: Router.UnknownInputParams & { id: string | number; } };
@@ -372,6 +660,8 @@ declare module 'expo-router' {
 =======
 >>>>>>> 1906027 (chore: remove package-lock.json and update package.json and yarn.lock)
 =======
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
       hrefInputParams:
         | {
             pathname: Router.RelativePathString;
@@ -385,10 +675,13 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownInputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownInputParams }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/receive-token`;
             params?: Router.UnknownInputParams;
           }
@@ -405,6 +698,7 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/market/create-price-alert`;
             params?: Router.UnknownInputParams;
           }
@@ -413,15 +707,42 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/exchange`;
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/home`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/more`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
+            pathname: `/dashboard/home/wallet-home/swap`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/wallet`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
             params?: Router.UnknownInputParams;
           }
         | {
@@ -429,15 +750,16 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/swap`;
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/wallet`;
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/cards`;
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownInputParams }
@@ -464,10 +786,13 @@ declare module 'expo-router' {
         | {
             pathname: `/setup/wallet-setup/success`;
             params?: Router.UnknownInputParams;
+<<<<<<< HEAD
           }
         | {
             pathname: `/dashboard/home/market/[id]`;
             params: Router.UnknownInputParams & { id: string | number };
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
           };
       hrefOutputParams:
         | {
@@ -482,10 +807,13 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownOutputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownOutputParams }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownOutputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/receive-token`;
             params?: Router.UnknownOutputParams;
           }
@@ -502,6 +830,7 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/market/create-price-alert`;
             params?: Router.UnknownOutputParams;
           }
@@ -510,15 +839,42 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownOutputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/exchange`;
             params?: Router.UnknownOutputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/home`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/more`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
+            pathname: `/dashboard/home/wallet-home/swap`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/wallet`;
+            params?: Router.UnknownOutputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
             params?: Router.UnknownOutputParams;
           }
         | {
@@ -526,15 +882,16 @@ declare module 'expo-router' {
             params?: Router.UnknownOutputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/swap`;
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
             params?: Router.UnknownOutputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/wallet`;
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
             params?: Router.UnknownOutputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/cards`;
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownOutputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownOutputParams }
@@ -561,10 +918,13 @@ declare module 'expo-router' {
         | {
             pathname: `/setup/wallet-setup/success`;
             params?: Router.UnknownOutputParams;
+<<<<<<< HEAD
           }
         | {
             pathname: `/dashboard/home/market/[id]`;
             params: Router.UnknownOutputParams & { id: string };
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
           };
       href:
         | Router.RelativePathString
@@ -572,7 +932,10 @@ declare module 'expo-router' {
         | `/${`?${string}` | `#${string}` | ""}`
         | `/select-track${`?${string}` | `#${string}` | ""}`
         | `/_sitemap${`?${string}` | `#${string}` | ""}`
+<<<<<<< HEAD
         | `/dashboard/home/all-news${`?${string}` | `#${string}` | ""}`
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/dashboard/home/receive-token${`?${string}` | `#${string}` | ""}`
         | `/dashboard/home/send-token${`?${string}` | `#${string}` | ""}`
         | `/dashboard/home/address-book/add-address${
@@ -580,15 +943,19 @@ declare module 'expo-router' {
             | `#${string}`
             | ""}`
         | `/dashboard/home/address-book${`?${string}` | `#${string}` | ""}`
+<<<<<<< HEAD
         | `/dashboard/home/market/create-price-alert${
             | `?${string}`
             | `#${string}`
             | ""}`
         | `/dashboard/home/market/share${`?${string}` | `#${string}` | ""}`
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/dashboard/home/wallet-home/activity${
             | `?${string}`
             | `#${string}`
             | ""}`
+<<<<<<< HEAD
         | `/dashboard/home/wallet-home/exchange${
             | `?${string}`
             | `#${string}`
@@ -601,6 +968,24 @@ declare module 'expo-router' {
             | `#${string}`
             | ""}`
         | `/dashboard/home/wallet-home/cards${`?${string}` | `#${string}` | ""}`
+=======
+        | `/dashboard/home/wallet-home/home${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/swap${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/cards${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/more${`?${string}` | `#${string}` | ""}`
+        | `/dashboard/home/wallet-home/more/profile/activtylogs${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile/edit-profile${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+        | `/dashboard/home/wallet-home/more/profile${
+            | `?${string}`
+            | `#${string}`
+            | ""}`
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
         | `/setup${`?${string}` | `#${string}` | ""}`
         | `/setup/import-wallet/importprivatekey${
             | `?${string}`
@@ -629,10 +1014,13 @@ declare module 'expo-router' {
         | { pathname: `/select-track`; params?: Router.UnknownInputParams }
         | { pathname: `/_sitemap`; params?: Router.UnknownInputParams }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/all-news`;
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/receive-token`;
             params?: Router.UnknownInputParams;
           }
@@ -649,6 +1037,7 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/market/create-price-alert`;
             params?: Router.UnknownInputParams;
           }
@@ -657,15 +1046,42 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/activity`;
             params?: Router.UnknownInputParams;
           }
         | {
+<<<<<<< HEAD
             pathname: `/dashboard/home/wallet-home/exchange`;
             params?: Router.UnknownInputParams;
           }
         | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             pathname: `/dashboard/home/wallet-home/home`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/more`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+=======
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
+            pathname: `/dashboard/home/wallet-home/swap`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+<<<<<<< HEAD
+            pathname: `/dashboard/home/wallet-home/wallet`;
+            params?: Router.UnknownInputParams;
+          }
+        | {
+            pathname: `/dashboard/home/wallet-home/cards`;
+=======
+            pathname: `/dashboard/home/wallet-home/cards`;
             params?: Router.UnknownInputParams;
           }
         | {
@@ -673,15 +1089,16 @@ declare module 'expo-router' {
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/swap`;
+            pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`;
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/wallet`;
+            pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`;
             params?: Router.UnknownInputParams;
           }
         | {
-            pathname: `/dashboard/home/wallet-home/cards`;
+            pathname: `/dashboard/home/wallet-home/more/profile`;
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
             params?: Router.UnknownInputParams;
           }
         | { pathname: `/setup`; params?: Router.UnknownInputParams }
@@ -708,6 +1125,7 @@ declare module 'expo-router' {
         | {
             pathname: `/setup/wallet-setup/success`;
             params?: Router.UnknownInputParams;
+<<<<<<< HEAD
           }
         | `/dashboard/home/market/${Router.SingleRoutePart<T>}${
             | `?${string}`
@@ -723,6 +1141,9 @@ declare module 'expo-router' {
       hrefOutputParams: { pathname: Router.RelativePathString, params?: Router.UnknownOutputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownOutputParams } | { pathname: `/`; params?: Router.UnknownOutputParams; } | { pathname: `/select-track`; params?: Router.UnknownOutputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/exchange`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/wallet`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/all-news`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/receive-token`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/send-token`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/address-book/add-address`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/address-book`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/market/create-price-alert`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/market/share`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/market`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/activity`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/home`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/swap`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/cards`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/about`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences/notifications`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/bank`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/about`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/chat`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/faq`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/help`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/tutorials`; params?: Router.UnknownOutputParams; } | { pathname: `/setup`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/import-wallet/importprivatekey`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/import-wallet/importseedphrase`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/import-wallet/restorefromcloud`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/import-wallet/watchaddress`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/wallet-setup/pinsetup`; params?: Router.UnknownOutputParams; } | { pathname: `/setup/wallet-setup/success`; params?: Router.UnknownOutputParams; } | { pathname: `/dashboard/home/market/[id]`, params: Router.UnknownOutputParams & { id: string; } };
       href: Router.RelativePathString | Router.ExternalPathString | `/${`?${string}` | `#${string}` | ''}` | `/select-track${`?${string}` | `#${string}` | ''}` | `/_sitemap${`?${string}` | `#${string}` | ''}` | `/dashboard/exchange${`?${string}` | `#${string}` | ''}` | `/dashboard/wallet${`?${string}` | `#${string}` | ''}` | `/dashboard/home/all-news${`?${string}` | `#${string}` | ''}` | `/dashboard/home/receive-token${`?${string}` | `#${string}` | ''}` | `/dashboard/home/send-token${`?${string}` | `#${string}` | ''}` | `/dashboard/home/address-book/add-address${`?${string}` | `#${string}` | ''}` | `/dashboard/home/address-book${`?${string}` | `#${string}` | ''}` | `/dashboard/home/market/create-price-alert${`?${string}` | `#${string}` | ''}` | `/dashboard/home/market/share${`?${string}` | `#${string}` | ''}` | `/dashboard/home/market${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/activity${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/home${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/swap${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/cards${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/about${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/preferences${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/preferences/notifications${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/profile/activtylogs${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/profile/edit-profile${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/profile${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/profile/enable-2fa${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/bank${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/help/about${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/help/chat${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/help/faq${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/help${`?${string}` | `#${string}` | ''}` | `/dashboard/home/wallet-home/more/help/tutorials${`?${string}` | `#${string}` | ''}` | `/setup${`?${string}` | `#${string}` | ''}` | `/setup/import-wallet/importprivatekey${`?${string}` | `#${string}` | ''}` | `/setup/import-wallet/importseedphrase${`?${string}` | `#${string}` | ''}` | `/setup/import-wallet/restorefromcloud${`?${string}` | `#${string}` | ''}` | `/setup/import-wallet/watchaddress${`?${string}` | `#${string}` | ''}` | `/setup/wallet-setup/pinsetup${`?${string}` | `#${string}` | ''}` | `/setup/wallet-setup/success${`?${string}` | `#${string}` | ''}` | { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/`; params?: Router.UnknownInputParams; } | { pathname: `/select-track`; params?: Router.UnknownInputParams; } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/exchange`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/wallet`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/all-news`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/receive-token`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/send-token`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/address-book/add-address`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/address-book`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market/create-price-alert`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market/share`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/market`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/activity`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/home`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/swap`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/cards`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/about`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/preferences/notifications`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/activtylogs`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/edit-profile`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/profile/enable-2fa`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/bank`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/about`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/chat`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/faq`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help`; params?: Router.UnknownInputParams; } | { pathname: `/dashboard/home/wallet-home/more/help/tutorials`; params?: Router.UnknownInputParams; } | { pathname: `/setup`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/importprivatekey`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/importseedphrase`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/restorefromcloud`; params?: Router.UnknownInputParams; } | { pathname: `/setup/import-wallet/watchaddress`; params?: Router.UnknownInputParams; } | { pathname: `/setup/wallet-setup/pinsetup`; params?: Router.UnknownInputParams; } | { pathname: `/setup/wallet-setup/success`; params?: Router.UnknownInputParams; } | `/dashboard/home/market/${Router.SingleRoutePart<T>}${`?${string}` | `#${string}` | ''}` | { pathname: `/dashboard/home/market/[id]`, params: Router.UnknownInputParams & { id: string | number; } };
 >>>>>>> d30e8da (feat(profile): add profile management features and UI components)
+=======
+          };
+>>>>>>> 4e65d90 (refactor(router): reorder route definitions in type declaration)
     }
   }
 }
