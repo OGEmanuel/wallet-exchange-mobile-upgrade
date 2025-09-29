@@ -20,6 +20,7 @@ const COLOR_PALLET = {
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
+  pendingColor: "#EDB118",
 };
 
 const DARK_COLOR_PALLET = {
@@ -42,6 +43,7 @@ const DARK_COLOR_PALLET = {
   success: "#35B592",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
+  pendingColor: "#EDB118",
 };
 
 const theme = createTheme({

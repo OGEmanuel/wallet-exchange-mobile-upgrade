@@ -1,7 +1,7 @@
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
-import { darkTheme } from "@/theme";
+import theme, { darkTheme } from "@/theme";
 import { ThemeProvider } from "@shopify/restyle";
 import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
@@ -115,9 +115,7 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <ThemeProvider
-              theme={colorTheme === "dark" ? darkTheme : darkTheme}
-            >
+            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
                 <StatusBar
                   barStyle={

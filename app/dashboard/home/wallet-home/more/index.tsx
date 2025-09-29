@@ -1,8 +1,8 @@
 import Sidebar from "@/components/dashboard/Sidebar";
 import React from "react";
 
-const more = () => {
+const More = () => {
   return <Sidebar />;
 };
 
-export default more;
+export default More;
