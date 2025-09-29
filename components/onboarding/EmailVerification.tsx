@@ -1,7 +1,9 @@
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
@@ -12,6 +14,7 @@ interface EmailVerificationProps {
   onVerify?: (code: string) => void;
   onResend?: () => void;
   isLoading?: boolean;
+  onCloseBottomSheet?: () => void;
 }
 
 export default function EmailVerification({
@@ -19,6 +22,7 @@ export default function EmailVerification({
   onVerify,
   onResend,
   isLoading = false,
+  onCloseBottomSheet,
 }: EmailVerificationProps) {
   const [code, setCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
@@ -26,6 +30,7 @@ export default function EmailVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const theme = useTheme<Theme>();
   const { verifyEmail } = useKyc();
+  const { hideAllBottomSheets } = useAppBottomSheet();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -65,9 +70,21 @@ export default function EmailVerification({
         });
         console.log("Email verification response:", response);
 
-        // Only call onVerify after successful API response
+        // Check if verification was successful
         if (response.success) {
-          onVerify?.(code);
+          // Check if user data has username
+          const userData = (response.data as any)?.user;
+          if (userData?.username) {
+            // User has username, close bottom sheet and navigate to app
+            console.log(
+              "User has username, closing bottom sheet and navigating to app"
+            );
+            hideAllBottomSheets();
+            router.push("/dashboard/home/wallet-home/home");
+          } else {
+            // User doesn't have username, continue with normal flow
+            onVerify?.(code);
+          }
         }
       } catch (error) {
         console.error("Email verification error:", error);
