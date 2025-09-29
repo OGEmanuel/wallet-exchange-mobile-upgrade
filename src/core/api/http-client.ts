@@ -1,36 +1,35 @@
 // services/http.client.ts
-import { ENVIRONMENTS } from '@/configs/environments';
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { HttpInterceptors } from './http-interceptors';
-import { HttpMethods } from './http-methods';
-import { HttpClientConfig } from './http-types';
-import { ApiRequestMetadata } from './models';
-import { TokenManager } from './token-manager';
-
+import { ENVIRONMENTS } from "@/configs/environments";
+import axios, { AxiosInstance, AxiosResponse } from "axios";
+import { HttpInterceptors } from "./http-interceptors";
+import { HttpMethods } from "./http-methods";
+import { HttpClientConfig } from "./http-types";
+import { ApiRequestMetadata } from "./models";
+import { TokenManager } from "./token-manager";
 
 /**
  * HttpClient - A modular HTTP client with authentication, error handling, and request/response interceptors
- * 
+ *
  * Features:
  * - Automatic token management and refresh
  * - Request/response interceptors
  * - Error handling with toast notifications
  * - File upload/download support
  * - Request metadata support
- * 
+ *
  * @example
  * ```typescript
  * // Basic usage
  * const response = await httpClient.get('/api/users');
- * 
+ *
  * // With parameters and metadata
  * const response = await httpClient.post('/api/users', userData, {
  *   headers: { 'Custom-Header': 'value' }
  * }, { showErrorToast: false });
- * 
+ *
  * // File upload
  * const response = await httpClient.uploadFile('/api/upload', file);
- * 
+ *
  * // File download
  * const response = await httpClient.downloadFile('/api/download');
  * ```
@@ -45,7 +44,9 @@ class HttpClient {
   private readonly timeout: number;
 
   constructor(
-    baseURL: string = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://test-backend-2.zap.africa',
+    baseURL: string = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL ||
+      process.env.EXPO_PUBLIC_API_BASE_URL ||
+      "https://test-backend-2.zap.africa",
     timeout: number = 30000
   ) {
     this.baseURL = baseURL;

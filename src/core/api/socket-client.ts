@@ -1,17 +1,10 @@
 // services/socket.client.ts
-import { AppState, AppStateStatus } from 'react-native';
-import { storageService } from '../storage/app-storage';
-import {
-  StorageKeys
-} from '../storage/storage-types';
-import {
-  TokenData
-} from './models';
-import {
-  SocketEventHandler,
-  SocketEvents
-} from './socket-types';
-const io = require('socket.io-client');
+import { AppState, AppStateStatus } from "react-native";
+import { storageService } from "../storage/app-storage";
+import { StorageKeys } from "../storage/storage-types";
+import { TokenData } from "./models";
+import { SocketEventHandler, SocketEvents } from "./socket-types";
+const io = require("socket.io-client");
 
 interface EventSubscription {
   event: string;
@@ -21,7 +14,7 @@ interface EventSubscription {
 
 /**
  * SocketClient - A comprehensive WebSocket client for React Native applications
- * 
+ *
  * Features:
  * - Automatic reconnection with configurable attempts
  * - App state awareness (foreground/background handling)
@@ -29,28 +22,28 @@ interface EventSubscription {
  * - Event subscription management
  * - Connection health monitoring
  * - Cleanup and resource management
- * 
+ *
  * @example
  * ```typescript
  * // Initialize and connect
  * await socketClient.initialize();
  * await socketClient.connect();
- * 
+ *
  * // Subscribe to events
  * const subscriptionId = socketClient.subscribe('user-message', (data) => {
  *   console.log('Received message:', data);
  * });
- * 
+ *
  * // Emit events
  * socketClient.emit('send-message', { text: 'Hello!' });
- * 
+ *
  * // Unsubscribe
  * socketClient.unsubscribe('user-message', subscriptionId);
- * 
+ *
  * // Check connection status
  * const status = socketClient.getConnectionStatus();
  * console.log('Connected:', status.isConnected);
- * 
+ *
  * // Cleanup when done
  * socketClient.cleanup();
  * ```
@@ -64,7 +57,7 @@ class SocketClient {
   private isInitialized = false;
   private appStateSubscription: any;
 
-  constructor(socketUrl: string = process.env.EXPO_PUBLIC_API_BASE_URL || '') {
+  constructor(socketUrl: string = process.env.EXPO_PUBLIC_API_BASE_URL || "") {
     this.socketUrl = socketUrl;
     this.setupAppStateListener();
   }
@@ -75,7 +68,7 @@ class SocketClient {
   private setupAppStateListener(): void {
     // Handle app state changes for React Native
     this.appStateSubscription = AppState.addEventListener(
-      'change',
+      "change",
       this.handleAppStateChange.bind(this)
     );
   }
@@ -85,15 +78,15 @@ class SocketClient {
    * @param nextAppState - The new app state
    */
   private handleAppStateChange(nextAppState: AppStateStatus): void {
-    if (nextAppState === 'active') {
+    if (nextAppState === "active") {
       // App came to foreground, reconnect if needed
       if (this.socket && !this.socket.connected) {
-        console.log('[SOCKET] App became active, attempting to reconnect...');
+        console.log("[SOCKET] App became active, attempting to reconnect...");
         this.connect();
       }
-    } else if (nextAppState === 'background') {
+    } else if (nextAppState === "background") {
       // App went to background, you might want to disconnect or reduce activity
-      console.log('[SOCKET] App went to background');
+      console.log("[SOCKET] App went to background");
     }
   }
 
@@ -107,7 +100,7 @@ class SocketClient {
     }
 
     if (!this.socketUrl) {
-      console.error('[SOCKET] No socket URL provided');
+      console.error("[SOCKET] No socket URL provided");
       return false;
     }
 
@@ -116,7 +109,7 @@ class SocketClient {
       this.isInitialized = true;
       return true;
     } catch (error) {
-      console.error('[SOCKET] Failed to initialize:', error);
+      console.error("[SOCKET] Failed to initialize:", error);
       return false;
     }
   }
@@ -125,16 +118,18 @@ class SocketClient {
    * Creates the socket instance with authentication and configuration
    */
   private async createSocketInstance(): Promise<void> {
-    console.log('[SOCKET] Creating socket instance with URL:', this.socketUrl);
+    console.log("[SOCKET] Creating socket instance with URL:", this.socketUrl);
 
     try {
-      const tokenData = await storageService.get<TokenData>(StorageKeys.TOKEN_DATA);
+      const tokenData = await storageService.get<TokenData>(
+        StorageKeys.TOKEN_DATA
+      );
       const token = tokenData?.token;
 
       if (token) {
-        console.log('[SOCKET] Auth token available for socket connection');
+        console.log("[SOCKET] Auth token available for socket connection");
       } else {
-        console.warn('[SOCKET] No auth token available for socket connection');
+        console.warn("[SOCKET] No auth token available for socket connection");
       }
 
       // Create socket with configuration optimized for React Native
@@ -146,17 +141,18 @@ class SocketClient {
         reconnectionDelayMax: 5000,
         timeout: 60000,
         forceNew: true,
-        transports: ['websocket', 'polling'], // Websocket first, fallback to polling
-        auth: token ? {
-          token: `Bearer ${token}`,
-          authorization: `Bearer ${token}`,
-        } : {},
+        transports: ["websocket", "polling"], // Websocket first, fallback to polling
+        auth: token
+          ? {
+              token: `Bearer ${token}`,
+              authorization: `Bearer ${token}`,
+            }
+          : {},
       });
 
       this.setupSocketEventHandlers();
-
     } catch (error) {
-      console.error('[SOCKET] Error creating socket instance:', error);
+      console.error("[SOCKET] Error creating socket instance:", error);
       throw error;
     }
   }
@@ -169,23 +165,25 @@ class SocketClient {
 
     this.socket.on(SocketEvents.CONNECT, () => {
       this.reconnectAttempts = 0;
-      console.log('[SOCKET] Connected successfully ✅');
-      console.log('[SOCKET] Socket ID:', this.socket!.id);
+      console.log("[SOCKET] Connected successfully ✅");
+      console.log("[SOCKET] Socket ID:", this.socket!.id);
     });
 
     this.socket.on(SocketEvents.DISCONNECT, (reason: string) => {
-      console.warn('[SOCKET] Disconnected ❌ Reason:', reason);
+      console.warn("[SOCKET] Disconnected ❌ Reason:", reason);
 
-      if (reason === 'io server disconnect') {
-        console.warn('[SOCKET] Server disconnected, attempting to reconnect...');
+      if (reason === "io server disconnect") {
+        console.warn(
+          "[SOCKET] Server disconnected, attempting to reconnect..."
+        );
         this.connect();
       }
     });
 
     this.socket.on(SocketEvents.CONNECT_ERROR, (error: any) => {
-      console.error('[SOCKET] Connection error ⚠️:', error);
-      
-      console.warn('[SOCKET] Error details:', {
+      console.error("[SOCKET] Connection error ⚠️:", error);
+
+      console.warn("[SOCKET] Error details:", {
         name: error.name,
         message: error.message,
         type: error.type,
@@ -194,8 +192,10 @@ class SocketClient {
 
     this.socket.on(SocketEvents.RECONNECT_ATTEMPT, (attempt: number) => {
       this.reconnectAttempts = attempt;
-      console.warn(`[SOCKET] Attempting to reconnect (${attempt}/${this.maxReconnectAttempts})...`);
-      
+      console.warn(
+        `[SOCKET] Attempting to reconnect (${attempt}/${this.maxReconnectAttempts})...`
+      );
+
       // Update auth token on each reconnect attempt
       this.updateAuthToken();
     });
@@ -206,17 +206,17 @@ class SocketClient {
     });
 
     this.socket.on(SocketEvents.RECONNECT_ERROR, (error: any) => {
-      console.error('[SOCKET] Reconnection error ⚠️:', error);
+      console.error("[SOCKET] Reconnection error ⚠️:", error);
     });
 
     this.socket.on(SocketEvents.RECONNECT_FAILED, () => {
-      console.error('[SOCKET] Failed to reconnect after all attempts ❌');
+      console.error("[SOCKET] Failed to reconnect after all attempts ❌");
     });
 
     // Handle ping-pong for connection health
-    this.socket.on('ping-check', (callback: () => void) => {
-      console.log('[SOCKET] Ping check received');
-      if (callback && typeof callback === 'function') {
+    this.socket.on("ping-check", (callback: () => void) => {
+      console.log("[SOCKET] Ping check received");
+      if (callback && typeof callback === "function") {
         callback();
       }
     });
@@ -227,16 +227,18 @@ class SocketClient {
    */
   private async updateAuthToken(): Promise<void> {
     try {
-      const tokenData = await storageService.get<TokenData>(StorageKeys.TOKEN_DATA);
+      const tokenData = await storageService.get<TokenData>(
+        StorageKeys.TOKEN_DATA
+      );
       if (tokenData?.token && this.socket) {
-        this.socket.auth = { 
+        this.socket.auth = {
           token: `Bearer ${tokenData.token}`,
           authorization: `Bearer ${tokenData.token}`,
         };
-        console.log('[SOCKET] Auth token updated for reconnection');
+        console.log("[SOCKET] Auth token updated for reconnection");
       }
     } catch (error) {
-      console.error('[SOCKET] Failed to update auth token:', error);
+      console.error("[SOCKET] Failed to update auth token:", error);
     }
   }
 
@@ -253,34 +255,34 @@ class SocketClient {
     }
 
     if (!this.socket) {
-      console.error('[SOCKET] No socket instance available');
+      console.error("[SOCKET] No socket instance available");
       return false;
     }
 
     if (this.socket.connected) {
-      console.log('[SOCKET] Already connected');
+      console.log("[SOCKET] Already connected");
       return true;
     }
 
     return new Promise((resolve) => {
       const connectTimeout = setTimeout(() => {
-        console.warn('[SOCKET] Connection timeout');
+        console.warn("[SOCKET] Connection timeout");
         resolve(false);
       }, 10000);
 
       this.socket!.once(SocketEvents.CONNECT, () => {
         clearTimeout(connectTimeout);
-        console.log('[SOCKET] Connected successfully');
+        console.log("[SOCKET] Connected successfully");
         resolve(true);
       });
 
       this.socket!.once(SocketEvents.CONNECT_ERROR, (error: any) => {
         clearTimeout(connectTimeout);
-        console.error('[SOCKET] Connection failed:', error);
+        console.error("[SOCKET] Connection failed:", error);
         resolve(false);
       });
 
-      console.log('[SOCKET] Attempting to connect...');
+      console.log("[SOCKET] Attempting to connect...");
       this.socket!.connect();
     });
   }
@@ -290,7 +292,7 @@ class SocketClient {
    */
   disconnect(): void {
     if (this.socket && this.socket.connected) {
-      console.log('[SOCKET] Disconnecting...');
+      console.log("[SOCKET] Disconnecting...");
       this.socket.disconnect();
     }
   }
@@ -303,15 +305,15 @@ class SocketClient {
    */
   subscribe(event: string, handler: SocketEventHandler): string {
     if (!this.socket) {
-      console.error('[SOCKET] Cannot subscribe - no socket instance');
-      return '';
+      console.error("[SOCKET] Cannot subscribe - no socket instance");
+      return "";
     }
 
     const subscriptionId = `${event}_${Date.now()}_${Math.random()}`;
     const subscription: EventSubscription = {
       event,
       handler,
-      id: subscriptionId
+      id: subscriptionId,
     };
 
     if (!this.subscriptions.has(event)) {
@@ -319,7 +321,7 @@ class SocketClient {
     }
 
     this.subscriptions.get(event)!.push(subscription);
-    
+
     console.log(`[SOCKET] Subscribing to event: ${event}`);
     this.socket.on(event, handler);
 
@@ -333,7 +335,7 @@ class SocketClient {
    */
   unsubscribe(event: string, subscriptionId?: string): void {
     if (!this.socket) {
-      console.error('[SOCKET] Cannot unsubscribe - no socket instance');
+      console.error("[SOCKET] Cannot unsubscribe - no socket instance");
       return;
     }
 
@@ -344,25 +346,31 @@ class SocketClient {
 
     if (subscriptionId) {
       // Remove specific subscription
-      const subscriptionIndex = eventSubscriptions.findIndex(sub => sub.id === subscriptionId);
+      const subscriptionIndex = eventSubscriptions.findIndex(
+        (sub) => sub.id === subscriptionId
+      );
       if (subscriptionIndex !== -1) {
         const subscription = eventSubscriptions[subscriptionIndex];
         this.socket.off(event, subscription.handler);
         eventSubscriptions.splice(subscriptionIndex, 1);
-        
+
         if (eventSubscriptions.length === 0) {
           this.subscriptions.delete(event);
         }
-        
-        console.log(`[SOCKET] Unsubscribed from event: ${event} (ID: ${subscriptionId})`);
+
+        console.log(
+          `[SOCKET] Unsubscribed from event: ${event} (ID: ${subscriptionId})`
+        );
       }
     } else {
       // Remove all subscriptions for this event
-      eventSubscriptions.forEach(subscription => {
+      eventSubscriptions.forEach((subscription) => {
         this.socket!.off(event, subscription.handler);
       });
       this.subscriptions.delete(event);
-      console.log(`[SOCKET] Unsubscribed from all handlers for event: ${event}`);
+      console.log(
+        `[SOCKET] Unsubscribed from all handlers for event: ${event}`
+      );
     }
   }
 
@@ -373,12 +381,12 @@ class SocketClient {
    */
   emit(event: string, data?: any): void {
     if (!this.socket) {
-      console.error('[SOCKET] Cannot emit - no socket instance');
+      console.error("[SOCKET] Cannot emit - no socket instance");
       return;
     }
 
     if (!this.socket.connected) {
-      console.warn('[SOCKET] Cannot emit - socket not connected');
+      console.warn("[SOCKET] Cannot emit - socket not connected");
       return;
     }
 
@@ -418,17 +426,17 @@ class SocketClient {
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
     }
-    
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    
+
     this.subscriptions.clear();
     this.isInitialized = false;
     this.reconnectAttempts = 0;
-    
-    console.log('[SOCKET] Cleanup completed');
+
+    console.log("[SOCKET] Cleanup completed");
   }
 
   /**
@@ -437,7 +445,7 @@ class SocketClient {
    */
   updateSocketUrl(newUrl: string): void {
     this.socketUrl = newUrl;
-    console.log('[SOCKET] Socket URL updated:', newUrl);
+    console.log("[SOCKET] Socket URL updated:", newUrl);
   }
 
   /**
@@ -454,7 +462,7 @@ class SocketClient {
       isConnected: this.isConnected(),
       socketId: this.getSocketId(),
       reconnectAttempts: this.reconnectAttempts,
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
     };
   }
 }

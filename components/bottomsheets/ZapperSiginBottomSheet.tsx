@@ -1,4 +1,5 @@
 import { zapLogoWithNameDark } from "@/assets/images";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -30,11 +31,13 @@ export default function ZapperSiginBottomSheet({
   onContinue?: () => void;
 }) {
   const { colors } = useTheme<Theme>();
+  const { authEmail } = useKyc();
   const confettiRef = useRef<ConfettiMethods>(null);
   const [currentStep, setCurrentStep] = useState<ScreenStep>("login");
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [isResending, setIsResending] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     confettiRef.current?.pause();
@@ -42,18 +45,14 @@ export default function ZapperSiginBottomSheet({
 
   // Screen transition function
   const transitionToNextScreen = (nextStep: ScreenStep) => {
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Start from the right (positive translateX value)
+    slideAnim.setValue(300);
+
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
 
     setCurrentStep(nextStep);
   };
@@ -81,6 +80,21 @@ export default function ZapperSiginBottomSheet({
     onContinue?.();
   };
 
+  const handleResendEmail = async () => {
+    if (email && !isResending) {
+      setIsResending(true);
+      try {
+        await authEmail({ email });
+        console.log("Resend email successful");
+      } catch (error) {
+        console.error("Resend email error:", error);
+        // Error handling is already done by the API service with toast notifications
+      } finally {
+        setIsResending(false);
+      }
+    }
+  };
+
   // Render current screen
   const renderCurrentScreen = () => {
     switch (currentStep) {
@@ -91,7 +105,8 @@ export default function ZapperSiginBottomSheet({
           <EmailVerification
             email={email}
             onVerify={handleEmailVerificationSuccess}
-            onResend={() => console.log("Resend email")}
+            onResend={handleResendEmail}
+            isLoading={isResending}
           />
         );
       case "enterUsername":
@@ -131,7 +146,12 @@ export default function ZapperSiginBottomSheet({
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />
-        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+        <Animated.View
+          style={{
+            transform: [{ translateX: slideAnim }],
+            flex: 1,
+          }}
+        >
           {renderCurrentScreen()}
         </Animated.View>
       </AnimatedGradientBottomSheet>
