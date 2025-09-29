@@ -1,5 +1,6 @@
 import {
   ThemedBookIcon,
+  ThemedFaceIDIcon,
   ThemedGiftFill3Icon,
   ThemedHeatIcon,
   ThemedHelpIcon,
@@ -7,7 +8,6 @@ import {
   ThemedSettingsFillIcon,
   ThemedShieldFillIcon,
   ThemedStarFillIcon,
-  ThemedWalletFilledIcon,
 } from "@/assets/svg/wallet-icons-components";
 import {
   selectWalletConnected,
@@ -17,14 +17,14 @@ import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { Link } from "iconsax-react-nativejs";
 import React from "react";
-import { Image } from "react-native";
+import { Image, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
@@ -38,19 +38,19 @@ const Sidebar = () => {
 
   // adding the data hear
   const SIDEBAR_DATA: ISidebarItem[] = [
-    {
-      icon: (
-        <ThemedWalletFilledIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Manage wallet",
-      link: "/dashboard/home/wallets",
-      isActive: false,
-    },
+    // {
+    //   icon: (
+    //     <ThemedWalletFilledIcon
+    //       width={20}
+    //       height={20}
+    //       darkModeColor={theme.colors.bodyTextColor}
+    //       lightModeColor={theme.colors.bodyTextColor}
+    //     />
+    //   ),
+    //   title: "Manage wallet",
+    //   link: "/dashboard/home/wallets",
+    //   isActive: false,
+    // },
     {
       icon: (
         <ThemedResolveChatIcon
@@ -99,7 +99,7 @@ const Sidebar = () => {
           lightModeColor={theme.colors.tabBarActiveColor}
         />
       ),
-      title: "Refer & Earn",
+      title: "Affilates & Referrals",
       link: "/dashboard/home/reward",
       isActive: true,
     },
@@ -116,6 +116,49 @@ const Sidebar = () => {
       link: "/dashboard/home/preferences",
       isActive: false,
     },
+  ];
+
+  const SIDEBAR_SECURITY_DATA: ISidebarItem[] = [
+    {
+      icon: (
+        <ThemedFaceIDIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Login with FaceID",
+      link: "/dashboard/home/about",
+      isActive: false,
+      disablClick: true,
+      trailingItem: (
+        <Switch
+          value={isConnect}
+          onValueChange={() => handleConnect()}
+          trackColor={{
+            false: theme.colors.primaryColor,
+            true: theme.colors.primaryColor,
+          }}
+        />
+      ),
+    },
+    {
+      icon: (
+        <ThemedBookIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Change Zap PIN",
+      link: "/dashboard/home/about",
+      isActive: false,
+    },
+  ];
+
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
     {
       icon: (
         <ThemedShieldFillIcon
@@ -125,7 +168,7 @@ const Sidebar = () => {
           lightModeColor={theme.colors.bodyTextColor}
         />
       ),
-      title: "Security",
+      title: "Terms of Service",
       link: "/dashboard/home/security",
       isActive: false,
     },
@@ -156,6 +199,7 @@ const Sidebar = () => {
       isActive: false,
     },
   ];
+
   return (
     <Box flex={1} bg="mainBackgroundColor">
       <LinearGradient
@@ -186,10 +230,24 @@ const Sidebar = () => {
             bg="secondaryBackgroundColor"
           >
             {isConnect && (
-              <Image
-                source={require("@/assets/images/avatar.png")}
+              <Pressable
+                onPress={() =>
+                  router.push("/dashboard/home/wallet-home/more/profile")
+                }
                 style={{ width: 40, height: 40, borderRadius: 20 }}
-              />
+                android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {({ pressed }) => (
+                  <Image
+                    source={require("@/assets/images/avatar.png")}
+                    style={[
+                      { width: 40, height: 40, borderRadius: 20 },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  />
+                )}
+              </Pressable>
             )}
             {!isConnect && (
               <Image
@@ -232,7 +290,7 @@ const Sidebar = () => {
         </Box>
       </LinearGradient>
       <Box flex={1}>
-        <ScrollView>
+        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
           <Box
             width="100%"
             height={70}
@@ -249,21 +307,83 @@ const Sidebar = () => {
                 Provide easy use for beginners
               </CustomText>
             </Box>
-            <Switch
-              value={isConnect}
-              onValueChange={() => handleConnect()}
-              trackColor={{
-                false: theme.colors.primaryColor,
-                true: theme.colors.primaryColor,
-              }}
-            />
+            <Box justifyContent="center">
+              <Switch
+                value={isConnect}
+                onValueChange={() => handleConnect()}
+                trackColor={{
+                  false: theme.colors.primaryColor,
+                  true: theme.colors.primaryColor,
+                }}
+              />
+            </Box>
           </Box>
-          {SIDEBAR_DATA.map((item, index) => (
-            <SidebarItemCard key={index.toString()} {...item} />
-          ))}
+          <Box paddingHorizontal="m">
+            <Box
+              width={"100%"}
+              height={"auto"}
+              p="s"
+              bg="secondaryBackgroundColor"
+              borderWidth={1}
+              borderColor="borderColor"
+              borderRadius={12}
+            >
+              {SIDEBAR_DATA.map((item, index) => (
+                <SidebarItemCard key={index.toString()} {...item} />
+              ))}
+            </Box>
+          </Box>
+
+          <Box paddingHorizontal="m" marginTop="l">
+            <CustomText
+              variant="bodySubheader"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="m"
+            >
+              SECURITY
+            </CustomText>
+            <Box
+              width={"100%"}
+              height={"auto"}
+              p="s"
+              bg="secondaryBackgroundColor"
+              borderWidth={1}
+              borderColor="borderColor"
+              borderRadius={12}
+            >
+              {SIDEBAR_SECURITY_DATA.map((item, index) => (
+                <SidebarItemCard key={index.toString()} {...item} />
+              ))}
+            </Box>
+          </Box>
+
+          <Box paddingHorizontal="m" marginTop="l">
+            <CustomText
+              variant="bodySubheader"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="m"
+            >
+              ABOUT ZAP
+            </CustomText>
+            <Box
+              width={"100%"}
+              height={"auto"}
+              p="s"
+              bg="secondaryBackgroundColor"
+              borderWidth={1}
+              borderColor="borderColor"
+              borderRadius={12}
+            >
+              {SIDEBAR_ABOUT_DATA.map((item, index) => (
+                <SidebarItemCard key={index.toString()} {...item} />
+              ))}
+            </Box>
+          </Box>
         </ScrollView>
       </Box>
-      <Box
+      {/* <Box
         width="100%"
         height={170}
         borderTopWidth={1}
@@ -279,7 +399,7 @@ const Sidebar = () => {
           <LearnWithZapCards />
           <LearnWithZapCards />
         </ScrollView>
-      </Box>
+      </Box> */}
     </Box>
   );
 };

@@ -3,7 +3,7 @@ import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
-import { darkTheme } from "@/theme";
+import theme, { darkTheme } from "@/theme";
 import { ThemeProvider } from "@shopify/restyle";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
@@ -19,7 +19,6 @@ import {
   useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 
@@ -122,31 +121,27 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <KeyboardProvider>
-        <View style={{ flex: 1, position: "relative" }}>
-          <GestureHandlerRootView>
-            <Provider store={store}>
-              <ThemeProvider
-                theme={colorTheme === "dark" ? darkTheme : darkTheme}
-              >
-                <QueryClientProvider client={queryClient}>
-                  <BottomSheetProvider>
-                    <StatusBar
-                      barStyle={
-                        colorTheme === "dark" ? "light-content" : "dark-content"
-                      }
-                    />
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="index" options={{ title: "Home" }} />
-                    </Stack>
-                    <BottomSheetManager />
-                  </BottomSheetProvider>
-                </QueryClientProvider>
-              </ThemeProvider>
-            </Provider>
-          </GestureHandlerRootView>
-        </View>
-      </KeyboardProvider>
+      <View style={{ flex: 1, position: "relative" }}>
+        <GestureHandlerRootView>
+          <Provider store={store}>
+            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
+              <QueryClientProvider client={queryClient}>
+                <BottomSheetProvider>
+                  <StatusBar
+                    barStyle={
+                      colorTheme === "dark" ? "light-content" : "dark-content"
+                    }
+                  />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" options={{ title: "Home" }} />
+                  </Stack>
+                  <BottomSheetManager />
+                </BottomSheetProvider>
+              </QueryClientProvider>
+            </ThemeProvider>
+          </Provider>
+        </GestureHandlerRootView>
+      </View>
     </SafeAreaProvider>
   );
 }
