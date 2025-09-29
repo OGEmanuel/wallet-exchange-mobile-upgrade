@@ -5,5 +5,4 @@ export interface ISidebarItem {
   isActive: boolean;
   trailingItem?: React.ReactNode;
   disablClick?: boolean;
-  onPress?: () => void;
 }

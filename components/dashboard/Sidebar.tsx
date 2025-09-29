@@ -1,6 +1,5 @@
 import {
   ThemedBookIcon,
-  ThemedChartIcon,
   ThemedFaceIDIcon,
   ThemedGiftFill3Icon,
   ThemedHeatIcon,
@@ -10,7 +9,6 @@ import {
   ThemedShieldFillIcon,
   ThemedStarFillIcon,
 } from "@/assets/svg/wallet-icons-components";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import {
   selectWalletConnected,
   setWalletConnected,
@@ -25,7 +23,6 @@ import React from "react";
 import { Image, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
-import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 import SidebarItemCard from "./SidebarItemCard";
@@ -34,7 +31,6 @@ const Sidebar = () => {
   const isConnect = useSelector(selectWalletConnected);
   const dispatch = useDispatch();
   const theme = useTheme<Theme>();
-  const { changePinRef } = useBottomSheetRefs();
 
   const handleConnect = () => {
     dispatch(setWalletConnected(!isConnect));
@@ -92,19 +88,6 @@ const Sidebar = () => {
       ),
       title: "Address book",
       link: "/dashboard/home/address-book",
-      isActive: false,
-    },
-    {
-      icon: (
-        <ThemedChartIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Markets",
-      link: "/dashboard/home/wallet-home/cards",
       isActive: false,
     },
     {
@@ -172,7 +155,6 @@ const Sidebar = () => {
       title: "Change Zap PIN",
       link: "/dashboard/home/about",
       isActive: false,
-      onPress: () => changePinRef.current?.snapToIndex(1),
     },
   ];
 
@@ -200,7 +182,7 @@ const Sidebar = () => {
         />
       ),
       title: "Help & Support",
-      link: "/dashboard/home/wallet-home/more/help",
+      link: "/dashboard/home/help",
       isActive: false,
     },
     {
@@ -213,7 +195,7 @@ const Sidebar = () => {
         />
       ),
       title: "About Zap Wallet",
-      link: "/dashboard/home/wallet-home/more/about",
+      link: "/dashboard/home/about",
       isActive: false,
     },
   ];
@@ -418,7 +400,6 @@ const Sidebar = () => {
           <LearnWithZapCards />
         </ScrollView>
       </Box> */}
-      <ChangePinBottomSheet ref={changePinRef} />
     </Box>
   );
 };
