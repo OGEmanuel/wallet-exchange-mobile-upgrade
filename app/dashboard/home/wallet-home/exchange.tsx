@@ -1,4 +1,3 @@
-import ActivityTabar from "@/components/dashboard/ActivityTabar";
 import SwapButton from "@/components/dashboard/SwapButton";
 import SwapDetailsCard from "@/components/dashboard/SwapDetailsCard";
 import TokenInputCard from "@/components/dashboard/TokenInputCard";
@@ -7,23 +6,22 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
+import React, { useState } from "react";
 
-const Swap = () => {
+const Exchange = () => {
   const theme = useTheme<Theme>();
-  const [activeTab, setActiveTab] = React.useState<"EXCHANGE" | "WALLET">(
-    "EXCHANGE"
-  );
-  const [fromAmount, setFromAmount] = React.useState("0.009");
-  const [toAmount, setToAmount] = React.useState("30,027,060.88");
-  const [fromToken, setFromToken] = React.useState("BUSD");
-  const [toToken, setToToken] = React.useState("BUSD");
+  const [fromAmount, setFromAmount] = useState("0.009");
+  const [toAmount, setToAmount] = useState("30,027,060.88");
+  const [fromToken, setFromToken] = useState("BUSD");
+  const [toToken, setToToken] = useState("BUSD");
 
   const handleFromTokenPress = () => {
+    // Handle token selection for from token
     console.log("Select from token");
   };
 
   const handleToTokenPress = () => {
+    // Handle token selection for to token
     console.log("Select to token");
   };
 
@@ -32,20 +30,21 @@ const Swap = () => {
   };
 
   const handleSwapPress = () => {
+    // Handle swap action
     console.log("Swap tokens");
   };
 
   const handleContinuePress = () => {
-    console.log("Continue with transaction");
+    // Handle continue action
+    console.log("Continue with exchange");
   };
 
   return (
     <PageWrapper>
       <Box flex={1} p="m">
         <CustomText variant="subheader" textAlign="center" mb="m">
-          Swap
+          Exchange
         </CustomText>
-        <ActivityTabar activeTab={activeTab} onPress={setActiveTab} />
 
         <Box marginBottom="s" mt="m" position="relative">
           <TokenInputCard
@@ -70,7 +69,7 @@ const Swap = () => {
         </Box>
 
         <SwapDetailsCard
-          provider={activeTab === "EXCHANGE" ? "Zap Exchange" : "Zap Wallet"}
+          provider="Zap Exchange"
           zapFee="$0.009"
           rate="1BNB = 500 USDC"
           minimumReceived="327,060.88 NGN"
@@ -91,4 +90,4 @@ const Swap = () => {
   );
 };
 
-export default Swap;
+export default Exchange;

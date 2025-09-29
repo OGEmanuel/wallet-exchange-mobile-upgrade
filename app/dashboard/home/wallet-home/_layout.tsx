@@ -127,6 +127,60 @@ const _layout = () => {
       />
 
       <Tabs.Screen
+        name="exchange"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon
+              focused={focused}
+              label="Exchange"
+              icon={
+                <ThemedSwap1Icon
+                  darkModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.bodyTextColor
+                  }
+                  lightModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.bodyTextColor
+                  }
+                />
+              }
+            />
+          ),
+          tabBarShowLabel: false,
+        }}
+      />
+
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon
+              focused={focused}
+              label="Wallet"
+              icon={
+                <ThemedWalletFilledIcon
+                  darkModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.bodyTextColor
+                  }
+                  lightModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.bodyTextColor
+                  }
+                />
+              }
+            />
+          ),
+          tabBarShowLabel: false,
+        }}
+      />
+
+      <Tabs.Screen
         name="swap"
         options={{
           tabBarIcon: ({ focused }) => (
