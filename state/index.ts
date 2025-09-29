@@ -1,4 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
+import swapReducer from "../src/modules/swap/presentation/state/swap-slice";
 import activityPageReducer from "./reducers/activityPage.reducer";
 import currentPageReducer from "./reducers/currentPage.reducer";
 import kycReducer from "./reducers/kyc-reducer";
@@ -14,6 +15,7 @@ export const store = configureStore({
     activityPage: activityPageReducer,
     sendPage: sendPageSlice.reducer,
     recievePage: recievePageSlice.reducer,
+    swap: swapReducer,
   },
 });
 
