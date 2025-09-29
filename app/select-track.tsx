@@ -1,7 +1,5 @@
-import { LoginToZap } from "@/components";
+import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
-import PhoneVerificationBottomSheet from "@/components/bottomsheets/KYCBottomSheet";
-import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
 import {
   Box,
   CustomButton,
@@ -140,20 +138,20 @@ const SelectTrack = () => {
         />
       ),
       onPress: () => {
-        // zapperBottomSheetRef.current?.snapToIndex(0);
-        showBottomSheet({
-          component: <LoginToZap />,
-          props: {
-            snapPoints: ["80%"],
-          },
-        });
+        zapperBottomSheetRef.current?.snapToIndex(0);
+        // showBottomSheet({
+        //   component: <LoginToZap />,
+        //   props: {
+        //     snapPoints: ["90%"],
+        //   },
+        // });
       },
     },
   ];
   return (
     <Wrapper>
       <Box padding="m">
-        <CustomText variant="bodyMedium" fontSize={32}>
+        <CustomText variant="header" fontSize={32}>
           Pick a start
         </CustomText>
         <ScrollView contentContainerStyle={{ paddingTop: 40 }}>
@@ -170,7 +168,7 @@ const SelectTrack = () => {
           phoneVerificationBottomSheetRef.current?.snapToIndex(0);
         }}
       />
-      <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} />
+      {/* <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} /> */}
     </Wrapper>
   );
 };

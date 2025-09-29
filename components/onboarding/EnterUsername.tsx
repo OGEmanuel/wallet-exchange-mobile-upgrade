@@ -5,7 +5,13 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Box, CustomButton, CustomText } from "../general";
 import InfoBox from "../general/InfoBox";
 
-export default function EnterUsername() {
+interface EnterUsernameProps {
+  onUsernameSuccess?: (username: string) => void;
+}
+
+export default function EnterUsername({
+  onUsernameSuccess,
+}: EnterUsernameProps) {
   const theme = useTheme<Theme>();
   const [username, setUsername] = useState("");
 
@@ -73,7 +79,7 @@ export default function EnterUsername() {
         />
         <CustomButton
           text="Continue"
-          onPress={() => {}}
+          onPress={() => onUsernameSuccess?.(username)}
           disabled={!username || false}
           isLoading={false}
           width="100%"

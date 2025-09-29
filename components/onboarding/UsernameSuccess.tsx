@@ -6,11 +6,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, Text, View } from "react-native";
 import { ConfettiMethods } from "react-native-fast-confetti";
 
+interface UsernameSuccessProps {
+  confettiRef?: React.RefObject<ConfettiMethods | null>;
+  onComplete?: () => void;
+}
+
 export default function UsernameSuccess({
   confettiRef,
-}: {
-  confettiRef?: React.RefObject<ConfettiMethods | null>;
-}) {
+  onComplete,
+}: UsernameSuccessProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
   const [hasConfettiRun, setHasConfettiRun] = useState(false);
 
@@ -32,8 +36,13 @@ export default function UsernameSuccess({
       toValue: 1,
       duration: 2000,
       useNativeDriver: true,
-    }).start();
-  }, []);
+    }).start(() => {
+      // Auto-trigger completion after animation
+      setTimeout(() => {
+        onComplete?.();
+      }, 1000);
+    });
+  }, [onComplete]);
 
   const theme = useTheme<Theme>();
   const gradientColors = [theme.colors.primaryColor, "#1B1251"];

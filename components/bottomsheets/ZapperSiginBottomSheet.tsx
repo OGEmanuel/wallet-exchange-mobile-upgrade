@@ -2,13 +2,25 @@ import { zapLogoWithNameDark } from "@/assets/images";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { useEffect, useRef } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Image, StyleSheet, View } from "react-native";
 import { Confetti, ConfettiMethods } from "react-native-fast-confetti";
+import EmailVerification from "../onboarding/EmailVerification";
+import EnterUsername from "../onboarding/EnterUsername";
+import LoginToZap from "../onboarding/LoginToZap";
+import UsernameSuccess from "../onboarding/UsernameSuccess";
 import VerifyYourIdentity from "../onboarding/VerifyYourIdentity";
 import AnimatedGradientBottomSheet, {
   AnimatedGradientBottomSheetRef,
 } from "./AnimatedGradientBottomSheet";
+
+// Define the screen steps
+type ScreenStep =
+  | "login"
+  | "emailVerification"
+  | "enterUsername"
+  | "usernameSuccess"
+  | "verifyIdentity";
 
 export default function ZapperSiginBottomSheet({
   ref,
@@ -19,10 +31,84 @@ export default function ZapperSiginBottomSheet({
 }) {
   const { colors } = useTheme<Theme>();
   const confettiRef = useRef<ConfettiMethods>(null);
+  const [currentStep, setCurrentStep] = useState<ScreenStep>("login");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     confettiRef.current?.pause();
   }, []);
+
+  // Screen transition function
+  const transitionToNextScreen = (nextStep: ScreenStep) => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setCurrentStep(nextStep);
+  };
+
+  // Navigation handlers
+  const handleLoginSuccess = (userEmail: string) => {
+    setEmail(userEmail);
+    transitionToNextScreen("emailVerification");
+  };
+
+  const handleEmailVerificationSuccess = () => {
+    transitionToNextScreen("enterUsername");
+  };
+
+  const handleUsernameSuccess = (userUsername: string) => {
+    setUsername(userUsername);
+    transitionToNextScreen("usernameSuccess");
+  };
+
+  const handleUsernameSuccessComplete = () => {
+    transitionToNextScreen("verifyIdentity");
+  };
+
+  const handleVerifyIdentityComplete = () => {
+    onContinue?.();
+  };
+
+  // Render current screen
+  const renderCurrentScreen = () => {
+    switch (currentStep) {
+      case "login":
+        return <LoginToZap onLoginSuccess={handleLoginSuccess} />;
+      case "emailVerification":
+        return (
+          <EmailVerification
+            email={email}
+            onVerify={handleEmailVerificationSuccess}
+            onResend={() => console.log("Resend email")}
+          />
+        );
+      case "enterUsername":
+        return <EnterUsername onUsernameSuccess={handleUsernameSuccess} />;
+      case "usernameSuccess":
+        return (
+          <UsernameSuccess
+            confettiRef={confettiRef}
+            onComplete={handleUsernameSuccessComplete}
+          />
+        );
+      case "verifyIdentity":
+        return <VerifyYourIdentity onContinue={handleVerifyIdentityComplete} />;
+      default:
+        return <LoginToZap onLoginSuccess={handleLoginSuccess} />;
+    }
+  };
 
   return (
     <>
@@ -36,8 +122,6 @@ export default function ZapperSiginBottomSheet({
           colors.primaryColor,
           colors.mainBackgroundColor,
           colors.mainBackgroundColor,
-          colors.mainBackgroundColor,
-          colors.mainBackgroundColor,
         ]}
       >
         <View style={styles.handle} />
@@ -47,11 +131,9 @@ export default function ZapperSiginBottomSheet({
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />
-        {/* <LoginToZap /> */}
-        {/* <EmailVerification /> */}
-        {/* <EnterUsername /> */}
-        {/* <UsernameSuccess confettiRef={confettiRef} /> */}
-        <VerifyYourIdentity onContinue={onContinue} />
+        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+          {renderCurrentScreen()}
+        </Animated.View>
       </AnimatedGradientBottomSheet>
     </>
   );

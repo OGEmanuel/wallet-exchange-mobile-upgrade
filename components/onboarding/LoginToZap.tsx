@@ -7,22 +7,32 @@ import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { CustomText } from "../general";
 import CustomButton from "../general/CustomButton";
 
-export default function LoginToZap() {
+interface LoginToZapProps {
+  onLoginSuccess?: (email: string) => void;
+}
+
+export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const theme = useTheme<Theme>();
 
   const { authEmail } = useKyc();
 
   const handleLogin = () => {
-    authEmail({ email }).then((res) => {
-      console.log(res);
-      // navigate to email verification
-    }).catch((err) => {
-      // If you need to do anything with error.
-      // But there's already a default toast mechanism for each API call
-    }).finally(() => {
-      // End your loading state
-    });
+    setLoading(true);
+    authEmail({ email })
+      .then((res) => {
+        console.log(res);
+        // navigate to email verification
+        onLoginSuccess?.(email);
+      })
+      .catch((err) => {
+        // If you need to do anything with error.
+        // But there's already a default toast mechanism for each API call
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   return (
@@ -50,11 +60,11 @@ export default function LoginToZap() {
           width={"100%"}
           height={56}
           borderRadius={56}
-          text="Continue"
+          text={loading ? "Loading..." : "Continue"}
           bgColor={theme.colors.primaryColor}
           color={theme.colors.white}
           onPress={handleLogin}
-          disabled={email.length < 1}
+          disabled={email.length < 1 || loading}
           disabledColor={theme.colors.borderColor}
         />
       </View>
