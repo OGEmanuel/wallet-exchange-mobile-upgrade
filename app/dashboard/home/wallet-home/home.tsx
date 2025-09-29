@@ -21,14 +21,18 @@ import {
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
 import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
+import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
 import AssetsSection from "@/components/dashboard/AssetsSection";
-import { router } from "expo-router";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
   const OS = Platform.OS;
 
   const theme = useTheme<Theme>();
+  const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
+    useBottomSheetRefs();
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   return (
@@ -109,7 +113,7 @@ const Home = () => {
               />
             }
             title="Recieve"
-            action={() => setIsOpen(true)}
+            action={() => recieveTokenRef.current?.snapToIndex(1)}
           />
           <Box width={20} />
           <DashboardActionItem
@@ -120,7 +124,7 @@ const Home = () => {
               />
             }
             title="Send"
-            action={() => router.push("/dashboard/home/send-token")}
+            action={() => bottomsheetRef.current?.snapToIndex(0)}
           />
           <Box width={20} />
           <DashboardActionItem
@@ -172,6 +176,8 @@ const Home = () => {
           <CustomText>Recieve Tokens</CustomText>
         </Box>
       </AppBottomSheet>
+      <SelectTokenBottomSheet ref={bottomsheetRef} />
+      <SelectUserTokens ref={recieveTokenRef} />
     </PageWrapper>
   );
 };

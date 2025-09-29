@@ -1,14 +1,3 @@
-import { View, Text, Image } from "react-native";
-import React from "react";
-import Box from "../general/Box";
-import { LinearGradient } from "expo-linear-gradient";
-import { ScrollView, Switch } from "react-native-gesture-handler";
-import CustomText from "../general/CustomText";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  selectWalletConnected,
-  setWalletConnected,
-} from "@/state/reducers/wallet.reducer";
 import {
   ThemedBookIcon,
   ThemedGiftFill3Icon,
@@ -20,11 +9,22 @@ import {
   ThemedStarFillIcon,
   ThemedWalletFilledIcon,
 } from "@/assets/svg/wallet-icons-components";
-import { useTheme } from "@shopify/restyle";
+import {
+  selectWalletConnected,
+  setWalletConnected,
+} from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
-import LearnWithZapCards from "./LearnWithZapCards";
-import { Link, Link2, Link21 } from "iconsax-react-nativejs";
 import { ISidebarItem } from "@/types/SidebarItem";
+import { useTheme } from "@shopify/restyle";
+import { LinearGradient } from "expo-linear-gradient";
+import { Link } from "iconsax-react-nativejs";
+import React from "react";
+import { Image } from "react-native";
+import { ScrollView, Switch } from "react-native-gesture-handler";
+import { useDispatch, useSelector } from "react-redux";
+import Box from "../general/Box";
+import CustomText from "../general/CustomText";
+import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
@@ -87,7 +87,7 @@ const Sidebar = () => {
         />
       ),
       title: "Address book",
-      link: "/dashboard/home/banks",
+      link: "/dashboard/home/address-book",
       isActive: false,
     },
     {

@@ -1,6 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { RootState } from "..";
+import { createSlice } from "@reduxjs/toolkit";
+import { AppRootState } from "..";
 
 interface State {
   showFilter: boolean;
@@ -22,7 +22,7 @@ export const activityPageSlice = createSlice({
 
 export const { setShowFilter } = activityPageSlice.actions;
 // select states
-export const selectShowFilter = (state: RootState) =>
+export const selectShowFilter = (state: AppRootState) =>
   state.activityPage.showFilter;
 
 export default activityPageSlice.reducer;

@@ -1,6 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { RootState } from "..";
+import { createSlice } from "@reduxjs/toolkit";
+import { AppRootState } from "..";
 
 interface State {
   walletConnected: boolean;
@@ -22,7 +22,7 @@ export const walletConnectedSlice = createSlice({
 
 export const { setWalletConnected } = walletConnectedSlice.actions;
 
-export const selectWalletConnected = (state: RootState) =>
+export const selectWalletConnected = (state: AppRootState) =>
   state.walletConnected.walletConnected;
 
 export default walletConnectedSlice.reducer;

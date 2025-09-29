@@ -1,8 +1,8 @@
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { useFormContext } from "react-hook-form";
 import { DimensionValue, TouchableOpacity } from "react-native";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
 import CustomText from "../general/CustomText";
 
 interface IProps {
@@ -20,7 +20,7 @@ export const SubmitButton = ({
 }: IProps) => {
   const {
     handleSubmit,
-    formState: { isDirty, isValid, isSubmitting },
+    formState: { isDirty, isValid },
   } = useFormContext();
   const theme = useTheme<Theme>();
 
@@ -47,9 +47,9 @@ export const SubmitButton = ({
         }}
       >
         <CustomText
-          variant="header"
+          variant="body"
+          fontSize={14}
           style={{
-            fontSize: 16,
             color: "#FFFFFF",
           }}
         >

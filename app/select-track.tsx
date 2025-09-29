@@ -1,16 +1,21 @@
+import { LoginToZap } from "@/components";
+import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
+import PhoneVerificationBottomSheet from "@/components/bottomsheets/KYCBottomSheet";
+import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
 import {
   Box,
   CustomButton,
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, useRef } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
@@ -84,6 +89,12 @@ const Card = ({
 };
 
 const SelectTrack = () => {
+  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
+  const phoneVerificationBottomSheetRef =
+    useRef<AnimatedGradientBottomSheetRef>(null);
+  const { colors } = useTheme<Theme>();
+  const { showBottomSheet } = useAppBottomSheet();
+
   const item: {
     title: string;
     body: string;
@@ -128,7 +139,15 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => router.push("/dashboard/home/wallet-home/home"),
+      onPress: () => {
+        // zapperBottomSheetRef.current?.snapToIndex(0);
+        showBottomSheet({
+          component: <LoginToZap />,
+          props: {
+            snapPoints: ["80%"],
+          },
+        });
+      },
     },
   ];
   return (
@@ -143,6 +162,15 @@ const SelectTrack = () => {
           ))}
         </ScrollView>
       </Box>
+
+      <ZapperSiginBottomSheet
+        ref={zapperBottomSheetRef}
+        onContinue={() => {
+          zapperBottomSheetRef.current?.close();
+          phoneVerificationBottomSheetRef.current?.snapToIndex(0);
+        }}
+      />
+      <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} />
     </Wrapper>
   );
 };
