@@ -1,6 +1,9 @@
 PODS:
   - EXConstants (18.0.8):
     - ExpoModulesCore
+  - EXImageLoader (6.0.0):
+    - ExpoModulesCore
+    - React-Core
   - Expo (54.0.1):
     - ExpoModulesCore
     - hermes-engine
@@ -28,6 +31,10 @@ PODS:
     - Yoga
   - ExpoAsset (12.0.8):
     - ExpoModulesCore
+  - ExpoCamera (17.0.8):
+    - ExpoModulesCore
+    - ZXingObjC/OneD
+    - ZXingObjC/PDF417
   - ExpoClipboard (8.0.6):
     - ExpoModulesCore
   - ExpoFileSystem (19.0.11):
@@ -46,6 +53,8 @@ PODS:
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
+  - ExpoImagePicker (17.0.8):
+    - ExpoModulesCore
   - ExpoKeepAwake (15.0.6):
     - ExpoModulesCore
   - ExpoLinearGradient (15.0.6):
@@ -2121,17 +2130,25 @@ PODS:
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.17)
   - Yoga (0.0.0)
+  - ZXingObjC/Core (3.6.9)
+  - ZXingObjC/OneD (3.6.9):
+    - ZXingObjC/Core
+  - ZXingObjC/PDF417 (3.6.9):
+    - ZXingObjC/Core
 
 DEPENDENCIES:
   - EXConstants (from `../node_modules/expo-constants/ios`)
+  - EXImageLoader (from `../node_modules/expo-image-loader/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoClipboard (from `../node_modules/expo-clipboard/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
   - ExpoImage (from `../node_modules/expo-image/ios`)
+  - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
@@ -2227,14 +2244,19 @@ SPEC REPOS:
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
     - SDWebImageWebPCoder
+    - ZXingObjC
 
 EXTERNAL SOURCES:
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
+  EXImageLoader:
+    :path: "../node_modules/expo-image-loader/ios"
   Expo:
     :path: "../node_modules/expo"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
+  ExpoCamera:
+    :path: "../node_modules/expo-camera/ios"
   ExpoClipboard:
     :path: "../node_modules/expo-clipboard/ios"
   ExpoFileSystem:
@@ -2247,6 +2269,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-router/ios"
   ExpoImage:
     :path: "../node_modules/expo-image/ios"
+  ExpoImagePicker:
+    :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoLinearGradient:
@@ -2419,14 +2443,17 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   EXConstants: 0246c66e19d755cd9c88504d5c69896bba41d8a6
+  EXImageLoader: e501c001bc40b8326605e82e6e80363c80fe06b5
   Expo: c910d16635fe6a10fe15428120cd383aebfa01c1
   ExpoAsset: 4375a46b45b12bbfcf6efac8c8a33aebdb8ba12b
+  ExpoCamera: 6d0c5bc68bc8de669f1ecd4242284de0827c4431
   ExpoClipboard: 9e1809dd6ffdc08ce990f9bf22dcab3791b694aa
   ExpoFileSystem: 465799accd03c8452d650c1c6e8ce605a6d64584
   ExpoFont: 3cb68f520e9349141a28fed6dd94e6cc6bf1453f
   ExpoHaptics: a8f7720a74b885f8a23e0836e2b91d69883968fe
   ExpoHead: 2ed5aaf32522d3075d59903ce5100880346fc0af
   ExpoImage: 2708a5a9e69b6432f43d368379cc7c9b5165048b
+  ExpoImagePicker: bd0a5c81d7734548f6908a480609257e85d19ea8
   ExpoKeepAwake: e5bb3832a4735ee580ac6aa28130d44e1203f11f
   ExpoLinearGradient: aa4ae248706a0da6bd59a5aae6e2bf24de04dfa8
   ExpoLinking: 01b4b07a8647880a32f1acf608fa3b7cb7557e0c
@@ -2518,6 +2545,7 @@ SPEC CHECKSUMS:
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: c8f1aad5bc3522a8fdab409b5843965abff35aa6
+  ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
 PODFILE CHECKSUM: c31a65e50db0e3429c0fc5199e157993e1601e45
 

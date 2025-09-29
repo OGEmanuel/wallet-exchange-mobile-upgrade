@@ -1,0 +1,255 @@
+import { docGuide } from "@/assets/images";
+import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
+import ThemedCheckfalseIcon from "@/assets/svg/wallet-icons-components/ThemedCheckfalseIcon";
+import ThemedChecktrueIcon from "@/assets/svg/wallet-icons-components/ThemedChecktrueIcon";
+import { Theme } from "@/theme";
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
+import { useTheme } from "@shopify/restyle";
+import { Camera } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { CustomButton, CustomText } from "../general";
+
+export default function DocumentCapure() {
+  const theme = useTheme<Theme>();
+  const [isConsentChecked, setIsConsentChecked] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+
+  const requestCameraPermission = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission denied",
+        "Camera permission is required to take photos."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const requestMediaLibraryPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission denied",
+        "Media library permission is required to select photos."
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const takePhoto = async () => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
+        setShowCamera(false);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to take photo. Please try again.");
+    }
+  };
+
+  const selectFromGallery = async () => {
+    const hasPermission = await requestMediaLibraryPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCapturedImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to select image. Please try again.");
+    }
+  };
+
+  const handleTakePhoto = () => {
+    setShowCamera(true);
+    takePhoto();
+  };
+
+  const handleUploadPhoto = () => {
+    selectFromGallery();
+  };
+
+  return (
+    <View style={styles.container}>
+      <CustomText variant="header" style={styles.title}>
+        National ID
+      </CustomText>
+      <CustomText variant="body" style={styles.subtitle}>
+        Make sure you take a clear and complete photo of your card
+      </CustomText>
+      <View
+        style={[
+          styles.dashedContainer,
+          { backgroundColor: theme.colors.bodyTextColorInverse },
+        ]}
+      >
+        {capturedImage ? (
+          <Image
+            source={{ uri: capturedImage }}
+            style={styles.capturedImage}
+            resizeMode="contain"
+          />
+        ) : showCamera ? (
+          <View style={styles.cameraPlaceholder}>
+            <ThemedCameraIcon width={48} height={48} />
+            <CustomText variant="body" style={styles.cameraText}>
+              Camera ready
+            </CustomText>
+          </View>
+        ) : (
+          <Image
+            source={docGuide}
+            style={{ height: 110 }}
+            resizeMode="contain"
+          />
+        )}
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 8,
+          paddingTop: 16,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => setIsConsentChecked(!isConsentChecked)}
+          style={styles.checkboxContainer}
+        >
+          {isConsentChecked ? (
+            <ThemedChecktrueIcon width={16} height={16} />
+          ) : (
+            <ThemedCheckfalseIcon width={16} height={16} />
+          )}
+        </TouchableOpacity>
+        <CustomText
+          variant="body"
+          style={[styles.subtitle, { fontSize: 12, opacity: 1 }]}
+        >
+          I consent to Zap collecting, processing and sharing my information for
+          KYC purposes as stated in the policy
+        </CustomText>
+      </View>
+      <View style={styles.buttonContainer}>
+        <CustomButton
+          text="Take a photo"
+          onPress={handleTakePhoto}
+          width="100%"
+          height={56}
+          borderRadius={56}
+          bgColor={theme.colors.primaryColor}
+          color={theme.colors.white}
+          variant="bodySubheader"
+          fontSize={14}
+          disabled={false}
+          disabledColor={theme.colors.borderColor}
+        />
+        <CustomButton
+          text="Upload photo"
+          onPress={handleUploadPhoto}
+          width="100%"
+          height={56}
+          borderRadius={56}
+          bgColor={theme.colors.mainBackgroundColor}
+          color={theme.colors.white}
+          variant="bodySubheader"
+          fontSize={14}
+          disabled={false}
+          disabledColor={theme.colors.borderColor}
+          borderWidth={1}
+          borderColor={theme.colors.borderColor}
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingTop: 16,
+    width: SCREEN_WIDTH * 0.9,
+    alignSelf: "center",
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "left",
+    marginTop: 20,
+    marginBottom: 16,
+    width: SCREEN_WIDTH * 0.9,
+    color: "#FFFFFF",
+  },
+  subtitle: {
+    marginBottom: 24,
+    color: "#FFFFFF",
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  cardsContainer: {
+    gap: 16,
+    marginTop: 16,
+    width: SCREEN_WIDTH * 0.75,
+  },
+  contentContainer: {
+    flexDirection: "row",
+    width: SCREEN_WIDTH * 0.9,
+    justifyContent: "space-between",
+  },
+  dashedContainer: {
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_HEIGHT * 0.3,
+    borderWidth: 1,
+    borderColor: "#58585D",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  buttonContainer: {
+    position: "absolute",
+    bottom: 150,
+    width: SCREEN_WIDTH * 0.9,
+    alignSelf: "center",
+    gap: 16,
+  },
+  checkboxContainer: {
+    padding: 4,
+  },
+  capturedImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+  },
+  cameraPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  cameraText: {
+    marginTop: 8,
+    color: "#FFFFFF",
+    opacity: 0.8,
+  },
+});

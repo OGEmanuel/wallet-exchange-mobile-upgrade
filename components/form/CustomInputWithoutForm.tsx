@@ -67,6 +67,7 @@ export default function CustomInputWithoutForm(
               flex: 1,
               color: props.color ?? "white",
               fontSize: 14,
+              textTransform: "none",
             },
             style,
           ]}
@@ -76,6 +77,7 @@ export default function CustomInputWithoutForm(
           onBlur={() => setFocused(false)}
           keyboardType={props.keyboardType}
           secureTextEntry={showPassword ? false : true}
+          autoCapitalize="none"
           placeholderTextColor={
             props.placeholderTextColor ?? theme.colors.bodyTextColor
           }

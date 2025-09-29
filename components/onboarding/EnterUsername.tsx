@@ -1,13 +1,43 @@
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useSelector } from "react-redux";
 import { Box, CustomButton, CustomText } from "../general";
 import InfoBox from "../general/InfoBox";
 
-export default function EnterUsername() {
+interface EnterUsernameProps {
+  onUsernameSuccess?: (username: string) => void;
+}
+
+export default function EnterUsername({
+  onUsernameSuccess,
+}: EnterUsernameProps) {
   const theme = useTheme<Theme>();
+  const { addUsername } = useKyc();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
   const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmitUsername = async () => {
+    if (!username.trim() || !user?._id) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await addUsername({ username: username.trim() });
+      onUsernameSuccess?.(username.trim());
+    } catch (err) {
+      console.error("Error adding username:", err);
+      setError("Username is already taken or an error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -46,19 +76,21 @@ export default function EnterUsername() {
             .zap
           </Text>
         </View>
-        <CustomText
-          variant="body"
-          marginVertical="s"
-          style={{
-            fontSize: 12,
-            textAlign: "center",
-            fontWeight: "400",
-            marginVertical: 10,
-            color: theme.colors.error,
-          }}
-        >
-          username is already taken
-        </CustomText>
+        {error && (
+          <CustomText
+            variant="body"
+            marginVertical="s"
+            style={{
+              fontSize: 12,
+              textAlign: "center",
+              fontWeight: "400",
+              marginVertical: 10,
+              color: theme.colors.error,
+            }}
+          >
+            {error}
+          </CustomText>
+        )}
       </Box>
       <Box
         width={"90%"}
@@ -73,14 +105,16 @@ export default function EnterUsername() {
         />
         <CustomButton
           text="Continue"
-          onPress={() => {}}
-          disabled={!username || false}
-          isLoading={false}
+          onPress={handleSubmitUsername}
+          disabled={!username.trim() || isLoading}
+          isLoading={isLoading}
           width="100%"
           height={56}
           borderRadius={56}
           bgColor={
-            username ? theme.colors.primaryColor : theme.colors.inActiveBtnColor
+            username.trim() && !isLoading
+              ? theme.colors.primaryColor
+              : theme.colors.inActiveBtnColor
           }
           color="white"
           fontSize={12}

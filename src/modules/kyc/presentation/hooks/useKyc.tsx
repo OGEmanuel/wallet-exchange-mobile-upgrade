@@ -1,4 +1,6 @@
 import { GeneralResponseModel } from "@/src/core/api/http-types";
+import { StorageKeys, TokenData } from "@/src/core/api/models";
+import { storageService } from "@/src/core/storage/app-storage";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import { useState } from "react";
@@ -15,21 +17,23 @@ import { KycUsecases } from "../../domain/usecases/kyc-usecase";
 const useKyc = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  const [fetchingUserDetails, setFetchingUserDetails] = useState<boolean>(false);
-  
+  const [fetchingUserDetails, setFetchingUserDetails] =
+    useState<boolean>(false);
+
   return {
     updateUser: async (payload: UserModel) => {
       dispatch(kycActions.setUser(payload));
 
       // const userData = appGetFromLocalStorage<UserModel>(StorageKeys.USER_PROFILE);
 
-
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
         // fetchUserProfile();
       }
     },
 
-    authEmail: async (payload: AuthEmailParams): Promise<GeneralResponseModel<unknown>> => {
+    authEmail: async (
+      payload: AuthEmailParams
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeAuthEmail({
         body: payload,
@@ -40,27 +44,67 @@ const useKyc = () => {
       return response;
     },
 
-    verifyEmail: async (payload: VerifyEmailParams): Promise<GeneralResponseModel<unknown>> => {
+    verifyEmail: async (
+      payload: VerifyEmailParams
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,
         params: null,
         extra: null,
       });
+
+      // Update user state if verification was successful and user data is returned
+      if (response.success && response.data && (response.data as any)?.user) {
+        dispatch(kycActions.setUser((response.data as any).user as UserModel));
+      }
+
+      // Store token and refreshToken if they are present in the response data
+      if (
+        response.success &&
+        response.data &&
+        ((response.data as any)?.token || (response.data as any)?.refreshToken)
+      ) {
+        try {
+          const tokenData: TokenData = {
+            token: (response.data as any).token,
+            refreshToken: (response.data as any).refreshToken,
+            expiresAt: null,
+          };
+          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+          console.log("Tokens stored successfully after email verification");
+        } catch (error) {
+          console.error(
+            "Failed to store tokens after email verification:",
+            error
+          );
+        }
+      }
+
       return response;
     },
 
-    addUsername: async (payload: AddUsernameParams): Promise<GeneralResponseModel<unknown>> => {
+    addUsername: async (
+      payload: AddUsernameParams
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeAddUsername({
         body: payload,
         params: null,
-        extra: null,
+        extra: user,
       });
+
+      // Update user state if username was successfully added and user data is returned
+      if (response.success && response.data) {
+        dispatch(kycActions.setUser(response.data as UserModel));
+      }
+
       return response;
     },
 
-    authPhoneNumber: async (payload: AuthPhoneNumberParams): Promise<GeneralResponseModel<unknown>> => {
+    authPhoneNumber: async (
+      payload: AuthPhoneNumberParams
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeAuthPhoneNumber({
         body: payload,
@@ -70,7 +114,9 @@ const useKyc = () => {
       return response;
     },
 
-    verifyPhoneNumberOtp: async (payload: VerifyPhoneNumberOtpParams): Promise<GeneralResponseModel<unknown>> => {
+    verifyPhoneNumberOtp: async (
+      payload: VerifyPhoneNumberOtpParams
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyPhoneNumberOtp({
         body: payload,
@@ -80,7 +126,9 @@ const useKyc = () => {
       return response;
     },
 
-    uploadCreditDocument: async (payload: CreditDocumentDataParam): Promise<GeneralResponseModel<unknown>> => {
+    uploadCreditDocument: async (
+      payload: CreditDocumentDataParam
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeUploadCreditDocument({
         body: payload,
@@ -90,7 +138,9 @@ const useKyc = () => {
       return response;
     },
 
-    uploadIdentityDocument: async (payload: FormData): Promise<GeneralResponseModel<unknown>> => {
+    uploadIdentityDocument: async (
+      payload: FormData
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeUploadIdentityDocument({
         body: payload,
@@ -102,4 +152,4 @@ const useKyc = () => {
   };
 };
 
-export default useKyc; 
+export default useKyc;
