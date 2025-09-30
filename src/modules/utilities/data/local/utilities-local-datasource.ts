@@ -1,9 +1,8 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { GeneralResponseModel } from "@/src/core/api/http-types";
+import { CurrencyModel } from "../../domain/entities/models/currency-model";
+import { SupportedCurrencyModel } from "../../domain/entities/models/supported-currency-model";
 
 export abstract class UtilitiesLocalDataSource {
-  // Add your local data source methods here
-  // Example:
-  // abstract getCachedData(key: string): Promise<unknown>;
-  // abstract setCachedData(key: string, data: unknown): Promise<void>;
-  // abstract clearCachedData(key: string): Promise<void>;
+  abstract fetchCurrencies(): Promise<GeneralResponseModel<CurrencyModel[] | null | undefined>>;
+  abstract fetchSupportedCurrencies(): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>>;
 }

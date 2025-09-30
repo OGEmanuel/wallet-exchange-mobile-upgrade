@@ -1,19 +1,25 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { GeneralRequestModel } from "@/src/core/api/http-types";
+import { AppDispatch } from "@/state";
+import { useDispatch } from "react-redux";
 import { UtilitiesUsecases } from "../../domain/usecases/utilities-usecases";
+import { utilitiesActions } from "../state/utilities-slice";
 
 const useUtilities = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const utilitiesUsecases = new UtilitiesUsecases();
+
   return {
-    // Add your hook methods here
-    // Example:
-    // getData: async (payload: unknown): Promise<GeneralResponseModel<unknown>> => {
-    //   const usecase = new UtilitiesUsecases();
-    //   const response = await usecase.executeGetData({
-    //     body: payload,
-    //     params: null,
-    //     extra: null,
-    //   });
-    //   return response;
-    // },
+    fetchCurrencies: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
+      const response = await utilitiesUsecases.fetchCurrencies(payload);
+
+      if (response?.data) {
+        dispatch(utilitiesActions.setCurrencies(response.data || null));
+      }
+    },
+
+    fetchSupportedCurrencies: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
+      return await utilitiesUsecases.fetchSupportedCurrencies(payload);
+    },
   };
 };
 

@@ -46,7 +46,8 @@ class HttpClient {
   constructor(
     baseURL: string = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL ||
       process.env.EXPO_PUBLIC_API_BASE_URL ||
-      "https://test-backend-2.zap.africa",
+      "https://prod-backend-2.zap.africa",
+      // "https://test-backend-2.zap.africa",
     timeout: number = 30000
   ) {
     this.baseURL = baseURL;
@@ -75,7 +76,7 @@ class HttpClient {
     params?: any,
     options?: any,
     metadata?: ApiRequestMetadata
-  ): Promise<any> {
+  ): Promise<AxiosResponse<T>> {
     return this.methods.get<T>(url, params, options, metadata);
   }
 

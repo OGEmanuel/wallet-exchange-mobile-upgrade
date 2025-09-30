@@ -1,38 +1,29 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { CurrencyModel } from '../../domain/entities/models/currency-model';
+import { SupportedCurrencyModel } from '../../domain/entities/models/supported-currency-model';
 
 interface UtilitiesState {
-  // Add your state properties here
-  // Example:
-  // data: unknown[] | null;
-  // loading: boolean;
-  // error: string | null;
+  currencies: CurrencyModel[] | null;
+  supportedCurrencies: SupportedCurrencyModel[] | null;
 }
 
 const initialState: UtilitiesState = {
-  // Initialize your state here
-  // Example:
-  // data: null,
-  // loading: false,
-  // error: null,
+  currencies: null,
+  supportedCurrencies: null,
 };
 
 const utilitiesSlice = createSlice({
   name: 'utilities',
   initialState,
   reducers: {
-    // Add your reducers here
-    // Example:
-    // setData: (state, action: PayloadAction<unknown[]>) => {
-    //   state.data = action.payload;
-    // },
-    // setLoading: (state, action: PayloadAction<boolean>) => {
-    //   state.loading = action.payload;
-    // },
-    // setError: (state, action: PayloadAction<string | null>) => {
-    //   state.error = action.payload;
-    // },
+    setCurrencies: (state, action: PayloadAction<CurrencyModel[] | null>) => {
+      state.currencies = action.payload;
+    },
+    setSupportedCurrencies: (state, action: PayloadAction<SupportedCurrencyModel[] | null>) => {
+      state.supportedCurrencies = action.payload;
+    },
   },
 });
 
-export const { /* Add your action creators here */ } = utilitiesSlice.actions;
-export default utilitiesSlice.reducer;
+export const utilitiesActions = utilitiesSlice.actions;
+export default utilitiesSlice.reducer; 

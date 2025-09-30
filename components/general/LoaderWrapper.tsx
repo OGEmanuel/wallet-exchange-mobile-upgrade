@@ -329,10 +329,10 @@ const LoaderWrapper: React.FC<LoaderWrapperProps> = ({
           <CustomButton
             text="Try Again"
             onPress={onRetry}
-            width="auto"
-            height={48}
-            paddingHorizontal={24}
-            paddingVertical={12}
+            // width="auto"
+            // height={48}
+            paddingHorizontal={16}
+            paddingVertical={8}
             borderRadius={8}
             bgColor={theme.colors.primaryColor}
             color={theme.colors.white}
@@ -371,7 +371,7 @@ const LoaderWrapper: React.FC<LoaderWrapperProps> = ({
           textAlign="center"
           color="disabledTextColor"
         >
-          There's nothing to show here yet.
+          There&apos;s nothing to show here yet.
         </CustomText>
       </Box>
     );

@@ -1,4 +1,6 @@
+import { marketReducer } from "@/src/modules/market/presentation/state/market-slice";
 import { configureStore } from "@reduxjs/toolkit";
+import utilitiesReducer from "../src/modules/utilities/presentation/state/utilities-slice";
 import activityPageReducer from "./reducers/activityPage.reducer";
 import currentPageReducer from "./reducers/currentPage.reducer";
 import kycReducer from "./reducers/kyc-reducer";
@@ -14,6 +16,8 @@ export const store = configureStore({
     activityPage: activityPageReducer,
     sendPage: sendPageSlice.reducer,
     recievePage: recievePageSlice.reducer,
+    utilities: utilitiesReducer,
+    market: marketReducer,
   },
 });
 

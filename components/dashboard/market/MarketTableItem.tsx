@@ -5,11 +5,16 @@ import { Pressable } from "react-native";
 
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
+import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import TokenImage from "./TokenImage";
 
 interface MarketTableItemProps {
-  item: any;
+  item: MarketTokenModel | null;
   index: number;
+  selectedCurrency: "USD" | "NGN";
+  nairaCurrency?: CurrencyModel | null;
+  usdCurrency?: CurrencyModel | null;
 }
 
 export function formatToSigFigMax6Digits(value: number): string {
@@ -35,18 +40,71 @@ export function formatToSigFigMax6Digits(value: number): string {
   }
 }
 
-const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index }) => {
-  const isPositive = item.change24h > 0;
+const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index, selectedCurrency, nairaCurrency, usdCurrency }) => {
+  const isPositive = item?.change24h && item.change24h > 0;
 
-  const handleAssetPress = (asset: any) => {
+  const handleAssetPress = (asset: MarketTokenModel | null) => {
     router.push({
       pathname: "/dashboard/home/market/[id]",
       params: {
-        id: asset.id || index.toString(),
+        id: asset?.currencyId?._id || "",
         asset: JSON.stringify(asset),
       },
     });
   };
+
+    // Helper function for approximate amount formatting
+    const getApproximateAmount = (value: number, showDecimals: boolean = true, useCommas: boolean = true): string => {
+      if (showDecimals) {
+        return useCommas ? value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value.toFixed(2);
+      }
+      return useCommas ? Math.round(value).toLocaleString('en-US') : Math.round(value).toString();
+    };
+  
+    // Format price with commas and fixed decimals
+    const formatPrice = (price?: number | null): string => {
+      if (!price) return '0.00';
+  
+      // Convert to NGN if needed with proper validation
+      let convertedPrice: number;
+      let symbol: string;
+  
+      if (selectedCurrency === 'NGN') {
+        const sellRate = nairaCurrency?.sellRate;
+        const isValidSellRate = sellRate && sellRate > 0;
+  
+        if (isValidSellRate) {
+          convertedPrice = price / sellRate;
+          symbol = '₦';
+        } else {
+          console.warn('NGN sellRate not available or invalid for price formatting, using USD');
+          convertedPrice = price;
+          symbol = '$';
+        }
+      } else {
+        convertedPrice = price;
+        symbol = '$';
+      }
+  
+      if (selectedCurrency === 'NGN' && symbol === '₦') {
+        if (convertedPrice >= 1_000_000_000_000) { // Trillion
+          return `${symbol}${getApproximateAmount(convertedPrice / 1_000_000_000_000, true, true)}T`;
+        } else if (convertedPrice >= 1_000_000_000) { // Billion
+          return `${symbol}${getApproximateAmount(convertedPrice / 1_000_000_000, true, true)}B`;
+        } else if (convertedPrice >= 1_000_000) { // Million
+          return `${symbol}${getApproximateAmount(convertedPrice / 1_000_000, true, true)}M`;
+        }
+      } else {
+        if (convertedPrice >= 1_000_000_000) { // Billion
+          return `${symbol}${getApproximateAmount(convertedPrice / 1_000_000_000, true, true)}B`;
+        } else if (convertedPrice >= 1_000_000) { // Million
+          return `${symbol}${getApproximateAmount(convertedPrice / 1_000_000, true, true)}M`;
+        }
+      }
+  
+      // Regular number formatting
+      return `${symbol}${getApproximateAmount(convertedPrice, true, true)}`;
+    };
 
   return (
     <Pressable
@@ -68,20 +126,20 @@ const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index }) => {
             {index + 1}
           </CustomText>
           <Box flexDirection="row" gap="s" paddingLeft="s" alignItems="center">
-            <TokenImage uri={item.logo} name={item.symbol} size={20} />
+            <TokenImage uri={item?.currencyId?.logo} name={item?.symbol} size={20} />
             <CustomText
               variant="bodyMedium"
               fontSize={12}
               color="bodyTextColor"
             >
-              {item.symbol}
+              {item?.symbol}
             </CustomText>
           </Box>
         </Box>
 
         <Box flexDirection="row" alignItems="center" gap="l">
           <CustomText variant="body" fontSize={12} color="bodyTextColor">
-            ${item.price.toLocaleString()}
+            {formatPrice(item?.rate)}
           </CustomText>
           <Box
             flexDirection="row"
@@ -100,7 +158,7 @@ const MarketTableItem: React.FC<MarketTableItemProps> = ({ item, index }) => {
               fontSize={12}
               color={isPositive ? "success" : "error"}
             >
-              {formatToSigFigMax6Digits(item?.change24h || 0)}%
+              {formatToSigFigMax6Digits(item?.change24h || 0) || 0}%
             </CustomText>
           </Box>
         </Box>

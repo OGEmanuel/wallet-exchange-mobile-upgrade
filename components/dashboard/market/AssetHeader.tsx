@@ -12,16 +12,19 @@ import TouchableIcon from "./TouchableIcon";
 
 interface AssetHeaderProps {
   asset?: any;
+  logo?: string;
+  symbol?: string;
 }
 
-const AssetHeader: React.FC<AssetHeaderProps> = ({ asset }) => {
+const AssetHeader: React.FC<AssetHeaderProps> = ({ asset, logo, symbol }) => {
   const router = useRouter();
   const theme = useTheme<Theme>();
 
   const isDark = theme.colors.headerTextColor === "#FBFBFB";
 
-  const tokenSymbol = asset?.currencyId?.symbol || "BTC";
+  const tokenSymbol = symbol || asset?.currencyId?.symbol || "BTC";
   const tokenLogo =
+    logo ||
     asset?.currencyId?.logo ||
     "https://assets.coingecko.com/coins/images/1/large/bitcoin.png";
 

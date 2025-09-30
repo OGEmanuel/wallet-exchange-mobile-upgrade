@@ -1,23 +1,16 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { UtilitiesRepoImpl } from "../../data/utilities-repo-impl";
+import { CurrencyModel } from "../entities/models/currency-model";
+import { SupportedCurrencyModel } from "../entities/models/supported-currency-model";
 
 export class UtilitiesUsecases {
   private readonly repo = new UtilitiesRepoImpl();
 
-  // Add your use case methods here
-  // Example:
-  // async executeGetData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-  //   // Validate input parameters
-  //   this.validateGetDataParams(payload.body);
-  //   
-  //   return this.repo.getData(payload);
-  // }
+  async fetchCurrencies(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<CurrencyModel[] | null | undefined>> {
+    return this.repo.fetchCurrencies(payload);
+  }
 
-  // Add private validation methods here
-  // Example:
-  // private validateGetDataParams(params: unknown): void {
-  //   if (!params) {
-  //     throw new Error('Parameters are required');
-  //   }
-  // }
+  async fetchSupportedCurrencies(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
+    return this.repo.fetchSupportedCurrencies(payload);
+  }
 }

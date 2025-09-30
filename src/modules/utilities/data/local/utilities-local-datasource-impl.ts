@@ -1,35 +1,18 @@
-import * as SecureStore from "expo-secure-store";
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { fetchCurrenciesEndpoint, fetchSupportedCurrenciesEndpoint } from "@/src/core/api/api_endpoints";
+import { HttpClient } from "@/src/core/api/http";
+import { GeneralResponseModel } from "@/src/core/api/http-types";
+import { CurrencyModel } from "../../domain/entities/models/currency-model";
+import { SupportedCurrencyModel } from "../../domain/entities/models/supported-currency-model";
 import { UtilitiesLocalDataSource } from "./utilities-local-datasource";
 
 export class UtilitiesLocalDataSourceImpl implements UtilitiesLocalDataSource {
-  // Implement your local data source methods here
-  // Example:
-  // async getCachedData(key: string): Promise<unknown> {
-  //   try {
-  //     const data = await SecureStore.getItemAsync(key);
-  //     return data ? JSON.parse(data) : null;
-  //   } catch (error) {
-  //     console.error('Error getting cached data:', error);
-  //     return null;
-  //   }
-  // }
-
-  // async setCachedData(key: string, data: unknown): Promise<void> {
-  //   try {
-  //     await SecureStore.setItemAsync(key, JSON.stringify(data));
-  //   } catch (error) {
-  //     console.error('Error setting cached data:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // async clearCachedData(key: string): Promise<void> {
-  //   try {
-  //     await SecureStore.deleteItemAsync(key);
-  //   } catch (error) {
-  //     console.error('Error clearing cached data:', error);
-  //     throw error;
-  //   }
-  // }
+  async fetchCurrencies(): Promise<GeneralResponseModel<CurrencyModel[] | null | undefined>> {
+    const response = await HttpClient.get<GeneralResponseModel<CurrencyModel[] | null | undefined>>(fetchCurrenciesEndpoint);
+    return response.data; 
+  }
+  
+  async fetchSupportedCurrencies(): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
+    const response = await HttpClient.get<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>>(fetchSupportedCurrenciesEndpoint);
+    return response.data;
+  }
 }

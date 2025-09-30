@@ -11,7 +11,7 @@ import { MarketRemoteDataSource } from "./market-remote-datasource";
 
 export class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   async fetchMarketTokens(_: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<MarketTokenModel[] | null | undefined>> {
-    const response = await httpClient.get<GeneralResponseModel<MarketTokenModel[] | null | undefined>>(fetchMarketTokensEndpoint);
+    const response = await httpClient.get<GeneralResponseModel<MarketTokenModel[] | null | undefined>>(fetchMarketTokensEndpoint, {}, {}, { showErrorToast: false });
     return response.data;
   }
 
@@ -21,17 +21,17 @@ export class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   }
 
   async tokenDetails(payload: GeneralRequestModel<string | null, unknown, unknown>): Promise<GeneralResponseModel<TokenDetailModel>> {
-    const response = await httpClient.get<GeneralResponseModel<TokenDetailModel>>(tokenDetailsEndpoint(payload.body));
+    const response = await httpClient.get<GeneralResponseModel<TokenDetailModel>>(tokenDetailsEndpoint(payload.body), {}, {}, { showErrorToast: false });
     return response.data;
   }
 
   async tokenHistory(payload: GeneralRequestModel<string | null, unknown, unknown>): Promise<GeneralResponseModel<TokenHistoryDetailModel>> {
-    const response = await httpClient.get<GeneralResponseModel<TokenHistoryDetailModel>>(tokenHistoryEndpoint(payload.body));
+    const response = await httpClient.get<GeneralResponseModel<TokenHistoryDetailModel>>(tokenHistoryEndpoint(payload.body), {}, {}, { showErrorToast: false });
     return response.data;
   }
 
   async fetchWatchlistTokens(payload: GeneralRequestModel<unknown, unknown, UserModel | null>): Promise<GeneralResponseModel<WatchlistTokenModel[] | null | undefined>> {
-    const response = await httpClient.get<GeneralResponseModel<WatchlistTokenModel[] | null | undefined>>(fetchWatchlistTokensEndpoint(payload.extra));
+    const response = await httpClient.get<GeneralResponseModel<WatchlistTokenModel[] | null | undefined>>(fetchWatchlistTokensEndpoint(payload.extra), {}, {}, { showErrorToast: false });
     return response.data;
   }
 }
