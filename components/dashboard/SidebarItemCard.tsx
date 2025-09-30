@@ -15,12 +15,15 @@ const SidebarItemCard = ({
   isActive,
   trailingItem,
   disablClick = false,
+  onPress,
 }: ISidebarItem) => {
   const theme = useTheme<Theme>();
   return (
     <Pressable
       onPress={() => {
-        if (!disablClick) {
+        if (onPress) {
+          onPress();
+        } else {
           router.push(link as any);
         }
       }}

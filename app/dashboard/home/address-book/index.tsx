@@ -43,7 +43,13 @@ const Addresses = () => {
         <AppBar
           height={20}
           title={<CustomText variant="bodySubheader">Address book</CustomText>}
-          leading={<ChevronLeft size={25} color={theme.colors.bodyTextColor} />}
+          leading={
+            <ChevronLeft
+              size={25}
+              color={theme.colors.bodyTextColor}
+              onPress={() => router.back()}
+            />
+          }
         />
         <EmptyState />
       </Box>
