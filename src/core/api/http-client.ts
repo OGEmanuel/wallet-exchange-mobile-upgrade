@@ -46,8 +46,8 @@ class HttpClient {
   constructor(
     baseURL: string = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL ||
       process.env.EXPO_PUBLIC_API_BASE_URL ||
-      "https://prod-backend-2.zap.africa",
-      // "https://test-backend-2.zap.africa",
+      // "https://prod-backend-2.zap.africa",
+      "https://test-backend-2.zap.africa",
     timeout: number = 30000
   ) {
     this.baseURL = baseURL;
