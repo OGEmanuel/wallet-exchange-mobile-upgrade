@@ -9,6 +9,7 @@ import {
 } from "@/components/general";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { router } from "expo-router";
 import { ChevronDown, ChevronLeft } from "lucide-react-native";
 import React from "react";
 
@@ -21,7 +22,13 @@ const Addresses = () => {
           paddingHorizontal={0}
           height={20}
           title={<CustomText variant="bodySubheader">Add Address</CustomText>}
-          leading={<ChevronLeft size={25} color={theme.colors.bodyTextColor} />}
+          leading={
+            <ChevronLeft
+              size={25}
+              color={theme.colors.bodyTextColor}
+              onPress={() => router.back()}
+            />
+          }
         />
         <Box height={40} />
         <Box flex={1}>

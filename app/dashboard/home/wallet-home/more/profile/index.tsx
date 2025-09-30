@@ -103,7 +103,8 @@ const ProfilePage = () => {
         />
       ),
       title: "Two factor authentication",
-      onPress: () => {},
+      onPress: () =>
+        router.push("/dashboard/home/wallet-home/more/profile/enable-2fa"),
     },
     {
       icon: (
@@ -119,7 +120,7 @@ const ProfilePage = () => {
   ];
   return (
     <PageWrapper>
-      <SettingsHeader title="Profile" onBackPress={() => {}} />
+      <SettingsHeader title="Profile" onBackPress={() => router.back()} />
       <Box flex={1} mt="m">
         <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
           <LinearGradient

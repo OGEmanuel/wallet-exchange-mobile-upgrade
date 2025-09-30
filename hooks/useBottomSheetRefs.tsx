@@ -18,6 +18,8 @@ const recieveTokenRef = createRef<BottomSheet>();
 const editAvatarRef = createRef<BottomSheet>();
 const editUsernameRef = createRef<BottomSheet>();
 const editFirstnameRef = createRef<BottomSheet>();
+const changePinRef = createRef<BottomSheet>();
+const chatBottomSheetRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -43,6 +45,8 @@ const useBottomSheetRefs = () => {
     editAvatarRef,
     editUsernameRef,
     editFirstnameRef,
+    changePinRef,
+    chatBottomSheetRef,
     render,
   };
 };
