@@ -1,28 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-// Import types from exchange module
-interface SupportedCurrency {
-  __v?: number;
-  _id?: string;
-  chainId?: any;
-  createdAt?: string;
-  currencyId?: any;
-  decimals?: number;
-  defaultBalancesProvider?: string;
-  defaultBuyProvider?: string;
-  defaultSellProvider?: string;
-  defaultTradesProvider?: string;
-  defaultTransactionsProvider?: string;
-  image?: string;
-  isActive?: boolean;
-  isStable?: boolean;
-  preferredBalancesProviders?: string[];
-  preferredRPCProviders?: any[];
-  preferredTradesProviders?: string[];
-  preferredTransactionsProviders?: string[];
-  tokenAddress?: string;
-  updatedAt?: string;
-}
+import { SupportedCurrency } from "../../domain/entities/currency.types";
 
 interface MarketRate {
   rate: number;

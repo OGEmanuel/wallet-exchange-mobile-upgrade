@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppRootState } from "../../../../../state";
+// import { formatTargetAmount } from "../../utils/formatting";
 import {
   setActiveTab,
   setBaseAmount,
@@ -17,9 +18,10 @@ import {
   setTargetCurrency,
   swapCurrencies,
 } from "../state/swap-slice";
+import { useDebouncedRates } from "./useDebouncedRates";
 
-// Formatting utility functions
-const formatTargetAmount = ({
+// Enhanced formatting utility function
+const formatTargetAmountLocal = ({
   targetAmount,
   targetCurrency,
 }: {
@@ -28,15 +30,15 @@ const formatTargetAmount = ({
 }) => {
   if (!targetCurrency || targetAmount === 0) return "0";
 
-  // Format based on currency type
-  if (targetCurrency.currencyId?.isCrypto) {
-    return targetAmount.toFixed(6);
-  } else {
-    return targetAmount.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  }
+  // Use the enhanced formatting from utils
+  return formatTargetAmount({
+    baseAmount: 0,
+    targetAmount,
+    baseToUsd: 0,
+    baseInputIsDollar: false,
+    baseCurrency: targetCurrency, // Use targetCurrency as baseCurrency for formatting
+    targetCurrency,
+  });
 };
 
 // useSwap hook using Redux for state management
@@ -61,6 +63,12 @@ export const useSwap = () => {
     isLoading,
   } = useSelector((state: AppRootState) => state.swap);
 
+  // Use debounced rate fetching
+  const { refetchRates } = useDebouncedRates({
+    debounceDelay: 500, // 500ms delay
+    minAmount: 0.01, // Minimum amount to trigger rate fetch
+  });
+
   // Redux-powered methods
   const setBaseInput = useCallback(
     (value: boolean) => {
@@ -77,7 +85,7 @@ export const useSwap = () => {
 
   const handleTargetAmountFormat = useCallback(() => {
     console.log("handleTargetAmountFormat called");
-    return formatTargetAmount({ targetAmount, targetCurrency });
+    return formatTargetAmountLocal({ targetAmount, targetCurrency });
   }, [targetAmount, targetCurrency]);
 
   const handleTargetAmountChange = useCallback(
@@ -113,19 +121,23 @@ export const useSwap = () => {
     console.log("setChangedByUser called with:", type);
   }, []);
 
-  // Enhanced currency setters
+  // Enhanced currency setters that trigger immediate rate fetch
   const setBaseCurrencyWithRates = useCallback(
     (currency: any) => {
       dispatch(setBaseCurrency(currency));
+      // Trigger immediate rate fetch when currency changes
+      setTimeout(() => refetchRates(), 100);
     },
-    [dispatch]
+    [dispatch, refetchRates]
   );
 
   const setTargetCurrencyWithRates = useCallback(
     (currency: any) => {
       dispatch(setTargetCurrency(currency));
+      // Trigger immediate rate fetch when currency changes
+      setTimeout(() => refetchRates(), 100);
     },
-    [dispatch]
+    [dispatch, refetchRates]
   );
 
   // Tab management
@@ -213,6 +225,7 @@ export const useSwap = () => {
     setChangedByUser,
     validateExchange,
     resetExchange,
+    refetchRates, // Expose manual refetch function
   };
 };
 

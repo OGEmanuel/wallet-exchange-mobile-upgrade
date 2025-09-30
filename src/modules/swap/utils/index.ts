@@ -3,15 +3,15 @@
  * Extracted from zap-frontend-swap-module SwapProvider
  */
 
-import { SupportedCurrency } from "../hooks/useFetchCurrencies"
+import { SupportedCurrency } from "../data/remote";
 
 export interface FormattingOptions {
-  baseAmount: number
-  targetAmount: number
-  baseToUsd: number
-  baseInputIsDollar: boolean
-  baseCurrency: SupportedCurrency
-  targetCurrency: SupportedCurrency
+  baseAmount: number;
+  targetAmount: number;
+  baseToUsd: number;
+  baseInputIsDollar: boolean;
+  baseCurrency: SupportedCurrency;
+  targetCurrency: SupportedCurrency;
 }
 
 /**
@@ -20,21 +20,21 @@ export interface FormattingOptions {
  * @returns Formatted string representation of the base amount
  */
 export function formatBaseAmount(options: FormattingOptions): string {
-  const { baseAmount, baseToUsd, baseInputIsDollar, baseCurrency } = options
+  const { baseAmount, baseToUsd, baseInputIsDollar, baseCurrency } = options;
 
   // If the user is inputting in dollars
   if (baseInputIsDollar) {
-    if (isNaN(baseToUsd) || baseToUsd < 0) return "0"
+    if (isNaN(baseToUsd) || baseToUsd < 0) return "0";
     return baseToUsd.toLocaleString(undefined, {
       // For dollars, always show up to 2 decimal places.
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
-    })
+    });
   }
 
   // If the base currency is crypto
   if (baseCurrency?.currencyId?.isCrypto) {
-    if (isNaN(Number(baseAmount)) || Number(baseAmount) < 0) return "0"
+    if (isNaN(Number(baseAmount)) || Number(baseAmount) < 0) return "0";
 
     // For stablecoins we want exactly 2 decimals:
     if (
@@ -47,22 +47,22 @@ export function formatBaseAmount(options: FormattingOptions): string {
       return baseAmount.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      })
+      });
     }
 
     // For other crypto tokens, allow between 3 and up to 10 decimals.
     return baseAmount.toLocaleString(undefined, {
       minimumFractionDigits: 3,
       maximumFractionDigits: 6,
-    })
+    });
   }
 
   // For non-crypto currencies
-  if (isNaN(Number(baseAmount)) || Number(baseAmount) < 0) return "0"
+  if (isNaN(Number(baseAmount)) || Number(baseAmount) < 0) return "0";
   return baseAmount.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })
+  });
 }
 
 /**
@@ -71,11 +71,11 @@ export function formatBaseAmount(options: FormattingOptions): string {
  * @returns Formatted string representation of the target amount
  */
 export function formatTargetAmount(options: FormattingOptions): string {
-  const { targetAmount, targetCurrency } = options
+  const { targetAmount, targetCurrency } = options;
 
   // If the target currency is crypto
   if (targetCurrency?.currencyId?.isCrypto) {
-    if (isNaN(Number(targetAmount)) || Number(targetAmount) < 0) return "0"
+    if (isNaN(Number(targetAmount)) || Number(targetAmount) < 0) return "0";
 
     // For stablecoins on target side
     if (
@@ -88,22 +88,22 @@ export function formatTargetAmount(options: FormattingOptions): string {
       return targetAmount.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      })
+      });
     }
 
     // For other crypto tokens, allow between 3 and up to 10 decimals.
     return targetAmount.toLocaleString(undefined, {
       minimumFractionDigits: 3,
       maximumFractionDigits: 6,
-    })
+    });
   }
 
   // For non-crypto currencies
-  if (isNaN(Number(targetAmount)) || Number(targetAmount) < 0) return "0"
+  if (isNaN(Number(targetAmount)) || Number(targetAmount) < 0) return "0";
   return targetAmount.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })
+  });
 }
 
 /**
@@ -112,9 +112,9 @@ export function formatTargetAmount(options: FormattingOptions): string {
  * @returns Formatted string representation of the USD amount
  */
 export function formatBaseToUsd(baseToUsd: number): string {
-  if (isNaN(Number(baseToUsd)) || Number(baseToUsd) < 0) return "0"
+  if (isNaN(Number(baseToUsd)) || Number(baseToUsd) < 0) return "0";
   return baseToUsd.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })
+  });
 }
