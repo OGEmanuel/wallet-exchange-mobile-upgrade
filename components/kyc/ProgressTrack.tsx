@@ -2,12 +2,41 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Svg, { Line } from "react-native-svg";
 
 interface ProgressTrackProps {
   currentStep: number;
   totalSteps: number;
   stepLabels?: string[];
 }
+
+// DottedLine component for vertical dotted connector
+const DottedLine = ({
+  height,
+  color,
+  isCompleted,
+}: {
+  height: number;
+  color: string;
+  isCompleted: boolean;
+}) => {
+  const strokeColor = isCompleted ? "#10B981" : color;
+
+  return (
+    <Svg height={height} width={2}>
+      <Line
+        x1="1"
+        y1="0"
+        x2="1"
+        y2={height}
+        stroke={strokeColor}
+        strokeWidth="2"
+        strokeDasharray="4,4"
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+};
 
 const ProgressTrack = ({
   currentStep,
@@ -19,7 +48,6 @@ const ProgressTrack = ({
     <View style={styles.container}>
       {Array.from({ length: totalSteps }, (_, index) => {
         const stepNumber = index + 1;
-        const isActive = stepNumber <= currentStep;
         const isCompleted = stepNumber < currentStep;
 
         return (
@@ -38,7 +66,10 @@ const ProgressTrack = ({
                 <Text
                   style={[
                     styles.stepNumber,
-                    isCompleted && styles.completedStepText,
+                    isCompleted && {
+                      ...styles.completedStepText,
+                      color: theme.colors.black,
+                    },
                   ]}
                 >
                   {stepNumber}
@@ -46,12 +77,10 @@ const ProgressTrack = ({
               </View>
             </View>
             {index < totalSteps - 1 && (
-              <View
-                style={[
-                  styles.connector,
-                  { backgroundColor: theme.colors.secondaryBackgroundColor },
-                  isCompleted && styles.completedConnector,
-                ]}
+              <DottedLine
+                height={60}
+                color={theme.colors.secondaryBackgroundColor}
+                isCompleted={isCompleted}
               />
             )}
           </View>
@@ -106,15 +135,6 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 4,
     textAlign: "center",
-  },
-  connector: {
-    height: 40,
-    width: 2,
-    backgroundColor: "#4B5563", // gray-600
-    marginHorizontal: 8,
-  },
-  completedConnector: {
-    backgroundColor: "#10B981", // green-500
   },
 });
 

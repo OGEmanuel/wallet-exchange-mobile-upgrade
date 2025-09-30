@@ -2,9 +2,10 @@ import { startVerification } from "@/assets/images";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
+import React, { useState } from "react";
 import { Image, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
+import KYCFlowManager from "../kyc/KYCFlowManager";
 
 export default function VerifyYourIdentity({
   onContinue,
@@ -12,6 +13,27 @@ export default function VerifyYourIdentity({
   onContinue?: () => void;
 }) {
   const theme = useTheme<Theme>();
+  const [showKYCFlow, setShowKYCFlow] = useState(false);
+
+  const handleStartKYC = () => {
+    setShowKYCFlow(true);
+  };
+
+  const handleKYCComplete = () => {
+    setShowKYCFlow(false);
+    onContinue?.();
+  };
+
+  const handleKYCBack = () => {
+    setShowKYCFlow(false);
+  };
+
+  if (showKYCFlow) {
+    return (
+      <KYCFlowManager onComplete={handleKYCComplete} onBack={handleKYCBack} />
+    );
+  }
+
   return (
     <View>
       <View
@@ -65,7 +87,7 @@ export default function VerifyYourIdentity({
             text="Continue"
             bgColor={theme.colors.primaryColor}
             color={theme.colors.white}
-            onPress={() => onContinue?.()}
+            onPress={handleStartKYC}
             disabledColor={theme.colors.borderColor}
           />
         </View>

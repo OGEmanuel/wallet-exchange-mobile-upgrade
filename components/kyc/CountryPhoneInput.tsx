@@ -1,3 +1,4 @@
+import icons from "@/assets/icons";
 import { ThemedArrowUpIcon } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
@@ -6,12 +7,12 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
-import { SvgUri } from "react-native-svg";
 import { CustomText } from "../general";
 
 interface CountryPhoneInputProps {
@@ -19,6 +20,10 @@ interface CountryPhoneInputProps {
   onOtpSent: (data: { phone: string; countryCode: string }) => void;
   phoneDets: { phone: string; countryCode: string };
   onValidate?: (isValid: boolean) => void;
+  onVerify?: () => void;
+  showVerifyButton?: boolean;
+  selectedCountry?: any;
+  onPhoneChange?: (phone: string) => void;
 }
 
 // Mock data for countries
@@ -49,6 +54,10 @@ export default function CountryPhoneInput({
   onOtpSent,
   phoneDets,
   onValidate,
+  onVerify,
+  showVerifyButton = false,
+  selectedCountry,
+  onPhoneChange,
 }: CountryPhoneInputProps) {
   const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState(phoneDets?.phone || "");
@@ -57,13 +66,38 @@ export default function CountryPhoneInput({
   const [error, setError] = useState<string | null>(null);
   const [isValidated, setIsValidated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState(mockCountries[0]);
+  const [localSelectedCountry, setLocalSelectedCountry] = useState();
 
   const { colors } = useTheme<Theme>();
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log("CountryPhoneInput selectedCountry:", selectedCountry);
+  }, [selectedCountry]);
+
+  // Helper function to get flag URL safely
+  const getFlagUrl = (country: any) => {
+    if (!country) return null;
+
+    if (country.flagUrl) return country.flagUrl;
+
+    if (country.alpha2) {
+      return `https://flagcdn.com/w40/${country.alpha2.toLowerCase()}.png`;
+    }
+
+    if (country.value) {
+      return `https://flagcdn.com/w40/${country.value.toLowerCase()}.png`;
+    }
+
+    return `https://flagcdn.com/w40/us.png`;
+  };
+
   const validatePhoneNumber = useCallback(
     (value: string) => {
-      if (!selectedCountry?.alpha2) {
+      const currentCountry = selectedCountry || localSelectedCountry;
+      const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+
+      if (!countryCode) {
         setIsValid(null);
         setError("Please select a country first");
         onValidate?.(false);
@@ -78,10 +112,16 @@ export default function CountryPhoneInput({
       }
 
       try {
-        const valid = isValidPhoneNumber(value, selectedCountry.alpha2);
+        const valid = isValidPhoneNumber(value, countryCode);
         setIsValid(valid);
         setError(
-          valid ? null : `Invalid phone number for ${selectedCountry.name}`
+          valid
+            ? null
+            : `Invalid phone number for ${
+                currentCountry.name ||
+                currentCountry.label ||
+                "selected country"
+              }`
         );
         onValidate?.(valid);
       } catch (err) {
@@ -90,19 +130,32 @@ export default function CountryPhoneInput({
         onValidate?.(false);
       }
     },
-    [selectedCountry, onValidate]
+    [selectedCountry, localSelectedCountry, onValidate]
   );
 
   const onChangePhone = useCallback(
     (value: string) => {
       if (isValidated) return;
       setPhone(value);
+      onPhoneChange?.(value);
+
+      // Validate phone number
+      const currentCountry = selectedCountry || localSelectedCountry;
+      const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+      if (countryCode) {
+        const valid = isValidPhoneNumber(value, countryCode);
+        setIsValid(valid);
+        onValidate?.(valid);
+      }
     },
-    [isValidated]
+    [isValidated, selectedCountry, onPhoneChange, onValidate]
   );
 
   const handleSendOTP = async () => {
-    if (!selectedCountry?.alpha2) {
+    const currentCountry = selectedCountry || localSelectedCountry;
+    const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+
+    if (!countryCode) {
       setError("Please select a country");
       return;
     }
@@ -112,7 +165,7 @@ export default function CountryPhoneInput({
       return;
     }
 
-    const valid = isValidPhoneNumber(phone, selectedCountry.alpha2);
+    const valid = isValidPhoneNumber(phone, countryCode);
     setIsValid(valid);
 
     if (!valid) {
@@ -128,7 +181,7 @@ export default function CountryPhoneInput({
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setIsValidated(true);
-      onOtpSent?.({ phone, countryCode: selectedCountry.alpha2 });
+      onOtpSent?.({ phone, countryCode: countryCode });
     } catch (error: any) {
       console.log(error);
       setError("An unexpected error occurred. Please try again.");
@@ -144,9 +197,9 @@ export default function CountryPhoneInput({
   }, [isValidated]);
 
   const handleCountrySelect = useCallback(
-    (country: typeof selectedCountry) => {
+    (country: typeof localSelectedCountry) => {
       if (isValidated) return;
-      setSelectedCountry(country);
+      setLocalSelectedCountry(country);
       setOpen(false);
       if (!phone) return;
       validatePhoneNumber(phone);
@@ -175,10 +228,12 @@ export default function CountryPhoneInput({
           ]}
         >
           <View style={styles.flagContainer}>
-            <SvgUri
-              width={24}
-              height={24}
-              uri={selectedCountry?.flagUrl || ""}
+            <Image
+              source={{
+                uri: getFlagUrl(selectedCountry || localSelectedCountry),
+              }}
+              style={{ width: 24, height: 24 }}
+              resizeMode="contain"
             />
           </View>
           <View style={styles.dropdownIcon}>
@@ -197,14 +252,25 @@ export default function CountryPhoneInput({
           <TextInput
             style={[styles.phoneInput, { color: colors.bodyTextColor }]}
             keyboardType="phone-pad"
-            placeholder="Phone number"
+            placeholder={
+              selectedCountry || localSelectedCountry
+                ? "Phone number"
+                : "Select a country first"
+            }
             value={phone}
             placeholderTextColor={colors.placeholderTextColor}
             onChangeText={onChangePhone}
-            editable={!verified}
+            editable={!verified && !!(selectedCountry || localSelectedCountry)}
           />
 
-          {isLoading && (
+          {verified && (
+            <Image
+              source={icons.checkFill}
+              style={{ width: 20, height: 20, marginRight: 8 }}
+            />
+          )}
+
+          {isLoading && !isValid && (
             <ActivityIndicator size="small" color={colors.primaryColor} />
           )}
         </View>
@@ -238,7 +304,7 @@ export default function CountryPhoneInput({
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => handleCountrySelect(item)}
+                onPress={() => handleCountrySelect(item as any)}
                 style={styles.countryItem}
               >
                 <CustomText
@@ -301,6 +367,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
   },
+  countryFlagContainer: {
+    marginRight: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   phoneInput: {
     height: 48,
     flex: 1,
@@ -308,11 +379,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   verifyButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    marginLeft: 8,
   },
   verifyText: {
     fontFamily: "PlusJakartaSans_Medium",
