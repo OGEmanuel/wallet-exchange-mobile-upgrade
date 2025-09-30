@@ -2,7 +2,7 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { ChevronDown } from "lucide-react-native";
 import React from "react";
-import { Animated, Pressable } from "react-native";
+import { Animated, Pressable, TextInput } from "react-native";
 
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
@@ -59,8 +59,23 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
         justifyContent="space-between"
         alignItems="center"
       >
-        <CustomText variant="medium">{amount}</CustomText>
-        <Pressable onPress={onTokenSelect}>
+        <TextInput
+          value={amount}
+          onChangeText={onAmountChange}
+          placeholder="0"
+          placeholderTextColor={theme.colors.bodyTextColor}
+          keyboardType="numeric"
+          style={{
+            fontSize: 16,
+            fontWeight: "500",
+            color: theme.colors.headerTextColor,
+            flex: 1,
+            paddingVertical: 8,
+            paddingHorizontal: 0,
+          }}
+          editable={!isReceive}
+        />
+        <Pressable onPress={onTokenSelect || (() => {})}>
           <CustomButton
             width={107}
             height={36}
@@ -68,7 +83,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
             bgColor={theme.colors.mainBackgroundColor}
             text={tokenSymbol}
             fontSize={12}
-            onPress={onTokenSelect}
+            onPress={onTokenSelect || (() => {})}
             leadingIcon={
               <Image
                 source={tokenImage}
@@ -98,7 +113,21 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           alignItems="center"
           mt="s"
         >
-          <CustomText variant="medium">{amount}</CustomText>
+          <TextInput
+            value={amount}
+            onChangeText={onAmountChange}
+            placeholder="0"
+            placeholderTextColor={theme.colors.bodyTextColor}
+            keyboardType="numeric"
+            style={{
+              fontSize: 16,
+              fontWeight: "500",
+              color: theme.colors.headerTextColor,
+              flex: 1,
+              paddingVertical: 8,
+              paddingHorizontal: 0,
+            }}
+          />
           {showBalance && (
             <Box
               flexDirection="row"
@@ -117,7 +146,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
                   color="black"
                   text="MAX"
                   fontSize={12}
-                  onPress={onMaxPress}
+                  onPress={onMaxPress || (() => {})}
                 />
               )}
             </Box>

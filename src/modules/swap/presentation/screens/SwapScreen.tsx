@@ -4,10 +4,10 @@ import { CustomButton, PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
-import { useFetchCurrencies } from "@/src/modules/swap";
+import { useFetchCurrencies, useSwap } from "@/src/modules/swap";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { SupportedCurrency } from "../../domain/entities/currency.types";
 
 // Import modular components
@@ -16,14 +16,36 @@ import { useSwapAnimations } from "../hooks/useSwapAnimations";
 
 const Swap = () => {
   const theme = useTheme<Theme>();
-  const [activeTab, setActiveTab] = useState<"EXCHANGE" | "WALLET">("EXCHANGE");
   const { showBottomSheet } = useAppBottomSheet();
 
-  // Fetch currencies for default selection
+  // Fetch currencies for selection
   const { currencies, isLoading: currenciesLoading } = useFetchCurrencies({
     includeFiat: true,
     enabled: true,
   });
+
+  // Use the swap hook for state management and exchange rates
+  const {
+    baseAmount,
+    targetAmount,
+    baseCurrency,
+    targetCurrency,
+    isRateLoading,
+    marketRate,
+    error,
+    isLoading,
+    activeTab,
+    setBaseAmount,
+    setTargetAmount,
+    setBaseCurrency,
+    setTargetCurrency,
+    handleBaseAmountChange,
+    handleTargetAmountChange,
+    handleSwapCurrencies,
+    validateExchange,
+    setActiveTab,
+    refetchRates,
+  } = useSwap();
 
   // Use the custom animation hook
   const {
@@ -33,21 +55,6 @@ const Swap = () => {
     swapButtonStyle,
     handleSwapPress,
   } = useSwapAnimations();
-
-  // State for selected tokens
-  const [sellToken, setSellToken] = useState({
-    symbol: "BTC",
-    image: require("@/assets/images/btc.png"),
-    amount: "0.009",
-    balance: "20BTC",
-  });
-
-  const [receiveToken, setReceiveToken] = useState({
-    symbol: "NGN",
-    image: require("@/assets/images/btc.png"),
-    amount: "30,027,060.88",
-    usdValue: "$180",
-  });
 
   // Set default currencies when currencies are loaded
   useEffect(() => {
@@ -63,43 +70,49 @@ const Swap = () => {
         (currency: SupportedCurrency) => currency.currencyId?.symbol === "NGN"
       );
 
-      // Set default sell token (BTC with ETH fallback)
-      if (btcCurrency || ethCurrency) {
+      // Set default base currency (BTC with ETH fallback)
+      if ((btcCurrency || ethCurrency) && !baseCurrency) {
         const selectedCurrency = btcCurrency || ethCurrency;
-        setSellToken({
-          symbol: selectedCurrency?.currencyId?.symbol || "BTC",
-          image: selectedCurrency?.image || selectedCurrency?.currencyId?.logo,
-          amount: "0.009",
-          balance: `20${selectedCurrency?.currencyId?.symbol}`,
-        });
+        setBaseCurrency(selectedCurrency);
       }
 
-      // Set default receive token (NGN)
-      if (ngnCurrency) {
-        setReceiveToken({
-          symbol: ngnCurrency.currencyId?.symbol || "NGN",
-          image: ngnCurrency.image || ngnCurrency.currencyId?.logo,
-          amount: "30,027,060.88",
-          usdValue: "$180",
-        });
+      // Set default target currency (NGN)
+      if (ngnCurrency && !targetCurrency) {
+        setTargetCurrency(ngnCurrency);
       }
     }
-  }, [currencies, currenciesLoading]);
+  }, [
+    currencies,
+    currenciesLoading,
+    baseCurrency,
+    targetCurrency,
+    setBaseCurrency,
+    setTargetCurrency,
+  ]);
 
-  // Handle token selection for sell token
-  const handleSellTokenSelect = () => {
+  // Handle token selection for base currency
+  const handleBaseTokenSelect = () => {
     showBottomSheet({
       component: (
         <TokenSelectionBottomSheet
           onTokenSelect={(token: any) => {
-            setSellToken({
-              symbol: token.symbol,
-              image: token.image,
-              amount: sellToken.amount,
-              balance: token.balance,
-            });
+            setBaseCurrency(token);
           }}
-          selectedToken={sellToken}
+          selectedToken={
+            baseCurrency
+              ? {
+                  symbol: baseCurrency.currencyId?.symbol || "",
+                  image: baseCurrency.image || baseCurrency.currencyId?.logo,
+                  balance: `20${baseCurrency.currencyId?.symbol}`,
+                  _id: baseCurrency._id,
+                  currencyId: baseCurrency.currencyId,
+                }
+              : {
+                  symbol: "Select",
+                  image: require("@/assets/images/btc.png"),
+                  balance: "0",
+                }
+          }
           title="Select Token to Sell"
         />
       ),
@@ -111,20 +124,30 @@ const Swap = () => {
     });
   };
 
-  // Handle token selection for receive token
-  const handleReceiveTokenSelect = () => {
+  // Handle token selection for target currency
+  const handleTargetTokenSelect = () => {
     showBottomSheet({
       component: (
         <TokenSelectionBottomSheet
           onTokenSelect={(token: any) => {
-            setReceiveToken({
-              symbol: token.symbol,
-              image: token.image,
-              amount: receiveToken.amount,
-              usdValue: token.usdValue,
-            });
+            setTargetCurrency(token);
           }}
-          selectedToken={receiveToken}
+          selectedToken={
+            targetCurrency
+              ? {
+                  symbol: targetCurrency.currencyId?.symbol || "",
+                  image:
+                    targetCurrency.image || targetCurrency.currencyId?.logo,
+                  usdValue: `$${targetAmount?.toFixed(2) || "0"}`,
+                  _id: targetCurrency._id,
+                  currencyId: targetCurrency.currencyId,
+                }
+              : {
+                  symbol: "Select",
+                  image: require("@/assets/images/btc.png"),
+                  usdValue: "$0",
+                }
+          }
           title="Select Token to Receive"
         />
       ),
@@ -136,6 +159,20 @@ const Swap = () => {
     });
   };
 
+  // Handle swap button press with animation and state update
+  const handleSwapButtonPress = () => {
+    handleSwapPress(); // Animation
+    handleSwapCurrencies(); // State update
+  };
+
+  // Handle continue button press
+  const handleContinue = () => {
+    if (validateExchange()) {
+      // TODO: Navigate to confirmation screen or process swap
+      console.log("Swap validated, proceeding...");
+    }
+  };
+
   return (
     <PageWrapper>
       <Box flex={1} p="m">
@@ -144,60 +181,92 @@ const Swap = () => {
         </CustomText>
         <ActivityTabar activeTab={activeTab} onPress={setActiveTab} />
 
-        {/* Sell Token Input */}
+        {/* Error Display */}
+        {error && (
+          <Box
+            backgroundColor="secondaryBackgroundColor"
+            p="s"
+            borderRadius={8}
+            mb="s"
+          >
+            <CustomText variant="body" color="bodyTextColor">
+              {error}
+            </CustomText>
+          </Box>
+        )}
+
+        {/* Base Token Input */}
         <Box marginBottom="s" mt="m" position="relative">
           <TokenInputCard
-            amount={sellToken.amount}
-            tokenSymbol={sellToken.symbol}
-            tokenImage={sellToken.image}
-            balance={sellToken.balance}
+            amount={baseAmount?.toString() || "0"}
+            tokenSymbol={baseCurrency?.currencyId?.symbol || "Select"}
+            tokenImage={baseCurrency?.image || baseCurrency?.currencyId?.logo}
+            balance={`20${baseCurrency?.currencyId?.symbol || ""}`}
             showBalance={true}
             showMaxButton={true}
-            onTokenSelect={handleSellTokenSelect}
-            onMaxPress={() => {}}
+            onTokenSelect={handleBaseTokenSelect}
+            onAmountChange={handleBaseAmountChange}
+            onMaxPress={() => {
+              // TODO: Set max balance
+              console.log("Max pressed");
+            }}
             animatedStyle={sellContainerStyle}
             isReceive={false}
           />
         </Box>
 
-        {/* Receive Token Input with Swap Button */}
+        {/* Target Token Input with Swap Button */}
         <Box position="relative">
           <TokenInputCard
-            amount={receiveToken.amount}
-            tokenSymbol={receiveToken.symbol}
-            tokenImage={receiveToken.image}
+            amount={targetAmount?.toString() || "0"}
+            tokenSymbol={targetCurrency?.currencyId?.symbol || "Select"}
+            tokenImage={
+              targetCurrency?.image || targetCurrency?.currencyId?.logo
+            }
             animatedStyle={receiveContainerStyle}
             isReceive={true}
-            usdValue={receiveToken.usdValue}
-            onTokenSelect={handleReceiveTokenSelect}
+            usdValue={`$${targetAmount?.toFixed(2) || "0"}`}
+            onTokenSelect={handleTargetTokenSelect}
+            onAmountChange={handleTargetAmountChange}
           />
 
           <SwapButton
-            onPress={handleSwapPress}
+            onPress={handleSwapButtonPress}
             animatedStyle={swapButtonStyle}
-            disabled={isAnimating}
+            disabled={isAnimating || !baseCurrency || !targetCurrency}
           />
         </Box>
 
         {/* Swap Details */}
-        <SwapDetailsCard
-          provider="Zap exchange"
-          providerIcon={require("@/assets/images/btc.png")}
-          zapFee="$0.009"
-          rate="1BNB = 500 USDC"
-          minimumReceived="327,060.88 NGN"
-          showLess={false}
-        />
+        {marketRate && (
+          <SwapDetailsCard
+            provider="Zap exchange"
+            providerIcon={require("@/assets/images/btc.png")}
+            zapFee={`$${marketRate.rate?.toFixed(6) || "0.000000"}`}
+            rate={`1 ${
+              baseCurrency?.currencyId?.symbol
+            } = ${marketRate.rate?.toFixed(2)} ${
+              targetCurrency?.currencyId?.symbol
+            }`}
+            minimumReceived={`${targetAmount?.toFixed(2)} ${
+              targetCurrency?.currencyId?.symbol
+            }`}
+            showLess={false}
+          />
+        )}
 
         {/* Continue Button */}
         <CustomButton
-          text="Continue"
+          text={isLoading ? "Processing..." : "Continue"}
           fontSize={14}
           width={"100%"}
           height={56}
           borderRadius={56}
           bgColor={theme.colors.primaryColor}
-          onPress={() => {}}
+          onPress={handleContinue}
+          disabled={
+            isLoading || !baseCurrency || !targetCurrency || baseAmount <= 0
+          }
         />
       </Box>
     </PageWrapper>
