@@ -6,13 +6,13 @@ import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { CustomText } from "./general";
 
 export interface SelectProps<T> {
-  options: Array<{
+  options: {
     label: string;
     value: T;
     prefix?: React.ReactNode;
     suffix?: React.ReactNode;
-  }>;
-  value?: T | T[];
+  }[];
+  value?: T | T[] | null;
   onSelect?: (value: T | T[]) => void;
   placeholder?: string;
   searchable?: boolean;
@@ -116,16 +116,26 @@ const SelectComponent = <T,>(
 
           {selectedOption ? (
             <View style={styles.selectedContent}>
-              {selectedOption.prefix && (
-                <View style={styles.optionPrefix}>{selectedOption.prefix}</View>
-              )}
-              <CustomText
-                style={[styles.selectedText, { color: colors.bodyTextColor }]}
-              >
-                {selectedOption.label}
-              </CustomText>
-              {selectedOption.suffix && (
-                <View style={styles.optionSuffix}>{selectedOption.suffix}</View>
+              {Array.isArray(selectedOption) ? (
+                <CustomText
+                  style={[styles.selectedText, { color: colors.bodyTextColor }]}
+                >
+                  {selectedOption.length} selected
+                </CustomText>
+              ) : (
+                <>
+                  {selectedOption.prefix && (
+                    <View style={styles.optionPrefix}>{selectedOption.prefix}</View>
+                  )}
+                  <CustomText
+                    style={[styles.selectedText, { color: colors.bodyTextColor }]}
+                  >
+                    {selectedOption.label}
+                  </CustomText>
+                  {selectedOption.suffix && (
+                    <View style={styles.optionSuffix}>{selectedOption.suffix}</View>
+                  )}
+                </>
               )}
             </View>
           ) : (

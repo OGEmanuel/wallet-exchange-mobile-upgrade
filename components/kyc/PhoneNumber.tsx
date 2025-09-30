@@ -1,3 +1,5 @@
+import { CountryData } from "@/src/core/utils/countryData";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -19,14 +21,16 @@ export default function PhoneNumber({
   onSkip,
   onBack,
 }: PhoneNumberProps) {
-  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountryData | undefined>(undefined);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showOTP, setShowOTP] = useState(false);
   const [verified, setVerified] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const theme = useTheme<Theme>();
+  const { authPhoneNumber } = useKyc();
+  const [verifyPhoneNumberLoading, setVerifyPhoneNumberLoading] = useState(false);
 
-  const handleCountrySelect = (country: any) => {
+  const handleCountrySelect = (country: CountryData) => {
     setSelectedCountry(country);
   };
 
@@ -46,13 +50,24 @@ export default function PhoneNumber({
   const handleOTPVerified = () => {
     setVerified(true);
     setShowOTP(false);
-    onPhoneVerified?.(phoneNumber, selectedCountry?.alpha2 || "");
+    onPhoneVerified?.(phoneNumber, selectedCountry?.phoneCode.replaceAll("+", "") || "");
   };
 
   const handleContinue = () => {
     if (selectedCountry && phoneNumber && isValid) {
-      // Send OTP and show OTP verification screen
-      setShowOTP(true);
+      setVerifyPhoneNumberLoading(true);
+
+      authPhoneNumber({
+        phone: phoneNumber,
+        countryCode: selectedCountry?.phoneCode.replaceAll("+", "") || null,
+        isWhatsApp: false,
+      }).then(() => {
+        // setShowOTP(true);
+      }).catch((error) => {
+        console.log(error);
+      }).finally(() => {
+        setVerifyPhoneNumberLoading(false);
+      });
     }
   };
 
@@ -78,7 +93,10 @@ export default function PhoneNumber({
       <View style={styles.inputContainer}>
         <CountrySelect
           value={selectedCountry}
-          onSelect={handleCountrySelect}
+          onSelect={(value) => {
+            if (!Array.isArray(value))
+            handleCountrySelect(value);
+          }}
           placeholder="Select country"
           showFlag={true}
           showPhoneCode={true}
@@ -92,7 +110,7 @@ export default function PhoneNumber({
           }}
           phoneDets={{
             phone: phoneNumber,
-            countryCode: selectedCountry?.alpha2 || "",
+            countryCode: selectedCountry?.phoneCode || "",
           }}
           onValidate={(isValid) => {
             setIsValid(isValid);
@@ -118,6 +136,7 @@ export default function PhoneNumber({
           />
           <CustomButton
             text="Continue"
+            isLoading={verifyPhoneNumberLoading}
             onPress={handleContinue}
             width="48%"
             height={56}

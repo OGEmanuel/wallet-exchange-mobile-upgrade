@@ -2,7 +2,7 @@ import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { forwardRef, useMemo } from "react";
-import { Image, Text } from "react-native";
+import { Image } from "react-native";
 import countryData, {
   CountryData,
   getCountryFlagUrl,
@@ -76,17 +76,17 @@ const CountrySelectComponent = (
       //       resizeMode="contain"
       //     />
       //   ) : undefined,
-      suffix: showPhoneCode ? (
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: "500",
-            color: isDark ? "#D1D5DB" : "#6B7280",
-          }}
-        >
-          {country.phoneCode}
-        </Text>
-      ) : undefined,
+      // suffix: showPhoneCode ? (
+      //   <Text
+      //     style={{
+      //       fontSize: 14,
+      //       fontWeight: "500",
+      //       color: isDark ? "#D1D5DB" : "#6B7280",
+      //     }}
+      //   >
+      //     {country.phoneCode}
+      //   </Text>
+      // ) : undefined,
     }));
     return options;
   }, [showPhoneCode, showFlag, preferredCountries, isDark]);
@@ -131,7 +131,9 @@ const CountrySelectComponent = (
       label={label}
       error={hasError ? error : undefined}
       touched={touched}
-      onSelect={handleSelect}
+      onSelect={(value) => {
+        handleSelect(value);
+      }}
       {...props}
     />
   );

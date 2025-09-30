@@ -66,7 +66,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       updatePhoneNumberEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -76,7 +76,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       authenticatePhoneNumberOtpEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -90,7 +90,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       requestNewOtpEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -100,7 +100,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       submitVerificationEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -110,7 +110,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       submitVerificationEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }

@@ -1,17 +1,15 @@
 import icons from "@/assets/icons";
-import { ThemedArrowUpIcon } from "@/assets/svg/wallet-icons-components";
+import { CountryData } from "@/src/core/utils/countryData";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Image,
-  Pressable,
   StyleSheet,
   TextInput,
-  View,
+  View
 } from "react-native";
 import { CustomText } from "../general";
 
@@ -22,25 +20,9 @@ interface CountryPhoneInputProps {
   onValidate?: (isValid: boolean) => void;
   onVerify?: () => void;
   showVerifyButton?: boolean;
-  selectedCountry?: any;
+  selectedCountry?: CountryData;
   onPhoneChange?: (phone: string) => void;
 }
-
-// Mock data for countries
-const mockCountries = [
-  {
-    alpha2: "US",
-    name: "United States",
-    flagUrl: "https://flagcdn.com/w40/us.png",
-  },
-  { alpha2: "NG", name: "Nigeria", flagUrl: "https://flagcdn.com/w40/ng.png" },
-  {
-    alpha2: "GB",
-    name: "United Kingdom",
-    flagUrl: "https://flagcdn.com/w40/gb.png",
-  },
-  { alpha2: "CA", name: "Canada", flagUrl: "https://flagcdn.com/w40/ca.png" },
-];
 
 // Simple phone validation function
 const isValidPhoneNumber = (phone: string, countryCode: string): boolean => {
@@ -70,10 +52,10 @@ export default function CountryPhoneInput({
 
   const { colors } = useTheme<Theme>();
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log("CountryPhoneInput selectedCountry:", selectedCountry);
-  }, [selectedCountry]);
+  // // Debug logging
+  // React.useEffect(() => {
+  //   console.log("CountryPhoneInput selectedCountry:", selectedCountry);
+  // }, [selectedCountry]);
 
   // Helper function to get flag URL safely
   const getFlagUrl = (country: any) => {
@@ -95,7 +77,7 @@ export default function CountryPhoneInput({
   const validatePhoneNumber = useCallback(
     (value: string) => {
       const currentCountry = selectedCountry || localSelectedCountry;
-      const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+      const countryCode = currentCountry?.phoneCode;
 
       if (!countryCode) {
         setIsValid(null);
@@ -118,7 +100,7 @@ export default function CountryPhoneInput({
           valid
             ? null
             : `Invalid phone number for ${
-                currentCountry.name ||
+                currentCountry?.phoneCode ||
                 currentCountry.label ||
                 "selected country"
               }`
@@ -141,7 +123,7 @@ export default function CountryPhoneInput({
 
       // Validate phone number
       const currentCountry = selectedCountry || localSelectedCountry;
-      const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+      const countryCode = currentCountry?.phoneCode || currentCountry?.value;
       if (countryCode) {
         const valid = isValidPhoneNumber(value, countryCode);
         setIsValid(valid);
@@ -153,7 +135,7 @@ export default function CountryPhoneInput({
 
   const handleSendOTP = async () => {
     const currentCountry = selectedCountry || localSelectedCountry;
-    const countryCode = currentCountry?.alpha2 || currentCountry?.value;
+    const countryCode = currentCountry?.phoneCode || currentCountry?.value;
 
     if (!countryCode) {
       setError("Please select a country");
@@ -207,41 +189,40 @@ export default function CountryPhoneInput({
     [phone, validatePhoneNumber, isValidated]
   );
 
-  // Filter countries based on search term
-  const filteredCountries = useMemo(() => {
-    if (!mockCountries?.length) return mockCountries;
-    if (!searchTerm.trim()) return mockCountries;
-    return mockCountries?.filter((c) =>
-      c?.name?.toLowerCase()?.includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
-
   return (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
-        <Pressable
-          onPress={toggleCountryList}
-          disabled={verified}
+        <View
+          // onPress={toggleCountryList}
+          // disabled={true}
           style={[
             styles.countrySelector,
-            { backgroundColor: colors.secondaryBackgroundColor },
+            { 
+              backgroundColor: colors.secondaryBackgroundColor,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            },
           ]}
         >
-          <View style={styles.flagContainer}>
+          <CustomText style={styles.countryCode}>
+            {selectedCountry?.phoneCode}
+          </CustomText>
+          {/* <View style={styles.flagContainer}>
             <Image
               source={{
                 uri: getFlagUrl(selectedCountry || localSelectedCountry),
               }}
-              style={{ width: 24, height: 24 }}
-              resizeMode="contain"
+              style={{ width: "100%", height: "100%" }}
+              // resizeMode="contain"
             />
-          </View>
-          <View style={styles.dropdownIcon}>
+          </View> */}
+          {/* <View style={styles.dropdownIcon}>
             <ThemedArrowUpIcon
               style={{ width: 24, height: 24, tintColor: colors.bodyTextColor }}
             />
-          </View>
-        </Pressable>
+          </View> */}
+        </View>
 
         <View
           style={[
@@ -297,24 +278,6 @@ export default function CountryPhoneInput({
               },
             ]}
           />
-
-          <FlatList
-            data={filteredCountries}
-            keyExtractor={(item) => item.alpha2}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => handleCountrySelect(item as any)}
-                style={styles.countryItem}
-              >
-                <CustomText
-                  style={[styles.countryName, { color: colors.bodyTextColor }]}
-                >
-                  {item.name}
-                </CustomText>
-              </Pressable>
-            )}
-          />
         </View>
       )}
 
@@ -337,6 +300,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  countryCode: {
+    fontFamily: "PlusJakartaSans_Medium",
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
+  },
   countrySelector: {
     width: 80,
     height: 48,
@@ -349,6 +318,7 @@ const styles = StyleSheet.create({
   flagContainer: {
     width: 24,
     height: 24,
+    flex: 1,
   },
   dropdownIcon: {
     width: 24,
