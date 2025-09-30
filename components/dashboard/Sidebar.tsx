@@ -1,7 +1,5 @@
 import {
   ThemedBookIcon,
-  ThemedChartIcon,
-  ThemedFaceIDIcon,
   ThemedGiftFill3Icon,
   ThemedHeatIcon,
   ThemedHelpIcon,
@@ -25,7 +23,6 @@ import React from "react";
 import { Image, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
-import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 import SidebarItemCard from "./SidebarItemCard";
@@ -133,50 +130,6 @@ const Sidebar = () => {
       link: "/dashboard/home/preferences",
       isActive: false,
     },
-  ];
-
-  const SIDEBAR_SECURITY_DATA: ISidebarItem[] = [
-    {
-      icon: (
-        <ThemedFaceIDIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Login with FaceID",
-      link: "/dashboard/home/about",
-      isActive: false,
-      disablClick: true,
-      trailingItem: (
-        <Switch
-          value={isConnect}
-          onValueChange={() => handleConnect()}
-          trackColor={{
-            false: theme.colors.primaryColor,
-            true: theme.colors.primaryColor,
-          }}
-        />
-      ),
-    },
-    {
-      icon: (
-        <ThemedBookIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Change Zap PIN",
-      link: "/dashboard/home/about",
-      isActive: false,
-      onPress: () => changePinRef.current?.snapToIndex(1),
-    },
-  ];
-
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
     {
       icon: (
         <ThemedShieldFillIcon
@@ -417,8 +370,7 @@ const Sidebar = () => {
           <LearnWithZapCards />
           <LearnWithZapCards />
         </ScrollView>
-      </Box> */}
-      <ChangePinBottomSheet ref={changePinRef} />
+      </Box>
     </Box>
   );
 };
