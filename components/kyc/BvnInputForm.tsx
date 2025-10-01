@@ -1,4 +1,4 @@
-import { ThemedLockPasswordIcon } from "@/assets/svg/wallet-icons-components";
+import { ThemedBackIcon, ThemedLockPasswordIcon } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -50,7 +50,7 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
       {/* Back Button */}
       {onBack && (
         <Pressable onPress={onBack} style={styles.backButton}>
-          <CustomText style={styles.backArrow}>←</CustomText>
+          <ThemedBackIcon />
         </Pressable>
       )}
 

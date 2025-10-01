@@ -1,6 +1,7 @@
-import { fetchCurrenciesEndpoint, fetchSupportedCurrenciesEndpoint } from "@/src/core/api/api_endpoints";
+import { fetchCurrenciesEndpoint, fetchSupportedCurrenciesEndpoint, getVerifiedCountriesEndpoint } from "@/src/core/api/api_endpoints";
 import { httpClient } from "@/src/core/api/http-client";
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
 import { CurrencyModel } from "../../domain/entities/models/currency-model";
 import { SupportedCurrencyModel } from "../../domain/entities/models/supported-currency-model";
 import { UtilitiesRemoteDataSource } from "./utilities-remote-datasource";
@@ -18,8 +19,13 @@ export class UtilitiesRemoteDataSourceImpl implements UtilitiesRemoteDataSource 
     };
   }
 
-  async fetchSupportedCurrencies(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
+  async fetchSupportedCurrencies(_: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
     const response = await httpClient.get<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>>(fetchSupportedCurrenciesEndpoint);
+    return response.data;
+  }
+
+  async fetchVerifiedCountries(_: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<VerifiedCountryModel[] | null | undefined>> {
+    const response = await httpClient.get<GeneralResponseModel<VerifiedCountryModel[] | null | undefined>>(getVerifiedCountriesEndpoint);
     return response.data;
   }
 }

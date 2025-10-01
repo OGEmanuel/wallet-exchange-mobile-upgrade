@@ -3,6 +3,7 @@ import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { CustomText } from "../general";
+import Select from "../Select";
 import BvnInputForm from "./BvnInputForm";
 import IDVerificationFlow from "./IDVerificationFlow";
 import ProgressTrack from "./ProgressTrack";
@@ -105,6 +106,8 @@ export default function IdentityVerification({
         Before you can buy BTC we will need to verify who you are. Be sure your
         data is saf
       </CustomText>
+
+      <Select options />
       <View style={styles.contentContainer}>
         <ProgressTrack
           currentStep={currentStep}
