@@ -1,6 +1,8 @@
-import { GeneralRequestModel } from "@/src/core/api/http-types";
+import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { AppDispatch } from "@/state";
 import { useDispatch } from "react-redux";
+import { VerifiedCountryModel } from "../../domain/entities/models/verified-country-model";
 import { UtilitiesUsecases } from "../../domain/usecases/utilities-usecases";
 import { utilitiesActions } from "../state/utilities-slice";
 
@@ -19,6 +21,20 @@ const useUtilities = () => {
 
     fetchSupportedCurrencies: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
       return await utilitiesUsecases.fetchSupportedCurrencies(payload);
+    },
+
+    fetchVerifiedCountries: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
+      const response = await utilitiesUsecases.fetchVerifiedCountries(payload);
+
+      if (response?.data) {
+        dispatch(utilitiesActions.setVerifiedCountries(response.data || null));
+      }
+    },
+
+    fetchDocumentTypes: async (payload: GeneralRequestModel<VerifiedCountryModel | null, unknown, unknown>): Promise<GeneralResponseModel<CountryVerificationDocumentModel[] | null | undefined>> => {
+      const response = await utilitiesUsecases.fetchDocumentTypes(payload);
+
+      return response;
     },
   };
 };

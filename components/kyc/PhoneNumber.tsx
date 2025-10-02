@@ -95,7 +95,7 @@ export default function PhoneNumber({
           value={selectedCountry}
           onSelect={(value) => {
             if (!Array.isArray(value))
-            handleCountrySelect(value);
+              handleCountrySelect(value);
           }}
           placeholder="Select country"
           showFlag={true}
@@ -179,7 +179,9 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   inputContainer: {
-    flex: 1,
+    // flex: 1,
+    // gridTemplateColumns: "1fr 1fr",
+    gap: 8,
     paddingTop: 20,
   },
   backButton: {

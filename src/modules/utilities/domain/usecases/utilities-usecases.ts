@@ -1,7 +1,9 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { UtilitiesRepoImpl } from "../../data/utilities-repo-impl";
 import { CurrencyModel } from "../entities/models/currency-model";
 import { SupportedCurrencyModel } from "../entities/models/supported-currency-model";
+import { VerifiedCountryModel } from "../entities/models/verified-country-model";
 
 export class UtilitiesUsecases {
   private readonly repo = new UtilitiesRepoImpl();
@@ -12,5 +14,13 @@ export class UtilitiesUsecases {
 
   async fetchSupportedCurrencies(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
     return this.repo.fetchSupportedCurrencies(payload);
+  }
+
+  async fetchVerifiedCountries(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<VerifiedCountryModel[] | null | undefined>> {
+    return this.repo.fetchVerifiedCountries(payload);
+  }
+
+  async fetchDocumentTypes(payload: GeneralRequestModel<VerifiedCountryModel | null, unknown, unknown>): Promise<GeneralResponseModel<CountryVerificationDocumentModel[] | null | undefined>> {
+    return this.repo.fetchDocumentTypes(payload);
   }
 }

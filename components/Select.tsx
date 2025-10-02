@@ -13,6 +13,7 @@ export interface SelectProps<T> {
     suffix?: React.ReactNode;
   }[];
   value?: T | T[] | null;
+  selectedLabel?: string;
   onSelect?: (value: T | T[]) => void;
   placeholder?: string;
   searchable?: boolean;
@@ -35,6 +36,7 @@ const SelectComponent = <T,>(
   {
     options = [],
     value,
+    selectedLabel,
     onSelect,
     placeholder = "Select...",
     searchable = false,
@@ -114,7 +116,16 @@ const SelectComponent = <T,>(
         <View style={styles.selectContent}>
           {prefix && <View style={styles.prefix}>{prefix}</View>}
 
-          {selectedOption ? (
+          {/* {
+            selectedOption &&
+            <CustomText
+              style={[styles.selectedText, { color: colors.bodyTextColor }]}
+            >
+              {selectedLabel}
+            </CustomText>
+          } */}
+
+          {selectedOption || selectedLabel ? (
             <View style={styles.selectedContent}>
               {Array.isArray(selectedOption) ? (
                 <CustomText
@@ -124,15 +135,15 @@ const SelectComponent = <T,>(
                 </CustomText>
               ) : (
                 <>
-                  {selectedOption.prefix && (
+                  {selectedOption?.prefix && (
                     <View style={styles.optionPrefix}>{selectedOption.prefix}</View>
                   )}
                   <CustomText
                     style={[styles.selectedText, { color: colors.bodyTextColor }]}
                   >
-                    {selectedOption.label}
+                    { selectedOption?.label || selectedLabel }
                   </CustomText>
-                  {selectedOption.suffix && (
+                  {selectedOption?.suffix && (
                     <View style={styles.optionSuffix}>{selectedOption.suffix}</View>
                   )}
                 </>
