@@ -5,6 +5,7 @@ import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -46,7 +47,7 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ): Promise<GeneralResponseModel<unknown>> => {
+    ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,
@@ -54,21 +55,15 @@ const useKyc = () => {
         extra: null,
       });
 
-      // Update user state if verification was successful and user data is returned
-      if (response.success && response.data && (response.data as any)?.user) {
-        dispatch(kycActions.setUser((response.data as any).user as UserModel));
-      }
+      const authVerificationData = response.data;
 
-      // Store token and refreshToken if they are present in the response data
       if (
-        response.success &&
-        response.data &&
-        ((response.data as any)?.token || (response.data as any)?.refreshToken)
+        authVerificationData
       ) {
         try {
           const tokenData: TokenData = {
-            token: (response.data as any).token,
-            refreshToken: (response.data as any).refreshToken,
+            token: authVerificationData?.token || null,
+            refreshToken: authVerificationData?.refreshToken || null,
             expiresAt: null,
           };
           await storageService.save(StorageKeys.TOKEN_DATA, tokenData);

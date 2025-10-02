@@ -1,4 +1,5 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { AuthVerificationModel } from "../domain/entities/models/auth-verifications-model";
 import { UserModel } from "../domain/entities/models/user-model";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
@@ -16,7 +17,7 @@ export class KycRepoImpl implements KycRepo {
     return this.remoteDatasource.authEmail(payload);
   }
 
-  async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<AuthVerificationModel>> {
     return this.remoteDatasource.verifyEmail(payload);
   }
 

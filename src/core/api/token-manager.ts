@@ -2,6 +2,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { storageService } from '../storage/app-storage';
 import { StorageKeys } from '../storage/storage-types';
+import { refreshTokenEndpoint } from './api_endpoints';
 import { GeneralResponseModel, RefreshTokenResponse } from './http-types';
 import { TokenData } from './models';
 
@@ -40,7 +41,7 @@ export class TokenManager {
   constructor(
     baseURL: string, 
     timeout: number = 20000,
-    refreshEndpoint: string = '/auth/refresh-token'
+    refreshEndpoint: string = refreshTokenEndpoint,
   ) {
     this.refreshEndpoint = refreshEndpoint;
     this.refreshTokenAxiosInstance = axios.create({

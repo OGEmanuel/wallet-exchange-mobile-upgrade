@@ -12,6 +12,7 @@ import {
   updatePhoneNumberEndpoint,
   usernameOnboardingEndpoint,
 } from "../../../../core/api/api_endpoints";
+import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -39,8 +40,8 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
 
   async verifyEmail(
     payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>
-  ): Promise<GeneralResponseModel<unknown>> {
-    const response = await httpClient.post<GeneralResponseModel<unknown>>(
+  ): Promise<GeneralResponseModel<AuthVerificationModel>> {
+    const response = await httpClient.post<GeneralResponseModel<AuthVerificationModel>>(
       authenticateEmailOtpEndpoint,
       payload.body,
       {},

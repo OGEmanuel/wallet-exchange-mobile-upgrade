@@ -1,6 +1,7 @@
 import { accounts, idCard } from "@/assets/images";
 import { CountryVerificationDocumentModel, FilteredVerifiedCountryDocumentModel, filterVerificationClasses, groupByVerificationClass, userSubmittedDocumentIsApprovedOrPending } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
@@ -24,7 +25,7 @@ export default function IdentityVerification({
   onBack,
 }: IdentityVerificationProps) {
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  
+  const { updateUser } = useKyc();
   const [currentStep, setCurrentStep] = useState(1);
   const [showBvnForm, setShowBvnForm] = useState(false);
   const [showIdForm, setShowIdForm] = useState(false);
@@ -222,6 +223,16 @@ export default function IdentityVerification({
         onSelect={(value) => {
           if (!Array.isArray(value)) {
             setSelectedCountry(value);
+
+            updateUser({
+              metaData: {
+                ...user?.metaData,
+                documentVerification: {
+                  ...user?.metaData?.documentVerification,
+                  selectedVerifiedCountry: value,
+                },
+              }
+            });
           }
         }}
       />
