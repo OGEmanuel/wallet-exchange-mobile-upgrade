@@ -9,6 +9,7 @@ import LoaderWrapper from "@/components/general/LoaderWrapper";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
@@ -17,25 +18,34 @@ import { AppRootState } from "../../../../../state";
 const Explore = () => {
   const [isTokens, setIsTokens] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyModel | undefined>();
-  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(undefined);
-  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(undefined);
-  const [filteredCurrencies, setFilteredCurrencies] = useState<(CurrencyModel | undefined)[] | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<
+    CurrencyModel | undefined
+  >();
+  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [filteredCurrencies, setFilteredCurrencies] = useState<
+    (CurrencyModel | undefined)[] | null
+  >(null);
   // State for market data and loading states
   const [isLoading, setIsLoading] = useState(false);
   // const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
+
   const { currencies } = useSelector((state: AppRootState) => state.utilities);
   const { marketTokens } = useSelector((state: AppRootState) => state.market);
 
   const { fetchMarketTokens } = useMarket();
   const { fetchCurrencies } = useUtilities();
 
-
   const retrieveNairaCurrency = useCallback((): void => {
     if (currencies) {
-      const nairaCurrency = currencies.find(currency => currency.code === 'NGN');
+      const nairaCurrency = currencies.find(
+        (currency) => currency.code === "NGN"
+      );
       if (nairaCurrency) {
         setNairaCurrency(nairaCurrency);
       }
@@ -44,7 +54,9 @@ const Explore = () => {
 
   const retrieveUsdCurrency = useCallback((): void => {
     if (currencies) {
-      const usdCurrency = currencies.find(currency => currency.code === 'USD');
+      const usdCurrency = currencies.find(
+        (currency) => currency.code === "USD"
+      );
       if (usdCurrency) {
         setUsdCurrency(usdCurrency);
         setSelectedCurrency(usdCurrency);
@@ -64,10 +76,13 @@ const Explore = () => {
         params: {},
         extra: {},
       });
-
     } catch (error) {
       // setIsError(true);
-      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -81,14 +96,20 @@ const Explore = () => {
     }).then(() => {
       retrieveNairaCurrency();
       retrieveUsdCurrency();
-
-      setTimeout(() => {
-        setFilteredCurrencies([usdCurrency, nairaCurrency]);
-      }, 1000);
     });
-
   }, []);
 
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+      setSelectedCurrency(usd); // default USD
+      setFilteredCurrencies([usd, ngn]);
+    }
+  }, [currencies]);
 
   useEffect(() => {
     loadCurrencies();
@@ -96,7 +117,6 @@ const Explore = () => {
   }, []);
 
   const categories = ["All", "Top Gainers", "Top Losers"];
-  // const filteredCurrencies = [usdCurrency, nairaCurrency];
 
   // Filter market tokens based on selected category
   const filteredMarketTokens = React.useMemo(() => {
@@ -105,12 +125,12 @@ const Explore = () => {
     switch (selectedCategory) {
       case "Top Gainers":
         return [...marketTokens]
-          .filter(token => token.change24h && token.change24h > 0)
+          .filter((token) => token.change24h && token.change24h > 0)
           .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
 
       case "Top Losers":
         return [...marketTokens]
-          .filter(token => token.change24h && token.change24h < 0)
+          .filter((token) => token.change24h && token.change24h < 0)
           .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
 
       case "All":
@@ -138,6 +158,23 @@ const Explore = () => {
           secondText="Watchlist"
         />
       </Box>
+      <Pressable
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 4,
+          borderRadius: 20,
+          backgroundColor: "rgba(196, 230, 77, 0.2)",
+          borderWidth: 1,
+          borderColor: "#C7E64D",
+        }}
+        onPress={() =>
+          router.push("/dashboard/home/market/682d9e57327011c95294e76f")
+        }
+      >
+        <CustomText variant="body" fontSize={10} color="bodyTextColor">
+          BTC
+        </CustomText>
+      </Pressable>
 
       {/* Category Filters */}
       <Box
@@ -164,32 +201,36 @@ const Explore = () => {
           borderRadius={20}
           padding="s"
         >
-          {filteredCurrencies && filteredCurrencies?.map((currency, index) => (
-            <Pressable
-              key={index}
-              onPress={() => setSelectedCurrency(currency)}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 4,
-                borderRadius: 20,
-                backgroundColor:
-                  selectedCurrency?.code === currency?.code
-                    ? "rgba(196, 230, 77, 0.2)"
-                    : "transparent",
-                borderWidth: selectedCurrency?.code === currency?.code ? 1 : 0,
-                borderColor:
-                  selectedCurrency?.code === currency?.code ? "#C7E64D" : "transparent",
-              }}
-              android_ripple={{
-                color: "rgba(255,255,255,0.1)",
-                borderless: true,
-              }}
-            >
-              <CustomText variant="body" fontSize={10} color="bodyTextColor">
-                {currency?.code}
-              </CustomText>
-            </Pressable>
-          ))}
+          {filteredCurrencies &&
+            filteredCurrencies?.map((currency, index) => (
+              <Pressable
+                key={index}
+                onPress={() => setSelectedCurrency(currency)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                  backgroundColor:
+                    selectedCurrency?.code === currency?.code
+                      ? "rgba(196, 230, 77, 0.2)"
+                      : "transparent",
+                  borderWidth:
+                    selectedCurrency?.code === currency?.code ? 1 : 0,
+                  borderColor:
+                    selectedCurrency?.code === currency?.code
+                      ? "#C7E64D"
+                      : "transparent",
+                }}
+                android_ripple={{
+                  color: "rgba(255,255,255,0.1)",
+                  borderless: true,
+                }}
+              >
+                <CustomText variant="body" fontSize={10} color="bodyTextColor">
+                  {currency?.code}
+                </CustomText>
+              </Pressable>
+            ))}
         </Box>
       </Box>
 
@@ -198,7 +239,12 @@ const Explore = () => {
         isError={!!errorMessage && !marketTokens}
         errorMessage={errorMessage}
         onRetry={loadMarketTokens}
-        isEmpty={!isLoading && !!errorMessage && filteredMarketTokens && filteredMarketTokens.length === 0}
+        isEmpty={
+          !isLoading &&
+          !!errorMessage &&
+          filteredMarketTokens &&
+          filteredMarketTokens.length === 0
+        }
         existingData={filteredMarketTokens}
       >
         <Box
@@ -217,7 +263,14 @@ const Explore = () => {
             contentContainerStyle={{ paddingBottom: 10 }}
           >
             {filteredMarketTokens?.map((item, index) => (
-              <MarketTableItem key={index} item={item} index={index} selectedCurrency={selectedCurrency?.code as "USD" | "NGN"} nairaCurrency={nairaCurrency} usdCurrency={usdCurrency} />
+              <MarketTableItem
+                key={index}
+                item={item}
+                index={index}
+                selectedCurrency={selectedCurrency?.code as "USD" | "NGN"}
+                nairaCurrency={nairaCurrency}
+                usdCurrency={usdCurrency}
+              />
             ))}
           </ScrollView>
         </Box>
@@ -227,7 +280,6 @@ const Explore = () => {
 };
 
 export default Explore;
-
 
 // import { noBank } from "@/assets/images";
 // import BankAccountBottomSheet from "@/components/bottomsheets/BankAccountBottomSheet";

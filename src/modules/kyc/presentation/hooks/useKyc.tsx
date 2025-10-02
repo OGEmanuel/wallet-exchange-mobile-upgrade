@@ -66,13 +66,25 @@ const useKyc = () => {
         ((response.data as any)?.token || (response.data as any)?.refreshToken)
       ) {
         try {
+          const responseData = response.data as any;
           const tokenData: TokenData = {
-            token: (response.data as any).token,
-            refreshToken: (response.data as any).refreshToken,
-            expiresAt: null,
+            token: responseData.token || null,
+            refreshToken: responseData.refreshToken || null,
+            expiresAt:
+              responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
           };
-          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-          console.log("Tokens stored successfully after email verification");
+
+          // Only save if we have at least a token
+          if (tokenData.token) {
+            await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+            console.log("Tokens stored successfully after email verification", {
+              hasToken: !!tokenData.token,
+              hasRefreshToken: !!tokenData.refreshToken,
+              expiresAt: tokenData.expiresAt,
+            });
+          } else {
+            console.warn("No token found in response data");
+          }
         } catch (error) {
           console.error(
             "Failed to store tokens after email verification:",

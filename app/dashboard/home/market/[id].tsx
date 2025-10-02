@@ -10,7 +10,7 @@ import { Box, CustomText, PageWrapper } from "@/components/general";
 import CustomButton from "@/components/general/CustomButton";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import { SIZES } from "@/data";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
+import { formatStats } from "@/lib/utils/market/helpers";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { AppRootState } from "@/state";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,17 +24,91 @@ SIZES.width = width;
 SIZES.height = height;
 
 // Utility functions
-const formatStats = (
-  value: number,
-  decimals: number,
-  currency: string
-): string => {
-  if (value >= 1e12) return `$${(value / 1e12).toFixed(decimals)}T`;
-  if (value >= 1e9) return `$${(value / 1e9).toFixed(decimals)}B`;
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(decimals)}M`;
-  if (value >= 1e3) return `$${(value / 1e3).toFixed(decimals)}K`;
-  return `$${value.toFixed(decimals)}`;
-};
+// export type Currency = "USD" | "NGN" | "BTC" | "ETH" | "USDT" | "USDC" | "DAI";
+
+// interface FormatOptions {
+//   value: number;
+//   currency?: Currency;
+//   convert?: boolean;
+//   rate?: number; // rate to convert between Naira and Dollar
+//   showSymbol?: boolean; // optionally show ₦ or $
+//   getApproximateAmount: (
+//     amount: number | undefined,
+//     isCrypto?: boolean,
+//     forMarket?: boolean
+//   ) => string;
+// }
+// function formatAccountValue({
+//   value,
+//   currency,
+//   convert = false,
+//   rate,
+//   showSymbol = true,
+//   getApproximateAmount,
+// }: FormatOptions): string {
+//   try {
+//     let finalValue = value;
+
+//     if (convert && currency && rate) {
+//       if (currency === "USD") {
+//         finalValue = value; // Naira to Dollar
+//       } else if (currency === "NGN") {
+//         finalValue = value * rate; // Dollar to Naira
+//       }
+//     }
+
+//     const formatted = getApproximateAmount
+//       ? getApproximateAmount(finalValue, false, true)
+//       : finalValue.toLocaleString("en-US", {
+//           minimumFractionDigits: 0,
+//           maximumFractionDigits: 2,
+//         });
+
+//     if (!currency || !showSymbol) return formatted;
+
+//     return currency === "USD" ? `$${formatted}` : `₦${formatted}`;
+//   } catch (error) {
+//     return "0";
+//   }
+// }
+
+// export function formatStats(
+//   value: number,
+//   decimalPlaces = 2,
+//   selectedCurrency: string
+// ) {
+//   const isDollar = selectedCurrency === "USD";
+//   const currencySymbol = isDollar ? "$" : "₦";
+//   try {
+//     // Determine decimal places, handling if decimalPlaces is a function
+//     const getDecimalPlaces =
+//       typeof decimalPlaces === "function" ? decimalPlaces : () => decimalPlaces;
+//     const decimalValue = getDecimalPlaces();
+
+//     if (!value) return `${currencySymbol}0`;
+
+//     // Define abbreviations based on value
+//     const units = [
+//       { threshold: 1e12, suffix: "T" },
+//       { threshold: 1e9, suffix: "B" },
+//       { threshold: 1e6, suffix: "M" },
+//       { threshold: 1e3, suffix: "k" },
+//     ];
+
+//     // Find the appropriate unit for the value
+//     const unit = units.find((u) => value >= u.threshold);
+//     if (unit) {
+//       return `${currencySymbol}${(value / unit.threshold).toFixed(
+//         decimalValue
+//       )}${unit.suffix}`;
+//     }
+
+//     // For values less than 1,000, use account function
+//     return formatAccountValue({ value });
+//   } catch {
+//     return `${currencySymbol}0`;
+//   }
+// }
 
 const openExternalLink = async (url: string) => {
   try {
@@ -51,32 +125,38 @@ const openExternalLink = async (url: string) => {
 
 export default function AssetInfo() {
   const [isAssetInfo, setIsAssetInfo] = useState(true);
-  const { id } = useLocalSearchParams();
+  const { id, asset } = useLocalSearchParams();
   const router = useRouter();
   const { tokenDetails: fetchTokenDetails } = useMarket();
+  const parsedAsset = asset ? JSON.parse(asset as string) : null;
 
-  const { marketTokens, currentTokenDetails } = useSelector((state: AppRootState) => state.market);
-  
+  const { currentTokenDetails } = useSelector(
+    (state: AppRootState) => state.market
+  );
+
   const [isLoading, setIsLoading] = useState(false);
-  // const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // const [currentTokenId, setCurrentTokenId] = useState<string | null>(null);
 
   // Fetch token details when component mounts or asset changes
   useEffect(() => {
     fetchTokenDetailsCallback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // }, [selectedAsset?.currencyId?._id, fetchTokenDetails]);
 
   const fetchTokenDetailsCallback = useCallback(async () => {
     if (id) {
       setIsLoading(true);
+      setErrorMessage(null);
       try {
-        await fetchTokenDetails({ body: id as string, params: {}, extra: null });
+        await fetchTokenDetails({
+          body: id as string,
+          params: {},
+          extra: null,
+        });
         // Token details are now automatically stored in Redux state via the hook
       } catch (err: any) {
-        setErrorMessage(err.message);
+        console.error("Error fetching token details:", err);
+        setErrorMessage(err.message || "Failed to fetch token details");
       } finally {
         setIsLoading(false);
       }
@@ -93,6 +173,7 @@ export default function AssetInfo() {
   };
 
   const [searchText] = useState("");
+
   const [filters] = useState<FiltersType>({
     startDate: null,
     endDate: null,
@@ -163,10 +244,15 @@ export default function AssetInfo() {
         animationType="fade"
       >
         <Box flex={1} paddingBottom="xl">
-          <AssetHeader 
-            asset={currentTokenDetails?.tokenDetails?.name || currentTokenDetails?.tokenDetails?.symbol} 
+          <AssetHeader
+            asset={
+              currentTokenDetails?.tokenDetails?.name ||
+              currentTokenDetails?.tokenDetails?.symbol
+            }
+            parsedAsset={parsedAsset}
             logo={currentTokenDetails?.tokenDetails?.logo}
             symbol={currentTokenDetails?.tokenDetails?.symbol}
+            currencyId={currentTokenDetails?.tokenMetrics?.currencyId}
           />
           <Box width="100%" paddingVertical="m">
             <SwitchTab
@@ -185,7 +271,10 @@ export default function AssetInfo() {
                 style={{ height: SIZES.height - 250 }}
                 contentContainerStyle={{ paddingBottom: 150 }}
               >
-                <AssetChartDetails tokenDetails={currentTokenDetails} />
+                <AssetChartDetails
+                  tokenDetails={currentTokenDetails}
+                  asset={parsedAsset}
+                />
 
                 <Box width="100%" paddingHorizontal="m" marginTop="m">
                   <Box
@@ -227,7 +316,11 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(currentTokenDetails?.tokenMetrics?.volume || 200000000, 0, "USD")}
+                        {formatStats(
+                          currentTokenDetails?.tokenMetrics?.volume || 0,
+                          0,
+                          "USD"
+                        )}
                       </CustomText>
                     </Box>
 
@@ -248,7 +341,11 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(currentTokenDetails?.tokenMetrics?.marketCap || marketTokens?.find((a: MarketTokenModel) => a.currencyId?._id === id)?.marketCap || 0, 0, "USD")}
+                        {formatStats(
+                          currentTokenDetails?.tokenMetrics?.marketCap || 0,
+                          0,
+                          "USD"
+                        )}
                       </CustomText>
                     </Box>
                   </Box>
@@ -312,7 +409,9 @@ export default function AssetInfo() {
                         </Box>
                       )}
 
-                      {(currentTokenDetails.tokenDetails.website || currentTokenDetails.tokenDetails.twitter || currentTokenDetails.tokenDetails.telegram) && (
+                      {(currentTokenDetails.tokenDetails.website ||
+                        currentTokenDetails.tokenDetails.twitter ||
+                        currentTokenDetails.tokenDetails.telegram) && (
                         <Box marginTop="m">
                           <CustomText
                             variant="body"
@@ -328,7 +427,9 @@ export default function AssetInfo() {
                                 text="Website"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.website!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.website!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -342,7 +443,9 @@ export default function AssetInfo() {
                                 text="Twitter"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.twitter!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.twitter!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -356,7 +459,9 @@ export default function AssetInfo() {
                                 text="Telegram"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.telegram!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.telegram!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -373,77 +478,82 @@ export default function AssetInfo() {
                 )}
 
                 {/* News Section */}
-                {currentTokenDetails?.tokenNews && currentTokenDetails.tokenNews.length > 0 && (
-                  <Box width="100%" paddingHorizontal="m" marginTop="l">
-                    <Box
-                      flexDirection="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                    >
-                      <CustomText
-                        variant="bodySubheader"
-                        fontSize={16}
-                        style={{ fontFamily: "NewScience_Bold" }}
+                {currentTokenDetails?.tokenNews &&
+                  currentTokenDetails.tokenNews.length > 0 && (
+                    <Box width="100%" paddingHorizontal="m" marginTop="l">
+                      <Box
+                        flexDirection="row"
+                        justifyContent="space-between"
+                        alignItems="center"
                       >
-                        Latest News
-                      </CustomText>
-
-                      <CustomButton
-                        text="View More"
-                        color="white"
-                        onPress={() => {
-                          router.push("/dashboard/home/wallet-home/home");
-                        }}
-                        width="25%"
-                        borderRadius={50}
-                        height={35}
-                        bgColor="#6045FF"
-                      />
-                    </Box>
-
-                    <Box marginTop="s">
-                      {currentTokenDetails.tokenNews.slice(0, 3).map((news, index) => (
-                        <Box
-                          key={news.id || index}
-                          width="100%"
-                          bg="secondaryBackgroundColor"
-                          borderRadius={16}
-                          marginBottom="s"
-                          padding="m"
+                        <CustomText
+                          variant="bodySubheader"
+                          fontSize={16}
+                          style={{ fontFamily: "NewScience_Bold" }}
                         >
-                          <CustomText
-                            variant="body"
-                            fontSize={14}
-                            color="bodyTextColor"
-                            marginBottom="s"
-                            numberOfLines={2}
-                          >
-                            {news.title}
-                          </CustomText>
-                          {news.source?.name && (
-                            <CustomText
-                              variant="body"
-                              fontSize={12}
-                              color="disabledTextColor"
+                          Latest News
+                        </CustomText>
+
+                        <CustomButton
+                          text="View More"
+                          color="white"
+                          onPress={() => {
+                            router.push("/dashboard/home/all-news");
+                          }}
+                          width="25%"
+                          borderRadius={50}
+                          height={35}
+                          bgColor="#6045FF"
+                        />
+                      </Box>
+
+                      <Box marginTop="s">
+                        {currentTokenDetails.tokenNews
+                          .slice(0, 3)
+                          .map((news, index) => (
+                            <Box
+                              key={news.id || index}
+                              width="100%"
+                              bg="secondaryBackgroundColor"
+                              borderRadius={16}
+                              marginBottom="s"
+                              padding="m"
                             >
-                              {news.source.name}
-                            </CustomText>
-                          )}
-                          {news.publishedAt && (
-                            <CustomText
-                              variant="body"
-                              fontSize={12}
-                              color="disabledTextColor"
-                              marginTop="s"
-                            >
-                              {new Date(news.publishedAt).toLocaleDateString()}
-                            </CustomText>
-                          )}
-                        </Box>
-                      ))}
+                              <CustomText
+                                variant="body"
+                                fontSize={14}
+                                color="bodyTextColor"
+                                marginBottom="s"
+                                numberOfLines={2}
+                              >
+                                {news.title}
+                              </CustomText>
+                              {news.source?.name && (
+                                <CustomText
+                                  variant="body"
+                                  fontSize={12}
+                                  color="disabledTextColor"
+                                >
+                                  {news.source.name}
+                                </CustomText>
+                              )}
+                              {news.publishedAt && (
+                                <CustomText
+                                  variant="body"
+                                  fontSize={12}
+                                  color="disabledTextColor"
+                                  marginTop="s"
+                                >
+                                  {new Date(
+                                    news.publishedAt
+                                  ).toLocaleDateString()}
+                                </CustomText>
+                              )}
+                            </Box>
+                          ))}
+                      </Box>
                     </Box>
-                  </Box>
-                )}
+                  )}
 
                 <Box paddingHorizontal="m" paddingVertical="m">
                   <CustomButton
@@ -482,7 +592,7 @@ export default function AssetInfo() {
                       onEndReachedThreshold={0.5}
                     />
                   )}
-                </Box>  
+                </Box>
               </Box>
             }
           />

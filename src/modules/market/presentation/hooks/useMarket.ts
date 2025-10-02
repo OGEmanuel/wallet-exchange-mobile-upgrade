@@ -2,6 +2,7 @@ import { GeneralRequestModel } from "@/src/core/api/http-types";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppDispatch } from "@/state";
 import { useDispatch } from "react-redux";
+import { PriceAlertData } from "../../data/remote/market-remote-datasource";
 import { AddToWatchlistParams } from "../../domain/entities/params/add-to-watchlist-params";
 import { MarketUsecases } from "../../domain/usecases/market-usecases";
 import { marketActions } from "../state/market-slice";
@@ -38,8 +39,32 @@ const useMarket = () => {
       return await marketUsecases.tokenHistory(payload);
     },
 
+    createPriceAlert: async (payload: GeneralRequestModel<PriceAlertData, unknown, unknown>) => {
+      return await marketUsecases.createPriceAlert(payload);
+    },
+
+    addToWatchlist: async (payload: GeneralRequestModel<AddToWatchlistParams, unknown, unknown>) => {
+      const response = await marketUsecases.addToWatchlist(payload);
+      if (response?.data) {
+        dispatch(marketActions.addToWatchlist(response.data));
+      }
+      return response;
+    },
+
+    removeFromWatchlist: async (payload: GeneralRequestModel<string, unknown, unknown>) => {
+      const response = await marketUsecases.removeFromWatchlist(payload);
+      if (response?.success) {
+        dispatch(marketActions.removeFromWatchlist(payload.body as string));
+      }
+      return response;
+    },
+
     fetchWatchlistTokens: async (payload: GeneralRequestModel<unknown, unknown, UserModel | null>) => {
-      return await marketUsecases.fetchWatchlistTokens(payload);
+      const response = await marketUsecases.fetchWatchlistTokens(payload);
+      if (response?.data) {
+        dispatch(marketActions.setWatchlistTokens(response.data));
+      }
+      return response;
     },
   };
 };

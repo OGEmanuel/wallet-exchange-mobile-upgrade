@@ -10,7 +10,7 @@ const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
 
-export {
+export default {
   accounts,
   checkTerms,
   docGuide,
