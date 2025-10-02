@@ -20,6 +20,9 @@ const editUsernameRef = createRef<BottomSheet>();
 const editFirstnameRef = createRef<BottomSheet>();
 const changePinRef = createRef<BottomSheet>();
 const chatBottomSheetRef = createRef<BottomSheet>();
+const currencyBottomSheetRef = createRef<BottomSheet>();
+const languageBottomSheetRef = createRef<BottomSheet>();
+const appearanceBottomSheetRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -47,6 +50,9 @@ const useBottomSheetRefs = () => {
     editFirstnameRef,
     changePinRef,
     chatBottomSheetRef,
+    currencyBottomSheetRef,
+    languageBottomSheetRef,
+    appearanceBottomSheetRef,
     render,
   };
 };
