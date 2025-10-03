@@ -1,9 +1,12 @@
 import { ThemedBackIcon, ThemedLockPasswordIcon } from "@/assets/svg/wallet-icons-components";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { CustomButton, CustomText } from "../general";
 
@@ -18,6 +21,8 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
   const [lastname, setLastname] = useState("");
   const [loading, setLoading] = useState(false);
   const theme = useTheme<Theme>();
+  const { uploadCreditDocument, updateUser } = useKyc();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
 
   const handleVerifyBvn = async () => {
     if (!bvn.trim() || !firstname.trim() || !lastname.trim()) {
@@ -27,8 +32,16 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
     try {
       setLoading(true);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await uploadCreditDocument({
+        firstName: firstname.trim(),
+        lastName: lastname.trim(),
+        verificationType: "BVN",
+        idNumber: bvn.trim(),
+        docUrl: "https://example.com/uploads/id.jpg",
+        countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
+      });
+
+      updateUser(user)
 
       // On success, proceed to next step
       onNext?.({
@@ -86,8 +99,8 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
         </View>
 
         <CustomInputWithoutForm
-          label="BVN"
-          placeholder="Enter BVN"
+          label="Bank Verification Number"
+          placeholder="Enter Bank Verification Number"
           value={bvn}
           onChange={setBvn}
           keyboardType="numeric"
@@ -170,7 +183,7 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
 
       <View style={styles.buttonContainer}>
         <CustomButton
-          text="Verify BVN"
+          text="Verify"
           onPress={handleVerifyBvn}
           width="100%"
           height={56}
@@ -197,8 +210,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: 20,
-    left: 24,
+    top: -30,
+    left: 0,
     zIndex: 1,
   },
   backArrow: {
@@ -287,7 +300,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: "absolute",
-    bottom: 150,
+    bottom: 130,
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
   },

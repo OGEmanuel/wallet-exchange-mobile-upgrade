@@ -52,28 +52,6 @@ export default function CountryPhoneInput({
 
   const { colors } = useTheme<Theme>();
 
-  // // Debug logging
-  // React.useEffect(() => {
-  //   console.log("CountryPhoneInput selectedCountry:", selectedCountry);
-  // }, [selectedCountry]);
-
-  // Helper function to get flag URL safely
-  const getFlagUrl = (country: any) => {
-    if (!country) return null;
-
-    if (country.flagUrl) return country.flagUrl;
-
-    if (country.alpha2) {
-      return `https://flagcdn.com/w40/${country.alpha2.toLowerCase()}.png`;
-    }
-
-    if (country.value) {
-      return `https://flagcdn.com/w40/${country.value.toLowerCase()}.png`;
-    }
-
-    return `https://flagcdn.com/w40/us.png`;
-  };
-
   const validatePhoneNumber = useCallback(
     (value: string) => {
       const currentCountry = selectedCountry || localSelectedCountry;
@@ -193,43 +171,18 @@ export default function CountryPhoneInput({
     <View style={styles.container}>
       <View style={styles.inputContainer}>
         <View
-          // onPress={toggleCountryList}
-          // disabled={true}
-          style={[
-            styles.countrySelector,
-            { 
-              backgroundColor: colors.secondaryBackgroundColor,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            },
-          ]}
-        >
-          <CustomText style={styles.countryCode}>
-            {selectedCountry?.phoneCode}
-          </CustomText>
-          {/* <View style={styles.flagContainer}>
-            <Image
-              source={{
-                uri: getFlagUrl(selectedCountry || localSelectedCountry),
-              }}
-              style={{ width: "100%", height: "100%" }}
-              // resizeMode="contain"
-            />
-          </View> */}
-          {/* <View style={styles.dropdownIcon}>
-            <ThemedArrowUpIcon
-              style={{ width: 24, height: 24, tintColor: colors.bodyTextColor }}
-            />
-          </View> */}
-        </View>
-
-        <View
           style={[
             styles.phoneInputContainer,
             { backgroundColor: colors.secondaryBackgroundColor },
           ]}
         >
+          {/* Country Code Prefix */}
+          {(selectedCountry || localSelectedCountry) && (
+            <CustomText style={[styles.countryCodePrefix, { color: colors.bodyTextColor }]}>
+              {(selectedCountry || localSelectedCountry)?.phoneCode}
+            </CustomText>
+          )}
+          
           <TextInput
             style={[styles.phoneInput, { color: colors.bodyTextColor }]}
             keyboardType="phone-pad"
@@ -341,6 +294,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: "center",
     justifyContent: "center",
+  },
+  countryCodePrefix: {
+    fontFamily: "PlusJakartaSans_Medium",
+    fontSize: 14,
+    marginRight: 8,
+    color: "#666",
   },
   phoneInput: {
     height: 48,
