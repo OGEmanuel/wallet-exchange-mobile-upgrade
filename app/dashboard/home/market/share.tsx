@@ -1,10 +1,13 @@
 import images from "@/assets/images";
 import AssetChartDetails from "@/components/dashboard/market/AssetChartDetails";
 import { Box, CustomText } from "@/components/general";
+import { ENVIRONMENTS } from "@/configs/environments";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Share from "expo-sharing";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -21,15 +24,48 @@ const ShareCard: React.FC = () => {
   const params = useLocalSearchParams() as any;
   const HEIGHT = Dimensions.get("window").height;
   const user = useSelector((state: AppRootState) => state.kyc.user);
+  const { currencies } = useSelector((state: AppRootState) => state.utilities);
+  const { fetchCurrencies } = useUtilities();
+
+  // Parse the asset data from JSON string
+  const parsedAsset = params?.asset ? JSON.parse(params.asset) : null;
+
+  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
 
   const viewShotRef = useRef<ViewShot>(null);
 
-  const baseUrl =
-    process.env.NODE_ENV !== "production"
-      ? "https://dev.app.zap.africa"
-      : "https://app.zap.africa";
+  const baseUrl = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL;
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Fetch currencies when component mounts
+  const fetchCurrenciesCallback = useCallback(async () => {
+    try {
+      await fetchCurrencies({
+        body: {},
+        params: {},
+        extra: {},
+      });
+    } catch (err: any) {
+      console.error("Error fetching currencies:", err);
+    }
+  }, [fetchCurrencies]);
+
+  // Set currency data when currencies are loaded
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+    }
+  }, [currencies]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -37,7 +73,8 @@ const ShareCard: React.FC = () => {
       duration: 800,
       useNativeDriver: true,
     }).start();
-  }, [fadeAnim]);
+    fetchCurrenciesCallback();
+  }, [fadeAnim, fetchCurrenciesCallback]);
 
   const captureAndShareScreenshot = async () => {
     try {
@@ -79,7 +116,12 @@ const ShareCard: React.FC = () => {
         </TouchableOpacity>
 
         <ViewShot ref={viewShotRef} options={{ format: "jpg", quality: 0.9 }}>
-          <AssetChartDetails tokenDetails={params} />
+          <AssetChartDetails
+            tokenDetails={params}
+            asset={parsedAsset}
+            nairaCurrency={nairaCurrency}
+            usdCurrency={usdCurrency}
+          />
           <Box
             marginHorizontal="m"
             bg="secondaryBackgroundColor"

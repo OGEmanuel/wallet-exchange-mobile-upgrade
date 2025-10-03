@@ -158,7 +158,7 @@ export default function CreatePriceAlerts() {
   // Validate price based on alert type
   useEffect(() => {
     if (alertType && alertPrice > 0) {
-      const currentPrice = currentTokenDetails?.tokenMetrics?.marketCap || 0;
+      const currentPrice = parsedAsset?.rate || 0;
 
       const isPriceAlert = alertType.includes("$");
       const isAboveAlert = alertType.includes("above");
