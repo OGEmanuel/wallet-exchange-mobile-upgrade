@@ -2,12 +2,15 @@ import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomText, PageWrapper } from "@/components/general";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
+import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { Search } from "lucide-react-native";
 import React from "react";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 
 const ItemCard = () => {
   return (
@@ -42,6 +45,9 @@ const ItemCard = () => {
 
 const ActivityLogs = () => {
   const theme = useTheme<Theme>();
+  const user = useSelector(selectUser);
+  console.log(user);
+  const { getActivities } = useSettings();
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />

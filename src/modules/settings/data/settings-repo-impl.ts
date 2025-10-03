@@ -1,9 +1,19 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
+import { IActivityLogsParams } from "../domain/entities/params/get-activity-logs-data-params";
 import { SettingsRepo } from "../domain/settings-repo";
 import { SettingsRemoteDataSourceImpl } from "./remote/settings-remote-datasource-impl";
 
 export class SettingsRepoImpl implements SettingsRepo {
   private readonly remoteDatasource = new SettingsRemoteDataSourceImpl();
+
+  async activity(
+    payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
+    return this.remoteDatasource.activity(payload);
+  }
 
   // Implement your repository methods here
   // Example:
