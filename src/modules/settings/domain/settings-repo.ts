@@ -1,7 +1,11 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
+import { IActivityLogsParams } from "./entities/params/get-activity-logs-data-params";
 
 export abstract class SettingsRepo {
-  // Add your repository methods here
-  // Example:
-  // abstract getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract activity(
+    payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
+  ): Promise<GeneralResponseModel<unknown>>;
 }

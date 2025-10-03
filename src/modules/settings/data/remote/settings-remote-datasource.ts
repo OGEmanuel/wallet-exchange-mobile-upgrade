@@ -1,7 +1,11 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
+import { IActivityLogsParams } from "../../domain/entities/params/get-activity-logs-data-params";
 
 export abstract class SettingsRemoteDataSource {
-  // Add your remote data source methods here
-  // Example:
-  // abstract getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>>;
+  abstract activity(
+    payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
+  ): Promise<GeneralResponseModel<unknown>>;
 }

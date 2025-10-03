@@ -121,3 +121,5 @@ export const deleteSupportMessageEndpoint = (
   messageId?: string | null
 ): string => `/support/messages/${messageId}`;
 export const autoResponseSettingsEndpoint = "/support/autoBot";
+export const getActivityLogsEndpoint = (user?: UserModel | null): string =>
+  `/activities/${user?._id}`;
