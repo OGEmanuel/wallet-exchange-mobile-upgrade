@@ -1,6 +1,9 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import { CountryVerificationDocumentModel } from "../../kyc/domain/entities/models/document-type-model";
 import { CurrencyModel } from "../domain/entities/models/currency-model";
+import { FileUploadResponseModel } from "../domain/entities/models/file-upload-model";
 import { SupportedCurrencyModel } from "../domain/entities/models/supported-currency-model";
+import { VerifiedCountryModel } from "../domain/entities/models/verified-country-model";
 import { UtilitiesRepo } from "../domain/utilities-repo";
 import { UtilitiesRemoteDataSourceImpl } from "./remote/utilities-remote-datasource-impl";
 
@@ -13,5 +16,17 @@ export class UtilitiesRepoImpl implements UtilitiesRepo {
 
   async fetchSupportedCurrencies(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<SupportedCurrencyModel[] | null | undefined>> {
     return this.remoteDatasource.fetchSupportedCurrencies(payload);
+  }
+
+  async fetchVerifiedCountries(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<VerifiedCountryModel[] | null | undefined>> {
+    return this.remoteDatasource.fetchVerifiedCountries(payload);
+  }
+
+  async fetchDocumentTypes(payload: GeneralRequestModel<VerifiedCountryModel | null, unknown, unknown>): Promise<GeneralResponseModel<CountryVerificationDocumentModel[] | null | undefined>> {
+    return this.remoteDatasource.fetchDocumentTypes(payload);
+  }
+
+  async uploadFile(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<FileUploadResponseModel>> {
+    return this.remoteDatasource.uploadFile(payload);
   }
 }

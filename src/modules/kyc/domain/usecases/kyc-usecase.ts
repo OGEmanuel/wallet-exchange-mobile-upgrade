@@ -1,5 +1,7 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { KycRepoImpl } from "../../data/kyc-repo-impl";
+import { AuthVerificationModel } from "../entities/models/auth-verifications-model";
+import { SubmitVerificationParams } from "../entities/models/submit-verification-params";
 import { UserModel } from "../entities/models/user-model";
 import { AddUsernameParams } from "../entities/params/add-username-params";
 import { AuthEmailParams } from "../entities/params/auth-email-params";
@@ -15,7 +17,11 @@ export class KycUsecases {
     return this.repo.authEmail(payload);
   }
 
-  async executeVerifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async executeFetchUserById(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<UserModel>> {
+    return this.repo.fetchUserById(payload);
+  }
+
+  async executeVerifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<AuthVerificationModel>> {
     return this.repo.verifyEmail(payload);
   }
 
@@ -35,7 +41,7 @@ export class KycUsecases {
     return this.repo.uploadCreditDocument(payload);
   }
 
-  async executeUploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async executeUploadIdentityDocument(payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.repo.uploadIdentityDocument(payload);
   }
 }

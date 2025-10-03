@@ -77,7 +77,8 @@ export class HttpInterceptors {
             data: customConfig.data,
             params: customConfig.params,
             headers: customConfig.headers,
-            metadata: customConfig.metadata
+            metadata: customConfig.metadata,
+            baseURL: customConfig.baseURL,
           });
         }
 

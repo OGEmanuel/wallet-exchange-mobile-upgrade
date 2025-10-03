@@ -1,10 +1,15 @@
-import { GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { StorageKeys, TokenData } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
+import { SubmitVerificationParams } from "../../domain/entities/models/submit-verification-params";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -20,14 +25,66 @@ const useKyc = () => {
   const [fetchingUserDetails, setFetchingUserDetails] =
     useState<boolean>(false);
 
-  return {
-    updateUser: async (payload: UserModel) => {
-      dispatch(kycActions.setUser(payload));
+  const fetchUserById = async (
+    payload: UserModel | null
+  ): Promise<GeneralResponseModel<UserModel>> => {
+    setFetchingUserDetails(true);
+    const usecase = new KycUsecases();
+    const response = await usecase.executeFetchUserById({
+      body: payload,
+      params: null,
+      extra: null,
+    });
 
-      // const userData = appGetFromLocalStorage<UserModel>(StorageKeys.USER_PROFILE);
+    setFetchingUserDetails(false);
+
+    return response;
+  };
+
+  return {
+    fetchUserById,
+    updateUser: async (payload: UserModel | null) => {
+      const updatedUser = {
+        ...user,
+        ...(payload || {}),
+        metaData: {
+          ...user?.metaData,
+          ...(payload?.metaData || {}),
+        },
+      };
+
+      const { metaData, ...userDataWithoutTheMetaData } = {
+        ...updatedUser,
+        ...(payload || {}),
+      };
+
+      dispatch(kycActions.setUser(updatedUser));
 
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
-        // fetchUserProfile();
+        fetchUserById(updatedUser).then((response) => {
+          if (response.data) {
+            const fetchedUserData = {
+              ...userDataWithoutTheMetaData,
+              ...response.data,
+              metaData: {
+                ...metaData,
+                ...response.data?.metaData,
+              },
+            };
+
+            dispatch(kycActions.setUser({ ...fetchedUserData }));
+
+            if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
+              if (userDataWithoutTheMetaData?.phone)
+                delete userDataWithoutTheMetaData.phone;
+            }
+
+            storageService.save(
+              StorageKeys.USER_PROFILE,
+              userDataWithoutTheMetaData
+            );
+          }
+        });
       }
     },
 
@@ -46,7 +103,7 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ): Promise<GeneralResponseModel<unknown>> => {
+    ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,
@@ -54,37 +111,18 @@ const useKyc = () => {
         extra: null,
       });
 
-      // Update user state if verification was successful and user data is returned
-      if (response.success && response.data && (response.data as any)?.user) {
-        dispatch(kycActions.setUser((response.data as any).user as UserModel));
-      }
+      const authVerificationData = response.data;
 
-      // Store token and refreshToken if they are present in the response data
-      if (
-        response.success &&
-        response.data &&
-        ((response.data as any)?.token || (response.data as any)?.refreshToken)
-      ) {
+      if (authVerificationData) {
         try {
           const responseData = response.data as any;
           const tokenData: TokenData = {
-            token: responseData.token || null,
-            refreshToken: responseData.refreshToken || null,
-            expiresAt:
-              responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
+            token: authVerificationData?.token || null,
+            refreshToken: authVerificationData?.refreshToken || null,
+            expiresAt: null,
           };
-
-          // Only save if we have at least a token
-          if (tokenData.token) {
-            await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-            console.log("Tokens stored successfully after email verification", {
-              hasToken: !!tokenData.token,
-              hasRefreshToken: !!tokenData.refreshToken,
-              expiresAt: tokenData.expiresAt,
-            });
-          } else {
-            console.warn("No token found in response data");
-          }
+          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+          console.log("Tokens stored successfully after email verification");
         } catch (error) {
           console.error(
             "Failed to store tokens after email verification:",
@@ -151,14 +189,10 @@ const useKyc = () => {
     },
 
     uploadIdentityDocument: async (
-      payload: FormData
+      payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
     ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
-      const response = await usecase.executeUploadIdentityDocument({
-        body: payload,
-        params: null,
-        extra: null,
-      });
+      const response = await usecase.executeUploadIdentityDocument(payload);
       return response;
     },
   };

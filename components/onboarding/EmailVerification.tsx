@@ -29,7 +29,7 @@ export default function EmailVerification({
   const [isCodeComplete, setIsCodeComplete] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const theme = useTheme<Theme>();
-  const { verifyEmail } = useKyc();
+  const { verifyEmail, updateUser } = useKyc();
   const { hideAllBottomSheets } = useAppBottomSheet();
 
   useEffect(() => {
@@ -73,7 +73,14 @@ export default function EmailVerification({
         // Check if verification was successful
         if (response.success) {
           // Check if user data has username
-          const userData = (response.data as any)?.user;
+          const authVerificationData = response.data;
+          const userData = authVerificationData?.user;
+
+          updateUser({
+            ...userData,
+            emailVerified: true,
+          });
+          
           if (userData?.username) {
             // User has username, close bottom sheet and navigate to app
             console.log(

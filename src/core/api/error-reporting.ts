@@ -250,12 +250,12 @@ class ConsoleErrorProvider implements ErrorReportingProvider {
 
   async report(error: ErrorReport): Promise<void> {
     // console.group(`🚨 Error Report: ${error.id}`);
-    // console.error('Message:', error.message);
+    console.error('Message:', error.message);
     // console.error('Severity:', error.severity);
     // console.error('Category:', error.category);
     // console.error('Context:', error.context);
     // if (error.stack) console.error('Stack:', error.stack);
-    if (error.metadata) console.error('Metadata:', error.metadata);
+    // if (error.metadata) console.error('Metadata:', error.metadata);
     console.groupEnd();
   }
 

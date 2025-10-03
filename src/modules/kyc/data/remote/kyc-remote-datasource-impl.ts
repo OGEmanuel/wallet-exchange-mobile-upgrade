@@ -6,12 +6,15 @@ import {
 import {
   authenticateEmailOtpEndpoint,
   authenticatePhoneNumberOtpEndpoint,
+  fetchUserByIdEndpoint,
   getOnboardingOtpEndpoint,
   requestNewOtpEndpoint,
   submitVerificationEndpoint,
   updatePhoneNumberEndpoint,
   usernameOnboardingEndpoint,
 } from "../../../../core/api/api_endpoints";
+import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
+import { SubmitVerificationParams } from "../../domain/entities/models/submit-verification-params";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -37,10 +40,23 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
     return response.data;
   }
 
+  async fetchUserById(
+    payload: GeneralRequestModel<UserModel, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
+    const response = await httpClient.get<GeneralResponseModel<UserModel>>(
+      fetchUserByIdEndpoint(payload.body),
+      {},
+      {
+        showErrorToast: true,
+      }
+    );
+    return response.data;
+  }
+
   async verifyEmail(
     payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>
-  ): Promise<GeneralResponseModel<unknown>> {
-    const response = await httpClient.post<GeneralResponseModel<unknown>>(
+  ): Promise<GeneralResponseModel<AuthVerificationModel>> {
+    const response = await httpClient.post<GeneralResponseModel<AuthVerificationModel>>(
       authenticateEmailOtpEndpoint,
       payload.body,
       {},
@@ -66,7 +82,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       updatePhoneNumberEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -76,7 +92,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       authenticatePhoneNumberOtpEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -90,7 +106,7 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       requestNewOtpEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
@@ -100,17 +116,17 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       submitVerificationEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }
 
   async uploadIdentityDocument(
-    payload: GeneralRequestModel<FormData, unknown, unknown>
+    payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       submitVerificationEndpoint,
-      payload
+      payload.body
     );
     return response.data;
   }

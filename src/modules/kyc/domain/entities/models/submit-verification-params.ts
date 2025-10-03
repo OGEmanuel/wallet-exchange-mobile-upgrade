@@ -1,4 +1,4 @@
-export interface CreditDocumentDataParam {
+export interface SubmitVerificationParams {
   countryId?:        string;
   lastName?:         string;
   firstName?:        string;

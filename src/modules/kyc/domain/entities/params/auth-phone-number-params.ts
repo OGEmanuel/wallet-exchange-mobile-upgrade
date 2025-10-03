@@ -1,5 +1,5 @@
-// TODO: Add the correct parameters for the auth phone number
 export interface AuthPhoneNumberParams {
-  phoneNumber: string | null;
+  phone: string | null;
   countryCode: string | null;
+  isWhatsApp: boolean;
 }
