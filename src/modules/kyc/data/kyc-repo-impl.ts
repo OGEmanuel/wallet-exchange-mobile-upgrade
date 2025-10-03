@@ -1,5 +1,6 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { AuthVerificationModel } from "../domain/entities/models/auth-verifications-model";
+import { SubmitVerificationParams } from "../domain/entities/models/submit-verification-params";
 import { UserModel } from "../domain/entities/models/user-model";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
@@ -15,6 +16,10 @@ export class KycRepoImpl implements KycRepo {
 
   async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.authEmail(payload);
+  }
+
+  async fetchUserById(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<UserModel>> {
+    return this.remoteDatasource.fetchUserById(payload);
   }
 
   async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<AuthVerificationModel>> {
@@ -37,7 +42,7 @@ export class KycRepoImpl implements KycRepo {
     return this.remoteDatasource.uploadCreditDocument(payload);
   }
 
-  async uploadIdentityDocument(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async uploadIdentityDocument(payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.uploadIdentityDocument(payload);
   }
 }

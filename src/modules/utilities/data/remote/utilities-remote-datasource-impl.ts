@@ -1,9 +1,10 @@
-import { fetchCurrenciesEndpoint, fetchDocumentTypesEndpoint, fetchSupportedCurrenciesEndpoint, getVerifiedCountriesEndpoint } from "@/src/core/api/api_endpoints";
+import { fetchCurrenciesEndpoint, fetchDocumentTypesEndpoint, fetchSupportedCurrenciesEndpoint, getVerifiedCountriesEndpoint, uploaFileEndpoint } from "@/src/core/api/api_endpoints";
 import { httpClient } from "@/src/core/api/http-client";
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
 import { CurrencyModel } from "../../domain/entities/models/currency-model";
+import { FileUploadResponseModel } from "../../domain/entities/models/file-upload-model";
 import { SupportedCurrencyModel } from "../../domain/entities/models/supported-currency-model";
 import { UtilitiesRemoteDataSource } from "./utilities-remote-datasource";
 
@@ -41,8 +42,13 @@ export class UtilitiesRemoteDataSourceImpl implements UtilitiesRemoteDataSource 
     const response = await httpClient.get<GeneralResponseModel<CountryVerificationDocumentModel[] | null | undefined>>(fetchDocumentTypesEndpoint(payload.body),
       {},
       {},
-      { showErrorToast: false }
+      // { showErrorToast: false }
     );
+    return response.data;
+  }
+
+  async uploadFile(payload: GeneralRequestModel<FormData, unknown, unknown>): Promise<GeneralResponseModel<FileUploadResponseModel>> {
+    const response = await httpClient.post<GeneralResponseModel<FileUploadResponseModel>>(uploaFileEndpoint, payload.body);
     return response.data;
   }
 }

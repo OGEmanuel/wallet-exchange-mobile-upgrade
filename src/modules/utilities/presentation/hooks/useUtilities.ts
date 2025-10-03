@@ -36,6 +36,12 @@ const useUtilities = () => {
 
       return response;
     },
+
+    uploadFile: async (payload: GeneralRequestModel<FormData, unknown, unknown>) => {
+      const response = await utilitiesUsecases.uploadFile(payload);
+
+      return response;
+    },
   };
 };
 

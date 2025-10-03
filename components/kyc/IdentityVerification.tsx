@@ -195,7 +195,8 @@ export default function IdentityVerification({
           "Kindly take clear a picture of your government issued document.",
         status: userHasSubmittedIdentityDocument ? "completed" : "pending",
         isCompleted: !!userHasSubmittedIdentityDocument,
-        isActionable: bvnCompleted, // Only actionable after BVN is completed
+        // isActionable: bvnCompleted, // Only actionable after BVN is completed
+        isActionable: true, // Only actionable after BVN is completed
         limit: "Unlimited",
         icon: idCard,
         onPress: handleIdPress,
@@ -217,6 +218,7 @@ export default function IdentityVerification({
         label: country.name || "",
         value: country,
       })) || []}
+        disabled={!!user?.countryId?._id}
         searchable
         value={selectedCountry}
         selectedLabel={selectedCountry?.name || ""}

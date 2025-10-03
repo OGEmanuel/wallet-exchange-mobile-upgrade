@@ -1,12 +1,15 @@
-import icons from "@/assets/icons";
-import { ThemedChevronRightIcon } from "@/assets/svg/wallet-icons-components";
+import { ThemedBackIcon } from "@/assets/svg/wallet-icons-components";
+import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
-import { CustomButton, CustomText } from "../general";
-import SimpleDropdown from "./SimpleDropdown";
+import { Box, CustomButton, CustomText } from "../general";
+import Select from "../Select";
 
 interface IDVerificationProps {
   userData: any;
@@ -14,11 +17,11 @@ interface IDVerificationProps {
   onBack?: () => void;
 }
 
-const documentTypes = [
-  { label: "Driver's License", value: "drivers_license" },
-  { label: "National ID", value: "national_id" },
-  { label: "International Passport", value: "international_passport" },
-];
+// const documentTypes = [
+//   { label: "Driver's License", value: "drivers_license" },
+//   { label: "National ID", value: "national_id" },
+//   { label: "International Passport", value: "international_passport" },
+// ];
 
 export default function IDVerification({
   userData,
@@ -28,11 +31,50 @@ export default function IDVerification({
   const theme = useTheme<Theme>();
   const [firstName, setFirstName] = useState(userData?.firstName || "");
   const [lastName, setLastName] = useState(userData?.lastName || "");
-  const [documentType, setDocumentType] = useState("");
+  const [documentType, setDocumentType] = useState<CountryVerificationDocumentModel | null>(null);
   const [documentId, setDocumentId] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[] | null | undefined>(null);
+
+  // Function to format date input as DD/MM/YYYY
+  const formatDateInput = (text: string) => {
+    // Remove all non-numeric characters
+    const numericText = text.replace(/\D/g, '');
+
+    // Limit to 8 digits (DDMMYYYY)
+    const limitedText = numericText.slice(0, 8);
+
+    // Format as DD/MM/YYYY
+    if (limitedText.length <= 2) {
+      return limitedText;
+    } else if (limitedText.length <= 4) {
+      return `${limitedText.slice(0, 2)}/${limitedText.slice(2)}`;
+    } else {
+      return `${limitedText.slice(0, 2)}/${limitedText.slice(2, 4)}/${limitedText.slice(4)}`;
+    }
+  };
+
+  const handleDateOfBirthChange = (text: string) => {
+    const formattedDate = formatDateInput(text);
+    setDateOfBirth(formattedDate);
+  };
 
   const isFormValid = firstName.trim() && lastName.trim() && documentType;
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { fetchDocumentTypes } = useUtilities();
+
+  useEffect(() => {
+    fetchDocumentTypes({
+      body: user?.metaData?.documentVerification?.selectedVerifiedCountry || null,
+      params: {},
+      extra: {},
+    }).then((response) => {
+      if (response?.data) {
+        setDocumentTypes(response.data || null);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleContinue = () => {
     if (isFormValid) {
@@ -46,8 +88,16 @@ export default function IDVerification({
     }
   };
 
+  console.log('documentType', !!documentType?.isExternal?.token);
+
   return (
     <View style={styles.container}>
+      {/* Back Button */}
+      {onBack && (
+        <Pressable onPress={onBack} style={styles.backButton}>
+          <ThemedBackIcon />
+        </Pressable>
+      )}
       <View style={styles.header}>
         <CustomText variant="header" style={styles.title}>
           ID Verification
@@ -57,143 +107,89 @@ export default function IDVerification({
         </CustomText>
       </View>
 
-      <View style={styles.formContainer}>
-        {/* Sumsub Card */}
-        <View
-          style={[
-            styles.sumsubCard,
-            { backgroundColor: theme.colors.secondaryBackgroundColor },
-          ]}
-        >
-          <View style={styles.sumsubContent}>
-            <View style={styles.sumsubLeft}>
-              <Image
-                source={icons.sumsub}
-                style={{ width: 40, height: 40, marginRight: 12 }}
-              />
-              <View style={styles.sumsubText}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <CustomText
-                      style={[
-                        styles.sumsubTitle,
-                        { color: theme.colors.bodyTextColor },
-                      ]}
-                    >
-                      Verify using Sumsub
-                    </CustomText>
+      <Select
+        label="Select document type"
+        placeholder="Select document type"
+        options={documentTypes?.filter((document) => document.verificationClass?.toLowerCase() === "identity").map((document) => ({
+          label: document.verificationType?.toUpperCase() || "",
+          value: document,
+        })) || []}
+        onSelect={(value) => {
+          if (!Array.isArray(value)) {
+            setDocumentType(value);
+          }
+        }}
+        value={documentType}
+      />
+      {/* documentType.isExternal?.token ? <AuthSumSubVerification documentType={documentType} /> : */}
 
-                    <View
-                      style={[
-                        styles.fasterTag,
-                        { backgroundColor: theme.colors.primaryColor },
-                      ]}
-                    >
-                      <Image
-                        source={icons.sumsubLighting}
-                        style={{ width: 10, height: 10, marginRight: 1 }}
-                      />
-                      <CustomText style={styles.fasterText}>Faster</CustomText>
-                    </View>
-                  </View>
-                  <View style={styles.sumsubRight}>
-                    <ThemedChevronRightIcon
-                      lightModeColor={theme.colors.bodyTextColor}
-                      darkModeColor={theme.colors.bodyTextColor}
-                    />
-                  </View>
-                </View>
-                <CustomText
-                  style={[
-                    styles.sumsubSubtitle,
-                    { color: theme.colors.placeholderTextColor },
-                  ]}
-                >
-                  Instant and no hassle verification using Sumsub portal
-                </CustomText>
-              </View>
+      {documentType?.isExternal?.token ? (
+        <Box>
+          <CustomText>External</CustomText>
+        </Box>
+      ) : (
+        <Box flex={1}>
+          <View style={styles.formContainer}>
+            <View style={{
+              flexDirection: "column",
+              gap: 16,
+              marginBottom: 16,
+            }}>
+              <CustomInputWithoutForm
+                label="First Name"
+                placeholder="Enter First Name"
+                value={firstName}
+                onChange={setFirstName}
+                keyboardType="default"
+              />
+
+              <CustomInputWithoutForm
+                label="Last Name"
+                placeholder="Enter Last Name"
+                value={lastName}
+                onChange={setLastName}
+                keyboardType="default"
+              />
+
+              <CustomInputWithoutForm
+                label="Document ID"
+                placeholder="Enter Document ID"
+                value={documentId}
+                onChange={setDocumentId}
+                keyboardType="default"
+              />
+
+              <CustomInputWithoutForm
+                label="Date of Birth"
+                placeholder="DD/MM/YYYY"
+                value={dateOfBirth}
+                onChange={handleDateOfBirthChange}
+                keyboardType="numeric"
+                maxLength={10}
+              />
             </View>
           </View>
-        </View>
 
-        <View style={styles.nameRow}>
-          <View style={styles.nameField}>
-            <CustomInputWithoutForm
-              label="First Name"
-              placeholder="Enter First Name"
-              value={firstName}
-              onChange={setFirstName}
-              keyboardType="default"
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              text="Continue"
+              onPress={handleContinue}
+              width="100%"
+              height={56}
+              borderRadius={56}
+              bgColor={
+                isFormValid ? theme.colors.primaryColor : theme.colors.borderColor
+              }
+              color={theme.colors.white}
+              variant="bodySubheader"
+              fontSize={16}
+              disabled={!isFormValid}
+              disabledColor={theme.colors.borderColor}
             />
           </View>
-          <View style={styles.nameField}>
-            <CustomInputWithoutForm
-              label="Last Name"
-              placeholder="Enter Last Name"
-              value={lastName}
-              onChange={setLastName}
-              keyboardType="default"
-            />
-          </View>
-        </View>
+        </Box>
+      )}
 
-        <SimpleDropdown
-          label="Select document type"
-          placeholder="Select document type"
-          options={documentTypes}
-          onSelect={(value) => setDocumentType(value)}
-          value={documentType}
-        />
-
-        {documentType === "international_passport" && (
-          <>
-            <CustomInputWithoutForm
-              label="Document ID"
-              placeholder="Enter Document ID"
-              value={documentId}
-              onChange={setDocumentId}
-              keyboardType="default"
-            />
-            <CustomInputWithoutForm
-              label="Date of Birth"
-              placeholder="DD/MM/YYYY"
-              value={dateOfBirth}
-              onChange={setDateOfBirth}
-              keyboardType="default"
-            />
-          </>
-        )}
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <CustomButton
-          text="Continue"
-          onPress={handleContinue}
-          width="100%"
-          height={56}
-          borderRadius={56}
-          bgColor={
-            isFormValid ? theme.colors.primaryColor : theme.colors.borderColor
-          }
-          color={theme.colors.white}
-          variant="bodySubheader"
-          fontSize={16}
-          disabled={!isFormValid}
-          disabledColor={theme.colors.borderColor}
-        />
-      </View>
     </View>
   );
 }
@@ -205,16 +201,22 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: 20,
-    left: 20,
+    top: -30,
+    left: 0,
     zIndex: 1,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
   },
+  // backButton: {
+  //   position: "absolute",
+  //   top: 20,
+  //   left: 20,
+  //   zIndex: 1,
+  //   width: 40,
+  //   height: 40,
+  //   borderRadius: 20,
+  //   backgroundColor: "rgba(0,0,0,0.1)",
+  //   justifyContent: "center",
+  //   alignItems: "center",
+  // },
   backArrow: {
     fontSize: 20,
     color: "#FFFFFF",
@@ -238,10 +240,11 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     flex: 1,
+    marginBottom: 26,
   },
   nameRow: {
-    flexDirection: "row",
-    gap: 12,
+    flexDirection: "column",
+    columnGap: 16,
     marginVertical: 16,
   },
   nameField: {
@@ -310,6 +313,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   buttonContainer: {
-    paddingBottom: 120,
+    paddingBottom: 40,
   },
 });

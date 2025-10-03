@@ -21,9 +21,9 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
   const [lastname, setLastname] = useState("");
   const [loading, setLoading] = useState(false);
   const theme = useTheme<Theme>();
-  const { uploadCreditDocument } = useKyc();
+  const { uploadCreditDocument, updateUser } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  
+
   const handleVerifyBvn = async () => {
     if (!bvn.trim() || !firstname.trim() || !lastname.trim()) {
       return;
@@ -40,6 +40,8 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
         docUrl: "https://example.com/uploads/id.jpg",
         countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
       });
+
+      updateUser(user)
 
       // On success, proceed to next step
       onNext?.({
