@@ -28,8 +28,6 @@ export default function AssetChartDetails({
   usdCurrency,
 }: AssetChartDetailsProps) {
   const theme = useTheme<Theme>();
-  console.log("asset chart details", asset);
-  console.log("token details", tokenDetails);
   // Detect if we're in dark mode by checking theme colors
   const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
 

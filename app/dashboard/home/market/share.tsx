@@ -1,3 +1,4 @@
+import icons from "@/assets/icons";
 import images from "@/assets/images";
 import AssetChartDetails from "@/components/dashboard/market/AssetChartDetails";
 import { Box, CustomText } from "@/components/general";
@@ -12,7 +13,9 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Image,
   ImageBackground,
+  Platform,
   TouchableOpacity,
 } from "react-native";
 import { Download, Share as ShareX, X } from "react-native-feather";
@@ -35,6 +38,9 @@ const ShareCard: React.FC = () => {
   );
   const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
     undefined
+  );
+  const [qrValue, setQrValue] = useState<string>(
+    "https://play.google.com/store/apps/details?id=com.zapmobile"
   );
 
   const viewShotRef = useRef<ViewShot>(null);
@@ -66,6 +72,19 @@ const ShareCard: React.FC = () => {
       setNairaCurrency(ngn);
     }
   }, [currencies]);
+
+  // Set QR code value based on device platform
+  useEffect(() => {
+    const isIOS = Platform.OS === "ios";
+
+    if (isIOS) {
+      setQrValue(
+        "https://apps.apple.com/ng/app/zap-exchange-crypto-fast/id6474125933"
+      );
+    } else {
+      setQrValue("https://play.google.com/store/apps/details?id=com.zapmobile");
+    }
+  }, []);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -129,28 +148,96 @@ const ShareCard: React.FC = () => {
             marginTop="m"
             flexDirection="row"
             padding="m"
-            gap="s"
+            gap="m"
             alignItems="center"
           >
-            <Box height={64} width={64} borderRadius={8}>
-              <QRCode size={50} value={`${baseUrl}ref=${user?.username}`} />
+            <Box flexDirection="row" alignItems="center" flex={1} gap="m">
+              <Image
+                source={images.zapLogo}
+                style={{ width: 60, height: 60 }}
+              />
+              <Box flex={1}>
+                <CustomText
+                  variant="bodySubheader"
+                  fontSize={18}
+                  color="headerTextColor"
+                >
+                  Download Zap
+                </CustomText>
+                <CustomText
+                  variant="body"
+                  fontSize={14}
+                  color="bodyTextColor"
+                  marginTop="s"
+                >
+                  Available on
+                </CustomText>
+                <Box
+                  flexDirection="row"
+                  alignItems="center"
+                  gap="s"
+                  marginTop="s"
+                >
+                  <Box
+                    height={24}
+                    width={24}
+                    borderRadius={4}
+                    borderWidth={1}
+                    borderColor="bodyTextColor"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Image
+                      source={icons.google}
+                      style={{ width: 15, height: 15 }}
+                      tintColor={"white"}
+                    />
+                  </Box>
+
+                  <Box
+                    height={24}
+                    width={24}
+                    borderRadius={4}
+                    borderWidth={1}
+                    borderColor="bodyTextColor"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Image
+                      source={icons.apple}
+                      style={{ width: 20, height: 20 }}
+                      tintColor={"white"}
+                    />
+                  </Box>
+                </Box>
+              </Box>
             </Box>
-            <Box flex={1} gap="m">
-              <CustomText variant="bodySubheader">Swap with Zap</CustomText>
-              <CustomText variant="body">Download the app</CustomText>
-            </Box>
+
+            {/* QR Code */}
             <Box
-              height={64}
-              flexDirection="column"
-              gap="s"
+              height={80}
+              width={80}
+              borderRadius={12}
+              bg="white"
+              alignItems="center"
               justifyContent="center"
+              padding="s"
             >
-              <CustomText variant="body" textAlign="right" marginBottom="s">
-                Referral code
-              </CustomText>
-              <CustomText variant="bodySubheader" textAlign="right">
-                {user?.username || "ZAPUSER"}
-              </CustomText>
+              {qrValue ? (
+                <QRCode
+                  size={70}
+                  value={qrValue}
+                  color="#000000"
+                  backgroundColor="#FFFFFF"
+                  logoSize={20}
+                  logoMargin={2}
+                  logoBackgroundColor="transparent"
+                />
+              ) : (
+                <CustomText variant="body" fontSize={12} color="black">
+                  Loading...
+                </CustomText>
+              )}
             </Box>
           </Box>
         </ViewShot>

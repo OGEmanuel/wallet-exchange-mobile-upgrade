@@ -11,6 +11,7 @@ const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
 const down = require("./down.png");
 const clouds = require("./clouds.gif");
+const zapLogo = require("./zapIcon.png");
 
 export default {
   accounts,
@@ -25,4 +26,5 @@ export default {
   startVerification,
   zapLogoWithNameDark,
   zapLogoWithNameLight,
+  zapLogo,
 };
