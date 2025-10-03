@@ -1,3 +1,4 @@
+import images from "@/assets/images";
 import AnimatedTabContent from "@/components/dashboard/market/AnimatedTabContent";
 import AssetChartDetails from "@/components/dashboard/market/AssetChartDetails";
 import AssetHeader from "@/components/dashboard/market/AssetHeader";
@@ -527,6 +528,7 @@ export default function AssetInfo() {
                         onPress={() => {
                           router.push("/dashboard/home/wallet-home/cards");
                         }}
+                        source={images.glass}
                       />
                     </Box>
                   ) : (
