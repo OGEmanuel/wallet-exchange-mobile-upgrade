@@ -62,9 +62,9 @@ export default function PhoneNumber({
         countryCode: selectedCountry?.phoneCode.replaceAll("+", "") || null,
         isWhatsApp: false,
       }).then(() => {
-        // setShowOTP(true);
+        setShowOTP(true);
       }).catch((error) => {
-        console.log(error);
+        // console.log(error);
       }).finally(() => {
         setVerifyPhoneNumberLoading(false);
       });
