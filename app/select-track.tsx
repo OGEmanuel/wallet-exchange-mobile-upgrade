@@ -6,8 +6,8 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
-import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import useActiveTheme from "@/hooks/useTheme";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { PropsWithChildren, useRef } from "react";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
   const { colorTheme } = useActiveTheme();
@@ -90,8 +91,13 @@ const SelectTrack = () => {
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
   const phoneVerificationBottomSheetRef =
     useRef<AnimatedGradientBottomSheetRef>(null);
-  const { colors } = useTheme<Theme>();
-  const { showBottomSheet } = useAppBottomSheet();
+
+  // Get user state from Redux store
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  console.log("Mofeeeeee", user);
+
+  // Check if user is logged in (has a user object and is not a guest)
+  const isUserLoggedIn = user && !user.isGuest;
 
   const item: {
     title: string;
@@ -128,8 +134,10 @@ const SelectTrack = () => {
     },
     {
       title: "Zapper",
-      body: "Sign in or  create your Zap account",
-      btnText: "Get Started",
+      body: isUserLoggedIn
+        ? "Continue to your dashboard"
+        : "Sign in or  create your Zap account",
+      btnText: isUserLoggedIn ? "Continue" : "Get Started",
       image: (
         <Image
           source={require("@/assets/images/onb3.png")}
@@ -138,13 +146,19 @@ const SelectTrack = () => {
         />
       ),
       onPress: () => {
-        zapperBottomSheetRef.current?.snapToIndex(0);
-        // showBottomSheet({
-        //   component: <LoginToZap />,
-        //   props: {
-        //     snapPoints: ["90%"],
-        //   },
-        // });
+        if (isUserLoggedIn) {
+          // Navigate to dashboard for logged in users
+          router.push("/dashboard/home/wallet-home/home");
+        } else {
+          // Show bottom sheet for non-logged in users
+          zapperBottomSheetRef.current?.snapToIndex(0);
+          // showBottomSheet({
+          //   component: <LoginToZap />,
+          //   props: {
+          //     snapPoints: ["90%"],
+          //   },
+          // });
+        }
       },
     },
   ];
