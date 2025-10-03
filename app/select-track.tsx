@@ -13,7 +13,7 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useRef } from "react";
+import React, { PropsWithChildren, useRef, useState } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
@@ -73,14 +73,14 @@ const Card = ({
         </CustomText>
         <CustomButton
           text={btnText}
-          onPress={() => onPress()}
+          onPress={onPress}
           width={100}
           height={25}
-          borderRadius={20}
-          bgColor={colorTheme === "dark" ? colors.white : colors.fadedPrimary}
+          borderRadius={25}
+          bgColor={colors.white}
           color={colors.primaryColor}
           variant="bodySubheader"
-          fontSize={12}
+          fontSize={10}
         />
       </Box>
     </Box>
@@ -92,9 +92,12 @@ const SelectTrack = () => {
   const phoneVerificationBottomSheetRef =
     useRef<AnimatedGradientBottomSheetRef>(null);
 
+  // State to control bottomsheet visibility
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
+    useState(false);
+
   // Get user state from Redux store
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  console.log("Mofeeeeee", user);
 
   // Check if user is logged in (has a user object and is not a guest)
   const isUserLoggedIn = user && !user.isGuest;
@@ -151,13 +154,11 @@ const SelectTrack = () => {
           router.push("/dashboard/home/wallet-home/home");
         } else {
           // Show bottom sheet for non-logged in users
-          zapperBottomSheetRef.current?.snapToIndex(0);
-          // showBottomSheet({
-          //   component: <LoginToZap />,
-          //   props: {
-          //     snapPoints: ["90%"],
-          //   },
-          // });
+          setIsZapperBottomSheetVisible(true);
+          // Use setTimeout to ensure the component is rendered before opening
+          setTimeout(() => {
+            zapperBottomSheetRef.current?.snapToIndex(0);
+          }, 100);
         }
       },
     },
@@ -175,13 +176,18 @@ const SelectTrack = () => {
         </ScrollView>
       </Box>
 
-      <ZapperSiginBottomSheet
-        ref={zapperBottomSheetRef}
-        onContinue={() => {
-          zapperBottomSheetRef.current?.close();
-          phoneVerificationBottomSheetRef.current?.snapToIndex(0);
-        }}
-      />
+      {isZapperBottomSheetVisible && (
+        <ZapperSiginBottomSheet
+          ref={zapperBottomSheetRef}
+          onContinue={() => {
+            zapperBottomSheetRef.current?.close();
+            phoneVerificationBottomSheetRef.current?.snapToIndex(0);
+          }}
+          onClose={() => {
+            setIsZapperBottomSheetVisible(false);
+          }}
+        />
+      )}
       {/* <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} /> */}
     </Wrapper>
   );
