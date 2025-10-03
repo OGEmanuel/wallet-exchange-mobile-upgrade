@@ -1,14 +1,13 @@
 import { Box, CustomText } from "@/components/general";
 import { SIZES } from "@/data";
-import {
-  formatAccountValue,
-  formatToSigFigMax6Digits,
-  getApproximateAmount,
-} from "@/lib/utils/market/helpers";
+import { formatToSigFigMax6Digits } from "@/lib/utils/market/helpers";
+import { formatPrice } from "@/lib/utils/market/priceFormatter";
 import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import { TokenDetailModel } from "@/src/modules/market/domain/entities/models/token-detail-model";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ArrowDown3, ArrowUp3 } from "iconsax-react-nativejs";
 import React, { useState } from "react";
 import { LineChart } from "react-native-chart-kit";
 import CurrencyTab from "./CurrencyTab";
@@ -18,14 +17,19 @@ import TokenImage from "./TokenImage";
 interface AssetChartDetailsProps {
   tokenDetails: TokenDetailModel | null;
   asset?: MarketTokenModel | null;
+  nairaCurrency?: CurrencyModel | null;
+  usdCurrency?: CurrencyModel | null;
 }
 
 export default function AssetChartDetails({
   tokenDetails,
   asset,
+  nairaCurrency,
+  usdCurrency,
 }: AssetChartDetailsProps) {
   const theme = useTheme<Theme>();
-  // console.log("asset", asset);
+  console.log("asset chart details", asset);
+  console.log("token details", tokenDetails);
   // Detect if we're in dark mode by checking theme colors
   const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
 
@@ -74,6 +78,7 @@ export default function AssetChartDetails({
   const getYAxisLabels = () => {
     return ["40K", "30K", "20K", "10K"];
   };
+  const isPositive = asset?.change24h && asset.change24h > 0;
 
   return (
     <Box width="100%" paddingHorizontal="m">
@@ -91,17 +96,37 @@ export default function AssetChartDetails({
         >
           <Box flexDirection="row" alignItems="center" gap="s">
             <TokenImage
-              uri={tokenDetails?.tokenDetails?.logo}
+              uri={tokenDetails?.tokenDetails?.logo || asset?.currencyId?.logo}
               name={tokenDetails?.tokenDetails?.symbol}
               size={24}
             />
             <CustomText variant="bodySubheader" fontSize={20}>
-              {tokenDetails?.tokenDetails?.name}
+              {tokenDetails?.tokenDetails?.name || asset?.currencyId?.name}
             </CustomText>
           </Box>
-          <Box>
+          {/* <Box>
             <CustomText variant="body" fontSize={14} color="success">
               {formatToSigFigMax6Digits(asset?.dailyChange || 1)}%
+            </CustomText>
+          </Box> */}
+          <Box
+            flexDirection="row"
+            style={{ gap: 3 }}
+            alignItems="center"
+            width={60}
+            justifyContent="flex-end"
+          >
+            {isPositive ? (
+              <ArrowUp3 size={8} color="#16A34A" variant="Bold" />
+            ) : (
+              <ArrowDown3 size={8} color="#DC2626" variant="Bold" />
+            )}
+            <CustomText
+              variant="bodyMedium"
+              fontSize={12}
+              color={isPositive ? "success" : "error"}
+            >
+              {formatToSigFigMax6Digits(asset?.change24h || 0) || 0}%
             </CustomText>
           </Box>
         </Box>
@@ -109,14 +134,12 @@ export default function AssetChartDetails({
         <Box width="100%" flexDirection="row" justifyContent="space-between">
           <Box>
             <CustomText variant="bodyBold" fontSize={22} marginTop="s">
-              {formatAccountValue({
-                value: asset?.rate || 1,
-                currency: selectedCurrency,
-                showSymbol: true,
-                rate: asset?.rate || 1,
-                convert: true,
-                getApproximateAmount: getApproximateAmount,
-              })}
+              {formatPrice(
+                asset?.rate,
+                selectedCurrency,
+                nairaCurrency,
+                usdCurrency
+              )}
             </CustomText>
             <CurrencyTab
               selectedCurrency={selectedCurrency}

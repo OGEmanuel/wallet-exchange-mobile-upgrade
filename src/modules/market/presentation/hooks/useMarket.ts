@@ -46,7 +46,13 @@ const useMarket = () => {
     addToWatchlist: async (payload: GeneralRequestModel<AddToWatchlistParams, unknown, unknown>) => {
       const response = await marketUsecases.addToWatchlist(payload);
       if (response?.data) {
-        dispatch(marketActions.addToWatchlist(response.data));
+        // Transform API response to match model interface (id -> _id)
+        const apiData = response.data as any; // Cast to any to access id property
+        const transformedData = {
+          ...apiData,
+          _id: apiData.id,
+        };
+        dispatch(marketActions.addToWatchlist(transformedData));
       }
       return response;
     },
@@ -54,6 +60,7 @@ const useMarket = () => {
     removeFromWatchlist: async (payload: GeneralRequestModel<string, unknown, unknown>) => {
       const response = await marketUsecases.removeFromWatchlist(payload);
       if (response?.success) {
+        // Pass the currencyId for Redux state update
         dispatch(marketActions.removeFromWatchlist(payload.body as string));
       }
       return response;

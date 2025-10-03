@@ -41,10 +41,17 @@ const marketSlice = createSlice({
       }
     },
     removeFromWatchlist: (state, action: PayloadAction<string>) => {
+      console.log("Redux removeFromWatchlist called with:", action.payload);
+      console.log("Current watchlistTokens before removal:", state.watchlistTokens);
       if (state.watchlistTokens) {
         state.watchlistTokens = state.watchlistTokens.filter(
-          item => item._id !== action.payload
+          item => {
+            const shouldKeep = item.currencyId !== action.payload;
+            console.log("Item:", item.currencyId, "shouldKeep:", shouldKeep);
+            return shouldKeep;
+          }
         );
+        console.log("WatchlistTokens after removal:", state.watchlistTokens);
       }
     },
   },

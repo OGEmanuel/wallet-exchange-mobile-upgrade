@@ -4,6 +4,7 @@ import { Box, CustomText } from "@/components/general";
 import { showErrorToast, showSuccessToast } from "@/src/core/utils/toast-utils";
 import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
+import { marketActions } from "@/src/modules/market/presentation/state/market-slice";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -11,7 +12,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable } from "react-native";
 import { SvgXml } from "react-native-svg";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import TokenImage from "./TokenImage";
 import TouchableIcon from "./TouchableIcon";
 
@@ -32,14 +33,13 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
 }) => {
   const router = useRouter();
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
   const { addToWatchlist, removeFromWatchlist } = useMarket();
   const { watchlistTokens } = useSelector(
     (state: AppRootState) => state.market
   );
   const user = useSelector((state: AppRootState) => state.kyc.user);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
-
-  console.log("deet:", user?._id, currencyId);
 
   const isDark = theme.colors.headerTextColor === "#FBFBFB";
 
@@ -51,9 +51,13 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
 
   // Check if token is in watchlist
   const isTokenInWatchlist = (currencyId: string) => {
-    return (
-      watchlistTokens?.some((item) => item.currencyId === currencyId) || false
-    );
+    const result =
+      watchlistTokens?.some((item) => {
+        // console.log("Checking item:", item.currencyId, "against:", currencyId);
+        return item.currencyId === currencyId;
+      }) || false;
+    // console.log("isTokenInWatchlist result:", result);
+    return result;
   };
 
   // Get watchlist item for removal
@@ -71,7 +75,11 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
   };
 
   const handleAddToWatchlist = async () => {
-    console.log(user?._id, currencyId);
+    console.log("=== WATCHLIST DEBUG ===");
+    console.log("user._id:", user?._id);
+    console.log("currencyId:", currencyId);
+    console.log("watchlistTokens:", watchlistTokens);
+
     if (!user?._id || !currencyId) {
       showErrorToast("Please log in to manage watchlist");
       return;
@@ -80,23 +88,45 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
     setIsWatchlistLoading(true);
 
     try {
-      if (isTokenInWatchlist(currencyId)) {
+      const isInWatchlist = isTokenInWatchlist(currencyId);
+      // console.log("isTokenInWatchlist:", isInWatchlist);
+
+      if (isInWatchlist) {
         // Remove from watchlist
         const watchlistItem = getWatchlistItem(currencyId);
+        // console.log("watchlistItem for removal:", watchlistItem);
+
         if (watchlistItem?._id) {
+          // console.log(
+          //   "Calling removeFromWatchlist API with ID:",
+          //   watchlistItem._id
+          // );
           const response = await removeFromWatchlist({
             body: watchlistItem._id,
             params: {},
             extra: null,
           });
 
+          console.log("Remove API response:", response);
+
           if (response?.success) {
+            // Update Redux state with currencyId for filtering
+            console.log(
+              "Dispatching removeFromWatchlist with currencyId:",
+              currencyId
+            );
+            dispatch(marketActions.removeFromWatchlist(currencyId));
             showSuccessToast("Removed from watchlist");
           } else {
+            console.log("Remove API failed:", response);
             showErrorToast("Failed to remove from watchlist");
           }
+        } else {
+          console.log("No watchlist item found with _id");
+          showErrorToast("Watchlist item not found");
         }
       } else {
+        console.log("Adding to watchlist...");
         const response = await addToWatchlist({
           body: {
             userId: user._id,
@@ -106,6 +136,8 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
           extra: null,
         });
 
+        // console.log("Add API response:", response);
+
         if (response?.data) {
           showSuccessToast("Added to watchlist");
         } else {
@@ -113,6 +145,7 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
         }
       }
     } catch (error) {
+      console.log("Watchlist error:", error);
       showErrorToast("Failed to update watchlist");
     } finally {
       setIsWatchlistLoading(false);
@@ -187,3 +220,7 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
 };
 
 export default AssetHeader;
+
+//asset history
+//watchlist tab
+//look into share card
