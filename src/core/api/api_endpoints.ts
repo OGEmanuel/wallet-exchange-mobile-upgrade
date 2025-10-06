@@ -123,3 +123,11 @@ export const deleteSupportMessageEndpoint = (
 export const autoResponseSettingsEndpoint = "/support/autoBot";
 export const getActivityLogsEndpoint = (user?: UserModel | null): string =>
   `/activities/${user?._id}`;
+export const getAvatarsEndpoint = `/avatar/`;
+export const getFaqEndpoint = `/faqs`;
+export const addressBookEndpoint = `/address-book`;
+export const chainsEndpoint = `/chains`;
+export const banksEndpoint = `/banks`;
+export const countriesEndpoint = `/countries`;
+export const currenciesEndpoint = `/currencies`;
+export const accountsEndpoint = "/accounts";

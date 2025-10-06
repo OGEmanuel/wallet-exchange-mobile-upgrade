@@ -10,11 +10,11 @@ import { Linking, Pressable } from "react-native";
 const DATA: { title: string; body?: string; link?: string }[] = [
   {
     title: "Terms of services",
-    link: "https://zapwallet.com",
+    link: "https://zap.africa/termsofservice",
   },
   {
     title: "Privacy policy",
-    link: "https://zapwallet.com",
+    link: "https://zap.africa/privacypolicy",
   },
   {
     title: "Version",

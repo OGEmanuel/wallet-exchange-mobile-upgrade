@@ -11,14 +11,18 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { User } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 
 const ItemCard = ({
   icon,
@@ -63,6 +67,7 @@ const ItemCard = ({
 
 const ProfilePage = () => {
   const theme = useTheme<Theme>();
+  const user = useSelector(selectUser);
 
   const DATA: {
     icon: React.ReactNode;
@@ -133,12 +138,37 @@ const ProfilePage = () => {
               alignItems: "center",
             }}
           >
-            <Box width={70} height={70} borderRadius={50} bg="fadedPrimary" />
+            <Box
+              width={70}
+              height={70}
+              borderRadius={50}
+              bg="fadedPrimary"
+              justifyContent="center"
+              alignItems="center"
+              style={{
+                backgroundColor:
+                  user?.avatar?.backgroundColor ||
+                  theme.colors.fadedPrimaryColor,
+              }}
+            >
+              {user?.avatar?.url ? (
+                <Image
+                  source={{ uri: user?.avatar?.url }}
+                  style={{ width: "100%", height: "100%", borderRadius: 50 }}
+                />
+              ) : (
+                <User
+                  size={50}
+                  color={theme.colors.bodyTextColor}
+                  variant="Bold"
+                />
+              )}
+            </Box>
             <CustomText variant="medium" fontFamily="14" mt="s">
-              Olakeandera
+              {user?.username}
             </CustomText>
             <CustomText variant="body" mt="s" fontFamily="14" marginBottom="m">
-              Olakeandera@gmail.com
+              {user?.email}
             </CustomText>
             <CustomButton
               text="Edit Profile"

@@ -23,6 +23,7 @@ const chatBottomSheetRef = createRef<BottomSheet>();
 const currencyBottomSheetRef = createRef<BottomSheet>();
 const languageBottomSheetRef = createRef<BottomSheet>();
 const appearanceBottomSheetRef = createRef<BottomSheet>();
+const chainsBottomSheetRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -53,6 +54,7 @@ const useBottomSheetRefs = () => {
     currencyBottomSheetRef,
     languageBottomSheetRef,
     appearanceBottomSheetRef,
+    chainsBottomSheetRef,
     render,
   };
 };

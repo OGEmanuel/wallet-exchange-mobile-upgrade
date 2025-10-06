@@ -2,17 +2,23 @@ import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomText, PageWrapper } from "@/components/general";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { ActivityLogModel } from "@/src/modules/settings/domain/entities/models/activity-log-model";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
+import { Code, Lock } from "iconsax-react-nativejs";
 import { Search } from "lucide-react-native";
-import React from "react";
-import { ScrollView } from "react-native-gesture-handler";
+import React, { useState } from "react";
+import { ActivityIndicator } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
-const ItemCard = () => {
+const ItemCard = ({ type, description, createdAt }: ActivityLogModel) => {
+  const theme = useTheme<Theme>();
+
   return (
     <Box
       width={"100%"}
@@ -29,14 +35,21 @@ const ItemCard = () => {
         justifyContent="center"
         alignItems="center"
         position="relative"
-      ></Box>
+      >
+        {type === "LOGIN" && (
+          <Lock size={20} color={theme.colors.fadedPrimary} variant="Bold" />
+        )}
+        {type === "OTP" && (
+          <Code size={20} color={theme.colors.fadedPrimary} variant="Bold" />
+        )}
+      </Box>
       <Box ml="m">
-        <CustomText fontSize={14}>Login</CustomText>
+        <CustomText fontSize={14}>{type}</CustomText>
         <CustomText fontSize={12} mt="s">
-          You transaction from 40 ETH To20 BTC was completed successfully{" "}
+          {description}
         </CustomText>
         <CustomText fontSize={10} color="disabledTextColor" mt="s">
-          27 Dec 2022, 11:58AM
+          {new Date(createdAt).toDateString()}
         </CustomText>
       </Box>
     </Box>
@@ -46,8 +59,25 @@ const ItemCard = () => {
 const ActivityLogs = () => {
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
-  console.log(user);
+  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState<ActivityLogModel[]>([]);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const { getActivities } = useSettings();
+
+  React.useEffect(() => {
+    async function fetchActivities() {
+      setIsLoading(true);
+      const data = await getActivities({
+        limit,
+        page,
+        user: user as UserModel,
+      });
+      setIsLoading(false);
+      setData((data.data as ActivityLogModel[]) || []);
+    }
+    fetchActivities();
+  }, []);
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />
@@ -83,13 +113,21 @@ const ActivityLogs = () => {
         </Box>
       </Box>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        {Array.from([
-          1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        ]).map((item, index) => (
-          <ItemCard key={index.toString()} />
-        ))}
-      </ScrollView>
+      <FlatList
+        data={data}
+        ListFooterComponent={() => (
+          <Box height={20} justifyContent="center" alignItems="center">
+            {isLoading && (
+              <ActivityIndicator
+                animating={isLoading}
+                color={theme.colors.bodyTextColor}
+              />
+            )}
+          </Box>
+        )}
+        renderItem={({ item }) => <ItemCard {...item} />}
+        keyExtractor={(item) => item._id}
+      />
     </PageWrapper>
   );
 };

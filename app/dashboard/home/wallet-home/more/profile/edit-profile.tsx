@@ -4,12 +4,16 @@ import EditUsernameBottomSheet from "@/components/bottomsheets/preference/EditUs
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { Box, CustomText, PageWrapper } from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
 import { router } from "expo-router";
+import { User } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
+import { useSelector } from "react-redux";
 
 const ItemCard = ({
   title,
@@ -52,6 +56,9 @@ const ItemCard = ({
 };
 
 const EditProfile = () => {
+  const theme = useTheme<Theme>();
+  const user = useSelector(selectUser);
+
   const [type, setType] = React.useState<"firstname" | "lastname" | "phone">(
     "firstname"
   );
@@ -65,14 +72,14 @@ const EditProfile = () => {
   }[] = [
     {
       title: "Username",
-      value: "CryptoKing",
+      value: user?.username || "",
       onPress: () => {
         editUsernameRef.current?.snapToIndex(1);
       },
     },
     {
       title: "First name",
-      value: "jonathan",
+      value: user?.firstName || "",
       onPress: () => {
         setType("firstname");
         editFirstnameRef.current?.snapToIndex(1);
@@ -80,7 +87,7 @@ const EditProfile = () => {
     },
     {
       title: "Last name",
-      value: "Mayers",
+      value: user?.lastName || "",
       onPress: () => {
         setType("lastname");
         editFirstnameRef.current?.snapToIndex(1);
@@ -88,7 +95,7 @@ const EditProfile = () => {
     },
     {
       title: "Phone number",
-      value: "+234812384948",
+      value: user?.phone || "",
       onPress: () => {
         setType("phone");
         editFirstnameRef.current?.snapToIndex(1);
@@ -100,7 +107,31 @@ const EditProfile = () => {
       <SettingsHeader title="Edit Profile" onBackPress={() => router.back()} />
       <Box flex={1} bg="mainBackgroundColor" paddingHorizontal="m">
         <Box width={"100%"} height={"auto"} alignItems="center" mt="l">
-          <Box width={60} height={60} borderRadius={30} bg="pendingColor"></Box>
+          <Box
+            width={60}
+            height={60}
+            borderRadius={30}
+            justifyContent="center"
+            alignItems="center"
+            style={{
+              backgroundColor:
+                user?.avatar?.backgroundColor || theme.colors.fadedPrimaryColor,
+            }}
+          >
+            {user?.avatar?.url && (
+              <Image
+                source={{ uri: user?.avatar?.url }}
+                style={{ width: "100%", height: "100%", borderRadius: 30 }}
+              />
+            )}
+            {!user?.avatar?.url && (
+              <User
+                size={50}
+                color={theme.colors.bodyTextColor}
+                variant="Bold"
+              />
+            )}
+          </Box>
           <CustomText
             textAlign="center"
             mt="m"

@@ -6,10 +6,16 @@ import {
   ThemedHelpIcon,
   ThemedResolveChatIcon,
   ThemedSettingsFillIcon,
-  ThemedShieldFillIcon,
   ThemedStarFillIcon,
 } from "@/assets/svg/wallet-icons-components";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { StorageKeys } from "@/src/core/api/models";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
+import {
+  selectBiometricEnabled,
+  toggleBiometric,
+} from "@/src/modules/settings/presentation/state/settings-slice";
+import { selectUser } from "@/state/reducers/kyc-reducer";
 import {
   selectWalletConnected,
   setWalletConnected,
@@ -18,10 +24,11 @@ import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
+import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link } from "iconsax-react-nativejs";
-import React from "react";
-import { Image, Pressable } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
 import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
@@ -32,11 +39,54 @@ import SidebarItemCard from "./SidebarItemCard";
 const Sidebar = () => {
   const isConnect = useSelector(selectWalletConnected);
   const dispatch = useDispatch();
+  const { setBiometricEnabled } = useSettings();
+  const user = useSelector(selectUser);
+  const isBiometricEnabled = useSelector(selectBiometricEnabled);
   const theme = useTheme<Theme>();
   const { changePinRef } = useBottomSheetRefs();
+  const [hasHardware, setHasHardware] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const has = await LocalAuthentication.hasHardwareAsync();
+      if (has) {
+        // ANDROID CHECK
+        if (
+          Platform.OS === "android" &&
+          has &&
+          LocalAuthentication.AuthenticationType.FINGERPRINT
+        ) {
+          setHasHardware(true);
+        } else {
+          setHasHardware(false);
+        }
+
+        // IOS CHECK
+        if (
+          Platform.OS === "ios" &&
+          has &&
+          LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
+        ) {
+          setHasHardware(true);
+        } else {
+          setHasHardware(false);
+        }
+      } else {
+        setHasHardware(false);
+      }
+    })();
+  }, []);
 
   const handleConnect = () => {
     dispatch(setWalletConnected(!isConnect));
+  };
+
+  const handleBiometricEnabled = async () => {
+    dispatch(toggleBiometric());
+    setBiometricEnabled(
+      StorageKeys.BIOMETRIC_ENABLED,
+      isBiometricEnabled ? "false" : "true"
+    );
   };
 
   // adding the data hear
@@ -64,7 +114,7 @@ const Sidebar = () => {
         />
       ),
       title: "Bank Accounts",
-      link: "/dashboard/home/banks",
+      link: "/dashboard/home/wallet-home/more/bank",
       isActive: false,
     },
     {
@@ -111,30 +161,6 @@ const Sidebar = () => {
   const SIDEBAR_SECURITY_DATA: ISidebarItem[] = [
     {
       icon: (
-        <ThemedFaceIDIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Login with FaceID",
-      link: "/dashboard/home/about",
-      isActive: false,
-      disablClick: true,
-      trailingItem: (
-        <Switch
-          value={isConnect}
-          onValueChange={() => handleConnect()}
-          trackColor={{
-            false: theme.colors.primaryColor,
-            true: theme.colors.primaryColor,
-          }}
-        />
-      ),
-    },
-    {
-      icon: (
         <ThemedBookIcon
           width={20}
           height={20}
@@ -150,21 +176,47 @@ const Sidebar = () => {
     },
   ];
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
-    {
+  if (hasHardware)
+    SIDEBAR_SECURITY_DATA.unshift({
       icon: (
-        <ThemedShieldFillIcon
+        <ThemedFaceIDIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
           lightModeColor={theme.colors.bodyTextColor}
         />
       ),
-      title: "Terms of Service",
-      link: "/dashboard/home/security",
+      title: "Login with FaceID",
+      link: "/dashboard/home/about",
       isActive: false,
-      onPress: () => {},
-    },
+      disablClick: true,
+      trailingItem: (
+        <Switch
+          value={isBiometricEnabled}
+          onValueChange={() => handleBiometricEnabled()}
+          trackColor={{
+            false: theme.colors.primaryColor,
+            true: theme.colors.primaryColor,
+          }}
+        />
+      ),
+    });
+
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
+    // {
+    //   icon: (
+    //     <ThemedShieldFillIcon
+    //       width={20}
+    //       height={20}
+    //       darkModeColor={theme.colors.bodyTextColor}
+    //       lightModeColor={theme.colors.bodyTextColor}
+    //     />
+    //   ),
+    //   title: "Terms of Service",
+    //   link: "/dashboard/home/security",
+    //   isActive: false,
+    //   onPress: () => {},
+    // },
     {
       icon: (
         <ThemedHelpIcon
@@ -222,18 +274,23 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {isConnect && (
+            {user && (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
                 }
-                style={{ width: 40, height: 40, borderRadius: 20 }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: user?.avatar?.backgroundColor,
+                }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
                   <Image
-                    source={require("@/assets/images/avatar.png")}
+                    source={{ uri: user?.avatar?.url }}
                     style={[
                       { width: 40, height: 40, borderRadius: 20 },
                       pressed && { opacity: 0.7 },
@@ -242,7 +299,7 @@ const Sidebar = () => {
                 )}
               </Pressable>
             )}
-            {!isConnect && (
+            {!user && (
               <Image
                 source={require("@/assets/images/personplaceholder.png")}
                 style={{ width: 40, height: 40, borderRadius: 20 }}
@@ -250,10 +307,10 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {isConnect && (
+            {user && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  lekkymoney.zap
+                  {user?.username || "anonymous.zap"}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>
@@ -262,7 +319,7 @@ const Sidebar = () => {
                 </Box>
               </>
             )}
-            {!isConnect && (
+            {!user && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
                   anonymous.zap
