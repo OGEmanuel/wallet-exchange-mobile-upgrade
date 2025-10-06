@@ -72,18 +72,15 @@ const ItemCard = ({
   );
 };
 
-const Help = () => {
+const About = () => {
   const theme = useTheme<Theme>();
   return (
     <PageWrapper>
-      <SettingsHeader
-        title="Help & Support"
-        onBackPress={() => router.back()}
-      />
+      <SettingsHeader title="About" onBackPress={() => router.back()} />
       <Box flex={1} bg="mainBackgroundColor">
         <WebView
           startInLoadingState={true}
-          source={{ uri: "https://zap.africa/helpcenter" }}
+          source={{ uri: "https://zap.africa/about" }}
           style={{ flex: 1, backgroundColor: "transparent" }}
           renderLoading={() => (
             <Box
@@ -108,4 +105,4 @@ const Help = () => {
   );
 };
 
-export default Help;
+export default About;

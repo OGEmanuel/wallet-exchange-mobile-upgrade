@@ -1,8 +1,28 @@
-import * as SecureStore from "expo-secure-store";
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import storageService from "@/src/core/storage/app-storage";
 import { SettingsLocalDataSource } from "./settings-local-datasource";
 
 export class SettingsLocalDataSourceImpl implements SettingsLocalDataSource {
+  async setBiometricEnabled(
+    key: string,
+    value: "true" | "false"
+  ): Promise<void> {
+    try {
+      await storageService.setItem(key, value);
+    } catch (error) {
+      console.error("Error setting biometric enabled:", error);
+      throw error;
+    }
+  }
+
+  async getBiometricEnabled(key: string): Promise<"true" | "false"> {
+    try {
+      const value = (await storageService.getItem(key)) as "true" | "false";
+      return value || "false";
+    } catch (error) {
+      console.error("Error getting biometric enabled:", error);
+      throw error;
+    }
+  }
   // Implement your local data source methods here
   // Example:
   // async getCachedData(key: string): Promise<unknown> {

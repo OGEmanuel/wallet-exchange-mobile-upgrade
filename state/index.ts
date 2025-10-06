@@ -1,5 +1,6 @@
 import { marketReducer } from "@/src/modules/market/presentation/state/market-slice";
 import { configureStore } from "@reduxjs/toolkit";
+import settingsReducer from "../src/modules/settings/presentation/state/settings-slice";
 import swapReducer from "../src/modules/swap/presentation/state/swap-slice";
 import utilitiesReducer from "../src/modules/utilities/presentation/state/utilities-slice";
 import activityPageReducer from "./reducers/activityPage.reducer";
@@ -20,6 +21,7 @@ export const store = configureStore({
     utilities: utilitiesReducer,
     market: marketReducer,
     swap: swapReducer,
+    settings: settingsReducer,
   },
 });
 

@@ -1,4 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { AppRootState } from "@/state";
+import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { ChainModel } from "../../domain/entities/models/chain-model";
 
 interface SettingsState {
   // Add your state properties here
@@ -6,6 +8,8 @@ interface SettingsState {
   // data: unknown[] | null;
   // loading: boolean;
   // error: string | null;
+  biometricEnabled: boolean;
+  activeChain: null | ChainModel;
 }
 
 const initialState: SettingsState = {
@@ -14,12 +18,21 @@ const initialState: SettingsState = {
   // data: null,
   // loading: false,
   // error: null,
+  biometricEnabled: false,
+  activeChain: null,
 };
 
 const settingsSlice = createSlice({
-  name: 'settings',
+  name: "settings",
   initialState,
   reducers: {
+    toggleBiometric: (state) => {
+      state.biometricEnabled = !state.biometricEnabled;
+      console.log(state);
+    },
+    setActiveChain: (state, action: PayloadAction<ChainModel>) => {
+      state.activeChain = action.payload;
+    },
     // Add your reducers here
     // Example:
     // setData: (state, action: PayloadAction<unknown[]>) => {
@@ -34,5 +47,11 @@ const settingsSlice = createSlice({
   },
 });
 
-export const { /* Add your action creators here */ } = settingsSlice.actions;
+export const {
+  /* Add your action creators here */ toggleBiometric,
+  setActiveChain,
+} = settingsSlice.actions;
+export const selectBiometricEnabled = (state: AppRootState) =>
+  state.settings.biometricEnabled;
+export const selectSettingState = (state: AppRootState) => state.settings;
 export default settingsSlice.reducer;

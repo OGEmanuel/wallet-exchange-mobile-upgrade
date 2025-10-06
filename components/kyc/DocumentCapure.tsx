@@ -1,32 +1,28 @@
-import { docGuide } from "@/assets/images";
-import { ThemedBackIcon } from "@/assets/svg/wallet-icons-components";
+import { checkTerms, docGuide } from "@/assets/images";
 import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { CustomButton, CustomText } from "../general";
 
 interface DocumentCapureProps {
   userData?: any;
   onPhotoCaptured?: (photo: any) => void;
   onBack?: () => void;
-  fileUploadLoading?: boolean;
 }
 
 export default function DocumentCapure({
   userData,
   onPhotoCaptured,
   onBack,
-  fileUploadLoading,
 }: DocumentCapureProps) {
   const theme = useTheme<Theme>();
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [capturedImageAsset, setCapturedImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [showCamera, setShowCamera] = useState(false);
 
   const getDocumentTypeLabel = (type: string) => {
@@ -40,21 +36,6 @@ export default function DocumentCapure({
       default:
         return "ID Document";
     }
-  };
-
-  const createFormDataFromAsset = (asset: ImagePicker.ImagePickerAsset): FormData => {
-    const formData = new FormData();
-    
-    // Create a file object from the asset
-    const file = {
-      uri: asset.uri,
-      type: asset.mimeType || 'image/jpeg',
-      name: asset.fileName || `image_${Date.now()}.jpg`,
-    } as any;
-
-    formData.append('file', file);
-    
-    return formData;
   };
 
   const requestCameraPermission = async () => {
@@ -95,11 +76,10 @@ export default function DocumentCapure({
 
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
-        setCapturedImageAsset(result.assets[0]);
         setShowCamera(false);
         console.log("Image captured:", result.assets[0]);
       }
-    } catch {
+    } catch (error) {
       Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   };
@@ -118,10 +98,9 @@ export default function DocumentCapure({
 
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
-        setCapturedImageAsset(result.assets[0]);
         console.log("Image uploaded:", result.assets[0]);
       }
-    } catch {
+    } catch (error) {
       Alert.alert("Error", "Failed to select image. Please try again.");
     }
   };
@@ -137,12 +116,6 @@ export default function DocumentCapure({
 
   return (
     <View style={styles.container}>
-      {onBack && (
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <ThemedBackIcon />
-        </Pressable>
-      )}
-
       <CustomText variant="header" style={styles.title}>
         {userData?.documentType
           ? getDocumentTypeLabel(userData.documentType)
@@ -201,6 +174,11 @@ export default function DocumentCapure({
             )}
           </View>
         </TouchableOpacity>
+        <Image
+          source={checkTerms}
+          style={{ width: 16, height: 20, marginRight: 8 }}
+          resizeMode="contain"
+        />
         <CustomText style={styles.consentText}>
           I consent to Zap collecting, processing and sharing my information for
           KYC purposes as stated in the{" "}
@@ -217,11 +195,8 @@ export default function DocumentCapure({
             <CustomButton
               text="Submit Document"
               onPress={() => {
-                if (capturedImageAsset) {
-                  const formData = createFormDataFromAsset(capturedImageAsset);
-                  console.log("Submitting document with FormData:", formData);
-                  onPhotoCaptured?.(formData);
-                }
+                console.log("Submitting document with image:", capturedImage);
+                onPhotoCaptured?.(capturedImage);
               }}
               width="100%"
               height={56}
@@ -230,17 +205,13 @@ export default function DocumentCapure({
               color={theme.colors.white}
               variant="bodySubheader"
               fontSize={14}
-              isLoading={fileUploadLoading}
-              disabled={!isConsentChecked || fileUploadLoading}
+              disabled={!isConsentChecked}
               disabledColor={theme.colors.borderColor}
             />
             <View style={{ marginTop: 12 }}>
               <CustomButton
                 text="Retake Photo"
-                onPress={() => {
-                  setCapturedImage(null);
-                  setCapturedImageAsset(null);
-                }}
+                onPress={() => setCapturedImage(null)}
                 width="100%"
                 height={56}
                 borderRadius={56}
@@ -248,7 +219,7 @@ export default function DocumentCapure({
                 color={theme.colors.white}
                 variant="bodySubheader"
                 fontSize={14}
-                disabled={fileUploadLoading}
+                disabled={false}
                 disabledColor={theme.colors.borderColor}
                 borderWidth={1}
                 borderColor={theme.colors.borderColor}
@@ -267,7 +238,7 @@ export default function DocumentCapure({
               color={theme.colors.white}
               variant="bodySubheader"
               fontSize={14}
-              disabled={!isConsentChecked || fileUploadLoading}
+              disabled={!isConsentChecked}
               disabledColor={theme.colors.borderColor}
             />
             <View style={{ marginTop: 12 }}>
@@ -281,7 +252,7 @@ export default function DocumentCapure({
                 color={theme.colors.white}
                 variant="bodySubheader"
                 fontSize={14}
-                disabled={!isConsentChecked || fileUploadLoading}
+                disabled={!isConsentChecked}
                 disabledColor={theme.colors.borderColor}
                 borderWidth={1}
                 borderColor={theme.colors.borderColor}
@@ -303,8 +274,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: -30,
-    left: 0,
+    top: 20,
+    left: 24,
     zIndex: 1,
   },
   backArrow: {
@@ -348,8 +319,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonContainer: {
-    // position: "absolute",
-    // bottom: 150,
+    position: "absolute",
+    bottom: 150,
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
     gap: 16,
