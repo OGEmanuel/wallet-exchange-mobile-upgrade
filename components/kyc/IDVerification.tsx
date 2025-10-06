@@ -6,6 +6,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { Box, CustomButton, CustomText } from "../general";
@@ -31,15 +32,18 @@ export default function IDVerification({
   const theme = useTheme<Theme>();
   const [firstName, setFirstName] = useState(userData?.firstName || "");
   const [lastName, setLastName] = useState(userData?.lastName || "");
-  const [documentType, setDocumentType] = useState<CountryVerificationDocumentModel | null>(null);
+  const [documentType, setDocumentType] =
+    useState<CountryVerificationDocumentModel | null>(null);
   const [documentId, setDocumentId] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[] | null | undefined>(null);
+  const [documentTypes, setDocumentTypes] = useState<
+    CountryVerificationDocumentModel[] | null | undefined
+  >(null);
 
   // Function to format date input as DD/MM/YYYY
   const formatDateInput = (text: string) => {
     // Remove all non-numeric characters
-    const numericText = text.replace(/\D/g, '');
+    const numericText = text.replace(/\D/g, "");
 
     // Limit to 8 digits (DDMMYYYY)
     const limitedText = numericText.slice(0, 8);
@@ -50,7 +54,10 @@ export default function IDVerification({
     } else if (limitedText.length <= 4) {
       return `${limitedText.slice(0, 2)}/${limitedText.slice(2)}`;
     } else {
-      return `${limitedText.slice(0, 2)}/${limitedText.slice(2, 4)}/${limitedText.slice(4)}`;
+      return `${limitedText.slice(0, 2)}/${limitedText.slice(
+        2,
+        4
+      )}/${limitedText.slice(4)}`;
     }
   };
 
@@ -65,7 +72,8 @@ export default function IDVerification({
 
   useEffect(() => {
     fetchDocumentTypes({
-      body: user?.metaData?.documentVerification?.selectedVerifiedCountry || null,
+      body:
+        user?.metaData?.documentVerification?.selectedVerifiedCountry || null,
       params: {},
       extra: {},
     }).then((response) => {
@@ -88,10 +96,14 @@ export default function IDVerification({
     }
   };
 
-  console.log('documentType', !!documentType?.isExternal?.token);
+  console.log("documentType", !!documentType?.isExternal?.token);
 
   return (
-    <View style={styles.container}>
+    <KeyboardAwareScrollView
+      bottomOffset={62}
+      style={{ flex: 1, marginBottom: 62 }}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Back Button */}
       {onBack && (
         <Pressable onPress={onBack} style={styles.backButton}>
@@ -110,10 +122,17 @@ export default function IDVerification({
       <Select
         label="Select document type"
         placeholder="Select document type"
-        options={documentTypes?.filter((document) => document.verificationClass?.toLowerCase() === "identity").map((document) => ({
-          label: document.verificationType?.toUpperCase() || "",
-          value: document,
-        })) || []}
+        options={
+          documentTypes
+            ?.filter(
+              (document) =>
+                document.verificationClass?.toLowerCase() === "identity"
+            )
+            .map((document) => ({
+              label: document.verificationType?.toUpperCase() || "",
+              value: document,
+            })) || []
+        }
         onSelect={(value) => {
           if (!Array.isArray(value)) {
             setDocumentType(value);
@@ -130,11 +149,13 @@ export default function IDVerification({
       ) : (
         <Box flex={1}>
           <View style={styles.formContainer}>
-            <View style={{
-              flexDirection: "column",
-              gap: 16,
-              marginBottom: 16,
-            }}>
+            <View
+              style={{
+                flexDirection: "column",
+                gap: 16,
+                marginBottom: 16,
+              }}
+            >
               <CustomInputWithoutForm
                 label="First Name"
                 placeholder="Enter First Name"
@@ -178,7 +199,9 @@ export default function IDVerification({
               height={56}
               borderRadius={56}
               bgColor={
-                isFormValid ? theme.colors.primaryColor : theme.colors.borderColor
+                isFormValid
+                  ? theme.colors.primaryColor
+                  : theme.colors.borderColor
               }
               color={theme.colors.white}
               variant="bodySubheader"
@@ -189,8 +212,7 @@ export default function IDVerification({
           </View>
         </Box>
       )}
-
-    </View>
+    </KeyboardAwareScrollView>
   );
 }
 
@@ -201,7 +223,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: -30,
+    top: -5,
     left: 0,
     zIndex: 1,
   },
