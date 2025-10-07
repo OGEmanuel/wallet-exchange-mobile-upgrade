@@ -11,7 +11,6 @@ import {
   requestNewOtpEndpoint,
   submitVerificationEndpoint,
   updatePhoneNumberEndpoint,
-  updateUserDetailsEndpoint,
   usernameOnboardingEndpoint,
 } from "../../../../core/api/api_endpoints";
 import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
@@ -22,7 +21,6 @@ import { AuthEmailParams } from "../../domain/entities/params/auth-email-params"
 import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
 import { CreditDocumentDataParam } from "../../domain/entities/params/credit-document-data-param";
 import { ResendAuthPhoneNumberOtpParams } from "../../domain/entities/params/resend-auth-phone-number-otp-params";
-import { UpdateUsernameParams } from "../../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-phone-number-otp-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
@@ -129,17 +127,6 @@ export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
     const response = await httpClient.post<GeneralResponseModel<unknown>>(
       submitVerificationEndpoint,
       payload.body
-    );
-    return response.data;
-  }
-
-  async updateUserDetails(
-    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
-    user: UserModel
-  ): Promise<GeneralResponseModel<unknown>> {
-    const response = await httpClient.post<GeneralResponseModel<unknown>>(
-      updateUserDetailsEndpoint(user),
-      payload
     );
     return response.data;
   }

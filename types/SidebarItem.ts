@@ -3,7 +3,4 @@ export interface ISidebarItem {
   icon: React.ReactNode;
   link: string;
   isActive: boolean;
-  trailingItem?: React.ReactNode;
-  disablClick?: boolean;
-  onPress?: () => void;
 }

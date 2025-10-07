@@ -32,7 +32,7 @@ const Explore = () => {
   const [filteredCurrencies, setFilteredCurrencies] = useState<
     (CurrencyModel | undefined)[] | null
   >(null);
-  // State for market data and loading states
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -103,6 +103,40 @@ const Explore = () => {
       retrieveUsdCurrency();
     });
   }, []);
+
+  // Function to fetch watchlist tokens
+  const loadWatchlistTokens = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      await fetchWatchlistTokens({
+        body: {},
+        params: {},
+        extra: user,
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while loading watchlist. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchWatchlistTokens, user]);
+
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+      setSelectedCurrency(usd); // default USD
+      setFilteredCurrencies([usd, ngn]);
+    }
+  }, [currencies]);
 
   useEffect(() => {
     loadCurrencies();
@@ -279,14 +313,15 @@ const Explore = () => {
         isLoading={currentLoading}
         isError={currentError}
         errorMessage={errorMessage}
-        onRetry={loadMarketTokens}
+        onRetry={isTokens ? loadMarketTokens : loadWatchlistTokens}
         isEmpty={
-          !isLoading &&
-          !!errorMessage &&
-          filteredMarketTokens &&
-          filteredMarketTokens.length === 0
+          !currentLoading &&
+          !currentError &&
+          (isWatchlistEmpty ||
+            (isTokens && currentData && currentData.length === 0))
         }
-        existingData={filteredMarketTokens}
+        existingData={isWatchlistEmpty ? null : currentData}
+        emptyComponent={isWatchlistEmpty ? watchlistEmptyState : undefined}
       >
         <Box
           bg="secondaryBackgroundColor"
@@ -303,7 +338,7 @@ const Explore = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 10 }}
           >
-            {filteredMarketTokens?.map((item, index) => (
+            {currentData?.map((item, index) => (
               <MarketTableItem
                 key={index}
                 item={item}

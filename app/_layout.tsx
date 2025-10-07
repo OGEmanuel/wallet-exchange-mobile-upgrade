@@ -1,4 +1,3 @@
-import { AppInitializer } from "@/components/AppInitializer";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { store } from "@/state";
@@ -20,6 +19,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 
@@ -115,10 +115,10 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, position: "relative" }}>
-        <GestureHandlerRootView>
-          <Provider store={store}>
-            <AppInitializer>
+      <KeyboardProvider>
+        <View style={{ flex: 1, position: "relative" }}>
+          <GestureHandlerRootView>
+            <Provider store={store}>
               <ThemeProvider
                 theme={colorTheme === "dark" ? darkTheme : darkTheme}
               >
@@ -136,10 +136,10 @@ export default function RootLayout() {
                   </BottomSheetProvider>
                 </QueryClientProvider>
               </ThemeProvider>
-            </AppInitializer>
-          </Provider>
-        </GestureHandlerRootView>
-      </View>
+            </Provider>
+          </GestureHandlerRootView>
+        </View>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

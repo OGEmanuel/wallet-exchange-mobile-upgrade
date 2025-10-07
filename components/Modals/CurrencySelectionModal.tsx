@@ -1,21 +1,16 @@
 import { currencies } from "@/data";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { setActiveCurrency } from "@/src/modules/settings/presentation/state/settings-slice";
-import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
+import { Currency } from "@/interfaces/account.interface";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { uniqBy } from "lodash";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import { ActivityIndicator, Modal, Pressable } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
-import { useDispatch } from "react-redux";
+import { Modal, Pressable, ScrollView } from "react-native";
 import { Box, CustomText } from "../general";
 
 interface CurrencySelectionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectCurrency: () => void;
+  onSelectCurrency: (currency: Currency) => void;
 }
 
 const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
@@ -24,33 +19,11 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
   onSelectCurrency,
 }) => {
   const theme = useTheme<Theme>();
-  const [limit, setLimit] = React.useState(30);
-  const [offset, setOffset] = React.useState(1);
-  const [data, setData] = React.useState<CurrencyModel[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const dispatch = useDispatch();
-  const { getCurrencies } = useSettings();
 
-  React.useEffect(() => {
-    (async function () {
-      try {
-        setLoading(true);
-        const response = await getCurrencies({
-          params: { limit, offset },
-        });
-        console.log("THE CURRENCIES", response.data);
-        setData((prev) =>
-          uniqBy(
-            [...prev, ...(response.data?.currencies as CurrencyModel[])],
-            "_id"
-          )
-        );
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-      }
-    })();
-  }, [offset]);
+  const handleCurrencySelect = (currency: Currency) => {
+    onSelectCurrency(currency);
+    onClose();
+  };
 
   return (
     <Modal
@@ -93,34 +66,14 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
             </CustomText>
           </Box>
 
-          <FlatList
-            data={data}
-            key={"_id"}
-            onEndReachedThreshold={0.5}
-            onEndReached={() => {
-              setOffset((prev) => prev + limit);
-            }}
-            ListFooterComponent={() => (
-              <>
-                {loading && (
-                  <Box
-                    width={"100%"}
-                    height={40}
-                    justifyContent="center"
-                    alignItems="center"
-                  >
-                    <ActivityIndicator size={"small"} />
-                  </Box>
-                )}
-              </>
-            )}
-            renderItem={({ item, index }) => (
+          <ScrollView
+            style={{ maxHeight: 400 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {currencies.map((currency, index) => (
               <Pressable
-                key={item._id}
-                onPress={() => {
-                  dispatch(setActiveCurrency(item));
-                  onSelectCurrency();
-                }}
+                key={currency.code}
+                onPress={() => handleCurrencySelect(currency)}
                 style={({ pressed }) => ({
                   opacity: pressed ? 0.7 : 1,
                 })}
@@ -139,24 +92,27 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
                   borderBottomColor="borderColor"
                 >
                   <Box flexDirection="row" alignItems="center" flex={1}>
+                    <CustomText fontSize={24} marginRight="s">
+                      {currency.flag}
+                    </CustomText>
                     <Box flex={1}>
                       <CustomText variant="bodyBold" color="headerTextColor">
-                        {item.code}
+                        {currency.code}
                       </CustomText>
                       <CustomText
                         variant="body"
                         color="bodyTextColor"
                         fontSize={12}
                       >
-                        {item.name}
+                        {currency.name}
                       </CustomText>
                     </Box>
                   </Box>
                   <ChevronRight size={20} color={theme.colors.bodyTextColor} />
                 </Box>
               </Pressable>
-            )}
-          />
+            ))}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
