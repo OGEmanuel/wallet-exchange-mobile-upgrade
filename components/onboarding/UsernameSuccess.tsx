@@ -42,7 +42,7 @@ export default function UsernameSuccess({
       // Auto-trigger completion after animation
       setTimeout(() => {
         onComplete?.();
-      }, 100000);
+      }, 2000);
     });
   }, [onComplete]);
 

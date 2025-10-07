@@ -17,9 +17,20 @@ import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@shopify/restyle";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSelector } from "react-redux";
-import { SwapButton, SwapDetailsCard, TokenInputCard } from "../components";
+import {
+  OrderDetailsSheet,
+  SwapButton,
+  SwapDetailsCard,
+  TokenInputCard,
+} from "../components";
 import { useSwapAnimations } from "../hooks/useSwapAnimations";
 
 const Swap = () => {
@@ -29,6 +40,8 @@ const Swap = () => {
   const { user } = useSelector((state: AppRootState) => state.kyc);
 
   const [cryptoAddress, setCryptoAddress] = useState("");
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const orderDetailsSheetRef = useRef<any>(null);
 
   // 🔹 Create order hook
   const {
@@ -184,8 +197,9 @@ const Swap = () => {
 
     if (orderResult) {
       console.log("Order created successfully:", orderResult);
-      // Navigate to success screen or order details
-      navigation.navigate("History" as never);
+      setCreatedOrder(orderResult);
+      // Show order details sheet
+      orderDetailsSheetRef.current?.open();
     }
   }, [
     baseAmount,
@@ -313,6 +327,18 @@ const Swap = () => {
           }
         />
       </Box>
+
+      {/* Order Details Sheet */}
+      <OrderDetailsSheet
+        ref={orderDetailsSheetRef}
+        orderDetails={createdOrder}
+        onClose={() => {
+          setCreatedOrder(null);
+          // Optionally navigate to history after closing
+          // navigation.navigate("History" as never);
+        }}
+        title="Order Created"
+      />
     </PageWrapper>
   );
 };
