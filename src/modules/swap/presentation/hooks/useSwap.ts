@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppRootState } from "../../../../../state";
-// import { formatTargetAmount } from "../../utils/formatting";
+import { formatInputAmount, parseFormattedAmount } from "../../utils";
 import {
   setActiveTab,
   setBaseAmount,
@@ -31,14 +31,8 @@ const formatTargetAmountLocal = ({
   if (!targetCurrency || targetAmount === 0) return "0";
 
   // Use the enhanced formatting from utils
-  return formatTargetAmount({
-    baseAmount: 0,
-    targetAmount,
-    baseToUsd: 0,
-    baseInputIsDollar: false,
-    baseCurrency: targetCurrency, // Use targetCurrency as baseCurrency for formatting
-    targetCurrency,
-  });
+  const isCrypto = targetCurrency?.currencyId?.isCrypto || false;
+  return formatInputAmount(targetAmount.toString(), isCrypto);
 };
 
 // useSwap hook using Redux for state management
@@ -80,8 +74,9 @@ export const useSwap = () => {
 
   const handleBaseAmountFormat = useCallback(() => {
     console.log("handleBaseAmountFormat called");
-    return baseAmount?.toString() || "0";
-  }, [baseAmount]);
+    const isCrypto = baseCurrency?.currencyId?.isCrypto || false;
+    return formatInputAmount(baseAmount?.toString() || "0", isCrypto);
+  }, [baseAmount, baseCurrency]);
 
   const handleTargetAmountFormat = useCallback(() => {
     console.log("handleTargetAmountFormat called");
@@ -91,7 +86,7 @@ export const useSwap = () => {
   const handleTargetAmountChange = useCallback(
     (amount: string) => {
       console.log("handleTargetAmountChange called with:", amount);
-      const numAmount = parseFloat(amount) || 0;
+      const numAmount = parseFormattedAmount(amount);
       dispatch(setTargetAmount(numAmount));
     },
     [dispatch]
@@ -100,7 +95,7 @@ export const useSwap = () => {
   const handleBaseAmountChange = useCallback(
     (amount: string) => {
       console.log("handleBaseAmountChange called with:", amount);
-      const numAmount = parseFloat(amount) || 0;
+      const numAmount = parseFormattedAmount(amount);
       console.log("Dispatching setBaseAmount with:", numAmount);
       dispatch(setBaseAmount(numAmount));
     },

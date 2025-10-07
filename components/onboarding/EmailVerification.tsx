@@ -80,7 +80,7 @@ export default function EmailVerification({
             ...userData,
             emailVerified: true,
           });
-          
+
           if (userData?.username) {
             // User has username, close bottom sheet and navigate to app
             console.log(

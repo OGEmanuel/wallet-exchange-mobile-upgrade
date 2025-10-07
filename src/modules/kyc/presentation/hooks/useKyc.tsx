@@ -41,8 +41,53 @@ const useKyc = () => {
     return response;
   };
 
+  const loadUserFromStorage = async (): Promise<UserModel | null> => {
+    try {
+      const persistedUser = await storageService.get<UserModel>(
+        StorageKeys.USER_PROFILE
+      );
+      if (persistedUser) {
+        dispatch(kycActions.setUser(persistedUser));
+        return persistedUser;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to load user from storage:", error);
+      return null;
+    }
+  };
+
+  const clearUserData = async (): Promise<void> => {
+    try {
+      // Clear from Redux store
+      dispatch(kycActions.setUser(null as any));
+
+      // Clear from storage
+      await storageService.remove(StorageKeys.USER_PROFILE);
+
+      console.log("User data cleared successfully");
+    } catch (error) {
+      console.error("Failed to clear user data:", error);
+    }
+  };
+
+  const hasPersistedUserData = async (): Promise<boolean> => {
+    try {
+      const persistedUser = await storageService.get<UserModel>(
+        StorageKeys.USER_PROFILE
+      );
+      return persistedUser !== null;
+    } catch (error) {
+      console.error("Failed to check persisted user data:", error);
+      return false;
+    }
+  };
+
   return {
     fetchUserById,
+    loadUserFromStorage,
+    clearUserData,
+    hasPersistedUserData,
     updateUser: async (payload: UserModel | null) => {
       const updatedUser = {
         ...user,
@@ -59,6 +104,13 @@ const useKyc = () => {
       };
 
       dispatch(kycActions.setUser(updatedUser));
+
+      // Persist user data immediately to storage
+      try {
+        await storageService.save(StorageKeys.USER_PROFILE, updatedUser);
+      } catch (error) {
+        console.error("Failed to persist user data:", error);
+      }
 
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
         fetchUserById(updatedUser).then((response) => {
@@ -146,7 +198,18 @@ const useKyc = () => {
 
       // Update user state if username was successfully added and user data is returned
       if (response.success && response.data) {
-        dispatch(kycActions.setUser(response.data as UserModel));
+        const updatedUser = response.data as UserModel;
+        dispatch(kycActions.setUser(updatedUser));
+
+        // Persist the updated user data
+        try {
+          await storageService.save(StorageKeys.USER_PROFILE, updatedUser);
+        } catch (error) {
+          console.error(
+            "Failed to persist user data after adding username:",
+            error
+          );
+        }
       }
 
       return response;

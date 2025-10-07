@@ -26,9 +26,11 @@ type ScreenStep =
 export default function ZapperSiginBottomSheet({
   ref,
   onContinue,
+  onClose,
 }: {
   ref: React.RefObject<AnimatedGradientBottomSheetRef | null>;
   onContinue?: () => void;
+  onClose?: () => void;
 }) {
   const { colors } = useTheme<Theme>();
   const { authEmail } = useKyc();
@@ -139,6 +141,7 @@ export default function ZapperSiginBottomSheet({
           colors.mainBackgroundColor,
           colors.mainBackgroundColor,
         ]}
+        onClose={onClose}
       >
         <View style={styles.handle} />
         <View style={styles.backContainer}></View>

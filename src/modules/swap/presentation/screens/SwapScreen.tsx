@@ -41,6 +41,8 @@ const Swap = () => {
     setTargetCurrency,
     handleBaseAmountChange,
     handleTargetAmountChange,
+    handleBaseAmountFormat,
+    handleTargetAmountFormat,
     handleSwapCurrencies,
     validateExchange,
     setActiveTab,
@@ -67,13 +69,18 @@ const Swap = () => {
         (currency: SupportedCurrency) => currency.currencyId?.symbol === "ETH"
       );
       const ngnCurrency = currencies.find(
-        (currency: SupportedCurrency) => currency.currencyId?.symbol === "NGN"
+        (currency: SupportedCurrency) => currency.currencyId?.symbol === "₦"
       );
 
       // Set default base currency (BTC with ETH fallback)
       if ((btcCurrency || ethCurrency) && !baseCurrency) {
         const selectedCurrency = btcCurrency || ethCurrency;
         setBaseCurrency(selectedCurrency);
+
+        // Set default BTC amount to 0.0025 when BTC is selected
+        if (btcCurrency && baseAmount === 0) {
+          setBaseAmount(0.0025);
+        }
       }
 
       // Set default target currency (NGN)
@@ -86,8 +93,10 @@ const Swap = () => {
     currenciesLoading,
     baseCurrency,
     targetCurrency,
+    baseAmount,
     setBaseCurrency,
     setTargetCurrency,
+    setBaseAmount,
   ]);
 
   // Handle token selection for base currency
@@ -198,7 +207,7 @@ const Swap = () => {
         {/* Base Token Input */}
         <Box marginBottom="s" mt="m" position="relative">
           <TokenInputCard
-            amount={baseAmount?.toString() || "0"}
+            amount={handleBaseAmountFormat()}
             tokenSymbol={baseCurrency?.currencyId?.symbol || "Select"}
             tokenImage={baseCurrency?.image || baseCurrency?.currencyId?.logo}
             balance={`20${baseCurrency?.currencyId?.symbol || ""}`}
@@ -212,13 +221,14 @@ const Swap = () => {
             }}
             animatedStyle={sellContainerStyle}
             isReceive={false}
+            isCrypto={baseCurrency?.currencyId?.isCrypto || false}
           />
         </Box>
 
         {/* Target Token Input with Swap Button */}
         <Box position="relative">
           <TokenInputCard
-            amount={targetAmount?.toString() || "0"}
+            amount={handleTargetAmountFormat()}
             tokenSymbol={targetCurrency?.currencyId?.symbol || "Select"}
             tokenImage={
               targetCurrency?.image || targetCurrency?.currencyId?.logo
@@ -228,6 +238,7 @@ const Swap = () => {
             usdValue={`$${targetAmount?.toFixed(2) || "0"}`}
             onTokenSelect={handleTargetTokenSelect}
             onAmountChange={handleTargetAmountChange}
+            isCrypto={targetCurrency?.currencyId?.isCrypto || false}
           />
 
           <SwapButton
