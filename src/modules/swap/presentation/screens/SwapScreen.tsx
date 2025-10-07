@@ -11,12 +11,16 @@ import React, { useEffect } from "react";
 import { SupportedCurrency } from "../../domain/entities/currency.types";
 
 // Import modular components
+import { AppRootState } from "@/state";
+import { useSelector } from "react-redux";
 import { SwapButton, SwapDetailsCard, TokenInputCard } from "../components";
 import { useSwapAnimations } from "../hooks/useSwapAnimations";
 
 const Swap = () => {
   const theme = useTheme<Theme>();
   const { showBottomSheet } = useAppBottomSheet();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  console.log(user);
 
   // Fetch currencies for selection
   const { currencies, isLoading: currenciesLoading } = useFetchCurrencies({
@@ -122,13 +126,18 @@ const Swap = () => {
                   balance: "0",
                 }
           }
-          title="Select Token to Sell"
+          title="Select Token"
         />
       ),
       props: {
         snapPoints: ["80%"],
         enablePanDownToClose: true,
-        showGradientHandle: false,
+        showGradientHandle: true,
+        backgroundColor: theme.colors.mainBackgroundColor,
+        gradientColors: [
+          theme.colors.secondaryBackgroundColor,
+          theme.colors.secondaryBackgroundColor,
+        ],
       },
     });
   };
@@ -157,13 +166,18 @@ const Swap = () => {
                   usdValue: "$0",
                 }
           }
-          title="Select Token to Receive"
+          title="Select Token"
         />
       ),
       props: {
         snapPoints: ["80%"],
         enablePanDownToClose: true,
-        showGradientHandle: false,
+        showGradientHandle: true,
+        backgroundColor: theme.colors.mainBackgroundColor,
+        gradientColors: [
+          theme.colors.secondaryBackgroundColor,
+          theme.colors.secondaryBackgroundColor,
+        ],
       },
     });
   };
@@ -216,7 +230,6 @@ const Swap = () => {
             onTokenSelect={handleBaseTokenSelect}
             onAmountChange={handleBaseAmountChange}
             onMaxPress={() => {
-              // TODO: Set max balance
               console.log("Max pressed");
             }}
             animatedStyle={sellContainerStyle}
@@ -268,7 +281,7 @@ const Swap = () => {
 
         {/* Continue Button */}
         <CustomButton
-          text={isLoading ? "Processing..." : "Continue"}
+          text={"Continue"}
           fontSize={14}
           width={"100%"}
           height={56}

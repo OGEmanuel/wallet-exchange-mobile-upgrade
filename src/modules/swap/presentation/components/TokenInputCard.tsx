@@ -132,21 +132,6 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           alignItems="center"
           mt="s"
         >
-          <TextInput
-            value={formattedAmount}
-            onChangeText={handleInputChange}
-            placeholder="0"
-            placeholderTextColor={theme.colors.bodyTextColor}
-            keyboardType="numeric"
-            style={{
-              fontSize: 16,
-              fontWeight: "500",
-              color: theme.colors.headerTextColor,
-              flex: 1,
-              paddingVertical: 8,
-              paddingHorizontal: 0,
-            }}
-          />
           {showBalance && (
             <Box
               flexDirection="row"

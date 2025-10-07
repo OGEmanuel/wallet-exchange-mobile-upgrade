@@ -132,9 +132,6 @@ export function formatInputAmount(
   // Remove any non-numeric characters except decimal point
   const cleanValue = value.replace(/[^0-9.]/g, "");
 
-  // Handle empty or invalid input
-  if (!cleanValue || cleanValue === ".") return "";
-
   // Split by decimal point
   const parts = cleanValue.split(".");
   const integerPart = parts[0];
