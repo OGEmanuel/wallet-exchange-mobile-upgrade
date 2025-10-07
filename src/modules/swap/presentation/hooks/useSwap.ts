@@ -53,6 +53,7 @@ export const useSwap = () => {
     isRateLoading,
     baseInputIsDollar,
     activeTab,
+    lastEditedField,
     error,
     isLoading,
   } = useSelector((state: AppRootState) => state.swap);
@@ -75,7 +76,7 @@ export const useSwap = () => {
   const handleBaseAmountFormat = useCallback(() => {
     console.log("handleBaseAmountFormat called");
     const isCrypto = baseCurrency?.currencyId?.isCrypto || false;
-    return formatInputAmount(baseAmount?.toString() || "0", isCrypto);
+    return formatInputAmount(baseAmount?.toString() || "", isCrypto);
   }, [baseAmount, baseCurrency]);
 
   const handleTargetAmountFormat = useCallback(() => {
@@ -194,6 +195,7 @@ export const useSwap = () => {
     isRateLoading,
     baseInputIsDollar,
     activeTab,
+    lastEditedField,
     error,
     isLoading,
 

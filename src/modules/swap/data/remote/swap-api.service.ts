@@ -32,6 +32,10 @@ export interface RequestConfig extends AxiosRequestConfig {
   cancelToken?: CancelToken;
   skipAuth?: boolean;
   skipLogging?: boolean;
+  metadata?: {
+    requestId: string;
+    startTime: number;
+  };
 }
 
 // HTTP Request class for making different API calls
@@ -77,12 +81,25 @@ export class SwapApiService {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Log request in development
-        if (__DEV__) {
-          console.log(
-            `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`
-          );
-        }
+        // Enhanced request logging
+        const fullUrl = `${config.baseURL}${config.url}`;
+        const requestId = Math.random().toString(36).substr(2, 9);
+        (config as any).metadata = { requestId, startTime: Date.now() };
+
+        console.log(`🚀 [${requestId}] API Request:`, {
+          method: config.method?.toUpperCase(),
+          url: fullUrl,
+          route: config.url,
+          baseURL: config.baseURL,
+          headers: {
+            ...config.headers,
+            Authorization: token
+              ? `Bearer ${token.substring(0, 20)}...`
+              : "None",
+          },
+          data: config.data ? JSON.stringify(config.data, null, 2) : "No body",
+          params: config.params,
+        });
 
         return config;
       },
@@ -95,16 +112,51 @@ export class SwapApiService {
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
-        // Log response in development
-        if (__DEV__) {
-          console.log(
-            `✅ API Response: ${response.status} ${response.config.url}`
-          );
-        }
+        const requestId = (response.config as any).metadata?.requestId;
+        const duration = (response.config as any).metadata?.startTime
+          ? Date.now() - (response.config as any).metadata.startTime
+          : "Unknown";
+
+        console.log(`✅ [${requestId}] API Response:`, {
+          status: response.status,
+          statusText: response.statusText,
+          url: `${response.config.baseURL}${response.config.url}`,
+          route: response.config.url,
+          duration: `${duration}ms`,
+          headers: response.headers,
+          data: response.data
+            ? JSON.stringify(response.data, null, 2)
+            : "No response body",
+          requestData: response.config.data
+            ? JSON.stringify(response.config.data, null, 2)
+            : "No request body",
+        });
+
         return response;
       },
       (error) => {
-        console.error("❌ Response Error:", error);
+        const requestId = (error.config as any)?.metadata?.requestId;
+        const duration = (error.config as any)?.metadata?.startTime
+          ? Date.now() - (error.config as any).metadata.startTime
+          : "Unknown";
+
+        console.error(`❌ [${requestId}] API Error:`, {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          url: error.config
+            ? `${error.config.baseURL}${error.config.url}`
+            : "Unknown",
+          route: error.config?.url,
+          duration: `${duration}ms`,
+          message: error.message,
+          responseData: error.response?.data
+            ? JSON.stringify(error.response.data, null, 2)
+            : "No error response body",
+          requestData: error.config?.data
+            ? JSON.stringify(error.config.data, null, 2)
+            : "No request body",
+        });
+
         return this.handleError(error);
       }
     );
