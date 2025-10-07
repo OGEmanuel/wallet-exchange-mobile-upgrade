@@ -53,6 +53,7 @@ export const useSwap = () => {
     isRateLoading,
     baseInputIsDollar,
     activeTab,
+    lastEditedField,
     error,
     isLoading,
   } = useSelector((state: AppRootState) => state.swap);
@@ -194,6 +195,7 @@ export const useSwap = () => {
     isRateLoading,
     baseInputIsDollar,
     activeTab,
+    lastEditedField,
     error,
     isLoading,
 
