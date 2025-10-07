@@ -24,6 +24,7 @@ const currencyBottomSheetRef = createRef<BottomSheet>();
 const languageBottomSheetRef = createRef<BottomSheet>();
 const appearanceBottomSheetRef = createRef<BottomSheet>();
 const chainsBottomSheetRef = createRef<BottomSheet>();
+const bankBottomSheetRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -55,6 +56,7 @@ const useBottomSheetRefs = () => {
     languageBottomSheetRef,
     appearanceBottomSheetRef,
     chainsBottomSheetRef,
+    bankBottomSheetRef,
     render,
   };
 };

@@ -1,5 +1,8 @@
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AppRootState } from "@/state";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { SettingsModel } from "../../domain/entities/models/Settings-model";
+import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
 
 interface SettingsState {
@@ -10,6 +13,9 @@ interface SettingsState {
   // error: string | null;
   biometricEnabled: boolean;
   activeChain: null | ChainModel;
+  activeBank: BankModel | null;
+  activeCurrency: CurrencyModel | null;
+  settings: SettingsModel | null;
 }
 
 const initialState: SettingsState = {
@@ -20,6 +26,9 @@ const initialState: SettingsState = {
   // error: null,
   biometricEnabled: false,
   activeChain: null,
+  activeBank: null,
+  activeCurrency: null,
+  settings: null,
 };
 
 const settingsSlice = createSlice({
@@ -32,6 +41,15 @@ const settingsSlice = createSlice({
     },
     setActiveChain: (state, action: PayloadAction<ChainModel>) => {
       state.activeChain = action.payload;
+    },
+    setActiveBank: (state, action: PayloadAction<BankModel>) => {
+      state.activeBank = action.payload;
+    },
+    setActiveCurrency: (state, action: PayloadAction<CurrencyModel>) => {
+      state.activeCurrency = action.payload;
+    },
+    setSettings: (state, action: PayloadAction<SettingsModel>) => {
+      state.settings = action.payload;
     },
     // Add your reducers here
     // Example:
@@ -50,6 +68,9 @@ const settingsSlice = createSlice({
 export const {
   /* Add your action creators here */ toggleBiometric,
   setActiveChain,
+  setActiveBank,
+  setActiveCurrency,
+  setSettings,
 } = settingsSlice.actions;
 export const selectBiometricEnabled = (state: AppRootState) =>
   state.settings.biometricEnabled;
