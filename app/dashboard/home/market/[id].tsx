@@ -43,11 +43,12 @@ export default function AssetInfo() {
   const [isAssetInfo, setIsAssetInfo] = useState(true);
   const { id, asset } = useLocalSearchParams();
   const router = useRouter();
-  const { tokenDetails: fetchTokenDetails } = useMarket();
+  const { tokenDetails: fetchTokenDetails, tokenHistory: fetchTokenHistory } =
+    useMarket();
   const { fetchCurrencies } = useUtilities();
   const parsedAsset = asset ? JSON.parse(asset as string) : null;
 
-  const { currentTokenDetails } = useSelector(
+  const { currentTokenDetails, tokenHistory } = useSelector(
     (state: AppRootState) => state.market
   );
   const { currencies } = useSelector((state: AppRootState) => state.utilities);
@@ -65,6 +66,7 @@ export default function AssetInfo() {
   useEffect(() => {
     fetchTokenDetailsCallback();
     fetchCurrenciesCallback();
+    fetchTokenHistoryCallback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,6 +99,18 @@ export default function AssetInfo() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const fetchTokenHistoryCallback = useCallback(async () => {
+    try {
+      await fetchTokenHistory({
+        body: id as string,
+        params: {},
+        extra: null,
+      });
+    } catch (err: any) {
+      console.error("Error fetching token history:", err);
+    }
   }, [id]);
 
   const fetchCurrenciesCallback = useCallback(async () => {
@@ -223,6 +237,7 @@ export default function AssetInfo() {
                   asset={parsedAsset}
                   nairaCurrency={nairaCurrency}
                   usdCurrency={usdCurrency}
+                  tokenHistory={tokenHistory}
                 />
 
                 <Box width="100%" paddingHorizontal="m" marginTop="m">
