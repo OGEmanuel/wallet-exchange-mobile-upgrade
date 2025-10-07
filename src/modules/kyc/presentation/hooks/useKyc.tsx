@@ -167,7 +167,7 @@ const useKyc = () => {
 
       if (authVerificationData) {
         try {
-          const responseData = response.data as any;
+          // const responseData = response.data as any;
           const tokenData: TokenData = {
             token: authVerificationData?.token || null,
             refreshToken: authVerificationData?.refreshToken || null,
