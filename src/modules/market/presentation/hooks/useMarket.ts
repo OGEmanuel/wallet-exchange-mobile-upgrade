@@ -35,9 +35,18 @@ const useMarket = () => {
       return response;
     },
 
+    // tokenHistory: async (payload: GeneralRequestModel<string | null, unknown, unknown>) => {
+    //   return await marketUsecases.tokenHistory(payload);
+    // },
     tokenHistory: async (payload: GeneralRequestModel<string | null, unknown, unknown>) => {
-      return await marketUsecases.tokenHistory(payload);
-    },
+  const response = await marketUsecases.tokenHistory(payload);
+
+  if (response?.data) {
+    dispatch(marketActions.setTokenHistory(response?.data));
+  }
+
+  return response;
+},
 
     createPriceAlert: async (payload: GeneralRequestModel<PriceAlertData, unknown, unknown>) => {
       return await marketUsecases.createPriceAlert(payload);

@@ -4,11 +4,12 @@ import { formatToSigFigMax6Digits } from "@/lib/utils/market/helpers";
 import { formatPrice } from "@/lib/utils/market/priceFormatter";
 import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import { TokenDetailModel } from "@/src/modules/market/domain/entities/models/token-detail-model";
+import { TokenHistoryDetailModel } from "@/src/modules/market/domain/entities/models/token-history-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { ArrowDown3, ArrowUp3 } from "iconsax-react-nativejs";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
 import CurrencyTab from "./CurrencyTab";
 import TimeFrame from "./TimeFrame";
@@ -19,6 +20,7 @@ interface AssetChartDetailsProps {
   asset?: MarketTokenModel | null;
   nairaCurrency?: CurrencyModel | null;
   usdCurrency?: CurrencyModel | null;
+  tokenHistory?: TokenHistoryDetailModel | null;
 }
 
 export default function AssetChartDetails({
@@ -26,10 +28,60 @@ export default function AssetChartDetails({
   asset,
   nairaCurrency,
   usdCurrency,
+  tokenHistory,
 }: AssetChartDetailsProps) {
   const theme = useTheme<Theme>();
   // Detect if we're in dark mode by checking theme colors
   const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
+
+  useEffect(() => {
+    if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
+      const sortedHistory = [...tokenHistory.rates].sort(
+        (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
+      );
+      const labels = sortedHistory.map((item) =>
+        new Date(item.date!).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+      const data = sortedHistory.map((item) => item.rate ?? 0);
+
+      setChartData({ labels, datasets: [{ data }] });
+    }
+  }, [tokenHistory]);
+
+  // useEffect(() => {
+  //   if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
+  //     const sortedHistory = [...tokenHistory.rates].sort(
+  //       (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
+  //     );
+
+  //     const labels = sortedHistory.map((item) =>
+  //       new Date(item.date!).toLocaleTimeString([], {
+  //         hour: "2-digit",
+  //         minute: "2-digit",
+  //       })
+  //     );
+
+  //     const data = sortedHistory.map((item) => item.rate ?? 0);
+
+  //     // ✅ Add clear console log here
+  //     console.log("📊 Chart Data Mapping (24H):");
+  //     sortedHistory.forEach((item, index) => {
+  //       const timeLabel = labels[index];
+  //       const rateValue = data[index];
+  //       console.log(
+  //         `⏰ ${timeLabel} → 💰 Rate: $${rateValue.toLocaleString(undefined, {
+  //           minimumFractionDigits: 2,
+  //           maximumFractionDigits: 6,
+  //         })}`
+  //       );
+  //     });
+
+  //     setChartData({ labels, datasets: [{ data }] });
+  //   }
+  // }, [tokenHistory]);
 
   // Theme-aware chart config
   const chartConfig = {
@@ -73,9 +125,29 @@ export default function AssetChartDetails({
     hasData: true,
   }));
 
+  // const getYAxisLabels = () => {
+  //   return ["40K", "30K", "20K", "10K"];
+  // };
+
   const getYAxisLabels = () => {
-    return ["40K", "30K", "20K", "10K"];
+    const data = chartData.datasets[0]?.data || [];
+    if (!data.length) return [];
+
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+
+    if (min === max) return [formatToSigFigMax6Digits(max)];
+
+    const step = (max - min) / 4;
+
+    // return Array.from({ length: 5 }, (_, i) =>
+    //   formatToSigFigMax6Digits(max - step * i)
+    // );
+    return Array.from({ length: 5 }, (_, i) =>
+      Number((max - step * i).toFixed(1))
+    );
   };
+
   const isPositive = asset?.change24h && asset.change24h > 0;
 
   return (
