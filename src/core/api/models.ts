@@ -1,18 +1,18 @@
 // types/api.types.ts
 /**
  * CORE API MODELS
- * 
+ *
  * This file contains the foundational API data structures and interfaces used across the application.
  * These are the "what" - the core contracts that define how data flows through the system.
- * 
+ *
  * Key characteristics:
  * - Application-wide API contracts
  * - Higher-level abstractions
  * - No external dependencies (standalone)
  * - Defines the shape of data and operations
- * 
+ *
  * Note: Socket types moved to socket-types.ts, Storage types moved to storage-types.ts
- * 
+ *
  * Used by: All modules, services, and components that need to interact with APIs
  */
 /**
@@ -20,12 +20,12 @@
  * Controls behavior like error handling, token refresh, and request tracking
  */
 export interface ApiRequestMetadata {
-  showErrorToast?: boolean | null;      // Whether to show error toasts
-  skipRefreshToken?: boolean | null;    // Skip automatic token refresh
-  requestId?: string | null;            // Unique request identifier
-  context?: any | null;                 // Additional context data
-  retryCount?: number | null;           // Number of retry attempts
-  timeout?: number | null;              // Request timeout in ms
+  showErrorToast?: boolean | null; // Whether to show error toasts
+  skipRefreshToken?: boolean | null; // Skip automatic token refresh
+  requestId?: string | null; // Unique request identifier
+  context?: any | null; // Additional context data
+  retryCount?: number | null; // Number of retry attempts
+  timeout?: number | null; // Request timeout in ms
   // [key: string]: any;
 }
 
@@ -51,9 +51,9 @@ export interface ApiRequestMetadata {
  * Stores access token, refresh token, and expiration info
  */
 export interface TokenData {
-  token: string | null;                // Access token
-  refreshToken: string | null;         // Refresh token for getting new access tokens
-  expiresAt: number | null;            // Token expiration timestamp
+  token: string | null; // Access token
+  refreshToken: string | null; // Refresh token for getting new access tokens
+  expiresAt: number | null; // Token expiration timestamp
 }
 
 /**
@@ -61,13 +61,21 @@ export interface TokenData {
  * Enhanced Axios config with our custom metadata
  */
 export interface CustomAxiosRequestConfig<T, P> {
-  url: string | null;                  // Request URL
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | null;  // HTTP method
-  data: T | null;                      // Request body data
-  params: P | null;                    // Query parameters
-  headers: Record<string, string> | null;  // Request headers
-  timeout: number | null;              // Request timeout
-  responseType: 'json' | 'text' | 'blob' | 'arraybuffer' | 'stream' | null;  // Expected response type
+  url: string | null; // Request URL
+  method:
+    | "GET"
+    | "POST"
+    | "PUT"
+    | "PATCH"
+    | "DELETE"
+    | "HEAD"
+    | "OPTIONS"
+    | null; // HTTP method
+  data: T | null; // Request body data
+  params: P | null; // Query parameters
+  headers: Record<string, string> | null; // Request headers
+  timeout: number | null; // Request timeout
+  responseType: "json" | "text" | "blob" | "arraybuffer" | "stream" | null; // Expected response type
   metadata: ApiRequestMetadata | null; // Custom request metadata
 }
 
@@ -76,10 +84,10 @@ export interface CustomAxiosRequestConfig<T, P> {
  * Contract for local storage operations (AsyncStorage, SecureStore, etc.)
  */
 export interface StorageInterface {
-  getItem(key: string): Promise<string | null>;    // Get item from storage
+  getItem(key: string): Promise<string | null>; // Get item from storage
   setItem(key: string, value: string): Promise<void>; // Set item in storage
-  removeItem(key: string): Promise<void>;          // Remove item from storage
-  clear(): Promise<void>;                          // Clear all storage
+  removeItem(key: string): Promise<void>; // Remove item from storage
+  clear(): Promise<void>; // Clear all storage
 }
 
 /**
@@ -87,9 +95,10 @@ export interface StorageInterface {
  * Predefined keys for consistent storage access across the app
  */
 export const StorageKeys = {
-  USER_PROFILE: "userProfileDataKey",              // User profile data
-  TOKEN_DATA: "tokenDataKey",                      // Authentication tokens
-  APP_THEME: "appTheme",                           // Application theme preference
+  USER_PROFILE: "userProfileDataKey", // User profile data
+  TOKEN_DATA: "tokenDataKey", // Authentication tokens
+  APP_THEME: "appTheme",
+  BIOMETRIC_ENABLED: "biometricEnabled", // Biometric authentication enabled
 } as const;
 
 /**
@@ -97,7 +106,3 @@ export const StorageKeys = {
  * Union type for all valid storage keys
  */
 export type StorageKey = keyof typeof StorageKeys | string;
-
-
-
-
