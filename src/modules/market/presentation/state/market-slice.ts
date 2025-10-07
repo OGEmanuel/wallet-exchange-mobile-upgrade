@@ -1,11 +1,13 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { MarketTokenModel } from "../../domain/entities/models/market-token-model";
 import { TokenDetailModel } from "../../domain/entities/models/token-detail-model";
+import { TokenHistoryDetailModel } from "../../domain/entities/models/token-history-model";
 import { WatchlistTokenModel } from "../../domain/entities/models/watchlist-token-model";
 
 interface MarketState {
   marketTokens: MarketTokenModel[] | null;
   currentTokenDetails: TokenDetailModel | null;
+  tokenHistory: TokenHistoryDetailModel | null;
   watchlistTokens: WatchlistTokenModel[] | null;
   isWatchlistLoading: boolean;
 }
@@ -14,6 +16,7 @@ const initialState: MarketState = {
   marketTokens: null,
   currentTokenDetails: null,
   watchlistTokens: null,
+  tokenHistory: null, 
   isWatchlistLoading: false,
 };
 
@@ -30,6 +33,9 @@ const marketSlice = createSlice({
     setWatchlistTokens: (state, action: PayloadAction<WatchlistTokenModel[] | null>) => {
       state.watchlistTokens = action.payload;
     },
+    setTokenHistory: (state, action: PayloadAction<TokenHistoryDetailModel | null>) => {
+  state.tokenHistory = action.payload;
+},
     setWatchlistLoading: (state, action: PayloadAction<boolean>) => {
       state.isWatchlistLoading = action.payload;
     },
