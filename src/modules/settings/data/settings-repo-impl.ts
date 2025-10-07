@@ -4,12 +4,14 @@ import {
 } from "@/src/core/api/http-types";
 import { UserModel } from "../../kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "../../utilities/domain/entities/models/currency-model";
+import { SettingsModel } from "../domain/entities/models/Settings-model";
 import { ActivityLogModel } from "../domain/entities/models/activity-log-model";
 import { IAvatar } from "../domain/entities/models/avatar-model";
 import { BankModel } from "../domain/entities/models/bank-model";
 import { ChainModel } from "../domain/entities/models/chain-model";
 import { CountryModel } from "../domain/entities/models/country-model";
 import { FAQModel } from "../domain/entities/models/faq-model";
+import { CreateAccountBody } from "../domain/entities/params/create-account-body";
 import { ICreateAddressBook } from "../domain/entities/params/create-addressbook-body";
 import { IDeleteaddressParam } from "../domain/entities/params/delete-address-param";
 import { EditAddressParam } from "../domain/entities/params/edit-address-params";
@@ -19,7 +21,10 @@ import { IGetAddressParam } from "../domain/entities/params/get-address-param";
 import { GetBanksParams } from "../domain/entities/params/get-bank-param";
 import { GetCountryParam } from "../domain/entities/params/get-country-param";
 import { GetCurrencyParam } from "../domain/entities/params/get-currency-param";
+import { SettingsParams } from "../domain/entities/params/settings-params";
+import { UpdateSettingsBody } from "../domain/entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../domain/entities/params/update-user-details-params";
+import { Verify2faCodeBody } from "../domain/entities/params/verify-2fa-code-body";
 import { SettingsRepo } from "../domain/settings-repo";
 import { SettingsLocalDataSource } from "./local/settings-local-datasource";
 import { SettingsLocalDataSourceImpl } from "./local/settings-local-datasource-impl";
@@ -69,7 +74,7 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
   }
 
   async createAccount(
-    payload: GeneralRequestModel<ICreateAddressBook, unknown, unknown>
+    payload: GeneralRequestModel<CreateAccountBody, unknown, unknown>
   ) {
     return this.remoteDatasource.createAccount(payload);
   }
@@ -112,7 +117,7 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<CurrencyModel[]>> {
+  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
     return this.remoteDatasource.getCurrencies(payload);
   }
 
@@ -124,10 +129,37 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
 
   async getBanks(
     payload: GeneralRequestModel<unknown, GetBanksParams, unknown>
-  ): Promise<GeneralResponseModel<BankModel[]>> {
+  ): Promise<GeneralResponseModel<{ banks: BankModel[]; total: number }>> {
     return this.remoteDatasource.getBanks(payload);
   }
 
+  async generate2fa(
+    payload: GeneralRequestModel<unknown, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.remoteDatasource.generate2fa(payload);
+  }
+  async Verify2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.remoteDatasource.Verify2fa(payload);
+  }
+  async disable2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.remoteDatasource.disable2fa(payload);
+  }
+
+  async getSettings(
+    payload: GeneralRequestModel<unknown, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    return this.remoteDatasource.getSettings(payload);
+  }
+
+  async updateSettings(
+    payload: GeneralRequestModel<UpdateSettingsBody, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    return this.remoteDatasource.updateSettings(payload);
+  }
   // Implement your repository methods here
   // Example:
   // async getData(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {

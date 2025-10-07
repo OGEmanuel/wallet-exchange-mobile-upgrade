@@ -6,10 +6,15 @@ import {
   chainsEndpoint,
   countriesEndpoint,
   currenciesEndpoint,
+  disable2FACodeEndpoint,
+  fetchNotificationPreferenceEndpoint,
+  generate2FASecretDataEndpoint,
   getActivityLogsEndpoint,
   getAvatarsEndpoint,
   getFaqEndpoint,
+  updateNotificationPreferenceEndpoint,
   updateUserDetailsEndpoint,
+  verify2FACodeEndpoint,
 } from "@/src/core/api/api_endpoints";
 import httpClient from "@/src/core/api/http-client";
 import {
@@ -19,12 +24,14 @@ import {
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AccountModel } from "../../domain/entities/models/Account-model";
+import { SettingsModel } from "../../domain/entities/models/Settings-model";
 import { ActivityLogModel } from "../../domain/entities/models/activity-log-model";
 import { IAvatar } from "../../domain/entities/models/avatar-model";
 import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
 import { CountryModel } from "../../domain/entities/models/country-model";
 import { FAQModel } from "../../domain/entities/models/faq-model";
+import { CreateAccountBody } from "../../domain/entities/params/create-account-body";
 import { ICreateAddressBook } from "../../domain/entities/params/create-addressbook-body";
 import { IDeleteaddressParam } from "../../domain/entities/params/delete-address-param";
 import { EditAddressParam } from "../../domain/entities/params/edit-address-params";
@@ -34,7 +41,10 @@ import { IGetAddressParam } from "../../domain/entities/params/get-address-param
 import { GetBanksParams } from "../../domain/entities/params/get-bank-param";
 import { GetCountryParam } from "../../domain/entities/params/get-country-param";
 import { GetCurrencyParam } from "../../domain/entities/params/get-currency-param";
+import { SettingsParams } from "../../domain/entities/params/settings-params";
+import { UpdateSettingsBody } from "../../domain/entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-user-details-params";
+import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
 import { SettingsRemoteDataSource } from "./settings-remote-datasource";
 
 export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
@@ -83,7 +93,7 @@ export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
   }
 
   async createAccount(
-    payload: GeneralRequestModel<ICreateAddressBook, unknown, unknown>
+    payload: GeneralRequestModel<CreateAccountBody, unknown, unknown>
   ) {
     const response = await httpClient.post(addressBookEndpoint, payload.body);
     return response.data as GeneralResponseModel<any[]>;
@@ -149,12 +159,14 @@ export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<CurrencyModel[]>> {
+  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
     const response = await httpClient.get(currenciesEndpoint, {
       limit: payload.params?.limit,
       offset: payload.params?.offset,
     });
-    return response.data as GeneralResponseModel<CurrencyModel[]>;
+    return response.data as GeneralResponseModel<{
+      currencies: CurrencyModel[];
+    }>;
   }
 
   async getCountry(
@@ -170,12 +182,56 @@ export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
 
   async getBanks(
     payload: GeneralRequestModel<unknown, GetBanksParams, unknown>
-  ): Promise<GeneralResponseModel<BankModel[]>> {
+  ): Promise<GeneralResponseModel<{ banks: BankModel[]; total: number }>> {
     const response = await httpClient.get(banksEndpoint, {
       limit: payload.params?.limit,
       offset: payload.params?.offset,
     });
 
-    return response.data as GeneralResponseModel<BankModel[]>;
+    return response.data as GeneralResponseModel<{
+      banks: BankModel[];
+      total: number;
+    }>;
+  }
+
+  async generate2fa(
+    payload: GeneralRequestModel<unknown, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    const response = await httpClient.post(generate2FASecretDataEndpoint, {});
+    return response.data as any;
+  }
+  async Verify2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    const response = await httpClient.post(verify2FACodeEndpoint, payload.body);
+    return response.data as any;
+  }
+  async disable2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    const response = await httpClient.post(
+      disable2FACodeEndpoint,
+      payload.body
+    );
+    return response.data as any;
+  }
+
+  async getSettings(
+    payload: GeneralRequestModel<unknown, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    const response = await httpClient.get(
+      `${fetchNotificationPreferenceEndpoint(payload.params?.user)}`
+    );
+    return response.data as GeneralResponseModel<SettingsModel>;
+  }
+
+  async updateSettings(
+    payload: GeneralRequestModel<UpdateSettingsBody, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    const response = await httpClient.patch(
+      `${updateNotificationPreferenceEndpoint(payload.params?.user)}`,
+      payload.body
+    );
+    return response.data as GeneralResponseModel<SettingsModel>;
   }
 }

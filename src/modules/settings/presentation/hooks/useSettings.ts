@@ -1,4 +1,5 @@
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { CreateAccountBody } from "../../domain/entities/params/create-account-body";
 import { ICreateAddressBook } from "../../domain/entities/params/create-addressbook-body";
 import { IDeleteaddressParam } from "../../domain/entities/params/delete-address-param";
 import { EditAddressParam } from "../../domain/entities/params/edit-address-params";
@@ -8,7 +9,10 @@ import { IGetAddressParam } from "../../domain/entities/params/get-address-param
 import { GetBanksParams } from "../../domain/entities/params/get-bank-param";
 import { GetCountryParam } from "../../domain/entities/params/get-country-param";
 import { GetCurrencyParam } from "../../domain/entities/params/get-currency-param";
+import { SettingsParams } from "../../domain/entities/params/settings-params";
+import { UpdateSettingsBody } from "../../domain/entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-user-details-params";
+import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
 import { SettingsUsecases } from "../../domain/usecases/settings-usecases";
 
 const useSettings = () => {
@@ -66,7 +70,7 @@ const useSettings = () => {
       return response;
     },
 
-    createAccount: async ({ body }: { body: ICreateAddressBook }) => {
+    createAccount: async ({ body }: { body: CreateAccountBody }) => {
       const usecase = new SettingsUsecases();
       const response = await usecase.createAccount({
         body,
@@ -170,10 +174,66 @@ const useSettings = () => {
 
     getBanks: async ({ params }: { params: GetBanksParams }) => {
       const usecase = new SettingsUsecases();
-      const response = await usecase.getCountry({
+      const response = await usecase.getBanks({
         body: null,
         params,
         extra: null,
+      });
+      return response;
+    },
+
+    generate2fa: async () => {
+      const usecase = new SettingsUsecases();
+      const response = await usecase.generate2fa({
+        body: null,
+        extra: null,
+        params: null,
+      });
+      return response;
+    },
+
+    verify2fa: async ({ body }: { body: Verify2faCodeBody }) => {
+      const usecase = new SettingsUsecases();
+      const response = await usecase.Verify2fa({
+        body,
+        extra: null,
+        params: null,
+      });
+      return response;
+    },
+
+    disbale2fa: async ({ body }: { body: Verify2faCodeBody }) => {
+      const usecase = new SettingsUsecases();
+      const response = await usecase.disable2fa({
+        body,
+        extra: null,
+        params: null,
+      });
+      return response;
+    },
+
+    getSettings: async ({ params }: { params: SettingsParams }) => {
+      const usecase = new SettingsUsecases();
+      const response = await usecase.getSettings({
+        body: null,
+        extra: null,
+        params,
+      });
+      return response;
+    },
+
+    updateSettings: async ({
+      params,
+      body,
+    }: {
+      params: SettingsParams;
+      body: UpdateSettingsBody;
+    }) => {
+      const usecase = new SettingsUsecases();
+      const response = await usecase.updateSettings({
+        body,
+        extra: null,
+        params,
       });
       return response;
     },

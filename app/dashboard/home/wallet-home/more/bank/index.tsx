@@ -1,6 +1,7 @@
 import { noBank } from "@/assets/images";
 import BankAccountBottomSheet from "@/components/bottomsheets/BankAccountBottomSheet";
 import EditAccountBottomSheet from "@/components/bottomsheets/EditAccountBottomSheet";
+import BankBottomSheet from "@/components/bottomsheets/preference/BankBottomSheet";
 import AccountListItem from "@/components/dashboard/account/AccountListItem";
 import EmptyState from "@/components/dashboard/market/EmptyState";
 import FilterPill from "@/components/dashboard/market/FilterPill";
@@ -13,16 +14,22 @@ import {
 } from "@/components/general";
 import CurrencySelectionModal from "@/components/Modals/CurrencySelectionModal";
 import DeleteAccountModal from "@/components/Modals/DeleteAccountModal";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { BankAccount, Currency } from "@/interfaces/account.interface";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
+import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
+import { uniq } from "lodash";
 import React, { useRef, useState } from "react";
 import { ScrollView, TextInput } from "react-native";
+import { useSelector } from "react-redux";
 
 const Explore = () => {
   const theme = useTheme<Theme>();
+  const user = useSelector(selectUser);
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<
     Currency | undefined
@@ -35,18 +42,31 @@ const Explore = () => {
     null
   );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { bankBottomSheetRef } = useBottomSheetRefs();
+
+  const { getAccounts } = useSettings();
+  const userDetails = useSelector(selectUser);
 
   const bankAccountBottomSheetRef = useRef<BottomSheet>(null);
   const editAccountBottomSheetRef = useRef<BottomSheet>(null);
 
   const currencyFilters = ["All", "NGN", "USD", "EUR", "GBP", "CAD"];
 
+  React.useEffect(() => {
+    (async function () {
+      const response = await getAccounts({
+        params: { userId: userDetails?._id as string },
+      });
+      setAccounts((prev: any) => uniq([...prev, ...(response.data as any)]));
+      console.log("USER ACCOUNTs", response.data);
+    })();
+  }, []);
+
   const handleAddNewAccount = () => {
     setShowCurrencyModal(true);
   };
 
-  const handleCurrencySelect = (currency: Currency) => {
-    setSelectedCurrency(currency);
+  const handleCurrencySelect = () => {
     setShowCurrencyModal(false);
     bankAccountBottomSheetRef.current?.snapToIndex(0);
   };
@@ -213,6 +233,7 @@ const Explore = () => {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDeleteAccount}
       />
+      <BankBottomSheet ref={bankBottomSheetRef} />
     </PageWrapper>
   );
 };

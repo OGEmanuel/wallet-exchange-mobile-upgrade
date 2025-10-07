@@ -5,12 +5,14 @@ import {
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { SettingsRepoImpl } from "../../data/settings-repo-impl";
+import { SettingsModel } from "../entities/models/Settings-model";
 import { ActivityLogModel } from "../entities/models/activity-log-model";
 import { IAvatar } from "../entities/models/avatar-model";
 import { BankModel } from "../entities/models/bank-model";
 import { ChainModel } from "../entities/models/chain-model";
 import { CountryModel } from "../entities/models/country-model";
 import { FAQModel } from "../entities/models/faq-model";
+import { CreateAccountBody } from "../entities/params/create-account-body";
 import { ICreateAddressBook } from "../entities/params/create-addressbook-body";
 import { IDeleteaddressParam } from "../entities/params/delete-address-param";
 import { EditAddressParam } from "../entities/params/edit-address-params";
@@ -20,7 +22,10 @@ import { IGetAddressParam } from "../entities/params/get-address-param";
 import { GetBanksParams } from "../entities/params/get-bank-param";
 import { GetCountryParam } from "../entities/params/get-country-param";
 import { GetCurrencyParam } from "../entities/params/get-currency-param";
+import { SettingsParams } from "../entities/params/settings-params";
+import { UpdateSettingsBody } from "../entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../entities/params/update-user-details-params";
+import { Verify2faCodeBody } from "../entities/params/verify-2fa-code-body";
 
 export class SettingsUsecases {
   private readonly repo = new SettingsRepoImpl();
@@ -68,7 +73,7 @@ export class SettingsUsecases {
   }
 
   async createAccount(
-    payload: GeneralRequestModel<ICreateAddressBook, unknown, unknown>
+    payload: GeneralRequestModel<CreateAccountBody, unknown, unknown>
   ) {
     return this.repo.createAccount(payload);
   }
@@ -111,7 +116,7 @@ export class SettingsUsecases {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<CurrencyModel[]>> {
+  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
     return this.repo.getCurrencies(payload);
   }
 
@@ -123,7 +128,35 @@ export class SettingsUsecases {
 
   async getBanks(
     payload: GeneralRequestModel<unknown, GetBanksParams, unknown>
-  ): Promise<GeneralResponseModel<BankModel[]>> {
+  ): Promise<GeneralResponseModel<{ banks: BankModel[]; total: number }>> {
     return this.repo.getBanks(payload);
+  }
+
+  async generate2fa(
+    payload: GeneralRequestModel<unknown, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.repo.generate2fa(payload);
+  }
+  async Verify2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.repo.Verify2fa(payload);
+  }
+  async disable2fa(
+    payload: GeneralRequestModel<Verify2faCodeBody, unknown, unknown>
+  ): Promise<GeneralResponseModel<any>> {
+    return this.repo.disable2fa(payload);
+  }
+
+  async getSettings(
+    payload: GeneralRequestModel<unknown, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    return this.repo.getSettings(payload);
+  }
+
+  async updateSettings(
+    payload: GeneralRequestModel<UpdateSettingsBody, SettingsParams, unknown>
+  ): Promise<GeneralResponseModel<SettingsModel>> {
+    return this.repo.updateSettings(payload);
   }
 }
