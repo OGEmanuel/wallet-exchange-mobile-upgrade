@@ -1,3 +1,5 @@
+import images from "@/assets/images";
+import EmptyState from "@/components/dashboard/market/EmptyState";
 import FilterPill from "@/components/dashboard/market/FilterPill";
 import MarketTableItem from "@/components/dashboard/market/MarketTableItem";
 import SwitchTab from "@/components/dashboard/market/SwitchTab";
@@ -6,6 +8,7 @@ import { PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
+import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
@@ -17,25 +20,37 @@ import { AppRootState } from "../../../../../state";
 const Explore = () => {
   const [isTokens, setIsTokens] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyModel | undefined>();
-  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(undefined);
-  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(undefined);
-  const [filteredCurrencies, setFilteredCurrencies] = useState<(CurrencyModel | undefined)[] | null>(null);
-  // State for market data and loading states
+  const [selectedCurrency, setSelectedCurrency] = useState<
+    CurrencyModel | undefined
+  >();
+  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [filteredCurrencies, setFilteredCurrencies] = useState<
+    (CurrencyModel | undefined)[] | null
+  >(null);
+
   const [isLoading, setIsLoading] = useState(false);
-  // const [isError, setIsError] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
+
   const { currencies } = useSelector((state: AppRootState) => state.utilities);
-  const { marketTokens } = useSelector((state: AppRootState) => state.market);
+  const { marketTokens, watchlistTokens } = useSelector(
+    (state: AppRootState) => state.market
+  );
+  const { user } = useSelector((state: AppRootState) => state.kyc);
 
-  const { fetchMarketTokens } = useMarket();
+  const { fetchMarketTokens, fetchWatchlistTokens } = useMarket();
   const { fetchCurrencies } = useUtilities();
-
 
   const retrieveNairaCurrency = useCallback((): void => {
     if (currencies) {
-      const nairaCurrency = currencies.find(currency => currency.code === 'NGN');
+      const nairaCurrency = currencies.find(
+        (currency) => currency.code === "NGN"
+      );
       if (nairaCurrency) {
         setNairaCurrency(nairaCurrency);
       }
@@ -44,7 +59,9 @@ const Explore = () => {
 
   const retrieveUsdCurrency = useCallback((): void => {
     if (currencies) {
-      const usdCurrency = currencies.find(currency => currency.code === 'USD');
+      const usdCurrency = currencies.find(
+        (currency) => currency.code === "USD"
+      );
       if (usdCurrency) {
         setUsdCurrency(usdCurrency);
         setSelectedCurrency(usdCurrency);
@@ -64,10 +81,13 @@ const Explore = () => {
         params: {},
         extra: {},
       });
-
     } catch (error) {
       // setIsError(true);
-      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred. Please try again.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -81,22 +101,56 @@ const Explore = () => {
     }).then(() => {
       retrieveNairaCurrency();
       retrieveUsdCurrency();
-
-      setTimeout(() => {
-        setFilteredCurrencies([usdCurrency, nairaCurrency]);
-      }, 1000);
     });
-
   }, []);
 
+  // Function to fetch watchlist tokens
+  const loadWatchlistTokens = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      await fetchWatchlistTokens({
+        body: {},
+        params: {},
+        extra: user,
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while loading watchlist. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchWatchlistTokens, user]);
+
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+      setSelectedCurrency(usd); // default USD
+      setFilteredCurrencies([usd, ngn]);
+    }
+  }, [currencies]);
 
   useEffect(() => {
     loadCurrencies();
     loadMarketTokens();
   }, []);
 
+  // Load watchlist when switching to watchlist tab
+  useEffect(() => {
+    if (!isTokens && user) {
+      loadWatchlistTokens();
+    }
+  }, [isTokens, user, loadWatchlistTokens]);
+
   const categories = ["All", "Top Gainers", "Top Losers"];
-  // const filteredCurrencies = [usdCurrency, nairaCurrency];
 
   // Filter market tokens based on selected category
   const filteredMarketTokens = React.useMemo(() => {
@@ -105,12 +159,12 @@ const Explore = () => {
     switch (selectedCategory) {
       case "Top Gainers":
         return [...marketTokens]
-          .filter(token => token.change24h && token.change24h > 0)
+          .filter((token) => token.change24h && token.change24h > 0)
           .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
 
       case "Top Losers":
         return [...marketTokens]
-          .filter(token => token.change24h && token.change24h < 0)
+          .filter((token) => token.change24h && token.change24h < 0)
           .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
 
       case "All":
@@ -118,6 +172,64 @@ const Explore = () => {
         return marketTokens;
     }
   }, [marketTokens, selectedCategory]);
+
+  // Filter watchlist tokens based on selected category
+  const filteredWatchlistTokens = React.useMemo(() => {
+    if (!watchlistTokens) return null;
+
+    // Extract market data from watchlist items
+    const watchlistMarketData = watchlistTokens
+      .map((item) => item.marketData)
+      .filter(Boolean) as MarketTokenModel[];
+
+    if (watchlistMarketData.length === 0) return [];
+
+    switch (selectedCategory) {
+      case "Top Gainers":
+        return [...watchlistMarketData]
+          .filter((token) => token.change24h && token.change24h > 0)
+          .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+
+      case "Top Losers":
+        return [...watchlistMarketData]
+          .filter((token) => token.change24h && token.change24h < 0)
+          .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
+
+      case "All":
+      default:
+        return watchlistMarketData;
+    }
+  }, [watchlistTokens, selectedCategory]);
+
+  // Get the current data to display based on tab selection
+  const currentData = isTokens ? filteredMarketTokens : filteredWatchlistTokens;
+  const currentLoading = isTokens
+    ? isLoading && !marketTokens
+    : isLoading && !watchlistTokens;
+  const currentError = isTokens
+    ? !!errorMessage && !marketTokens
+    : !!errorMessage && !watchlistTokens;
+
+  // Check if watchlist is empty (has been loaded but no items)
+  const isWatchlistEmpty =
+    !isTokens && watchlistTokens && watchlistTokens.length === 0;
+
+  const watchlistEmptyState = (
+    <Box
+      flex={1}
+      alignItems="center"
+      justifyContent="center"
+      paddingHorizontal="l"
+      paddingVertical="xl"
+    >
+      <EmptyState
+        title="No tokens in watchlist"
+        info="Add tokens to your watchlist to track their prices and get alerts when they change."
+        hasNoBtn={true}
+        source={images.glass}
+      />
+    </Box>
+  );
 
   return (
     <PageWrapper>
@@ -164,42 +276,52 @@ const Explore = () => {
           borderRadius={20}
           padding="s"
         >
-          {filteredCurrencies && filteredCurrencies?.map((currency, index) => (
-            <Pressable
-              key={index}
-              onPress={() => setSelectedCurrency(currency)}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 4,
-                borderRadius: 20,
-                backgroundColor:
-                  selectedCurrency?.code === currency?.code
-                    ? "rgba(196, 230, 77, 0.2)"
-                    : "transparent",
-                borderWidth: selectedCurrency?.code === currency?.code ? 1 : 0,
-                borderColor:
-                  selectedCurrency?.code === currency?.code ? "#C7E64D" : "transparent",
-              }}
-              android_ripple={{
-                color: "rgba(255,255,255,0.1)",
-                borderless: true,
-              }}
-            >
-              <CustomText variant="body" fontSize={10} color="bodyTextColor">
-                {currency?.code}
-              </CustomText>
-            </Pressable>
-          ))}
+          {filteredCurrencies &&
+            filteredCurrencies?.map((currency, index) => (
+              <Pressable
+                key={index}
+                onPress={() => setSelectedCurrency(currency)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 20,
+                  backgroundColor:
+                    selectedCurrency?.code === currency?.code
+                      ? "rgba(196, 230, 77, 0.2)"
+                      : "transparent",
+                  borderWidth:
+                    selectedCurrency?.code === currency?.code ? 1 : 0,
+                  borderColor:
+                    selectedCurrency?.code === currency?.code
+                      ? "#C7E64D"
+                      : "transparent",
+                }}
+                android_ripple={{
+                  color: "rgba(255,255,255,0.1)",
+                  borderless: true,
+                }}
+              >
+                <CustomText variant="body" fontSize={10} color="bodyTextColor">
+                  {currency?.code}
+                </CustomText>
+              </Pressable>
+            ))}
         </Box>
       </Box>
 
       <LoaderWrapper
-        isLoading={isLoading && !marketTokens}
-        isError={!!errorMessage && !marketTokens}
+        isLoading={currentLoading}
+        isError={currentError}
         errorMessage={errorMessage}
-        onRetry={loadMarketTokens}
-        isEmpty={!isLoading && !!errorMessage && filteredMarketTokens && filteredMarketTokens.length === 0}
-        existingData={filteredMarketTokens}
+        onRetry={isTokens ? loadMarketTokens : loadWatchlistTokens}
+        isEmpty={
+          !currentLoading &&
+          !currentError &&
+          (isWatchlistEmpty ||
+            (isTokens && currentData && currentData.length === 0))
+        }
+        existingData={isWatchlistEmpty ? null : currentData}
+        emptyComponent={isWatchlistEmpty ? watchlistEmptyState : undefined}
       >
         <Box
           bg="secondaryBackgroundColor"
@@ -216,8 +338,15 @@ const Explore = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 10 }}
           >
-            {filteredMarketTokens?.map((item, index) => (
-              <MarketTableItem key={index} item={item} index={index} selectedCurrency={selectedCurrency?.code as "USD" | "NGN"} nairaCurrency={nairaCurrency} usdCurrency={usdCurrency} />
+            {currentData?.map((item, index) => (
+              <MarketTableItem
+                key={index}
+                item={item}
+                index={index}
+                selectedCurrency={selectedCurrency?.code as "USD" | "NGN"}
+                nairaCurrency={nairaCurrency}
+                usdCurrency={usdCurrency}
+              />
             ))}
           </ScrollView>
         </Box>
@@ -227,231 +356,3 @@ const Explore = () => {
 };
 
 export default Explore;
-
-
-// import { noBank } from "@/assets/images";
-// import BankAccountBottomSheet from "@/components/bottomsheets/BankAccountBottomSheet";
-// import EditAccountBottomSheet from "@/components/bottomsheets/EditAccountBottomSheet";
-// import AccountListItem from "@/components/dashboard/account/AccountListItem";
-// import EmptyState from "@/components/dashboard/market/EmptyState";
-// import FilterPill from "@/components/dashboard/market/FilterPill";
-// import {
-//   Box,
-//   CustomButton,
-//   CustomText,
-//   PageWrapper,
-// } from "@/components/general";
-// import CurrencySelectionModal from "@/components/Modals/CurrencySelectionModal";
-// import DeleteAccountModal from "@/components/Modals/DeleteAccountModal";
-// import { BankAccount, Currency } from "@/interfaces/account.interface";
-// import { Theme } from "@/theme";
-// import BottomSheet from "@gorhom/bottom-sheet";
-// import { useTheme } from "@shopify/restyle";
-// import React, { useRef, useState } from "react";
-// import { ScrollView, TextInput } from "react-native";
-
-// const Explore = () => {
-//   const theme = useTheme<Theme>();
-//   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
-//   const [selectedCurrency, setSelectedCurrency] = useState<
-//     Currency | undefined
-//   >();
-//   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-//   const [selectedFilter, setSelectedFilter] = useState("All");
-//   const [searchQuery, setSearchQuery] = useState("");
-//   const [accountToEdit, setAccountToEdit] = useState<BankAccount | null>(null);
-//   const [accountToDelete, setAccountToDelete] = useState<BankAccount | null>(
-//     null
-//   );
-//   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-//   const bankAccountBottomSheetRef = useRef<BottomSheet>(null);
-//   const editAccountBottomSheetRef = useRef<BottomSheet>(null);
-
-//   const currencyFilters = ["All", "NGN", "USD", "EUR", "GBP", "CAD"];
-
-//   const handleAddNewAccount = () => {
-//     setShowCurrencyModal(true);
-//   };
-
-//   const handleCurrencySelect = (currency: Currency) => {
-//     setSelectedCurrency(currency);
-//     setShowCurrencyModal(false);
-//     bankAccountBottomSheetRef.current?.snapToIndex(0);
-//   };
-
-//   const handleAccountAdded = (newAccount: BankAccount) => {
-//     setAccounts((prev) => [...prev, newAccount]);
-//     setSelectedCurrency(undefined);
-//   };
-
-//   const handleEditAccount = (account: BankAccount) => {
-//     setAccountToEdit(account);
-//     editAccountBottomSheetRef.current?.snapToIndex(0);
-//   };
-
-//   const handleDeleteAccount = (account: BankAccount) => {
-//     setAccountToDelete(account);
-//     setShowDeleteModal(true);
-//   };
-
-//   const confirmDeleteAccount = () => {
-//     if (accountToDelete) {
-//       setAccounts((prev) =>
-//         prev.filter((acc) => acc.id !== accountToDelete.id)
-//       );
-//       setAccountToDelete(null);
-//     }
-//   };
-
-//   const handleAccountUpdated = (updatedAccount: BankAccount) => {
-//     setAccounts((prev) =>
-//       prev.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
-//     );
-//     setAccountToEdit(null);
-//   };
-
-//   const filteredAccounts = accounts.filter((account) => {
-//     const matchesFilter =
-//       selectedFilter === "All" || account.currency.code === selectedFilter;
-//     const matchesSearch =
-//       account.accountHolderName
-//         .toLowerCase()
-//         .includes(searchQuery.toLowerCase()) ||
-//       account.accountNumber.includes(searchQuery);
-//     return matchesFilter && matchesSearch;
-//   });
-
-//   const renderAccountList = () => (
-//     <Box flex={1} bg="mainBackgroundColor" marginTop="l" marginHorizontal="m">
-//       <Box marginBottom="m">
-//         <TextInput
-//           style={{
-//             backgroundColor: theme.colors.secondaryBackgroundColor,
-//             borderRadius: 8,
-//             paddingHorizontal: 12,
-//             paddingVertical: 12,
-//             color: theme.colors.headerTextColor,
-//             fontSize: 16,
-//           }}
-//           placeholder="Search accounts"
-//           placeholderTextColor={theme.colors.placeholderTextColor}
-//           value={searchQuery}
-//           onChangeText={setSearchQuery}
-//         />
-//       </Box>
-
-//       {currencyFilters.length > 0 && (
-//         <Box flexDirection="row" marginBottom="m" gap="s">
-//           {currencyFilters.map((filter) => (
-//             <FilterPill
-//               key={filter}
-//               label={filter}
-//               active={selectedFilter === filter}
-//               onPress={() => setSelectedFilter(filter)}
-//             />
-//           ))}
-//         </Box>
-//       )}
-
-//       <ScrollView
-//         style={{ flex: 1 }}
-//         showsVerticalScrollIndicator={false}
-//         contentContainerStyle={{ paddingBottom: 20 }}
-//       >
-//         {filteredAccounts.map((account) => (
-//           <AccountListItem
-//             key={account.id}
-//             account={account}
-//             onEdit={handleEditAccount}
-//             onDelete={handleDeleteAccount}
-//           />
-//         ))}
-//       </ScrollView>
-//     </Box>
-//   );
-
-//   const renderEmptyState = () => (
-//     <Box
-//       bg="mainBackgroundColor"
-//       flex={1}
-//       marginTop="s"
-//       marginHorizontal="m"
-//       alignItems="center"
-//       justifyContent="center"
-//     >
-//       <EmptyState
-//         title="No Accounts"
-//         info="You haven't added any accounts. Add a bank account to receive your naira"
-//         onPress={handleAddNewAccount}
-//         source={noBank}
-//       >
-//         <CustomText variant="body">+ Add New Account</CustomText>
-//       </EmptyState>
-//     </Box>
-//   );
-
-//   return (
-//     <PageWrapper>
-//       <Box
-//         width="100%"
-//         alignItems="center"
-//         flexDirection="row"
-//         justifyContent="center"
-//         paddingHorizontal="l"
-//         position="relative"
-//       >
-//         <CustomText
-//           variant="bodyBold"
-//           textAlign="center"
-//           style={{
-//             fontFamily: "NewScience_Bold",
-//           }}
-//         >
-//           Accounts
-//         </CustomText>
-
-//         {accounts.length > 0 && (
-//           <Box position="absolute" right={16}>
-//             <CustomButton
-//               text="+ New"
-//               onPress={handleAddNewAccount}
-//               width={70}
-//               height={30}
-//               borderRadius={50}
-//             />
-//           </Box>
-//         )}
-//       </Box>
-
-//       {accounts.length > 0 ? renderAccountList() : renderEmptyState()}
-
-//       <CurrencySelectionModal
-//         visible={showCurrencyModal}
-//         onClose={() => setShowCurrencyModal(false)}
-//         onSelectCurrency={handleCurrencySelect}
-//       />
-
-//       <BankAccountBottomSheet
-//         ref={bankAccountBottomSheetRef}
-//         selectedCurrency={selectedCurrency}
-//         onAccountAdded={handleAccountAdded}
-//       />
-
-//       <EditAccountBottomSheet
-//         ref={editAccountBottomSheetRef}
-//         account={accountToEdit}
-//         onAccountUpdated={handleAccountUpdated}
-//       />
-
-//       <DeleteAccountModal
-//         visible={showDeleteModal}
-//         account={accountToDelete}
-//         onClose={() => setShowDeleteModal(false)}
-//         onConfirm={confirmDeleteAccount}
-//       />
-//     </PageWrapper>
-//   );
-// };
-
-// export default Explore;

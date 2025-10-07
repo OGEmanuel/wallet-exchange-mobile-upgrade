@@ -33,10 +33,10 @@ const VerificationCard = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={!isActionable}
+      disabled={!isActionable || isCompleted}
       style={[
         styles.container,
-        !isActionable && { opacity: 0.8 },
+        (!isActionable || isCompleted) && { opacity: 0.8 },
         isCompleted && styles.completedBorder,
         isRejected && styles.rejectedBorder,
         { backgroundColor: theme.colors.secondaryBackgroundColor },

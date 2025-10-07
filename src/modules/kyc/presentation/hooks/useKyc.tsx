@@ -1,4 +1,7 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { StorageKeys, TokenData } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { AppDispatch, AppRootState } from "@/state";
@@ -43,23 +46,22 @@ const useKyc = () => {
     updateUser: async (payload: UserModel | null) => {
       const updatedUser = {
         ...user,
-        ...payload || {},
+        ...(payload || {}),
         metaData: {
           ...user?.metaData,
-          ...payload?.metaData || {},
+          ...(payload?.metaData || {}),
         },
       };
 
-      const {metaData,  ...userDataWithoutTheMetaData} = {
+      const { metaData, ...userDataWithoutTheMetaData } = {
         ...updatedUser,
-        ...payload || {},
+        ...(payload || {}),
       };
 
       dispatch(kycActions.setUser(updatedUser));
-      
+
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
         fetchUserById(updatedUser).then((response) => {
-          
           if (response.data) {
             const fetchedUserData = {
               ...userDataWithoutTheMetaData,
@@ -70,13 +72,17 @@ const useKyc = () => {
               },
             };
 
-            dispatch(kycActions.setUser({...fetchedUserData}));
+            dispatch(kycActions.setUser({ ...fetchedUserData }));
 
             if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
-              if (userDataWithoutTheMetaData?.phone) delete userDataWithoutTheMetaData.phone;
+              if (userDataWithoutTheMetaData?.phone)
+                delete userDataWithoutTheMetaData.phone;
             }
 
-            storageService.save(StorageKeys.USER_PROFILE, userDataWithoutTheMetaData);
+            storageService.save(
+              StorageKeys.USER_PROFILE,
+              userDataWithoutTheMetaData
+            );
           }
         });
       }
@@ -107,10 +113,9 @@ const useKyc = () => {
 
       const authVerificationData = response.data;
 
-      if (
-        authVerificationData
-      ) {
+      if (authVerificationData) {
         try {
+          const responseData = response.data as any;
           const tokenData: TokenData = {
             token: authVerificationData?.token || null,
             refreshToken: authVerificationData?.refreshToken || null,

@@ -1,4 +1,7 @@
-import { ThemedBackIcon, ThemedLockPasswordIcon } from "@/assets/svg/wallet-icons-components";
+import {
+  ThemedBackIcon,
+  ThemedLockPasswordIcon,
+} from "@/assets/svg/wallet-icons-components";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
@@ -6,6 +9,7 @@ import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { CustomButton, CustomText } from "../general";
@@ -38,10 +42,11 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
         verificationType: "BVN",
         idNumber: bvn.trim(),
         docUrl: "https://example.com/uploads/id.jpg",
-        countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
+        countryId:
+          user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
       });
 
-      updateUser(user)
+      updateUser(user);
 
       // On success, proceed to next step
       onNext?.({
@@ -59,128 +64,148 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Back Button */}
-      {onBack && (
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <ThemedBackIcon />
-        </Pressable>
-      )}
+    <>
+      <KeyboardAwareScrollView
+        bottomOffset={62}
+        // behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1, marginBottom: 62 }}
+        // keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+      >
+        <View style={styles.container}>
+          {/* Back Button */}
+          {onBack && (
+            <Pressable onPress={onBack} style={styles.backButton}>
+              <ThemedBackIcon />
+            </Pressable>
+          )}
 
-      <View style={styles.header}>
-        <CustomText variant="header" style={styles.title}>
-          BVN Verification
-        </CustomText>
-        <CustomText variant="body" style={styles.subtitle}>
-          Please provide your bank verification number.
-        </CustomText>
-      </View>
+          <View style={styles.header}>
+            <CustomText variant="header" style={styles.title}>
+              BVN Verification
+            </CustomText>
+            <CustomText variant="body" style={styles.subtitle}>
+              Please provide your bank verification number.
+            </CustomText>
+          </View>
 
-      <View style={styles.formContainer}>
-        <View style={styles.nameRow}>
-          <View style={styles.nameField}>
+          <View style={styles.formContainer}>
+            <View style={styles.nameRow}>
+              <View style={styles.nameField}>
+                <CustomInputWithoutForm
+                  label="First Name"
+                  placeholder="Enter First Name"
+                  value={firstname}
+                  onChange={setFirstname}
+                  keyboardType="default"
+                />
+              </View>
+              <View style={styles.nameField}>
+                <CustomInputWithoutForm
+                  label="Last Name"
+                  placeholder="Enter Last Name"
+                  value={lastname}
+                  onChange={setLastname}
+                  keyboardType="default"
+                />
+              </View>
+            </View>
+
             <CustomInputWithoutForm
-              label="First Name"
-              placeholder="Enter First Name"
-              value={firstname}
-              onChange={setFirstname}
-              keyboardType="default"
+              label="Bank Verification Number"
+              placeholder="Enter Bank Verification Number"
+              value={bvn}
+              onChange={setBvn}
+              keyboardType="numeric"
             />
-          </View>
-          <View style={styles.nameField}>
-            <CustomInputWithoutForm
-              label="Last Name"
-              placeholder="Enter Last Name"
-              value={lastname}
-              onChange={setLastname}
-              keyboardType="default"
-            />
-          </View>
-        </View>
 
-        <CustomInputWithoutForm
-          label="Bank Verification Number"
-          placeholder="Enter Bank Verification Number"
-          value={bvn}
-          onChange={setBvn}
-          keyboardType="numeric"
-        />
-
-        <View
-          style={[
-            styles.infoBox,
-            { backgroundColor: theme.colors.secondaryBackgroundColor },
-          ]}
-        >
-          <CustomText
-            style={[styles.infoTitle, { color: theme.colors.bodyTextColor }]}
-          >
-            We need only access to your
-          </CustomText>
-
-          <View style={styles.infoList}>
-            <View style={styles.infoItem}>
-              <CustomText style={styles.bullet}>•</CustomText>
-              <CustomText
-                style={[styles.infoText, { color: theme.colors.bodyTextColor }]}
-              >
-                Full name
-              </CustomText>
-            </View>
-            <View style={styles.infoItem}>
-              <CustomText style={styles.bullet}>•</CustomText>
-              <CustomText
-                style={[styles.infoText, { color: theme.colors.bodyTextColor }]}
-              >
-                Date of Birth
-              </CustomText>
-            </View>
-            <View style={styles.infoItem}>
-              <CustomText style={styles.bullet}>•</CustomText>
-              <CustomText
-                style={[styles.infoText, { color: theme.colors.bodyTextColor }]}
-              >
-                Phone number
-              </CustomText>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.divider,
-              { backgroundColor: theme.colors.borderColor },
-            ]}
-          />
-
-          <View style={styles.securityInfo}>
             <View
               style={[
-                styles.lockIconContainer,
-                { backgroundColor: theme.colors.primaryColor + "15" },
+                styles.infoBox,
+                { backgroundColor: theme.colors.secondaryBackgroundColor },
               ]}
             >
-              <ThemedLockPasswordIcon
-                width={16}
-                height={16}
-                lightModeColor="#6045FF"
-                darkModeColor="#C7E64D"
-              />
-            </View>
-            <View style={styles.securityTextContainer}>
               <CustomText
                 style={[
-                  styles.securityText,
+                  styles.infoTitle,
                   { color: theme.colors.bodyTextColor },
                 ]}
               >
-                Your BVN does not give us access to your bank accounts or
-                transactions.
+                We need only access to your
               </CustomText>
+
+              <View style={styles.infoList}>
+                <View style={styles.infoItem}>
+                  <CustomText style={styles.bullet}>•</CustomText>
+                  <CustomText
+                    style={[
+                      styles.infoText,
+                      { color: theme.colors.bodyTextColor },
+                    ]}
+                  >
+                    Full name
+                  </CustomText>
+                </View>
+                <View style={styles.infoItem}>
+                  <CustomText style={styles.bullet}>•</CustomText>
+                  <CustomText
+                    style={[
+                      styles.infoText,
+                      { color: theme.colors.bodyTextColor },
+                    ]}
+                  >
+                    Date of Birth
+                  </CustomText>
+                </View>
+                <View style={styles.infoItem}>
+                  <CustomText style={styles.bullet}>•</CustomText>
+                  <CustomText
+                    style={[
+                      styles.infoText,
+                      { color: theme.colors.bodyTextColor },
+                    ]}
+                  >
+                    Phone number
+                  </CustomText>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.colors.borderColor },
+                ]}
+              />
+
+              <View style={styles.securityInfo}>
+                <View
+                  style={[
+                    styles.lockIconContainer,
+                    { backgroundColor: theme.colors.primaryColor + "15" },
+                  ]}
+                >
+                  <ThemedLockPasswordIcon
+                    width={16}
+                    height={16}
+                    lightModeColor="#6045FF"
+                    darkModeColor="#C7E64D"
+                  />
+                </View>
+                <View style={styles.securityTextContainer}>
+                  <CustomText
+                    style={[
+                      styles.securityText,
+                      { color: theme.colors.bodyTextColor },
+                    ]}
+                  >
+                    Your BVN does not give us access to your bank accounts or
+                    transactions.
+                  </CustomText>
+                </View>
+              </View>
             </View>
           </View>
         </View>
-      </View>
-
+      </KeyboardAwareScrollView>
       <View style={styles.buttonContainer}>
         <CustomButton
           text="Verify"
@@ -197,7 +222,7 @@ export default function BvnInputForm({ onNext, onBack }: BvnInputFormProps) {
           isLoading={loading}
         />
       </View>
-    </View>
+    </>
   );
 }
 

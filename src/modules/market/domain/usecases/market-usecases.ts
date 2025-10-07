@@ -1,6 +1,7 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { UserModel } from "../../../kyc/domain/entities/models/user-model";
 import { MarketRepoImpl } from "../../data/market-repo-impl";
+import { PriceAlertData, PriceAlertResponse } from "../../data/remote/market-remote-datasource";
 import { MarketTokenModel } from "../entities/models/market-token-model";
 import { TokenDetailModel } from "../entities/models/token-detail-model";
 import { TokenHistoryDetailModel } from "../entities/models/token-history-model";
@@ -31,5 +32,16 @@ export class MarketUsecases {
   async fetchWatchlistTokens(payload: GeneralRequestModel<unknown, unknown, UserModel | null>): Promise<GeneralResponseModel<WatchlistTokenModel[] | null | undefined>> {
     return this.repo.fetchWatchlistTokens(payload);
   }
-  
+
+  async createPriceAlert(payload: GeneralRequestModel<PriceAlertData, unknown, unknown>): Promise<GeneralResponseModel<PriceAlertResponse>> {
+    return this.repo.createPriceAlert(payload);
+  }
+
+  async addToWatchlist(payload: GeneralRequestModel<AddToWatchlistParams, unknown, unknown>): Promise<GeneralResponseModel<WatchlistTokenModel>> {
+    return this.repo.addToWatchlist(payload);
+  }
+
+  async removeFromWatchlist(payload: GeneralRequestModel<string, unknown, unknown>): Promise<GeneralResponseModel<{ success: boolean; message: string }>> {
+    return this.repo.removeFromWatchlist(payload);
+  }
 }

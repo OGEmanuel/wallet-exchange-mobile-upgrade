@@ -19,6 +19,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
 
@@ -114,29 +115,31 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1, position: "relative" }}>
-        <GestureHandlerRootView>
-          <Provider store={store}>
-            <ThemeProvider
-              theme={colorTheme === "dark" ? darkTheme : darkTheme}
-            >
-              <QueryClientProvider client={queryClient}>
-                <BottomSheetProvider>
-                  <StatusBar
-                    barStyle={
-                      colorTheme === "dark" ? "light-content" : "dark-content"
-                    }
-                  />
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" options={{ title: "Home" }} />
-                  </Stack>
-                  <BottomSheetManager />
-                </BottomSheetProvider>
-              </QueryClientProvider>
-            </ThemeProvider>
-          </Provider>
-        </GestureHandlerRootView>
-      </View>
+      <KeyboardProvider>
+        <View style={{ flex: 1, position: "relative" }}>
+          <GestureHandlerRootView>
+            <Provider store={store}>
+              <ThemeProvider
+                theme={colorTheme === "dark" ? darkTheme : darkTheme}
+              >
+                <QueryClientProvider client={queryClient}>
+                  <BottomSheetProvider>
+                    <StatusBar
+                      barStyle={
+                        colorTheme === "dark" ? "light-content" : "dark-content"
+                      }
+                    />
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="index" options={{ title: "Home" }} />
+                    </Stack>
+                    <BottomSheetManager />
+                  </BottomSheetProvider>
+                </QueryClientProvider>
+              </ThemeProvider>
+            </Provider>
+          </GestureHandlerRootView>
+        </View>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

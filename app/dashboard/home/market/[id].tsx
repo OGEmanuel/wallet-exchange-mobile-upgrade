@@ -1,3 +1,4 @@
+import images from "@/assets/images";
 import AnimatedTabContent from "@/components/dashboard/market/AnimatedTabContent";
 import AssetChartDetails from "@/components/dashboard/market/AssetChartDetails";
 import AssetHeader from "@/components/dashboard/market/AssetHeader";
@@ -10,8 +11,10 @@ import { Box, CustomText, PageWrapper } from "@/components/general";
 import CustomButton from "@/components/general/CustomButton";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import { SIZES } from "@/data";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
+import { formatStats } from "@/lib/utils/market/helpers";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -22,19 +25,6 @@ import { useSelector } from "react-redux";
 const { width, height } = Dimensions.get("window");
 SIZES.width = width;
 SIZES.height = height;
-
-// Utility functions
-const formatStats = (
-  value: number,
-  decimals: number,
-  currency: string
-): string => {
-  if (value >= 1e12) return `$${(value / 1e12).toFixed(decimals)}T`;
-  if (value >= 1e9) return `$${(value / 1e9).toFixed(decimals)}B`;
-  if (value >= 1e6) return `$${(value / 1e6).toFixed(decimals)}M`;
-  if (value >= 1e3) return `$${(value / 1e3).toFixed(decimals)}K`;
-  return `$${value.toFixed(decimals)}`;
-};
 
 const openExternalLink = async (url: string) => {
   try {
@@ -51,38 +41,89 @@ const openExternalLink = async (url: string) => {
 
 export default function AssetInfo() {
   const [isAssetInfo, setIsAssetInfo] = useState(true);
-  const { id } = useLocalSearchParams();
+  const { id, asset } = useLocalSearchParams();
   const router = useRouter();
-  const { tokenDetails: fetchTokenDetails } = useMarket();
+  const { tokenDetails: fetchTokenDetails, tokenHistory: fetchTokenHistory } =
+    useMarket();
+  const { fetchCurrencies } = useUtilities();
+  const parsedAsset = asset ? JSON.parse(asset as string) : null;
 
-  const { marketTokens, currentTokenDetails } = useSelector((state: AppRootState) => state.market);
-  
+  const { currentTokenDetails, tokenHistory } = useSelector(
+    (state: AppRootState) => state.market
+  );
+  const { currencies } = useSelector((state: AppRootState) => state.utilities);
+
   const [isLoading, setIsLoading] = useState(false);
-  // const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // const [currentTokenId, setCurrentTokenId] = useState<string | null>(null);
+  const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
+  const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
+    undefined
+  );
 
-  // Fetch token details when component mounts or asset changes
+  // Fetch currencies and token details when component mounts
   useEffect(() => {
     fetchTokenDetailsCallback();
+    fetchCurrenciesCallback();
+    fetchTokenHistoryCallback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // }, [selectedAsset?.currencyId?._id, fetchTokenDetails]);
+
+  // Set currency data when currencies are loaded
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+    }
+  }, [currencies]);
 
   const fetchTokenDetailsCallback = useCallback(async () => {
     if (id) {
       setIsLoading(true);
+      setErrorMessage(null);
       try {
-        await fetchTokenDetails({ body: id as string, params: {}, extra: null });
+        await fetchTokenDetails({
+          body: id as string,
+          params: {},
+          extra: null,
+        });
         // Token details are now automatically stored in Redux state via the hook
       } catch (err: any) {
-        setErrorMessage(err.message);
+        console.error("Error fetching token details:", err);
+        setErrorMessage(err.message || "Failed to fetch token details");
       } finally {
         setIsLoading(false);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const fetchTokenHistoryCallback = useCallback(async () => {
+    try {
+      await fetchTokenHistory({
+        body: id as string,
+        params: {},
+        extra: null,
+      });
+    } catch (err: any) {
+      console.error("Error fetching token history:", err);
+    }
+  }, [id]);
+
+  const fetchCurrenciesCallback = useCallback(async () => {
+    try {
+      await fetchCurrencies({
+        body: {},
+        params: {},
+        extra: {},
+      });
+    } catch (err: any) {
+      console.error("Error fetching currencies:", err);
+    }
+  }, [fetchCurrencies]);
 
   // Transaction history tab hooks (moved to top level)
   type FiltersType = {
@@ -93,6 +134,7 @@ export default function AssetInfo() {
   };
 
   const [searchText] = useState("");
+
   const [filters] = useState<FiltersType>({
     startDate: null,
     endDate: null,
@@ -163,10 +205,15 @@ export default function AssetInfo() {
         animationType="fade"
       >
         <Box flex={1} paddingBottom="xl">
-          <AssetHeader 
-            asset={currentTokenDetails?.tokenDetails?.name || currentTokenDetails?.tokenDetails?.symbol} 
+          <AssetHeader
+            asset={
+              currentTokenDetails?.tokenDetails?.name ||
+              currentTokenDetails?.tokenDetails?.symbol
+            }
+            parsedAsset={parsedAsset}
             logo={currentTokenDetails?.tokenDetails?.logo}
             symbol={currentTokenDetails?.tokenDetails?.symbol}
+            currencyId={currentTokenDetails?.tokenMetrics?.currencyId}
           />
           <Box width="100%" paddingVertical="m">
             <SwitchTab
@@ -185,7 +232,13 @@ export default function AssetInfo() {
                 style={{ height: SIZES.height - 250 }}
                 contentContainerStyle={{ paddingBottom: 150 }}
               >
-                <AssetChartDetails tokenDetails={currentTokenDetails} />
+                <AssetChartDetails
+                  tokenDetails={currentTokenDetails}
+                  asset={parsedAsset}
+                  nairaCurrency={nairaCurrency}
+                  usdCurrency={usdCurrency}
+                  tokenHistory={tokenHistory}
+                />
 
                 <Box width="100%" paddingHorizontal="m" marginTop="m">
                   <Box
@@ -227,7 +280,11 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(currentTokenDetails?.tokenMetrics?.volume || 200000000, 0, "USD")}
+                        {formatStats(
+                          currentTokenDetails?.tokenMetrics?.volume || 0,
+                          0,
+                          "USD"
+                        )}
                       </CustomText>
                     </Box>
 
@@ -248,7 +305,11 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(currentTokenDetails?.tokenMetrics?.marketCap || marketTokens?.find((a: MarketTokenModel) => a.currencyId?._id === id)?.marketCap || 0, 0, "USD")}
+                        {formatStats(
+                          currentTokenDetails?.tokenMetrics?.marketCap || 0,
+                          0,
+                          "USD"
+                        )}
                       </CustomText>
                     </Box>
                   </Box>
@@ -312,7 +373,9 @@ export default function AssetInfo() {
                         </Box>
                       )}
 
-                      {(currentTokenDetails.tokenDetails.website || currentTokenDetails.tokenDetails.twitter || currentTokenDetails.tokenDetails.telegram) && (
+                      {(currentTokenDetails.tokenDetails.website ||
+                        currentTokenDetails.tokenDetails.twitter ||
+                        currentTokenDetails.tokenDetails.telegram) && (
                         <Box marginTop="m">
                           <CustomText
                             variant="body"
@@ -328,7 +391,9 @@ export default function AssetInfo() {
                                 text="Website"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.website!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.website!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -342,7 +407,9 @@ export default function AssetInfo() {
                                 text="Twitter"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.twitter!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.twitter!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -356,7 +423,9 @@ export default function AssetInfo() {
                                 text="Telegram"
                                 color="white"
                                 onPress={() => {
-                                  openExternalLink(currentTokenDetails.tokenDetails?.telegram!);
+                                  openExternalLink(
+                                    currentTokenDetails.tokenDetails?.telegram!
+                                  );
                                 }}
                                 width="auto"
                                 borderRadius={20}
@@ -373,77 +442,82 @@ export default function AssetInfo() {
                 )}
 
                 {/* News Section */}
-                {currentTokenDetails?.tokenNews && currentTokenDetails.tokenNews.length > 0 && (
-                  <Box width="100%" paddingHorizontal="m" marginTop="l">
-                    <Box
-                      flexDirection="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                    >
-                      <CustomText
-                        variant="bodySubheader"
-                        fontSize={16}
-                        style={{ fontFamily: "NewScience_Bold" }}
+                {currentTokenDetails?.tokenNews &&
+                  currentTokenDetails.tokenNews.length > 0 && (
+                    <Box width="100%" paddingHorizontal="m" marginTop="l">
+                      <Box
+                        flexDirection="row"
+                        justifyContent="space-between"
+                        alignItems="center"
                       >
-                        Latest News
-                      </CustomText>
-
-                      <CustomButton
-                        text="View More"
-                        color="white"
-                        onPress={() => {
-                          router.push("/dashboard/home/wallet-home/home");
-                        }}
-                        width="25%"
-                        borderRadius={50}
-                        height={35}
-                        bgColor="#6045FF"
-                      />
-                    </Box>
-
-                    <Box marginTop="s">
-                      {currentTokenDetails.tokenNews.slice(0, 3).map((news, index) => (
-                        <Box
-                          key={news.id || index}
-                          width="100%"
-                          bg="secondaryBackgroundColor"
-                          borderRadius={16}
-                          marginBottom="s"
-                          padding="m"
+                        <CustomText
+                          variant="bodySubheader"
+                          fontSize={16}
+                          style={{ fontFamily: "NewScience_Bold" }}
                         >
-                          <CustomText
-                            variant="body"
-                            fontSize={14}
-                            color="bodyTextColor"
-                            marginBottom="s"
-                            numberOfLines={2}
-                          >
-                            {news.title}
-                          </CustomText>
-                          {news.source?.name && (
-                            <CustomText
-                              variant="body"
-                              fontSize={12}
-                              color="disabledTextColor"
+                          Latest News
+                        </CustomText>
+
+                        <CustomButton
+                          text="View More"
+                          color="white"
+                          onPress={() => {
+                            router.push("/dashboard/home/all-news");
+                          }}
+                          width="25%"
+                          borderRadius={50}
+                          height={35}
+                          bgColor="#6045FF"
+                        />
+                      </Box>
+
+                      <Box marginTop="s">
+                        {currentTokenDetails.tokenNews
+                          .slice(0, 3)
+                          .map((news, index) => (
+                            <Box
+                              key={news.id || index}
+                              width="100%"
+                              bg="secondaryBackgroundColor"
+                              borderRadius={16}
+                              marginBottom="s"
+                              padding="m"
                             >
-                              {news.source.name}
-                            </CustomText>
-                          )}
-                          {news.publishedAt && (
-                            <CustomText
-                              variant="body"
-                              fontSize={12}
-                              color="disabledTextColor"
-                              marginTop="s"
-                            >
-                              {new Date(news.publishedAt).toLocaleDateString()}
-                            </CustomText>
-                          )}
-                        </Box>
-                      ))}
+                              <CustomText
+                                variant="body"
+                                fontSize={14}
+                                color="bodyTextColor"
+                                marginBottom="s"
+                                numberOfLines={2}
+                              >
+                                {news.title}
+                              </CustomText>
+                              {news.source?.name && (
+                                <CustomText
+                                  variant="body"
+                                  fontSize={12}
+                                  color="disabledTextColor"
+                                >
+                                  {news.source.name}
+                                </CustomText>
+                              )}
+                              {news.publishedAt && (
+                                <CustomText
+                                  variant="body"
+                                  fontSize={12}
+                                  color="disabledTextColor"
+                                  marginTop="s"
+                                >
+                                  {new Date(
+                                    news.publishedAt
+                                  ).toLocaleDateString()}
+                                </CustomText>
+                              )}
+                            </Box>
+                          ))}
+                      </Box>
                     </Box>
-                  </Box>
-                )}
+                  )}
 
                 <Box paddingHorizontal="m" paddingVertical="m">
                   <CustomButton
@@ -469,6 +543,7 @@ export default function AssetInfo() {
                         onPress={() => {
                           router.push("/dashboard/home/wallet-home/cards");
                         }}
+                        source={images.glass}
                       />
                     </Box>
                   ) : (
@@ -482,7 +557,7 @@ export default function AssetInfo() {
                       onEndReachedThreshold={0.5}
                     />
                   )}
-                </Box>  
+                </Box>
               </Box>
             }
           />
