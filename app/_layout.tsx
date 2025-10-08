@@ -115,18 +115,23 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
-              <QueryClientProvider client={queryClient}>
-                <StatusBar
-                  barStyle={
-                    colorTheme === "dark" ? "light-content" : "dark-content"
-                  }
-                />
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" options={{ title: "Home" }} />
-                </Stack>
-              </QueryClientProvider>
-            </ThemeProvider>
+            <AppInitializer>
+              <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
+                <QueryClientProvider client={queryClient}>
+                  <BottomSheetProvider>
+                    <StatusBar
+                      barStyle={
+                        colorTheme === "dark" ? "light-content" : "dark-content"
+                      }
+                    />
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="index" options={{ title: "Home" }} />
+                    </Stack>
+                    <BottomSheetManager />
+                  </BottomSheetProvider>
+                </QueryClientProvider>
+              </ThemeProvider>
+            </AppInitializer>
           </Provider>
         </GestureHandlerRootView>
       </View>
