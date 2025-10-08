@@ -1,13 +1,14 @@
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { ChevronDown } from "lucide-react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Animated, Pressable, TextInput } from "react-native";
 
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
+import { formatInputAmount, parseFormattedAmount } from "../../utils";
 
 // Create animated components
 const AnimatedBox = Animated.createAnimatedComponent(Box);
@@ -25,6 +26,7 @@ interface TokenInputCardProps {
   animatedStyle?: any;
   isReceive?: boolean;
   usdValue?: string;
+  isCrypto?: boolean;
 }
 
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
@@ -40,8 +42,25 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
   animatedStyle,
   isReceive = false,
   usdValue,
+  isCrypto = false,
 }) => {
   const theme = useTheme<Theme>();
+  const [formattedAmount, setFormattedAmount] = useState(amount);
+
+  // Update formatted amount when prop changes
+  useEffect(() => {
+    setFormattedAmount(amount);
+  }, [amount]);
+
+  // Handle input change with formatting
+  const handleInputChange = (text: string) => {
+    const formatted = formatInputAmount(text, isCrypto);
+    setFormattedAmount(formatted);
+
+    // Parse the formatted value back to number for the parent component
+    const numericValue = parseFormattedAmount(formatted);
+    onAmountChange?.(numericValue.toString());
+  };
 
   return (
     <AnimatedBox
@@ -60,8 +79,8 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
         alignItems="center"
       >
         <TextInput
-          value={amount}
-          onChangeText={onAmountChange}
+          value={formattedAmount}
+          onChangeText={handleInputChange}
           placeholder="0"
           placeholderTextColor={theme.colors.bodyTextColor}
           keyboardType="numeric"
@@ -113,21 +132,6 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           alignItems="center"
           mt="s"
         >
-          <TextInput
-            value={amount}
-            onChangeText={onAmountChange}
-            placeholder="0"
-            placeholderTextColor={theme.colors.bodyTextColor}
-            keyboardType="numeric"
-            style={{
-              fontSize: 16,
-              fontWeight: "500",
-              color: theme.colors.headerTextColor,
-              flex: 1,
-              paddingVertical: 8,
-              paddingHorizontal: 0,
-            }}
-          />
           {showBalance && (
             <Box
               flexDirection="row"

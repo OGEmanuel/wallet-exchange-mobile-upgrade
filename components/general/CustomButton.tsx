@@ -1,17 +1,9 @@
-import {
-  View,
-  Text,
-  DimensionValue,
-  Vibration,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
-import React, { JSX } from "react";
-import * as Haptics from "expo-haptics";
-import CustomText from "./CustomText";
-import Box from "./Box";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import * as Haptics from "expo-haptics";
+import React, { JSX } from "react";
+import { ActivityIndicator, DimensionValue, Pressable } from "react-native";
+import CustomText from "./CustomText";
 
 interface IProps {
   width?: DimensionValue;
@@ -60,13 +52,15 @@ export default function CustomButton({
   onPress,
 }: IProps) {
   const handlePress = () => {
+    console.log("hehehhe");
+
     if (isLoading || disabled) {
       return;
     }
     if (shouldVibrate) {
       // Vibration.vibrate();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onPress();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else {
       onPress();
     }

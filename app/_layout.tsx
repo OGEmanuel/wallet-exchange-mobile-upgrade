@@ -1,3 +1,4 @@
+import { AppInitializer } from "@/components/AppInitializer";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { store } from "@/state";
@@ -117,21 +118,25 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
-              <QueryClientProvider client={queryClient}>
-                <BottomSheetProvider>
-                  <StatusBar
-                    barStyle={
-                      colorTheme === "dark" ? "light-content" : "dark-content"
-                    }
-                  />
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" options={{ title: "Home" }} />
-                  </Stack>
-                  <BottomSheetManager />
-                </BottomSheetProvider>
-              </QueryClientProvider>
-            </ThemeProvider>
+            <AppInitializer>
+              <ThemeProvider
+                theme={colorTheme === "dark" ? darkTheme : darkTheme}
+              >
+                <QueryClientProvider client={queryClient}>
+                  <BottomSheetProvider>
+                    <StatusBar
+                      barStyle={
+                        colorTheme === "dark" ? "light-content" : "dark-content"
+                      }
+                    />
+                    <Stack screenOptions={{ headerShown: false }}>
+                      <Stack.Screen name="index" options={{ title: "Home" }} />
+                    </Stack>
+                    <BottomSheetManager />
+                  </BottomSheetProvider>
+                </QueryClientProvider>
+              </ThemeProvider>
+            </AppInitializer>
           </Provider>
         </GestureHandlerRootView>
       </View>
