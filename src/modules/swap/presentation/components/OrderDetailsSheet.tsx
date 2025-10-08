@@ -153,12 +153,12 @@ const OrderDetailsSheet = forwardRef<
               <CustomText
                 variant="subheader"
                 color={
-                  orderDetails.status === "completed"
+                  orderDetails?.status === "completed"
                     ? "successColor"
                     : "warningColor"
                 }
               >
-                {orderDetails.status.toUpperCase()}
+                {/* {orderDetails?.status?.toUpperCase()} */}
               </CustomText>
             </Box>
 
@@ -174,7 +174,7 @@ const OrderDetailsSheet = forwardRef<
                 You're Sending
               </CustomText>
               <CustomText variant="subheader">
-                {orderDetails.baseAmount} {orderDetails.baseCurrency.symbol}
+                {orderDetails?.baseAmount} {orderDetails?.baseCurrency?.symbol}
               </CustomText>
             </Box>
 
@@ -185,8 +185,8 @@ const OrderDetailsSheet = forwardRef<
                   You Receive:
                 </CustomText>
                 <CustomText>
-                  {orderDetails.targetAmount}{" "}
-                  {orderDetails.targetCurrency.symbol}
+                  {orderDetails?.targetAmount}{" "}
+                  {orderDetails?.targetCurrency?.symbol}
                 </CustomText>
               </Box>
 
@@ -195,19 +195,20 @@ const OrderDetailsSheet = forwardRef<
                   Exchange Rate:
                 </CustomText>
                 <CustomText>
-                  1 {orderDetails.baseCurrency.symbol} ={" "}
-                  {orderDetails.marketRate} {orderDetails.targetCurrency.symbol}
+                  1 {orderDetails?.baseCurrency?.symbol} ={" "}
+                  {orderDetails?.marketRate}{" "}
+                  {orderDetails?.targetCurrency?.symbol}
                 </CustomText>
               </Box>
 
-              {orderDetails.withdrawalAddress && (
+              {orderDetails?.withdrawalAddress && (
                 <Box flexDirection="row" justifyContent="space-between" py="s">
                   <CustomText variant="body" color="bodyTextColor">
                     Sent To:
                   </CustomText>
                   <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                    {orderDetails.withdrawalAddress.slice(0, 10)}...
-                    {orderDetails.withdrawalAddress.slice(-6)}
+                    {orderDetails?.withdrawalAddress?.slice(0, 10)}...
+                    {orderDetails?.withdrawalAddress?.slice(-6)}
                   </CustomText>
                 </Box>
               )}
@@ -217,8 +218,8 @@ const OrderDetailsSheet = forwardRef<
                   Order ID:
                 </CustomText>
                 <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                  {orderDetails.orderId.slice(0, 8)}...
-                  {orderDetails.orderId.slice(-8)}
+                  {orderDetails?.orderId?.slice(0, 8)}...
+                  {orderDetails?.orderId?.slice(-8)}
                 </CustomText>
               </Box>
             </Box>
@@ -257,7 +258,7 @@ const OrderDetailsSheet = forwardRef<
                   <CustomText variant="body" color="bodyTextColor">
                     Order ID:
                   </CustomText>
-                  <CustomText>{orderDetails.orderId}</CustomText>
+                  <CustomText>{orderDetails?.orderId}</CustomText>
                 </Box>
 
                 <Box flexDirection="row" justifyContent="space-between" py="s">
@@ -266,12 +267,12 @@ const OrderDetailsSheet = forwardRef<
                   </CustomText>
                   <CustomText
                     color={
-                      orderDetails.status === "completed"
+                      orderDetails?.status === "completed"
                         ? "successColor"
                         : "warningColor"
                     }
                   >
-                    {orderDetails.status}
+                    {orderDetails?.status}
                   </CustomText>
                 </Box>
 
@@ -280,7 +281,8 @@ const OrderDetailsSheet = forwardRef<
                     Base Amount:
                   </CustomText>
                   <CustomText>
-                    {orderDetails.baseAmount} {orderDetails.baseCurrency.symbol}
+                    {orderDetails?.baseAmount}{" "}
+                    {orderDetails?.baseCurrency?.symbol}
                   </CustomText>
                 </Box>
 
@@ -289,8 +291,8 @@ const OrderDetailsSheet = forwardRef<
                     Target Amount:
                   </CustomText>
                   <CustomText>
-                    {orderDetails.targetAmount}{" "}
-                    {orderDetails.targetCurrency.symbol}
+                    {orderDetails?.targetAmount}{" "}
+                    {orderDetails?.targetCurrency?.symbol}
                   </CustomText>
                 </Box>
 
@@ -298,7 +300,7 @@ const OrderDetailsSheet = forwardRef<
                   <CustomText variant="body" color="bodyTextColor">
                     Market Rate:
                   </CustomText>
-                  <CustomText>{orderDetails.marketRate}</CustomText>
+                  <CustomText>{orderDetails?.marketRate}</CustomText>
                 </Box>
 
                 <Box flexDirection="row" justifyContent="space-between" py="s">
@@ -306,7 +308,7 @@ const OrderDetailsSheet = forwardRef<
                     Created At:
                   </CustomText>
                   <CustomText>
-                    {new Date(orderDetails.createdAt).toLocaleString()}
+                    {new Date(orderDetails?.createdAt).toLocaleString()}
                   </CustomText>
                 </Box>
 
@@ -315,11 +317,11 @@ const OrderDetailsSheet = forwardRef<
                     Updated At:
                   </CustomText>
                   <CustomText>
-                    {new Date(orderDetails.updatedAt).toLocaleString()}
+                    {new Date(orderDetails?.updatedAt).toLocaleString()}
                   </CustomText>
                 </Box>
 
-                {orderDetails.withdrawalAddress && (
+                {orderDetails?.withdrawalAddress && (
                   <Box
                     flexDirection="row"
                     justifyContent="space-between"
@@ -329,7 +331,7 @@ const OrderDetailsSheet = forwardRef<
                       Withdrawal Address:
                     </CustomText>
                     <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                      {orderDetails.withdrawalAddress}
+                      {orderDetails?.withdrawalAddress}
                     </CustomText>
                   </Box>
                 )}
