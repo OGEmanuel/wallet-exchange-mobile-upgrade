@@ -12,6 +12,15 @@ const glass = require("./glass.png");
 const down = require("./down.png");
 const clouds = require("./clouds.gif");
 const zapLogo = require("./zapIcon.png");
+<<<<<<< HEAD
+=======
+const linked = require("./linked.png");
+const firstBank = require("./firstBank.png");
+const arrowsDown = require("./arrowsdown.png");
+const nigeria = require("./naija.png");
+const success = require("./success.png");
+const down = require("./down.png");
+>>>>>>> 8cd240c (feat: add down icon and update TokenInputCard for improved token selection UI)
 
 export default {
   accounts,
@@ -27,4 +36,12 @@ export default {
   zapLogoWithNameDark,
   zapLogoWithNameLight,
   zapLogo,
+<<<<<<< HEAD
+=======
+  linked,
+  firstBank,
+  arrowsDown,
+  nigeria,
+  success,
+>>>>>>> 8cd240c (feat: add down icon and update TokenInputCard for improved token selection UI)
 };
