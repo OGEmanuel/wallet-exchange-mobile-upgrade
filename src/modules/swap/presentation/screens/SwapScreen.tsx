@@ -269,7 +269,7 @@ const Swap = () => {
           isCrypto={baseCurrency?.currencyId?.isCrypto}
         />
 
-        <Box position="relative" mb="m">
+        <Box position="relative" style={{ marginTop: 5 }}>
           <TokenInputCard
             amount={handleTargetAmountFormat()}
             tokenSymbol={targetCurrency?.currencyId?.symbol || "Select"}
