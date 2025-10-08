@@ -9,7 +9,6 @@ import BottomSheet, {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
 import React, {
   forwardRef,
   useEffect,
@@ -19,7 +18,6 @@ import React, {
 } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
-import DepositDetails from "./DepositDetails";
 import OverviewDetails from "./OverviewDetails";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -124,25 +122,84 @@ const OrderDetailsSheet = forwardRef<
               bg="secondaryBackgroundColor"
               borderRadius={8}
               p="m"
-              style={{ paddingTop: 16 }}
+              mb="m"
+              alignItems="center"
+            >
+              <CustomText variant="body" color="bodyTextColor" mb="s">
+                Order Status
+              </CustomText>
+              <CustomText
+                variant="subheader"
+                color={
+                  orderDetails?.status === "completed"
+                    ? "successColor"
+                    : "warningColor"
+                }
+              >
+                {/* {orderDetails?.status?.toUpperCase()} */}
+              </CustomText>
+            </Box>
+
+            {/* You're Sending */}
+            <Box
+              bg="secondaryBackgroundColor"
+              borderRadius={8}
+              p="m"
+              mb="m"
               alignItems="center"
             >
               <CustomText variant="body" color="bodyTextColor" mb="s">
                 You're Sending
               </CustomText>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Image
-                  style={{ width: 20, height: 20, borderRadius: 10 }}
-                  source={orderDetails?.buyCurrency?.currencyId?.logo || ""}
-                />
-                <CustomText variant="subheader" style={{ fontSize: 22 }}>
-                  {orderDetails?.buyCurrency?.currencyId?.symbol === "₦" &&
-                    orderDetails?.buyCurrency?.currencyId?.symbol}{" "}
-                  {Number(orderDetails?.buyAmount || "0")}
-                  {orderDetails?.buyCurrency?.currencyId?.symbol !== "₦" &&
-                    orderDetails?.buyCurrency?.currencyId?.symbol}
+              <CustomText variant="subheader">
+                {orderDetails?.baseAmount} {orderDetails?.baseCurrency?.symbol}
+              </CustomText>
+            </Box>
+
+            {/* You Receive */}
+            <Box bg="secondaryBackgroundColor" borderRadius={8} p="m" mb="m">
+              <Box flexDirection="row" justifyContent="space-between" py="s">
+                <CustomText variant="body" color="bodyTextColor">
+                  You Receive:
                 </CustomText>
-              </View>
+                <CustomText>
+                  {orderDetails?.targetAmount}{" "}
+                  {orderDetails?.targetCurrency?.symbol}
+                </CustomText>
+              </Box>
+
+              <Box flexDirection="row" justifyContent="space-between" py="s">
+                <CustomText variant="body" color="bodyTextColor">
+                  Exchange Rate:
+                </CustomText>
+                <CustomText>
+                  1 {orderDetails?.baseCurrency?.symbol} ={" "}
+                  {orderDetails?.marketRate}{" "}
+                  {orderDetails?.targetCurrency?.symbol}
+                </CustomText>
+              </Box>
+
+              {orderDetails?.withdrawalAddress && (
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Sent To:
+                  </CustomText>
+                  <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
+                    {orderDetails?.withdrawalAddress?.slice(0, 10)}...
+                    {orderDetails?.withdrawalAddress?.slice(-6)}
+                  </CustomText>
+                </Box>
+              )}
+
+              <Box flexDirection="row" justifyContent="space-between" py="s">
+                <CustomText variant="body" color="bodyTextColor">
+                  Order ID:
+                </CustomText>
+                <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
+                  {orderDetails?.orderId?.slice(0, 8)}...
+                  {orderDetails?.orderId?.slice(-8)}
+                </CustomText>
+              </Box>
             </Box>
             <OverviewDetails orderDetails={orderDetails} />
 
@@ -173,7 +230,103 @@ const OrderDetailsSheet = forwardRef<
             />
           </Box>
         ) : (
-          <DepositDetails orderDetails={orderDetails} />
+          // Details Tab
+          <Box flex={1} px="m">
+            <Box alignItems="center" mt="m">
+              <CustomText variant="subheader" mb="m">
+                Order Information
+              </CustomText>
+
+              <Box
+                width="100%"
+                bg="secondaryBackgroundColor"
+                borderRadius={8}
+                p="m"
+              >
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Order ID:
+                  </CustomText>
+                  <CustomText>{orderDetails?.orderId}</CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Status:
+                  </CustomText>
+                  <CustomText
+                    color={
+                      orderDetails?.status === "completed"
+                        ? "successColor"
+                        : "warningColor"
+                    }
+                  >
+                    {orderDetails?.status}
+                  </CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Base Amount:
+                  </CustomText>
+                  <CustomText>
+                    {orderDetails?.baseAmount}{" "}
+                    {orderDetails?.baseCurrency?.symbol}
+                  </CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Target Amount:
+                  </CustomText>
+                  <CustomText>
+                    {orderDetails?.targetAmount}{" "}
+                    {orderDetails?.targetCurrency?.symbol}
+                  </CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Market Rate:
+                  </CustomText>
+                  <CustomText>{orderDetails?.marketRate}</CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Created At:
+                  </CustomText>
+                  <CustomText>
+                    {new Date(orderDetails?.createdAt).toLocaleString()}
+                  </CustomText>
+                </Box>
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="bodyTextColor">
+                    Updated At:
+                  </CustomText>
+                  <CustomText>
+                    {new Date(orderDetails?.updatedAt).toLocaleString()}
+                  </CustomText>
+                </Box>
+
+                {orderDetails?.withdrawalAddress && (
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    py="s"
+                  >
+                    <CustomText variant="body" color="bodyTextColor">
+                      Withdrawal Address:
+                    </CustomText>
+                    <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
+                      {orderDetails?.withdrawalAddress}
+                    </CustomText>
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </Box>
         )}
       </BottomSheetView>
     </BottomSheet>
