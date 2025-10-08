@@ -24,10 +24,7 @@ const COLOR_PALLET = {
   warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
-  placeholderTextColor: "#A7A7AF",
-  usernamePlaceholderTextColor: "#60617D",
-  secondaryColor: "#C7E64D",
-  modalBackgroundColor: "#1F232D",
+  pendingColor: "#EDB118",
 };
 
 const DARK_COLOR_PALLET = {
@@ -54,10 +51,7 @@ const DARK_COLOR_PALLET = {
   warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
-  placeholderTextColor: "#A7A7AF",
-  usernamePlaceholderTextColor: "#60617D",
-  secondaryColor: "#C7E64D",
-  modalBackgroundColor: "#1F232D",
+  pendingColor: "#EDB118",
 };
 
 const theme = createTheme({

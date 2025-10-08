@@ -15,6 +15,9 @@ const networkFeeRef = createRef<BottomSheet>();
 const confirmSendRef = createRef<BottomSheet>();
 const saveAddressRef = createRef<BottomSheet>();
 const recieveTokenRef = createRef<BottomSheet>();
+const editAvatarRef = createRef<BottomSheet>();
+const editUsernameRef = createRef<BottomSheet>();
+const editFirstnameRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -37,6 +40,9 @@ const useBottomSheetRefs = () => {
     confirmSendRef,
     saveAddressRef,
     recieveTokenRef,
+    editAvatarRef,
+    editUsernameRef,
+    editFirstnameRef,
     render,
   };
 };
