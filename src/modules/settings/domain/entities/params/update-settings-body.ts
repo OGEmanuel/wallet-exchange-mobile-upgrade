@@ -7,4 +7,5 @@ export interface UpdateSettingsBody {
   watchlist?: boolean;
   twoFA?: boolean;
   watchlistTreshHold?: number;
+  userId: string;
 }

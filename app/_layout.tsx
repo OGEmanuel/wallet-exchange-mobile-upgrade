@@ -119,9 +119,7 @@ export default function RootLayout() {
         <GestureHandlerRootView>
           <Provider store={store}>
             <AppInitializer>
-              <ThemeProvider
-                theme={colorTheme === "dark" ? darkTheme : darkTheme}
-              >
+              <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
                 <QueryClientProvider client={queryClient}>
                   <BottomSheetProvider>
                     <StatusBar
