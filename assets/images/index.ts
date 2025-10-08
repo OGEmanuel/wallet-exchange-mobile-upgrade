@@ -9,11 +9,13 @@ const checkTerms = require("./checkTerms.png");
 const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
+const down = require("./down.png");
 
 export {
   accounts,
   checkTerms,
   docGuide,
+  down,
   glass,
   idCard,
   lemonBG,
