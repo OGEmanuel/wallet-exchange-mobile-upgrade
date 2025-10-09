@@ -31,6 +31,7 @@ const COLOR_PALLET = {
   surfaceContainer: "#1F232D",
   cardBorder: "#39393F",
   pendingColor: "#EDB118",
+  tabBarLemonColor: "#232B0F",
 };
 
 const DARK_COLOR_PALLET = {
@@ -64,6 +65,7 @@ const DARK_COLOR_PALLET = {
   surfaceContainer: "#1F232D",
   cardBorder: "#39393F",
   pendingColor: "#EDB118",
+  surfaceContainer: "#1F232D",
 };
 
 const theme = createTheme({

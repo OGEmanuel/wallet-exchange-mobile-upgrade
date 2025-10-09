@@ -19,7 +19,13 @@ const DetailRow = ({
   const theme = useTheme<Theme>();
   return (
     <View style={[styles.row, containerStyle]}>
-      <Text style={[styles.label, { color: "#A7A7AF" }, labelStyle]}>
+      <Text
+        style={[
+          styles.label,
+          { color: theme.colors.bodyTextColor },
+          labelStyle,
+        ]}
+      >
         {label}
       </Text>
       <View>{children}</View>
