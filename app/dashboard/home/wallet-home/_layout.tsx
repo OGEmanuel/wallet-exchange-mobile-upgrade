@@ -12,6 +12,8 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import React from "react";
+import { Platform } from "react-native";
+const OS = Platform.OS;
 
 const TabBarIcon = ({
   focused,
@@ -49,7 +51,7 @@ const _layout = () => {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: theme.colors.mainBackgroundColor,
-          height: 90,
+          height: OS === "ios" ? 90 : 70,
           paddingTop: 20,
         },
       }}

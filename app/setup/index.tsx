@@ -21,12 +21,13 @@ const SetUp = () => {
     React.useState(false);
   const [walletName, setWalletName] = React.useState("");
   const theme = useTheme<Theme>();
+  const OS = Platform.OS;
   return (
     <Box
       flex={1}
       backgroundColor="mainBackgroundColor"
       paddingHorizontal="m"
-      paddingTop="2xl"
+      paddingTop={OS === "ios" ? "2xl" : "m"}
     >
       <OnboardingInformationModal
         type="Wallet"
@@ -53,7 +54,7 @@ const SetUp = () => {
           />
         }
         paddingHorizontal={0}
-        height={70}
+        height={OS === "ios" ? 70 : 50}
       />
 
       <Box flex={1}>
@@ -77,6 +78,7 @@ const SetUp = () => {
           onChange={(e) => setWalletName(e as string)}
           value={walletName}
           placeholder="Wallet name"
+          noBorder
           placeholderTextColor={theme.colors.bodyTextColor}
         />
         <Box height={50} />

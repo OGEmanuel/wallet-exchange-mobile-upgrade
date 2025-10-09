@@ -23,7 +23,7 @@ interface Props {
 export default function CustomInputWithoutForm(
   props: Props & Omit<TextInputProps, "onChange">
 ) {
-  const { label, value, onChange, style, ...rest } = props;
+  const { label, value, onChange, style, noBorder = true, ...rest } = props;
   const [focused, setFocused] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(() => {
     if (props.isPassword) {
@@ -44,6 +44,7 @@ export default function CustomInputWithoutForm(
       <Box
         style={[
           {
+            borderWidth: !noBorder ? 1.5 : 0,
             borderRadius: 8,
             borderColor: focused
               ? theme.colors.primaryColor

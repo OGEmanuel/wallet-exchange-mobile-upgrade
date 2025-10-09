@@ -38,7 +38,8 @@ export class HttpMethods {
       data: options?.data || null,
       params: params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      // Ensure timeout is a number; default to 0 (no timeout) to avoid RN HostFunction errors
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -73,7 +74,7 @@ export class HttpMethods {
       data: data || null,
       params: options?.params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -108,7 +109,7 @@ export class HttpMethods {
       data: data || null,
       params: options?.params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -143,7 +144,7 @@ export class HttpMethods {
       data: data || null,
       params: options?.params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -178,7 +179,7 @@ export class HttpMethods {
       data: options?.data || null,
       params: params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -211,7 +212,7 @@ export class HttpMethods {
       data: options?.data || null,
       params: options?.params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -244,7 +245,7 @@ export class HttpMethods {
       data: options?.data || null,
       params: options?.params || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: { 
         showErrorToast: null,
@@ -282,7 +283,7 @@ export class HttpMethods {
         'Content-Type': 'multipart/form-data',
         ...(options?.headers || {}),
       },
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: options?.responseType || null,
       metadata: options?.metadata || null,
     }, metadata);
@@ -303,9 +304,9 @@ export class HttpMethods {
     return this.get<Blob>(url, undefined, {
       data: options?.data || null,
       headers: options?.headers || null,
-      timeout: options?.timeout || null,
+      timeout: typeof options?.timeout === 'number' ? options.timeout : 0,
       responseType: 'blob',
       metadata: options?.metadata || null,
     }, metadata);
   }
-} 
+}

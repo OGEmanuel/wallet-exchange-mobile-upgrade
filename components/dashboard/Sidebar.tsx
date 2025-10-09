@@ -1,5 +1,6 @@
 import {
   ThemedBookIcon,
+  ThemedChartIcon,
   ThemedFaceIDIcon,
   ThemedGiftFill3Icon,
   ThemedHeatIcon,
@@ -45,28 +46,21 @@ const Sidebar = () => {
   const theme = useTheme<Theme>();
   const { changePinRef } = useBottomSheetRefs();
   const [hasHardware, setHasHardware] = useState(false);
+  const OS = Platform.OS;
 
   useEffect(() => {
     (async () => {
       const has = await LocalAuthentication.hasHardwareAsync();
       if (has) {
         // ANDROID CHECK
-        if (
-          Platform.OS === "android" &&
-          has &&
-          LocalAuthentication.AuthenticationType.FINGERPRINT
-        ) {
+        if (Platform.OS === "android" && has) {
           setHasHardware(true);
         } else {
           setHasHardware(false);
         }
 
         // IOS CHECK
-        if (
-          Platform.OS === "ios" &&
-          has &&
-          LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
-        ) {
+        if (Platform.OS === "ios" && has) {
           setHasHardware(true);
         } else {
           setHasHardware(false);
@@ -128,6 +122,19 @@ const Sidebar = () => {
       ),
       title: "Address book",
       link: "/dashboard/home/address-book",
+      isActive: false,
+    },
+    {
+      icon: (
+        <ThemedChartIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Markets",
+      link: "/dashboard/home/market",
       isActive: false,
     },
     {
@@ -253,7 +260,7 @@ const Sidebar = () => {
         end={{ x: 0, y: 1 }}
         style={{
           width: "100%",
-          height: 150,
+          height: OS === "ios" ? 150 : 100,
           paddingHorizontal: 20,
           paddingBottom: 10,
           justifyContent: "flex-end",

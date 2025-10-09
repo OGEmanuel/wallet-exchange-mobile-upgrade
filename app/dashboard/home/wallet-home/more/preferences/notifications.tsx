@@ -226,6 +226,7 @@ const Notifications = () => {
             height={60}
             paddingHorizontal="m"
             justifyContent="center"
+            mb="m"
           >
             <CustomButton
               width={"100%"}
