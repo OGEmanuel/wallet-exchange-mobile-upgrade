@@ -1,19 +1,19 @@
-import React, { useState } from "react";
-import Box from "@/components/general/Box";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import CustomText from "@/components/general/CustomText";
+import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import ImportWalletModal from "@/components/Modals/ImportWalletModal";
+import TermsAndConditions from "@/components/Modals/TermsAndConditions";
+import OnboardingInformationModal from "@/components/Modals/onboardingInformationModal";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
+import AppBar from "@/components/general/AppBar";
+import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+import { Theme } from "@/theme";
+import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
+import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { ChevronLeft, CircleQuestionMark } from "lucide-react-native";
-import ImportWalletModal from "@/components/Modals/ImportWalletModal";
-import WhatIsSeedPhraseModal from "@/components/Modals/WhatIsSeedPhraseModal";
-import OnboardingInformationModal from "@/components/Modals/onboardingInformationModal";
-import AppBar from "@/components/general/AppBar";
-import AppBottomSheet from "@/components/Modals/AppBottomSheet";
-import TermsAndConditions from "@/components/Modals/TermsAndConditions";
-import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
+import React, { useState } from "react";
+import { Platform } from "react-native";
 
 const SetUp = () => {
   const [isTermsAndConditonsOpen, setIsTermsAndConditonsOpen] = useState(false);
@@ -22,12 +22,13 @@ const SetUp = () => {
     React.useState(false);
   const [walletName, setWalletName] = React.useState("");
   const theme = useTheme<Theme>();
+  const OS = Platform.OS;
   return (
     <Box
       flex={1}
       backgroundColor="mainBackgroundColor"
       paddingHorizontal="m"
-      paddingTop="2xl"
+      paddingTop={OS === "ios" ? "2xl" : "m"}
     >
       <OnboardingInformationModal
         type="Wallet"
@@ -54,7 +55,7 @@ const SetUp = () => {
           />
         }
         paddingHorizontal={0}
-        height={70}
+        height={OS === "ios" ? 70 : 50}
       />
 
       <Box flex={1}>
@@ -69,6 +70,7 @@ const SetUp = () => {
           onChange={(e) => setWalletName(e as string)}
           value={walletName}
           placeholder="Wallet name"
+          noBorder
           placeholderTextColor={theme.colors.bodyTextColor}
         />
         <Box height={50} />
@@ -93,7 +95,7 @@ const SetUp = () => {
           borderRadius={56}
           text="Import existing wallet"
           onPress={() => setShowImportWalletModal(true)}
-          borderWidth={2}
+          borderWidth={1}
           bgColor="transparent"
           borderColor={theme.colors.borderColor}
           color={theme.colors.bodyTextColor}

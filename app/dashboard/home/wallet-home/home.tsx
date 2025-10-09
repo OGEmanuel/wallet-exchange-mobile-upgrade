@@ -25,6 +25,7 @@ import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
 import AssetsSection from "@/components/dashboard/AssetsSection";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { ScrollView } from "react-native-gesture-handler";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,147 +38,149 @@ const Home = () => {
 
   return (
     <PageWrapper>
-      <LinearGradient
-        colors={["#27BA0F00", "#6045FF33"]}
-        style={{
-          flex: 0.6,
-          borderBottomLeftRadius: 20,
-          borderBottomRightRadius: 20,
-          overflow: "hidden",
-        }}
-      >
-        <AppBar
-          backgroundColor="transparent"
-          height={OS === "android" ? 150 : 50}
-          leading={
-            <Pressable>
-              <ThemedSettingsOutlineIcon
+      <ScrollView>
+        <LinearGradient
+          colors={["#27BA0F00", "#6045FF33"]}
+          style={{
+            flex: 0.6,
+            borderBottomLeftRadius: 20,
+            borderBottomRightRadius: 20,
+            overflow: "hidden",
+          }}
+        >
+          <AppBar
+            backgroundColor="transparent"
+            height={OS === "android" ? 50 : 50}
+            leading={
+              <Pressable>
+                <ThemedSettingsOutlineIcon
+                  darkModeColor={theme.colors.white}
+                  lightModeColor={theme.colors.black}
+                />
+              </Pressable>
+            }
+            trailing={
+              <ThemedScanIcon
                 darkModeColor={theme.colors.white}
                 lightModeColor={theme.colors.black}
               />
-            </Pressable>
-          }
-          trailing={
-            <ThemedScanIcon
-              darkModeColor={theme.colors.white}
-              lightModeColor={theme.colors.black}
-            />
-          }
-          title={
-            <Pressable
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "auto",
-              }}
-            >
-              <Box
-                width={20}
-                height={20}
-                borderRadius={2}
-                bg="secondaryBackgroundColor"
+            }
+            title={
+              <Pressable
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "auto",
+                }}
               >
-                <Image
-                  source={require("@/assets/images/rect2.png")}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: 2,
-                  }}
+                <Box
+                  width={20}
+                  height={20}
+                  borderRadius={2}
+                  bg="secondaryBackgroundColor"
+                >
+                  <Image
+                    source={require("@/assets/images/rect2.png")}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      borderRadius: 2,
+                    }}
+                  />
+                </Box>
+                <CustomText variant="body" fontSize={14} marginHorizontal="m">
+                  Daggerman
+                </CustomText>
+                <ChevronDown size={20} color={theme.colors.bodyTextColor} />
+              </Pressable>
+            }
+          />
+          <Box height={30} />
+          <BalanceCard />
+          <Box
+            width={"100%"}
+            height={100}
+            flexDirection="row"
+            justifyContent="space-between"
+            paddingHorizontal="2xl"
+            mt="m"
+          >
+            {/* <ReceiveTokenActionItem /> */}
+            <DashboardActionItem
+              icon={
+                <ThemedQrCodeIcon
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
                 />
-              </Box>
-              <CustomText variant="body" fontSize={14} marginHorizontal="m">
-                Daggerman
-              </CustomText>
-              <ChevronDown size={20} color={theme.colors.bodyTextColor} />
-            </Pressable>
-          }
-        />
-        <Box height={30} />
-        <BalanceCard />
-        <Box
-          width={"100%"}
-          height={100}
-          flexDirection="row"
-          justifyContent="space-between"
-          paddingHorizontal="2xl"
-          mt="m"
-        >
-          {/* <ReceiveTokenActionItem /> */}
-          <DashboardActionItem
-            icon={
-              <ThemedQrCodeIcon
-                darkModeColor={theme.colors.bodyTextColor}
-                lightModeColor={theme.colors.bodyTextColor}
-              />
-            }
-            title="Recieve"
-            action={() => recieveTokenRef.current?.snapToIndex(1)}
-          />
-          <Box width={20} />
-          <DashboardActionItem
-            icon={
-              <ThemedSendIcon
-                darkModeColor={theme.colors.bodyTextColor}
-                lightModeColor={theme.colors.bodyTextColor}
-              />
-            }
-            title="Send"
-            action={() => bottomsheetRef.current?.snapToIndex(0)}
-          />
-          <Box width={20} />
-          <DashboardActionItem
-            icon={
-              <Bank
-                color={theme.colors.bodyTextColor}
-                size={25}
-                variant="Bold"
-              />
-            }
-            title="Trade"
-            action={() => {}}
-          />
-          <Box width={20} />
-          <DashboardActionItem
-            icon={
-              <ThemedSwap1Icon
-                darkModeColor={theme.colors.bodyTextColor}
-                lightModeColor={theme.colors.bodyTextColor}
-              />
-            }
-            title="Swap"
-            action={() => {}}
-          />
+              }
+              title="Recieve"
+              action={() => recieveTokenRef.current?.snapToIndex(1)}
+            />
+            <Box width={20} />
+            <DashboardActionItem
+              icon={
+                <ThemedSendIcon
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
+                />
+              }
+              title="Send"
+              action={() => bottomsheetRef.current?.snapToIndex(0)}
+            />
+            <Box width={20} />
+            <DashboardActionItem
+              icon={
+                <Bank
+                  color={theme.colors.bodyTextColor}
+                  size={25}
+                  variant="Bold"
+                />
+              }
+              title="Trade"
+              action={() => {}}
+            />
+            <Box width={20} />
+            <DashboardActionItem
+              icon={
+                <ThemedSwap1Icon
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
+                />
+              }
+              title="Swap"
+              action={() => {}}
+            />
+          </Box>
+
+          <Box
+            width="100%"
+            alignItems="center"
+            overflow="hidden"
+            justifyContent="flex-end"
+            flex={1}
+          >
+            <Image
+              source={require("@/assets/images/cardds.png")}
+              style={{
+                width: "80%",
+                height: 80,
+              }}
+            />
+          </Box>
+        </LinearGradient>
+        <Box flex={0.4} paddingHorizontal="m">
+          <AssetsSection />
         </Box>
 
-        <Box
-          width="100%"
-          alignItems="center"
-          overflow="hidden"
-          justifyContent="flex-end"
-          flex={1}
-        >
-          <Image
-            source={require("@/assets/images/cardds.png")}
-            style={{
-              width: "80%",
-              height: 80,
-            }}
-          />
-        </Box>
-      </LinearGradient>
-      <Box flex={0.4} paddingHorizontal="m">
-        <AssetsSection />
-      </Box>
-
-      <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
-        <Box>
-          <CustomText>Recieve Tokens</CustomText>
-        </Box>
-      </AppBottomSheet>
-      <SelectTokenBottomSheet ref={bottomsheetRef} />
-      <SelectUserTokens ref={recieveTokenRef} />
+        <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
+          <Box>
+            <CustomText>Recieve Tokens</CustomText>
+          </Box>
+        </AppBottomSheet>
+        <SelectTokenBottomSheet ref={bottomsheetRef} />
+        <SelectUserTokens ref={recieveTokenRef} />
+      </ScrollView>
     </PageWrapper>
   );
 };

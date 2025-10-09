@@ -1,5 +1,5 @@
 // utils/toast.utils.ts
-import { Alert, Platform, ToastAndroid } from 'react-native';
+import { Alert, Platform, ToastAndroid, type AlertButton } from 'react-native';
 
 /**
  * Toast Types
@@ -72,13 +72,26 @@ export const showToast = (message: string, options: ToastOptions = {}): void => 
   const accessibilityHint = accessibility?.hint || (action ? `Double tap to ${action.text.toLowerCase()}` : 'Double tap to dismiss');
 
   if (Platform.OS === 'android') {
-    const androidDuration = duration === ToastDuration.LONG 
-      ? ToastAndroid.LONG 
-      : duration === ToastDuration.CUSTOM && customDuration
-        ? customDuration
-        : ToastAndroid.SHORT;
+    // ToastAndroid only supports SHORT or LONG. Passing numbers causes HostFunction errors.
+    let androidDuration = ToastAndroid.SHORT;
+    if (duration === ToastDuration.LONG) {
+      androidDuration = ToastAndroid.LONG;
+    } else if (duration === ToastDuration.CUSTOM) {
+      console.warn('[Toast] Android CUSTOM duration is not supported; using LONG instead.');
+      androidDuration = ToastAndroid.LONG;
+    }
 
-    ToastAndroid.show(displayMessage, androidDuration);
+    try {
+      // Ensure message is a string to satisfy native module expectations
+      ToastAndroid.show(String(displayMessage), androidDuration);
+    } catch (err) {
+      console.error('[ToastAndroid] Exception in HostFunction while showing toast', {
+        error: err,
+        displayMessage,
+        androidDuration,
+        typeofMessage: typeof displayMessage,
+      });
+    }
   } else {
     // iOS implementation with Alert
     const alertTitle = getAlertTitle(type, title);
@@ -153,12 +166,14 @@ const getAlertTitle = (type: ToastType, customTitle?: string): string => {
  */
 const getAlertButtons = (action?: ToastOptions['action']) => {
   if (!action) {
-    return [{ text: 'OK', style: 'default' }];
+    const buttons: AlertButton[] = [{ text: 'OK', style: 'default' }];
+    return buttons;
   }
   
-  return [
+  const buttons: AlertButton[] = [
     { text: 'Cancel', style: 'cancel' },
     { text: action.text, style: 'default', onPress: action.onPress }
   ];
+  return buttons;
 };
 

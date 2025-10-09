@@ -1,8 +1,7 @@
-import { View, Text } from "react-native";
+import { ArrowUp3 } from "iconsax-react-nativejs";
 import React from "react";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import { ArrowUp3 } from "iconsax-react-nativejs";
 
 const BalanceCard = () => {
   return (
