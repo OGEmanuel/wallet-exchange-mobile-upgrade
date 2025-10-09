@@ -255,21 +255,21 @@ const Swap = () => {
             </CustomText>
           </Box>
         )}
-
-        <TokenInputCard
-          amount={handleBaseAmountFormat()}
-          tokenSymbol={baseCurrency?.currencyId?.symbol || "Select"}
-          tokenImage={baseCurrency?.image || baseCurrency?.currencyId?.logo}
-          showBalance
-          showMaxButton
-          onTokenSelect={() => openTokenSelector("base")}
-          onAmountChange={handleBaseAmountChange}
-          animatedStyle={sellContainerStyle}
-          isReceive={false}
-          isCrypto={baseCurrency?.currencyId?.isCrypto}
-        />
-
-        <Box position="relative" style={{ marginTop: 5 }}>
+        <Box style={{ marginTop: 16 }}>
+          <TokenInputCard
+            amount={handleBaseAmountFormat()}
+            tokenSymbol={baseCurrency?.currencyId?.symbol || "Select"}
+            tokenImage={baseCurrency?.image || baseCurrency?.currencyId?.logo}
+            showBalance
+            showMaxButton
+            onTokenSelect={() => openTokenSelector("base")}
+            onAmountChange={handleBaseAmountChange}
+            animatedStyle={sellContainerStyle}
+            isReceive={false}
+            isCrypto={baseCurrency?.currencyId?.isCrypto}
+          />
+        </Box>
+        <Box position="relative" style={{ marginTop: 5, marginBottom: 16 }}>
           <TokenInputCard
             amount={handleTargetAmountFormat()}
             tokenSymbol={targetCurrency?.currencyId?.symbol || "Select"}
