@@ -103,42 +103,49 @@ const Notifications = () => {
 
   React.useEffect(() => {
     if (settings) {
+      // Sync local state with store settings when available
+      setSettingsState(settings as SettingsModel);
       setShow(true);
-    } else {
-      if (user?._id) {
-        setLoading(true);
-        (async function () {
+      return;
+    }
+    if (user?._id) {
+      setLoading(true);
+      (async () => {
+        try {
           const response = await getSettings({
             params: { user: user as UserModel },
           });
           const { _id, __v, ...rest } = response.data as SettingsModel;
           setSettingsState({ ...rest } as SettingsModel);
-          if (response) {
-            setShow(true);
-            setLoading(false);
-          }
-        })();
-      }
+          setShow(true);
+        } catch (e) {
+          // Optionally handle error state here
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   }, [settings, user?._id]);
 
   const handleSave = async () => {
-    console.log(user);
     setIsSaving(true);
     try {
+      const payload: SettingsModel = {
+        ...(settings ?? settingsState),
+        userId: user?._id as string,
+      } as SettingsModel;
+
       const response = await updateSettings({
         params: { user: user as UserModel },
-        body: {
-          ...settingsState,
-          userId: user?._id as string,
-        },
+        body: payload,
       });
-      console.log("RESPONSE DATA", response.data);
+
       const { _id, __v, ...rest } = response.data as SettingsModel;
-      setSettingsState({ ...settingsState, ...rest } as SettingsModel);
+      setSettingsState((prev) => ({ ...prev, ...rest } as SettingsModel));
       dispatch(setSettings({ ...rest } as SettingsModel));
-      setIsSaving(false);
     } catch (error) {
+      // Optionally handle error (e.g., show toast)
+    } finally {
       setIsSaving(false);
     }
   };
@@ -161,36 +168,39 @@ const Notifications = () => {
             <NotificationCard
               title="Watchlist Settings"
               description="Get notified daily about price changes happening in the market."
-              isActive={settings?.watchlist as boolean}
+              isActive={Boolean((settings?.watchlist ?? settingsState.watchlist) ?? false)}
               onPress={() => {
+                const current = (settings?.watchlist ?? settingsState.watchlist) ?? false;
                 if (settings) {
-                  dispatch(
-                    setSettings({ ...settings, watchlist: !settings.watchlist })
-                  );
+                  dispatch(setSettings({ ...settings, watchlist: !current }));
+                } else {
+                  setSettingsState((prev) => ({ ...prev, watchlist: !current } as SettingsModel));
                 }
               }}
               isWaitlist={true}
-              threshold={settings?.watchlistTreshHold.toString()}
-              onThresholdChange={(val) =>
-                dispatch(
-                  setSettings({ ...settings!, watchlistTreshHold: Number(val) })
-                )
-              }
+              threshold={String((settings?.watchlistTreshHold ?? settingsState.watchlistTreshHold ?? 0))}
+              onThresholdChange={(val) => {
+                const num = Number(val);
+                const safe = Number.isFinite(num) ? num : 0;
+                if (settings) {
+                  dispatch(setSettings({ ...settings, watchlistTreshHold: safe }));
+                } else {
+                  setSettingsState((prev) => ({ ...prev, watchlistTreshHold: safe } as SettingsModel));
+                }
+              }}
             />
 
             <NotificationCard
               title="Price Alerts"
               description="Enable price alerts to stay informed when the price reaches your desired level."
-              isActive={settings?.priceAlert as boolean}
+              isActive={Boolean((settings?.priceAlert ?? settingsState.priceAlert) ?? false)}
               isWaitlist={false}
               onPress={() => {
+                const current = (settings?.priceAlert ?? settingsState.priceAlert) ?? false;
                 if (settings) {
-                  dispatch(
-                    setSettings({
-                      ...settings,
-                      priceAlert: !settings.priceAlert,
-                    })
-                  );
+                  dispatch(setSettings({ ...settings, priceAlert: !current }));
+                } else {
+                  setSettingsState((prev) => ({ ...prev, priceAlert: !current } as SettingsModel));
                 }
               }}
             />
@@ -198,11 +208,14 @@ const Notifications = () => {
             <NotificationCard
               title="Push Notifications"
               description="Enable push notifications to stay informed when the price reaches your desired level."
-              isActive={settings?.push as boolean}
+              isActive={Boolean((settings?.push ?? settingsState.push) ?? false)}
               isWaitlist={false}
               onPress={() => {
+                const current = (settings?.push ?? settingsState.push) ?? false;
                 if (settings) {
-                  dispatch(setSettings({ ...settings, push: !settings.push }));
+                  dispatch(setSettings({ ...settings, push: !current }));
+                } else {
+                  setSettingsState((prev) => ({ ...prev, push: !current } as SettingsModel));
                 }
               }}
             />
@@ -210,13 +223,14 @@ const Notifications = () => {
             <NotificationCard
               title="Email Notifications"
               description="Enable email notifications to stay informed when the price reaches your desired level."
-              isActive={settings?.email as boolean}
+              isActive={Boolean((settings?.email ?? settingsState.email) ?? false)}
               isWaitlist={false}
               onPress={() => {
+                const current = (settings?.email ?? settingsState.email) ?? false;
                 if (settings) {
-                  dispatch(
-                    setSettings({ ...settings, email: !settings.email })
-                  );
+                  dispatch(setSettings({ ...settings, email: !current }));
+                } else {
+                  setSettingsState((prev) => ({ ...prev, email: !current } as SettingsModel));
                 }
               }}
             />
