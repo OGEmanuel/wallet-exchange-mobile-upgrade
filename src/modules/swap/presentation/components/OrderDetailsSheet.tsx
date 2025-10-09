@@ -1,10 +1,13 @@
 import { Box, CustomText } from "@/components/general";
+import SwitchTab from "@/components/general/SwitchTab";
+import { SIZES } from "@/data";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
 import React, {
   forwardRef,
   useImperativeHandle,
@@ -13,6 +16,7 @@ import React, {
 } from "react";
 import { Dimensions, TouchableOpacity, View } from "react-native";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
+import OverviewDetails from "./OverviewDetails";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -67,7 +71,7 @@ const OrderDetailsSheet = forwardRef<
         width: 32,
       }}
     >
-      <BottomSheetView style={{ flex: 1 }}>
+      <BottomSheetView style={{ flex: 1, height: SIZES.height * 0.8 }}>
         {/* Header */}
         <View
           style={{
@@ -86,55 +90,25 @@ const OrderDetailsSheet = forwardRef<
               ✕
             </CustomText>
           </TouchableOpacity>
-          <CustomText variant="subheader" textAlign="center" flex={1}>
+          {/* <CustomText variant="subheader" textAlign="center" flex={1}>
             {title}
-          </CustomText>
+          </CustomText> */}
           <View style={{ width: 24 }} />
         </View>
 
-        {/* Tab Switcher */}
-        <Box flexDirection="row" width="80%" alignSelf="center" mb="m">
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              paddingVertical: 12,
-              alignItems: "center",
-              borderBottomWidth: 2,
-              borderBottomColor:
-                activeTab === "summary"
-                  ? theme.colors.primaryColor
-                  : "transparent",
-            }}
-            onPress={() => setActiveTab("summary")}
-          >
-            <CustomText
-              variant="body"
-              color={activeTab === "summary" ? "primaryColor" : "bodyTextColor"}
-            >
-              Summary
-            </CustomText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{
-              flex: 1,
-              paddingVertical: 12,
-              alignItems: "center",
-              borderBottomWidth: 2,
-              borderBottomColor:
-                activeTab === "details"
-                  ? theme.colors.primaryColor
-                  : "transparent",
-            }}
-            onPress={() => setActiveTab("details")}
-          >
-            <CustomText
-              variant="body"
-              color={activeTab === "details" ? "primaryColor" : "bodyTextColor"}
-            >
-              Details
-            </CustomText>
-          </TouchableOpacity>
-        </Box>
+        <View
+          style={{
+            width: SIZES.width * 0.6,
+            alignSelf: "center",
+            marginBottom: 20,
+          }}
+        >
+          <SwitchTab
+            labels={["Summary", "Details"]}
+            activeIndex={activeTab === "summary" ? 0 : 1}
+            onPress={(i) => setActiveTab(i === 0 ? "summary" : "details")}
+          />
+        </View>
 
         {activeTab === "summary" ? (
           // Summary Tab
@@ -148,38 +122,26 @@ const OrderDetailsSheet = forwardRef<
               alignItems="center"
             >
               <CustomText variant="body" color="bodyTextColor" mb="s">
-                Order Status
-              </CustomText>
-              <CustomText
-                variant="subheader"
-                color={
-                  orderDetails?.status === "completed"
-                    ? "successColor"
-                    : "warningColor"
-                }
-              >
-                {/* {orderDetails?.status?.toUpperCase()} */}
-              </CustomText>
-            </Box>
-
-            {/* You're Sending */}
-            <Box
-              bg="secondaryBackgroundColor"
-              borderRadius={8}
-              p="m"
-              mb="m"
-              alignItems="center"
-            >
-              <CustomText variant="body" color="bodyTextColor" mb="s">
                 You're Sending
               </CustomText>
-              <CustomText variant="subheader">
-                {orderDetails?.baseAmount} {orderDetails?.baseCurrency?.symbol}
-              </CustomText>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Image
+                  style={{ width: 20, height: 20, borderRadius: 10 }}
+                  source={orderDetails?.buyCurrency?.currencyId?.logo || ""}
+                />
+                <CustomText variant="subheader" style={{ fontSize: 22 }}>
+                  {orderDetails?.buyCurrency?.currencyId?.symbol === "₦" &&
+                    orderDetails?.buyCurrency?.currencyId?.symbol}{" "}
+                  {Number(orderDetails?.buyAmount || "0")}
+                  {orderDetails?.buyCurrency?.currencyId?.symbol !== "₦" &&
+                    orderDetails?.buyCurrency?.currencyId?.symbol}
+                </CustomText>
+              </View>
             </Box>
+            <OverviewDetails orderDetails={orderDetails} />
 
             {/* You Receive */}
-            <Box bg="secondaryBackgroundColor" borderRadius={8} p="m" mb="m">
+            {/* <Box bg="secondaryBackgroundColor" borderRadius={8} p="m" mb="m">
               <Box flexDirection="row" justifyContent="space-between" py="s">
                 <CustomText variant="body" color="bodyTextColor">
                   You Receive:
@@ -222,7 +184,7 @@ const OrderDetailsSheet = forwardRef<
                   {orderDetails?.orderId?.slice(-8)}
                 </CustomText>
               </Box>
-            </Box>
+            </Box> */}
 
             {/* Info Box */}
             <Box

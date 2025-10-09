@@ -28,6 +28,7 @@ const COLOR_PALLET = {
   usernamePlaceholderTextColor: "#60617D",
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
+  surfaceContainer: "#1F232D",
 };
 
 const DARK_COLOR_PALLET = {
@@ -58,6 +59,7 @@ const DARK_COLOR_PALLET = {
   usernamePlaceholderTextColor: "#60617D",
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
+  surfaceContainer: "#1F232D",
 };
 
 const theme = createTheme({
