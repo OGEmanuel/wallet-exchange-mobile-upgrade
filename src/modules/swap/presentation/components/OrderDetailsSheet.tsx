@@ -90,9 +90,7 @@ const OrderDetailsSheet = forwardRef<
               ✕
             </CustomText>
           </TouchableOpacity>
-          {/* <CustomText variant="subheader" textAlign="center" flex={1}>
-            {title}
-          </CustomText> */}
+
           <View style={{ width: 24 }} />
         </View>
 
@@ -194,6 +192,7 @@ const OrderDetailsSheet = forwardRef<
               flexDirection="row"
               alignItems="center"
               mb="m"
+              mt="m"
             >
               <Box width={2} height="100%" bg="warningColor" mr="s" />
               <CustomText variant="body" flex={1}>
