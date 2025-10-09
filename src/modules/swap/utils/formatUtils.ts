@@ -1,6 +1,8 @@
 /**
- * Utility functions for formatting numbers and currency values in swap
+ * Utility functions for formatting numbers and currency values
  */
+
+import { SupportedCurrencyModel } from "../domain/entities/currency.types";
 
 /**
  * Format numbers with commas for better readability
@@ -72,7 +74,7 @@ export const isValidNumber = (value: string): boolean => {
  * Setup token ticker from supported currency
  */
 export const setupTokenTicker = (
-  currency?: { currencyId?: { code?: string; symbol?: string } } | null
+  currency?: SupportedCurrencyModel | null
 ): string => {
   if (!currency) return "";
   return currency.currencyId?.code || currency.currencyId?.symbol || "";

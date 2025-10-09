@@ -1,8 +1,13 @@
-import { Box, CustomText } from "@/components/general";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ArrowUpDown } from "lucide-react-native";
 import React, { useEffect } from "react";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -16,10 +21,7 @@ interface Props {
   isLoading?: boolean;
 }
 
-const SwapExchangeButton: React.FC<Props> = ({
-  onPress,
-  isLoading = false,
-}) => {
+const SwapButtonNew: React.FC<Props> = ({ onPress, isLoading = false }) => {
   const theme = useTheme<Theme>();
 
   // Animation for shake effect
@@ -65,42 +67,68 @@ const SwapExchangeButton: React.FC<Props> = ({
   }));
 
   return (
-    <Box alignItems="center" justifyContent="center" position="relative" paddingVertical="s" zIndex={10} style={{ paddingVertical: 4 }}>
+    <View style={styles.container}>
       <Animated.View style={[animatedStyle, pulseStyle]}>
-        <TouchableOpacity onPress={onPress}>
-          <Box
-            width={48}
-            height={48}
-            borderRadius={24}
-            backgroundColor="secondaryBackgroundColor"
-            justifyContent="center"
-            alignItems="center"
-            borderWidth={4}
-            borderColor="mainBackgroundColor"
-            style={{ opacity: isLoading ? 0.8 : 1 }}
-          >
-            <CustomText fontSize={20} style={styles.icon}>
-              ⇅
-            </CustomText>
-          </Box>
+        <TouchableOpacity
+          onPress={onPress}
+          style={[
+            styles.button,
+            {
+              backgroundColor: theme.colors.secondaryBackgroundColor,
+              borderColor: theme.colors.mainBackgroundColor,
+            },
+            isLoading && styles.buttonLoading,
+          ]}
+        >
+          <ArrowUpDown
+            color={theme.colors.bodyTextColor}
+            size={20}
+          />
         </TouchableOpacity>
       </Animated.View>
       {isLoading && (
-        <Box mt="s">
-          <CustomText variant="body" fontSize={12} color="disabledTextColor">
+        <View style={styles.loadingTextContainer}>
+          <Text
+            style={[
+              styles.loadingText,
+              { color: theme.colors.disabledTextColor },
+            ]}
+          >
             Fetching rates...
-          </CustomText>
-        </Box>
+          </Text>
+        </View>
       )}
-    </Box>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  icon: {
-    transform: [{ rotate: "90deg" }],
+  container: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    paddingVertical: 2,
+    zIndex: 10,
+  },
+  button: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 4,
+  },
+  buttonLoading: {
+    opacity: 0.8,
+  },
+  loadingTextContainer: {
+    marginTop: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    fontFamily: "PlusJakartaSans_Regular",
   },
 });
 
-export default SwapExchangeButton;
+export default SwapButtonNew;
 

@@ -3,36 +3,27 @@ import debounce from "lodash/debounce";
 import { useCallback, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
+    SwapMetaData,
+    SwapRateModel
+} from "../../domain/entities/currency.types";
+import {
     cleanNumericInput,
     ensureSingleDollarSign,
     formatNumberWithCommas,
     getApproximateAmount,
 } from "../../utils/formatUtils";
-import {
-    setBaseCurrency,
-    setError,
-    setIsRateLoading,
-    setIsReversed,
-    setMarketRate,
-    setTargetCurrency
-} from "../state/swap-slice";
-
-interface SwapMetaData {
-  isDollarMode: boolean;
-  dollarValue: string | null | undefined;
-  sellInputValue: string;
-  receiveInputValue: string;
-}
+import { swapActions } from "../state/swap-slice";
 
 export const useSwapLogic = () => {
   const dispatch = useDispatch();
   const {
-    baseCurrency: sellCurrency,
-    targetCurrency: receiveCurrency,
-    isRateLoading: fetchingSwapRate,
-    isReversed: isSwapped,
-    error: swapRateError,
-    marketRate: swapRate,
+    sellCurrency,
+    receiveCurrency,
+    fetchingSwapRate,
+    isSwapped,
+    swapRateError,
+    supportedCurrenciesError,
+    swapRate,
   } = useSelector((state: AppRootState) => state.swap);
 
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -60,7 +51,7 @@ export const useSwapLogic = () => {
     buyCurrencyId: string,
     amount: number,
     isReceiveInput = false
-  ): Promise<any> => {
+  ): Promise<SwapRateModel> => {
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -73,7 +64,6 @@ export const useSwapLogic = () => {
       buyAmount: isReceiveInput ? amount : amount * mockRate,
       sellRate: mockRate,
       buyRate: mockBuyRate,
-      rate: mockRate,
       sellCurrency: sellCurrency || undefined,
       buyCurrency: receiveCurrency || undefined,
     };
@@ -92,8 +82,8 @@ export const useSwapLogic = () => {
           return;
         }
 
-        dispatch(setIsRateLoading(true));
-        dispatch(setError(null));
+        dispatch(swapActions.setFetchingSwapRate(true));
+        dispatch(swapActions.setSwapRateError(null));
 
         try {
           // Replace this with your actual API call
@@ -104,12 +94,7 @@ export const useSwapLogic = () => {
             isReceiveInput
           );
 
-          dispatch(
-            setMarketRate({
-              rate: response.rate || response.sellRate,
-              timestamp: Date.now(),
-            })
-          );
+          dispatch(swapActions.setSwapRate(response));
 
           // Update the other input field based on the response
           if (response) {
@@ -139,9 +124,11 @@ export const useSwapLogic = () => {
             }));
           }
         } catch (error) {
-          dispatch(setError("Failed to fetch exchange rates"));
+          dispatch(
+            swapActions.setSwapRateError("Failed to fetch exchange rates")
+          );
         } finally {
-          dispatch(setIsRateLoading(false));
+          dispatch(swapActions.setFetchingSwapRate(false));
           setIsBackgroundRefresh(false);
         }
       },
@@ -263,14 +250,14 @@ export const useSwapLogic = () => {
   // Handle currency swap
   const handleSwap = useCallback(() => {
     setIsTransitioning(true);
-    dispatch(setIsReversed(!isSwapped));
+    dispatch(swapActions.setIsSwapped(!isSwapped));
 
     const localSellCurrency = sellCurrency;
     const localReceiveCurrency = receiveCurrency;
 
     if (localSellCurrency && localReceiveCurrency) {
-      dispatch(setBaseCurrency(localReceiveCurrency));
-      dispatch(setTargetCurrency(localSellCurrency));
+      dispatch(swapActions.setSellCurrency(localReceiveCurrency));
+      dispatch(swapActions.setReceiveCurrency(localSellCurrency));
     }
 
     // Reset input values
@@ -340,18 +327,19 @@ export const useSwapLogic = () => {
 
   // Retry function for errors
   const retryFetchSwapRate = useCallback(() => {
-    if (swapRateError) {
+    if (swapRateError || supportedCurrenciesError) {
       triggerSwapRateFetch();
     }
 
     setIsBackgroundRefresh(true);
 
-    dispatch(setError(null));
+    dispatch(swapActions.setSwapRateError(null));
+    dispatch(swapActions.setSupportedCurrenciesError(null));
 
     setTimeout(() => {
       setIsBackgroundRefresh(false);
     }, 3000);
-  }, [swapRateError, triggerSwapRateFetch, dispatch]);
+  }, [swapRateError, supportedCurrenciesError, triggerSwapRateFetch, dispatch]);
 
   return {
     swapMetaData,
@@ -363,6 +351,7 @@ export const useSwapLogic = () => {
     fetchingSwapRate,
     isSwapped,
     swapRateError,
+    supportedCurrenciesError,
     swapRate,
     handleSellInputChange,
     handleReceiveInputChange,
