@@ -241,7 +241,7 @@ const SwapScreenCompact = () => {
                 )}
 
                 {/* Sell Section */}
-                <Box backgroundColor="surfaceContainer" borderRadius={12} p="m" mb="xs">
+                <Box backgroundColor="surfaceContainer" borderRadius={12} p="m" mb="s">
                     <View style={styles.sectionHeader}>
                         <CustomText variant="body" color="disabledTextColor" fontSize={12}>
                             Sell
@@ -268,7 +268,7 @@ const SwapScreenCompact = () => {
                                 variant="body"
                                 color="disabledTextColor"
                                 fontSize={10}
-                                ml="xs"
+                                ml="s"
                             >
                                 ▼
                             </CustomText>
@@ -339,7 +339,7 @@ const SwapScreenCompact = () => {
                                 variant="body"
                                 color="disabledTextColor"
                                 fontSize={10}
-                                ml="xs"
+                                ml="s"
                             >
                                 ▼
                             </CustomText>
@@ -386,7 +386,7 @@ const SwapScreenCompact = () => {
                                     variant="body"
                                     color="disabledTextColor"
                                     fontSize={10}
-                                    ml="xs"
+                                    ml="s"
                                 >
                                     ⓘ
                                 </CustomText>
