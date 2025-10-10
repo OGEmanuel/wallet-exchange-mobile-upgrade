@@ -25,6 +25,12 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withTiming,
+} from "react-native-reanimated";
 import { useDispatch, useSelector } from "react-redux";
 import { OrderDetailsSheet } from "../components";
 import WithdrawalAddressInput from "../components/WithdrawalAddressInput";
@@ -42,6 +48,32 @@ const SwapScreenCompact = () => {
     const [createdOrder, setCreatedOrder] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<"EXCHANGE" | "WALLET">("EXCHANGE");
     const orderDetailsSheetRef = useRef<any>(null);
+
+    // Animation values
+    const rotationValue = useSharedValue(0);
+    const scaleValue = useSharedValue(1);
+    const sellOpacity = useSharedValue(1);
+    const receiveOpacity = useSharedValue(1);
+    const sellTranslateY = useSharedValue(0);
+    const receiveTranslateY = useSharedValue(0);
+
+    // Animated styles
+    const swapButtonAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { rotate: `${rotationValue.value}deg` },
+            { scale: scaleValue.value },
+        ],
+    }));
+
+    const sellSectionAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: sellOpacity.value,
+        transform: [{ translateY: sellTranslateY.value }],
+    }));
+
+    const receiveSectionAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: receiveOpacity.value,
+        transform: [{ translateY: receiveTranslateY.value }],
+    }));
 
     // 🔹 Create order hook
     const {
@@ -91,6 +123,40 @@ const SwapScreenCompact = () => {
         }
     }, [currencies, currenciesLoading, sellCurrency, receiveCurrency, dispatch]);
 
+    // 🔹 Animated swap handler
+    const handleAnimatedSwap = useCallback(() => {
+        // Rotate the swap button 180 degrees
+        rotationValue.value = withTiming(rotationValue.value + 180, {
+            duration: 300,
+        });
+
+        // Scale button for press effect
+        scaleValue.value = withSequence(
+            withTiming(0.8, { duration: 100 }),
+            withTiming(1, { duration: 150 })
+        );
+
+        // Animate sell section up and fade out
+        sellTranslateY.value = withTiming(-20, { duration: 200 });
+        sellOpacity.value = withTiming(0, { duration: 150 });
+
+        // Animate receive section down and fade out
+        receiveTranslateY.value = withTiming(20, { duration: 200 });
+        receiveOpacity.value = withTiming(0, { duration: 150 });
+
+        // Swap the currencies after animations start
+        setTimeout(() => {
+            handleSwap();
+
+            // Animate sections back in from opposite directions
+            sellTranslateY.value = withTiming(0, { duration: 200 });
+            sellOpacity.value = withTiming(1, { duration: 200 });
+            
+            receiveTranslateY.value = withTiming(0, { duration: 200 });
+            receiveOpacity.value = withTiming(1, { duration: 200 });
+        }, 150);
+    }, [handleSwap, rotationValue, scaleValue, sellOpacity, receiveOpacity, sellTranslateY, receiveTranslateY]);
+
     // 🔹 Reusable bottom sheet handler
     const openTokenSelector = useCallback(
         (type: "sell" | "receive") => {
@@ -101,9 +167,9 @@ const SwapScreenCompact = () => {
                         onTokenSelect={(token) => {
                             // If the user selects token that is on the other side, swap the tokens
                             if (token._id === sellCurrency?._id && type === "receive") {
-                                handleSwap();
+                                handleAnimatedSwap();
                             } else if (token._id === receiveCurrency?._id && type === "sell") {
-                                handleSwap();
+                                handleAnimatedSwap();
                             } else {
                                 if (type === "sell") {
                                     dispatch(swapActions.setSellCurrency(token));
@@ -147,7 +213,7 @@ const SwapScreenCompact = () => {
                 },
             });
         },
-        [sellCurrency, receiveCurrency, handleSwap, dispatch]
+        [sellCurrency, receiveCurrency, handleAnimatedSwap, dispatch, showBottomSheet, theme.colors]
     );
 
     // 🔹 Order creation
@@ -241,11 +307,12 @@ const SwapScreenCompact = () => {
                 )}
 
                 {/* Sell Section */}
-                <Box backgroundColor="surfaceContainer" borderRadius={12} p="m" mb="s">
-                    <View style={styles.sectionHeader}>
-                        <CustomText variant="body" color="disabledTextColor" fontSize={12}>
-                            Sell
-                        </CustomText>
+                <Animated.View style={sellSectionAnimatedStyle}>
+                    <Box backgroundColor="surfaceContainer" borderRadius={12} p="m">
+                        <View style={styles.sectionHeader}>
+                            <CustomText variant="body" color="disabledTextColor" fontSize={12}>
+                                Sell
+                            </CustomText>
                         <TouchableOpacity
                             onPress={() => openTokenSelector("sell")}
                             style={[
@@ -285,38 +352,44 @@ const SwapScreenCompact = () => {
                             { color: theme.colors.bodyTextColor },
                         ]}
                     />
-                    <CustomText variant="body" color="successColor" fontSize={13}>
-                        {swapMetaData.dollarValue || "$0"}
-                    </CustomText>
-                </Box>
+                        <CustomText variant="body" color="successColor" fontSize={13}>
+                            {swapMetaData.dollarValue || "$0"}
+                        </CustomText>
+                    </Box>
+                </Animated.View>
 
                 {/* Swap Button */}
                 <View style={styles.swapButtonContainer}>
                     <TouchableOpacity
-                        onPress={handleSwap}
-                        style={[
-                            styles.swapButton,
-                            {
-                                backgroundColor: theme.colors.mainBackgroundColor,
-                                borderColor: theme.colors.mainBackgroundColor,
-                            },
-                        ]}
+                        onPress={handleAnimatedSwap}
                         disabled={fetchingSwapRate}
                     >
-                        {fetchingSwapRate ? (
-                            <ActivityIndicator size="small" color={theme.colors.bodyTextColor} />
-                        ) : (
-                            <ArrowUpDown color={theme.colors.bodyTextColor} size={16} />
-                        )}
+                        <Animated.View
+                            style={[
+                                styles.swapButton,
+                                {
+                                    backgroundColor: theme.colors.mainBackgroundColor,
+                                    borderColor: theme.colors.mainBackgroundColor,
+                                },
+                                swapButtonAnimatedStyle,
+                            ]}
+                        >
+                            {fetchingSwapRate ? (
+                                <ActivityIndicator size="small" color={theme.colors.bodyTextColor} />
+                            ) : (
+                                <ArrowUpDown color={theme.colors.bodyTextColor} size={16} />
+                            )}
+                        </Animated.View>
                     </TouchableOpacity>
                 </View>
 
                 {/* Receive Section */}
-                <Box backgroundColor="surfaceContainer" borderRadius={12} p="m" mb="m">
-                    <View style={styles.sectionHeader}>
-                        <CustomText variant="body" color="disabledTextColor" fontSize={12}>
-                            Receive
-                        </CustomText>
+                <Animated.View style={receiveSectionAnimatedStyle}>
+                    <Box backgroundColor="surfaceContainer" borderRadius={12} p="m" mb="m">
+                        <View style={styles.sectionHeader}>
+                            <CustomText variant="body" color="disabledTextColor" fontSize={12}>
+                                Receive
+                            </CustomText>
                         <TouchableOpacity
                             onPress={() => openTokenSelector("receive")}
                             style={[
@@ -356,7 +429,8 @@ const SwapScreenCompact = () => {
                             { color: theme.colors.bodyTextColor },
                         ]}
                     />
-                </Box>
+                    </Box>
+                </Animated.View>
 
                 {/* Rate and Fee Information */}
                 {rateDetails && (
@@ -467,7 +541,7 @@ const styles = StyleSheet.create({
     },
     swapButtonContainer: {
         alignItems: "center",
-        marginVertical: -12,
+        marginVertical: -16,
         zIndex: 10,
     },
     swapButton: {

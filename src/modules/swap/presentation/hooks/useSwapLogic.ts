@@ -260,8 +260,12 @@ export const useSwapLogic = () => {
       dispatch(swapActions.setReceiveCurrency(localSellCurrency));
     }
 
-    // Reset input values
-    setSwapMetaData(initialSwapData);
+    // Swap the input values along with the currencies
+    setSwapMetaData((prev) => ({
+      ...prev,
+      sellInputValue: prev.receiveInputValue,
+      receiveInputValue: prev.sellInputValue,
+    }));
 
     setTimeout(() => {
       setIsTransitioning(false);
