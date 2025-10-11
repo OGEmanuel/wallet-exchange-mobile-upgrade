@@ -54,7 +54,7 @@ const ActivityTabar = ({ activeTab, onPress }: IProps) => {
       />
 
       <Pressable
-        style={{ width: "50%", zIndex: 1 }}
+        style={{ width: "50%", zIndex: 0 }}
         onPress={() => {
           handleTabPress("EXCHANGE");
         }}
@@ -78,7 +78,7 @@ const ActivityTabar = ({ activeTab, onPress }: IProps) => {
         </View>
       </Pressable>
       <Pressable
-        style={{ width: "50%", zIndex: 1 }}
+        style={{ width: "50%", zIndex: 0 }}
         onPress={() => {
           handleTabPress("WALLET");
         }}

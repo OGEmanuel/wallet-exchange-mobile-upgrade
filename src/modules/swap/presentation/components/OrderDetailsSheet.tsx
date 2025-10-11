@@ -1,3 +1,5 @@
+import icons from "@/assets/icons";
+import { TouchableIcon } from "@/components";
 import { Box, CustomText } from "@/components/general";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
@@ -14,7 +16,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
 import OverviewDetails from "./OverviewDetails";
 
@@ -74,23 +76,19 @@ const OrderDetailsSheet = forwardRef<
       <BottomSheetView style={{ flex: 1, height: SIZES.height * 0.8 }}>
         {/* Header */}
         <View
-          style={{
-            height: 48,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-            borderBottomWidth: 1,
-            borderColor: theme.colors.secondaryBackgroundColor,
-            marginBottom: 8,
-          }}
+          style={[
+            styles.header,
+            { borderColor: theme.colors.secondaryBackgroundColor },
+          ]}
         >
-          <TouchableOpacity onPress={() => bottomSheetRef.current?.close()}>
-            <CustomText variant="body" color="bodyTextColor">
-              ✕
-            </CustomText>
-          </TouchableOpacity>
-
+          <TouchableIcon
+            source={icons.cancel}
+            onPress={() => bottomSheetRef.current?.close()}
+            width={24}
+          />
+          <CustomText variant="header2" style={{ fontSize: 16 }}>
+            Transaction Details
+          </CustomText>
           <View style={{ width: 24 }} />
         </View>
 
@@ -116,7 +114,7 @@ const OrderDetailsSheet = forwardRef<
               bg="secondaryBackgroundColor"
               borderRadius={8}
               p="m"
-              mb="m"
+              style={{ paddingTop: 16 }}
               alignItems="center"
             >
               <CustomText variant="body" color="bodyTextColor" mb="s">
@@ -137,52 +135,6 @@ const OrderDetailsSheet = forwardRef<
               </View>
             </Box>
             <OverviewDetails orderDetails={orderDetails} />
-
-            {/* You Receive */}
-            {/* <Box bg="secondaryBackgroundColor" borderRadius={8} p="m" mb="m">
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  You Receive:
-                </CustomText>
-                <CustomText>
-                  {orderDetails?.targetAmount}{" "}
-                  {orderDetails?.targetCurrency?.symbol}
-                </CustomText>
-              </Box>
-
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  Exchange Rate:
-                </CustomText>
-                <CustomText>
-                  1 {orderDetails?.baseCurrency?.symbol} ={" "}
-                  {orderDetails?.marketRate}{" "}
-                  {orderDetails?.targetCurrency?.symbol}
-                </CustomText>
-              </Box>
-
-              {orderDetails?.withdrawalAddress && (
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Sent To:
-                  </CustomText>
-                  <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                    {orderDetails?.withdrawalAddress?.slice(0, 10)}...
-                    {orderDetails?.withdrawalAddress?.slice(-6)}
-                  </CustomText>
-                </Box>
-              )}
-
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  Order ID:
-                </CustomText>
-                <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                  {orderDetails?.orderId?.slice(0, 8)}...
-                  {orderDetails?.orderId?.slice(-8)}
-                </CustomText>
-              </Box>
-            </Box> */}
 
             {/* Info Box */}
             <Box
@@ -308,3 +260,17 @@ const OrderDetailsSheet = forwardRef<
 OrderDetailsSheet.displayName = "OrderDetailsSheet";
 
 export default OrderDetailsSheet;
+
+const styles = StyleSheet.create({
+  container: {},
+  header: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+
+    marginBottom: 8,
+  },
+});

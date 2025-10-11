@@ -300,7 +300,6 @@ const Swap = () => {
     targetAmount,
     baseCurrency,
     targetCurrency,
-    isRateLoading,
     marketRate,
     error,
     isLoading,
@@ -308,7 +307,6 @@ const Swap = () => {
     lastEditedField,
     setBaseAmount,
     setBaseCurrency,
-    setTargetAmount,
     setTargetCurrency,
     handleBaseAmountChange,
     handleTargetAmountChange,
@@ -600,14 +598,11 @@ const Swap = () => {
         />
       </Box>
 
-      {/* Order Details Sheet */}
       <OrderDetailsSheet
         ref={orderDetailsSheetRef}
         orderDetails={createdOrder}
         onClose={() => {
           setCreatedOrder(null);
-          // Optionally navigate to history after closing
-          // navigation.navigate("History" as never);
         }}
         title="Order Created"
       />

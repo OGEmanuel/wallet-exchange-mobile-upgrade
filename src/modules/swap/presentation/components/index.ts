@@ -11,3 +11,4 @@ export { default as SellSectionNew } from "./SellSectionNew";
 export { default as SwapButtonNew } from "./SwapButtonNew";
 export { default as WithdrawalAddressInput } from "./WithdrawalAddressInput";
 
+export { default as ExpirationTimer } from "./ExpirationTimer";

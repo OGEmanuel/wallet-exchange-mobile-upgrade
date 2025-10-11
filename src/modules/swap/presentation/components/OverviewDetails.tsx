@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 import useAppUtilities from "../hooks/useAppUtilities";
 import BankInfo from "./BankInfo";
 import DetailRow from "./DetailRow";
+import ExpirationTimer from "./ExpirationTimer";
 
 const OverviewDetails = ({ orderDetails, setActive }: any) => {
   const { getApproximateAmount, truncateString } = useAppUtilities();
@@ -66,25 +67,8 @@ const OverviewDetails = ({ orderDetails, setActive }: any) => {
             />
           </DetailRow>
         )}
+        <ExpirationTimer />
       </View>
-
-      {/* <NoticeMessage
-        message={`We will complete your transaction of ${
-          symbol === "₦" ? symbol : ""
-        }${getApproximateAmount(
-          Number(
-            orderDetails?.amountToRecieve ??
-              orderDetails?.childOrder?.openAmount ??
-              "0"
-          ),
-          isCrypto,
-          false
-        )}${
-          symbol !== "₦" ? symbol : ""
-        } after we confirm receipt of your deposit`}
-      /> */}
-
-      {/* Future: You can re-add your Button and Timer components here */}
     </>
   );
 };
@@ -93,10 +77,11 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 16,
     borderRadius: 8,
-    padding: 16,
+    padding: 12,
   },
   walletText: {
     maxWidth: 150,
+    fontWeight: "600",
   },
 });
 
