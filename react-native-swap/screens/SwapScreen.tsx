@@ -1,24 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
-  useColorScheme,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  useColorScheme
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { swapActions } from '../state/swapSlice';
 import { useSwapLogic } from '../hooks/useSwapLogic';
+import { swapActions } from '../state/swapSlice';
 import { SupportedCurrencyModel } from '../types';
 
 // Components
-import SellSection from '../components/SellSection';
+import CurrencySelector from '../components/CurrencySelector';
+import ErrorIndicator from '../components/ErrorIndicator';
 import ReceiveSection from '../components/ReceiveSection';
+import SellSection from '../components/SellSection';
 import SwapButton from '../components/SwapButton';
 import WithdrawalAddressInput from '../components/WithdrawalAddressInput';
-import ErrorIndicator from '../components/ErrorIndicator';
-import CurrencySelector from '../components/CurrencySelector';
 
 interface RootState {
   swap: {
@@ -221,12 +220,7 @@ const SwapScreen: React.FC<SwapScreenProps> = ({
           />
         )}
 
-        {/* You can add additional components here like:
-          - Swap summary
-          - Fee information
-          - Action button (Zap Now/Swap Now)
-          - Terms and conditions
-        */}
+     
       </ScrollView>
 
       {/* Currency Selector Modal */}
