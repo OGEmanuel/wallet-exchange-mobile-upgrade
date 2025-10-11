@@ -4,11 +4,12 @@ import { CustomButton, PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
-import { useFetchCurrencies, useSwap } from "@/src/modules/swap";
+import { useFetchCurrencies } from "@/src/modules/swap/data/remote";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect } from "react";
 import { SupportedCurrency } from "../../domain/entities/currency.types";
+import { useSwap } from "../hooks/useSwap";
 
 // Import modular components
 import { SwapButton, SwapDetailsCard, TokenInputCard } from "../components";

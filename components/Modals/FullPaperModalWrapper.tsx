@@ -1,10 +1,10 @@
-import { Modal } from "react-native";
-import React, { PropsWithChildren } from "react";
-import { LinearGradient } from "expo-linear-gradient";
-import Box from "../general/Box";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { LinearGradient } from "expo-linear-gradient";
 import { X } from "lucide-react-native";
+import React, { PropsWithChildren } from "react";
+import { Modal } from "react-native";
+import Box from "../general/Box";
 
 interface IProps {
   isOpen: boolean;
@@ -44,7 +44,7 @@ const FullPageModalWrapper = ({
           onClose();
         }}
       >
-        <Box zIndex={4} width="100%" height={70} justifyContent="center" mt="m">
+        <Box zIndex={4} width="100%" height={100} justifyContent="center" mt="m">
           <X color={theme.colors.white} />
         </Box>
         <Box flex={1} zIndex={3}>

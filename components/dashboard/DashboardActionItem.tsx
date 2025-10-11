@@ -1,5 +1,5 @@
-import { View, Text, Pressable } from "react-native";
 import React from "react";
+import { Pressable } from "react-native";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 
@@ -13,10 +13,10 @@ const DashboardActionItem = ({ icon, title, action }: IProps) => {
   return (
     <Pressable onPress={() => action()} style={{ alignItems: "center" }}>
       <Box
-        width={44}
-        height={44}
+        width={50}
+        height={50}
         borderRadius={40}
-        backgroundColor="secondaryBackgroundColor"
+        style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
         justifyContent="center"
         alignItems="center"
         marginBottom="s"

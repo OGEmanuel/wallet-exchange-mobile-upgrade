@@ -1,13 +1,13 @@
-import React from "react";
-import FullPageModalWrapper from "./FullPaperModalWrapper";
-import Box from "../general/Box";
+import useActiveTheme from "@/hooks/useTheme";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
+import React from "react";
 import { ScrollView } from "react-native-gesture-handler";
+import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import useActiveTheme from "@/hooks/useTheme";
+import FullPageModalWrapper from "./FullPaperModalWrapper";
 
 const WhatIsSeedPhraseModal = ({
   isOpen,
@@ -58,7 +58,7 @@ const WhatIsSeedPhraseModal = ({
           </CustomText>
         </ScrollView>
       </Box>
-      <Box width="100%" height={60} justifyContent="center">
+      <Box width="100%" height={60} mb="l" justifyContent="center">
         <CustomButton
           width={"100%"}
           height={56}

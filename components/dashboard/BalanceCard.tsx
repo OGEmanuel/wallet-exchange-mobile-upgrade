@@ -1,42 +1,74 @@
-import { View, Text } from "react-native";
+import { formatCurrency } from "@/src/core/utils/format-utils";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { ArrowUp3 } from "iconsax-react-nativejs";
 import React from "react";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import { ArrowUp3 } from "iconsax-react-nativejs";
 
-const BalanceCard = () => {
+const BalanceCard = ({
+  portfolioValue = 0,
+  portfolioChange = 0,
+  portfolioChangePercentage = 0,
+  walletName = "Wallet",
+}: {
+  portfolioValue?: number;
+  portfolioChange?: number;
+  portfolioChangePercentage?: number;
+  walletName?: string;
+}) => {
+  const theme = useTheme<Theme>();
+
   return (
-    <Box width="100%" height={120} alignItems="center">
-      <CustomText fontSize={12} variant="body">
-        Your portfolio value
-      </CustomText>
-
-      <CustomText variant="header" marginVertical="s">
-        $123,390.00
-      </CustomText>
-
-      <Box
-        width={126}
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="center"
-        height={24}
-        borderRadius={24}
-        paddingHorizontal="s"
-        bg="secondaryBackgroundColor"
-      >
-        <ArrowUp3 size={15} color="#35B592" variant="Bold" />
-        <CustomText fontSize={10} style={{ marginHorizontal: 3 }}>
-          $250
+    <Box
+      width="100%"
+      alignItems="center"
+      justifyContent="center"
+      position="relative"
+    >
+      {/* Center content */}
+      <Box alignItems="center" justifyContent="center" flex={1}>
+        <CustomText fontSize={13} variant="body" color="white" opacity={0.8}>
+          Your portfolio value
         </CustomText>
 
-        <CustomText fontSize={10}>
-          {" "}
-          <CustomText fontSize={10} style={{ color: "#35B592" }}>
-            +5%
-          </CustomText>{" "}
-          in 24H
+        <CustomText
+          fontSize={30}
+          variant="header"
+          marginVertical="s"
+          color="white"
+        >
+          {formatCurrency(portfolioValue)}
         </CustomText>
+
+        <Box
+          width={185}
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="center"
+          height={36}
+          borderRadius={24}
+          paddingHorizontal="s"
+          bg="secondaryBackgroundColor"
+        >
+          <ArrowUp3 size={17} color="#35B592" variant="Bold" />
+          <CustomText
+            fontSize={13}
+            style={{ marginHorizontal: 3 }}
+            color="white"
+          >
+            {formatCurrency(portfolioChange)}
+            {portfolioChange > 0 ? "+" : ""}
+          </CustomText>
+
+          <CustomText fontSize={13} color="white">
+            {" "}
+            <CustomText fontSize={13} style={{ color: "#35B592" }}>
+              {portfolioChangePercentage.toFixed(2)}%
+            </CustomText>{" "}
+            in 24H
+          </CustomText>
+        </Box>
       </Box>
     </Box>
   );

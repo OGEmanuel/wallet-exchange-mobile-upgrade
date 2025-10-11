@@ -1,18 +1,20 @@
-import CustomText from "../general/CustomText";
-import React, { useRef, useState } from "react";
-import Box from "../general/Box";
-import { ScrollView, TouchableOpacity, Animated } from "react-native";
-import CustomButton from "../general/CustomButton";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 import { ArrowDown } from "lucide-react-native";
+import React, { useRef, useState } from "react";
+import { Animated, ScrollView, TouchableOpacity } from "react-native";
+import Box from "../general/Box";
+import CustomButton from "../general/CustomButton";
+import CustomText from "../general/CustomText";
 
 interface TermsAndConditionsProps {
   onAccept: () => void;
+  isLoading: boolean;
 }
 
 const TermsAndConditions = ({
   onAccept,
+  isLoading,
 }: TermsAndConditionsProps) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const theme = useTheme<Theme>();
@@ -77,7 +79,9 @@ const TermsAndConditions = ({
   };
 
   return (
-    <Box>
+    <Box style={{
+      paddingBottom: 40,
+    }}>
       <Box pb="m">
         <CustomText variant="header" fontSize={18}>Terms of use</CustomText>
       </Box>
@@ -159,6 +163,8 @@ const TermsAndConditions = ({
             onPress={() => {
               onAccept();
             }}
+            isLoading={isLoading}
+            disabled={isLoading}
             bgColor={theme.colors.primaryColor}
             color={theme.colors.white}
 

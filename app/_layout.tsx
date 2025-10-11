@@ -1,5 +1,12 @@
+// Import polyfills for React Native
+import { Buffer } from "buffer";
+import "react-native-get-random-values";
+
+import { PinGuard } from "@/components/auth/PinGuard";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
+import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
+import { WalletProvider } from "@/src/core/wallet/wallet-context";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
@@ -21,6 +28,9 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
+
+// Set Buffer as global for Node.js compatibility
+global.Buffer = Buffer;
 
 export default function RootLayout() {
   const queryClient = new QueryClient({
@@ -119,17 +129,27 @@ export default function RootLayout() {
           <Provider store={store}>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
-                <BottomSheetProvider>
-                  <StatusBar
-                    barStyle={
-                      colorTheme === "dark" ? "light-content" : "dark-content"
-                    }
-                  />
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" options={{ title: "Home" }} />
-                  </Stack>
-                  <BottomSheetManager />
-                </BottomSheetProvider>
+                <ChainsProvider>
+                  <WalletProvider>
+                    <BottomSheetProvider>
+                      <StatusBar
+                        barStyle={
+                          colorTheme === "dark"
+                            ? "light-content"
+                            : "dark-content"
+                        }
+                      />
+                      <PinGuard />
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen
+                          name="index"
+                          options={{ title: "Home" }}
+                        />
+                      </Stack>
+                      <BottomSheetManager />
+                    </BottomSheetProvider>
+                  </WalletProvider>
+                </ChainsProvider>
               </QueryClientProvider>
             </ThemeProvider>
           </Provider>

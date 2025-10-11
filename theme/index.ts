@@ -26,6 +26,17 @@ const COLOR_PALLET = {
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
   pendingColor: "#EDB118",
+  // Portfolio colors
+  portfolioLabelColor: "rgba(255,255,255,0.7)",
+  portfolioValueColor: "#FFFFFF",
+  portfolioChangeColor: "#00FF00",
+  portfolioChangeBg: "rgba(0,255,0,0.1)",
+  portfolioChangeText: "rgba(255,255,255,0.6)",
+  // Debit card colors
+  cardGradientStart: "#667eea",
+  cardGradientEnd: "#764ba2",
+  cardTextColor: "#000000",
+  cardIconBg: "rgba(0,0,0,0.2)",
 };
 
 const DARK_COLOR_PALLET = {
@@ -54,6 +65,17 @@ const DARK_COLOR_PALLET = {
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
   pendingColor: "#EDB118",
+  // Portfolio colors
+  portfolioLabelColor: "rgba(255,255,255,0.7)",
+  portfolioValueColor: "#FFFFFF",
+  portfolioChangeColor: "#00FF00",
+  portfolioChangeBg: "rgba(0,255,0,0.1)",
+  portfolioChangeText: "rgba(255,255,255,0.6)",
+  // Debit card colors
+  cardGradientStart: "#667eea",
+  cardGradientEnd: "#764ba2",
+  cardTextColor: "#000000",
+  cardIconBg: "rgba(0,0,0,0.2)",
 };
 
 const theme = createTheme({
