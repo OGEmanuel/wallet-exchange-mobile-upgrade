@@ -18,6 +18,7 @@ import React, {
 } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
+import DepositDetails from "./DepositDetails";
 import OverviewDetails from "./OverviewDetails";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -163,103 +164,7 @@ const OrderDetailsSheet = forwardRef<
             />
           </Box>
         ) : (
-          // Details Tab
-          <Box flex={1} px="m">
-            <Box alignItems="center" mt="m">
-              <CustomText variant="subheader" mb="m">
-                Order Information
-              </CustomText>
-
-              <Box
-                width="100%"
-                bg="secondaryBackgroundColor"
-                borderRadius={8}
-                p="m"
-              >
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Order ID:
-                  </CustomText>
-                  <CustomText>{orderDetails?.orderId}</CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Status:
-                  </CustomText>
-                  <CustomText
-                    color={
-                      orderDetails?.status === "completed"
-                        ? "successColor"
-                        : "warningColor"
-                    }
-                  >
-                    {orderDetails?.status}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Base Amount:
-                  </CustomText>
-                  <CustomText>
-                    {orderDetails?.baseAmount}{" "}
-                    {orderDetails?.baseCurrency?.symbol}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Target Amount:
-                  </CustomText>
-                  <CustomText>
-                    {orderDetails?.targetAmount}{" "}
-                    {orderDetails?.targetCurrency?.symbol}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Market Rate:
-                  </CustomText>
-                  <CustomText>{orderDetails?.marketRate}</CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Created At:
-                  </CustomText>
-                  <CustomText>
-                    {new Date(orderDetails?.createdAt).toLocaleString()}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Updated At:
-                  </CustomText>
-                  <CustomText>
-                    {new Date(orderDetails?.updatedAt).toLocaleString()}
-                  </CustomText>
-                </Box>
-
-                {orderDetails?.withdrawalAddress && (
-                  <Box
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    py="s"
-                  >
-                    <CustomText variant="body" color="bodyTextColor">
-                      Withdrawal Address:
-                    </CustomText>
-                    <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                      {orderDetails?.withdrawalAddress}
-                    </CustomText>
-                  </Box>
-                )}
-              </Box>
-            </Box>
-          </Box>
+          <DepositDetails orderDetails={orderDetails} />
         )}
       </BottomSheetView>
     </BottomSheet>
