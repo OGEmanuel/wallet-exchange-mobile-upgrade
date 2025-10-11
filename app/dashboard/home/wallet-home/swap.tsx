@@ -1,8 +1,8 @@
-import SwapComponent from "@/src/modules/swap/presentation/screens/SwapComponent";
+import { SwapScreen } from "@/src/modules/swap";
 import React from "react";
 
 const Swap = () => {
-  return <SwapComponent />;
+  return <SwapScreen />;
 };
 
 export default Swap;
