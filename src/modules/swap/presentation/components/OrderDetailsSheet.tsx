@@ -1,6 +1,6 @@
 import icons from "@/assets/icons";
 import { TouchableIcon } from "@/components";
-import { Box, CustomText } from "@/components/general";
+import { Box, CustomButton, CustomText } from "@/components/general";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
 import { Theme } from "@/theme";
@@ -147,11 +147,20 @@ const OrderDetailsSheet = forwardRef<
               mt="m"
             >
               <Box width={2} height="100%" bg="warningColor" mr="s" />
-              <CustomText variant="body" flex={1}>
+              <CustomText variant="body" flex={1} style={{ fontSize: 12 }}>
                 We will complete your transaction after we confirm receipt of
                 your deposit. Please keep this order ID for reference.
               </CustomText>
             </Box>
+            <CustomButton
+              onPress={() => {}}
+              text="Show Deposit Details"
+              color="primary"
+              width="auto"
+              borderRadius={56}
+              paddingHorizontal={12}
+              bgColor="#6045FF"
+            />
           </Box>
         ) : (
           // Details Tab
