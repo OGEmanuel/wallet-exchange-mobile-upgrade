@@ -61,6 +61,7 @@ const marketSend = require("./marketSend.png");
 const activityLog = require("./activity-log.png");
 const login = require("./login.png");
 const sumsub = require("./sumsub.png");
+const checkbox = require("./checkbox.png");
 const sumsubLighting = require("./lightening-light.png");
 const sumsubLightingDark = require("./lightening.png");
 
@@ -127,4 +128,5 @@ export default {
   sumsub,
   sumsubLighting,
   sumsubLightingDark,
+  checkbox,
 };

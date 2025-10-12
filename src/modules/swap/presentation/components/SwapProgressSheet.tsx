@@ -12,6 +12,7 @@ import { StyleSheet, View } from "react-native";
 import { CreateOrderResponse } from "../../data/remote";
 import { useSwap } from "../hooks";
 import ProgressView from "./ProgressView";
+import SuccessView from "./SuccessView";
 
 interface OrderDetailsSheetProps {
   orderDetails?: CreateOrderResponse;
@@ -90,6 +91,16 @@ const SwapProgressSheet = forwardRef<
             orderDetails={orderDetails}
           />
         )}
+        <SuccessView
+          fromAmount={orderDetails?.buyAmount || "0"}
+          fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
+          toAmount={orderDetails?.sellAmount}
+          toCurrency={orderDetails.sellCurrency?.currencyId?.code || ""}
+          recipient={"John Doe"}
+          network={(() => {})() as string}
+          status="confirming"
+          orderDetails={orderDetails}
+        />
       </BottomSheetView>
     </BottomSheet>
   );
