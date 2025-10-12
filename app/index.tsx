@@ -1,25 +1,26 @@
-import Box from "@/components/general/Box";
-import CustomButton from "@/components/general/CustomButton";
-import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
-  Image,
   ImageBackground,
   StyleSheet,
+  View,
 } from "react-native";
 
-import icons from "@/assets/icons";
+import ThemedText from "@/components/general/ThemedText";
+import DirectionButton from "@/components/onboarding/DirectionButton";
+import { SIZES } from "@/data";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import images from "../assets/images";
 
 export default function HomeScreen() {
   const theme = useTheme<Theme>();
   const screenWidth = Dimensions.get("window").width;
+  const inset = useSafeAreaInsets();
 
   // Cloud animations (3 clouds) - now vertical
   const cloud1Animation = useRef(new Animated.Value(0)).current;
@@ -78,86 +79,82 @@ export default function HomeScreen() {
   ]);
 
   return (
-    <Box flex={1}>
-      <LinearGradient
-        locations={[0.03, 0.95]}
-        colors={["#19087d", "#846fff"]}
-        start={{ x: 0.95, y: 1 }}
-        end={{ x: 0.03, y: 0 }}
-      >
-        <ImageBackground style={styles.container} source={images.clouds}>
-          {/* Hand and phone with vertical animation */}
-          <Animated.Image
-            source={require("../assets/images/hand.png")}
-            style={[
-              styles.handImage,
-              {
-                transform: [{ translateY: handPhoneAnimation }],
-              },
-            ]}
-          />
+    <LinearGradient
+      locations={[0.03, 0.95]}
+      colors={["#19087d", "#846fff"]}
+      start={{ x: 0.95, y: 1 }}
+      end={{ x: 0.03, y: 0 }}
+    >
+      <ImageBackground style={styles.container} source={images.clouds}>
+        {/* Hand and phone with vertical animation */}
+        <Animated.Image
+          source={require("../assets/images/hand.png")}
+          style={[
+            styles.handImage,
+            {
+              transform: [{ translateY: handPhoneAnimation }],
+            },
+          ]}
+        />
 
-          {/* Floating icons */}
-          <Animated.Image
-            source={require("../assets/images/btc.png")}
-            style={[
-              styles.bitcoinIcon,
-              {
-                transform: [{ translateY: bitcoinAnimation }],
-              },
-            ]}
-          />
-          <Animated.Image
-            source={require("../assets/images/dollar.png")}
-            style={[
-              styles.dollarIcon,
-              {
-                transform: [{ translateY: dollarAnimation }],
-              },
-            ]}
-          />
-          <Animated.Image
-            source={require("../assets/images/sym.png")}
-            style={[
-              styles.asteriskIcon,
-              {
-                transform: [{ translateY: asteriskAnimation }],
-              },
-            ]}
-          />
-          <CustomText variant="header" color="white" fontSize={40}>
-            Your Funds,
-          </CustomText>
-          <CustomText variant="header" mb="m" color="white" fontSize={40}>
-            Your Wallet
-          </CustomText>
-          <CustomButton
-            text="Get Started"
-            trailingIcon={
-              <Image
-                source={icons.arrowRight}
-                style={{ width: 20, height: 20 }}
-              />
-            }
-            bgColor="white"
-            color={theme.colors.primaryColor}
-            borderRadius={55}
-            height={55}
-            shouldVibrate
-            onPress={() => router.push("/select-track")}
-          />
-        </ImageBackground>
-      </LinearGradient>
-    </Box>
+        {/* Floating icons */}
+        <Animated.Image
+          source={require("../assets/images/btc.png")}
+          style={[
+            styles.bitcoinIcon,
+            {
+              transform: [{ translateY: bitcoinAnimation }],
+            },
+          ]}
+        />
+        <Animated.Image
+          source={require("../assets/images/dollar.png")}
+          style={[
+            styles.dollarIcon,
+            {
+              transform: [{ translateY: dollarAnimation }],
+            },
+          ]}
+        />
+        <Animated.Image
+          source={require("../assets/images/sym.png")}
+          style={[
+            styles.asteriskIcon,
+            {
+              transform: [{ translateY: asteriskAnimation }],
+            },
+          ]}
+        />
+        <View
+          style={{
+            position: "absolute",
+            bottom: 126 + inset?.bottom,
+          }}
+        >
+          <ThemedText type="subTitleLg" color={theme.colors.bodyTextColor}>
+            Your Funds.
+          </ThemedText>
+          <ThemedText type="subTitleLg" color={theme.colors.bodyTextColor}>
+            Your wallet
+          </ThemedText>
+        </View>
+
+        <DirectionButton
+          color="#6045FF"
+          onPress={() => router.push("/select-track")}
+        />
+      </ImageBackground>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
     paddingBottom: 50,
+    height: SIZES.height,
+    width: SIZES.width,
   },
   // Cloud styles
   cloud1: {

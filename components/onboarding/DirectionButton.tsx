@@ -1,3 +1,4 @@
+import icons from "@/assets/icons";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import React from "react";
 import {
@@ -11,7 +12,6 @@ import {
   ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import images from "../../assets/images";
 import If from "../general/If";
 import ThemedText from "../general/ThemedText";
 
@@ -23,8 +23,8 @@ type DirectionButtonProp = {
   style?: StyleProp<ViewStyle>;
   title?: string;
   color?: string;
-  size: number;
-  loading: boolean;
+  size?: number;
+  loading?: boolean;
 };
 
 export default function DirectionButton({
@@ -68,7 +68,7 @@ export default function DirectionButton({
         </ThemedText>
       </If>
       <Image
-        source={images.down}
+        source={icons.arrowRight}
         style={{
           ...styles.icon,
           height: size,
