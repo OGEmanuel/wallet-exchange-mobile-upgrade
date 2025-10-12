@@ -21,6 +21,7 @@ import {
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
 import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
 import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
 import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
@@ -37,6 +38,7 @@ const Home = () => {
     sendTokenRef: bottomsheetRef,
     recieveTokenRef,
     tradeBottomSheetRef,
+    buyTokensBottomSheetRef,
   } = useBottomSheetRefs();
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
 
@@ -184,6 +186,7 @@ const Home = () => {
         </AppBottomSheet>
         <SelectTokenBottomSheet ref={bottomsheetRef} />
         <SelectUserTokens ref={recieveTokenRef} />
+        <SelectBuyTokens ref={buyTokensBottomSheetRef} />
         <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
       </ScrollView>
     </PageWrapper>
