@@ -129,13 +129,13 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
             paddingHorizontal="s"
             backgroundColor="secondaryBackgroundColor"
           >
-            <CustomText fontSize={10} color={portfolio.performance.dailyReturn >= 0 ? 'successColor' : 'alertColor'}>
+            <CustomText fontSize={10} color={portfolio.performance.dailyReturn >= 0 ? 'success' : 'pendingColor'}>
               {formatCurrency(portfolio.performance.dailyReturnUSD || 0)}
             </CustomText>
-            <CustomText fontSize={10} marginLeft="xs">
+            <CustomText fontSize={10} marginLeft="s">
               <CustomText 
                 fontSize={10} 
-                color={portfolio.performance.dailyReturn >= 0 ? 'successColor' : 'alertColor'}
+                color={portfolio.performance.dailyReturn >= 0 ? 'success' : 'pendingColor'}
               >
                 {formatPercentage(portfolio.performance.dailyReturn || 0)}
               </CustomText> in 24H
@@ -155,7 +155,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
             <CustomText variant="body" color="bodyTextColor">Total Return</CustomText>
             <CustomText 
               variant="body" 
-              color={portfolio.performance.totalReturn >= 0 ? 'successColor' : 'alertColor'}
+              color={portfolio.performance.totalReturn >= 0 ? 'success' : 'pendingColor'}
             >
               {formatPercentage(portfolio.performance.totalReturn || 0)}
             </CustomText>
@@ -165,7 +165,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
             <CustomText variant="body" color="bodyTextColor">Daily</CustomText>
             <CustomText 
               variant="body" 
-              color={portfolio.performance.dailyReturn >= 0 ? 'successColor' : 'alertColor'}
+              color={portfolio.performance.dailyReturn >= 0 ? 'success' : 'pendingColor'}
             >
               {formatPercentage(portfolio.performance.dailyReturn || 0)}
             </CustomText>
@@ -175,7 +175,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
             <CustomText variant="body" color="bodyTextColor">Weekly</CustomText>
             <CustomText 
               variant="body" 
-              color={portfolio.performance.weeklyReturn >= 0 ? 'successColor' : 'alertColor'}
+              color={portfolio.performance.weeklyReturn >= 0 ? 'success' : 'pendingColor'}
             >
               {formatPercentage(portfolio.performance.weeklyReturn || 0)}
             </CustomText>
@@ -185,7 +185,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
             <CustomText variant="body" color="bodyTextColor">Monthly</CustomText>
             <CustomText 
               variant="body" 
-              color={portfolio.performance.monthlyReturn >= 0 ? 'successColor' : 'alertColor'}
+              color={portfolio.performance.monthlyReturn >= 0 ? 'success' : 'pendingColor'}
             >
               {formatPercentage(portfolio.performance.monthlyReturn || 0)}
             </CustomText>
@@ -231,12 +231,12 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
               
               <Box alignItems="flex-end" marginLeft="s">
                 <CustomText 
-                  variant="caption" 
-                  color={asset.change24h >= 0 ? 'successColor' : 'alertColor'}
+                  variant="bodyMedium" 
+                  color={asset.change24h >= 0 ? 'success' : 'pendingColor'}
                 >
                   {formatPercentage(asset.change24h || 0)}
                 </CustomText>
-                <CustomText variant="caption" color="bodyTextColor">
+                <CustomText variant="bodySubheader" color="bodyTextColor">
                   {asset.percentage?.toFixed(1)}%
                 </CustomText>
               </Box>
@@ -253,7 +253,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
           </CustomText>
           
           {Object.entries(portfolio.allocation.byAsset || {}).map(([asset, percentage]: [string, any]) => (
-            <Box key={asset} flexDirection="row" justifyContent="space-between" marginBottom="xs">
+            <Box key={asset} flexDirection="row" justifyContent="space-between" marginBottom="s">
               <CustomText variant="body">{asset}</CustomText>
               <CustomText variant="body">{percentage.toFixed(1)}%</CustomText>
             </Box>

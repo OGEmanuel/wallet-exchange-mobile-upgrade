@@ -5,7 +5,7 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { Check, Search } from "lucide-react-native";
+import { Check, MoreHorizontalIcon, Search } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
 import { Pressable } from "react-native";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
@@ -17,25 +17,29 @@ interface SelectChainBottomSheetProps {
   onChainSelect?: (chainSymbol: string) => void;
 }
 
-const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetProps>(({ onChainSelect }, ref) => {
+const SelectChainBottomSheet = forwardRef<
+  BottomSheet,
+  SelectChainBottomSheetProps
+>(({ onChainSelect }, ref) => {
   const theme = useTheme<Theme>();
   const { walletChains, isLoading } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [searchQuery, setSearchQuery] = React.useState<string>("");
 
   // Filter chains based on search query
-  const filteredChains = walletChains.filter(chain => 
-    chain.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    chain.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredChains = walletChains.filter(
+    (chain) =>
+      chain.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      chain.symbol.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Separate top chains (ETH, BTC, SOL) from the rest
-  const topChains = filteredChains.filter(chain => 
-    ['ETH', 'BTC', 'SOL'].includes(chain.symbol)
+  const topChains = filteredChains.filter((chain) =>
+    ["ETH", "BTC", "SOL"].includes(chain.symbol)
   );
-  
-  const otherChains = filteredChains.filter(chain => 
-    !['ETH', 'BTC', 'SOL'].includes(chain.symbol)
+
+  const otherChains = filteredChains.filter(
+    (chain) => !["ETH", "BTC", "SOL"].includes(chain.symbol)
   );
 
   const handleChainSelect = (chainSymbol: string) => {
@@ -78,15 +82,15 @@ const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetPro
       )}
     >
       <BottomSheetScrollView
-        style={{ 
-          flex: 1, 
+        style={{
+          flex: 1,
           backgroundColor: theme.colors.mainBackgroundColor,
-          minHeight: 400 // Ensure consistent minimum height
+          minHeight: 400, // Ensure consistent minimum height
         }}
-        contentContainerStyle={{ 
-          paddingHorizontal: 20, 
+        contentContainerStyle={{
+          paddingHorizontal: 20,
           paddingVertical: 25,
-          flexGrow: 1 // Allow content to grow but maintain minimum height
+          flexGrow: 1, // Allow content to grow but maintain minimum height
         }}
       >
         <CustomInputWithoutForm
@@ -123,12 +127,56 @@ const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetPro
                 height={"auto"}
                 backgroundColor="secondaryBackgroundColor"
                 borderRadius={20}
-                padding="m"
+                paddingHorizontal="m"
                 mt="m"
+                paddingVertical="s"
               >
-                <CustomText variant="medium" fontSize={16} color="white" mb="m">
-                  Popular Chains
-                </CustomText>
+                <Pressable
+                  style={{
+                    width: "100%",
+                    height: 60,
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  onPress={() => handleChainSelect("ALL")}
+                >
+                  <Box flexDirection="row" alignItems="center">
+                    {/* Chain Icon */}
+                    <Box
+                      width={32}
+                      height={32}
+                      borderRadius={16}
+                      backgroundColor="black"
+                      justifyContent="center"
+                      alignItems="center"
+                      mr="m"
+                    >
+                      <MoreHorizontalIcon
+                        width={20}
+                        height={20}
+                        color="white"
+                      />
+                    </Box>
+                    <Box>
+                      <CustomText variant="body" fontSize={14} color="white">
+                        All Chains
+                      </CustomText>
+                    </Box>
+                  </Box>
+                  {activeChain === "ALL" && (
+                    <Box
+                      width={28}
+                      height={28}
+                      borderRadius={28}
+                      backgroundColor="success"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
+                      <Check size={20} color="white" />
+                    </Box>
+                  )}
+                </Pressable>
                 {topChains.map((chain, index) => (
                   <Pressable
                     key={chain._id}
@@ -155,7 +203,11 @@ const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetPro
                         <CustomText variant="body" fontSize={14} color="white">
                           {chain.name}
                         </CustomText>
-                        <CustomText variant="body" fontSize={12} color="bodyTextColor">
+                        <CustomText
+                          variant="body"
+                          fontSize={12}
+                          color="bodyTextColor"
+                        >
                           {chain.symbol}
                         </CustomText>
                       </Box>
@@ -184,12 +236,9 @@ const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetPro
                 height={"auto"}
                 backgroundColor="secondaryBackgroundColor"
                 borderRadius={20}
-                padding="m"
+                paddingHorizontal="m"
                 mt="m"
               >
-                <CustomText variant="medium" fontSize={16} color="white" mb="m">
-                  Other Chains
-                </CustomText>
                 {otherChains.map((chain, index) => (
                   <Pressable
                     key={chain._id}
@@ -216,7 +265,11 @@ const SelectChainBottomSheet = forwardRef<BottomSheet, SelectChainBottomSheetPro
                         <CustomText variant="body" fontSize={14} color="white">
                           {chain.name}
                         </CustomText>
-                        <CustomText variant="body" fontSize={12} color="bodyTextColor">
+                        <CustomText
+                          variant="body"
+                          fontSize={12}
+                          color="bodyTextColor"
+                        >
                           {chain.symbol}
                         </CustomText>
                       </Box>

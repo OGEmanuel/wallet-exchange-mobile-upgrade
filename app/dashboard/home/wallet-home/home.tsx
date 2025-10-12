@@ -6,7 +6,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, BackHandler, Pressable } from "react-native";
+import { Animated, BackHandler, Pressable, RefreshControl } from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
   ThemedAccountFillIcon,
@@ -42,6 +42,8 @@ const Home = () => {
     useState<ProcessedPortfolio | null>(null);
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const theme = useTheme<Theme>();
   const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
@@ -57,6 +59,26 @@ const Home = () => {
     error: walletError,
   } = useWallet();
 
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    try {
+      console.log("🔄 Starting portfolio refresh...");
+      setIsRefreshing(true);
+      await refreshPortfolio();
+      console.log("🔄 Portfolio refresh completed");
+      
+      // Force re-processing of portfolio data
+      if (portfolio) {
+        console.log("🔄 Re-processing portfolio data...");
+        setRefreshTrigger(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error("Failed to refresh portfolio:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Debug wallet state
   console.log("🔍 Wallet state:", {
     isWalletAuthenticated,
@@ -69,6 +91,7 @@ const Home = () => {
 
   // Process portfolio data when it changes
   useEffect(() => {
+    console.log("🔄 Portfolio useEffect triggered, portfolio:", portfolio ? "exists" : "null", "refreshTrigger:", refreshTrigger);
     if (portfolio) {
       const processPortfolio = async () => {
         try {
@@ -96,7 +119,7 @@ const Home = () => {
 
       processPortfolio();
     }
-  }, [portfolio]);
+  }, [portfolio, refreshTrigger]);
 
   // Track if portfolio has been fetched to prevent infinite loops
   const hasFetchedPortfolio = useRef(false);
@@ -211,6 +234,14 @@ const Home = () => {
           setShowStickyHeader(scrollY > 200);
         }}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primaryColor}
+            colors={[theme.colors.primaryColor]}
+          />
+        }
       >
         <AppBar
           title={
@@ -440,9 +471,11 @@ const Home = () => {
           )} */}
 
           <AssetsSection
+            mainUserWalletGroup={mainUserWalletGroup}
             portfolio={processedPortfolio}
             isLoading={isPortfolioLoading || isLoading}
             error={portfolioError}
+            onRefreshPortfolio={refreshPortfolio}
             onManagePress={() => {
               // Navigate to manage assets page
             }}

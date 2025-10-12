@@ -148,6 +148,7 @@ export interface ProcessedAsset {
   chainId: string;
   chainName: string;
   chainSymbol: string;
+  chainImage: string;
   tokenAddress: string | null;
   decimals: number;
 }

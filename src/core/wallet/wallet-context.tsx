@@ -590,7 +590,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       if (result) {
         setIsExchangeAuthenticated(true);
-        setCurrentExchangeUser(result.data.userId);
+        setCurrentExchangeUser(result.data.user._id);
         await checkAuthenticationAndRoute(false);
         return true;
       } else {

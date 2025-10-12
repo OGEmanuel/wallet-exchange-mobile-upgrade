@@ -82,7 +82,16 @@ export class PortfolioService {
     // Create a map of currencyId to token info for quick lookup
     const tokenMap = new Map<string, UserToken>();
     userTokenList.forEach(token => {
-      tokenMap.set(token.supportedCurrencyId._id, token);
+      // Handle both cases: supportedCurrencyId as object or string
+      const currencyId = typeof token.supportedCurrencyId === 'string' 
+        ? token.supportedCurrencyId 
+        : token.supportedCurrencyId?._id;
+      
+      if (currencyId) {
+        tokenMap.set(currencyId, token);
+      } else {
+        console.warn("⚠️ Token missing currency ID:", token);
+      }
     });
 
     console.log("🔍 Token map created with", tokenMap.size, "tokens");
@@ -97,20 +106,25 @@ export class PortfolioService {
       console.log("🔍 Missing currency IDs in token map:", missingCurrencyIds);
     }
 
-    // Process assets - only include accounts that have corresponding enabled tokens
+    // Process assets - include ALL tokens (enabled, disabled, hidden)
     const assets: ProcessedAsset[] = allAccounts
       .filter(account => {
         const tokenInfo = tokenMap.get(account.supportedCurrencyId);
-        return tokenInfo && tokenInfo.status === 'ENABLED';
+        return tokenInfo; // Include all tokens regardless of status
       })
       .map(account => {
         const tokenInfo = tokenMap.get(account.supportedCurrencyId);
+        
+        if (!tokenInfo) {
+          console.warn("⚠️ No token info found for account:", account.supportedCurrencyId);
+          return null;
+        }
 
         // Extract symbol and name from token info
-        const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(tokenInfo!);
+        const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(tokenInfo);
         
         // Extract chain information
-        const { chainName, chainSymbol } = this.extractChainInfo(tokenInfo!);
+        const { chainName, chainSymbol, chainImage } = this.extractChainInfo(tokenInfo);
 
         console.log(`🔍 Extracted for ${account._id}:`, {
           symbol,
@@ -136,10 +150,12 @@ export class PortfolioService {
           chainId: tokenInfo?.supportedCurrencyId.chainId,
           chainName,
           chainSymbol,
+          chainImage,
           tokenAddress: tokenInfo?.supportedCurrencyId.tokenAddress,
           decimals: tokenInfo?.supportedCurrencyId.decimals,
         };
-      });
+      })
+      .filter(asset => asset !== null) as ProcessedAsset[];
 
     // Separate enabled and disabled assets
     const enabledAssets = assets.filter(asset => asset.status === 'ENABLED');
@@ -181,8 +197,10 @@ export class PortfolioService {
     }
 
     // Try to get currency info from SDK data first
-    const supportedCurrencyId = tokenInfo.supportedCurrencyId._id;
-    const supportedCurrencyInfo = this.getSupportedCurrencyInfo(supportedCurrencyId);
+    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string' 
+      ? tokenInfo.supportedCurrencyId 
+      : tokenInfo.supportedCurrencyId?._id;
+    const supportedCurrencyInfo = supportedCurrencyId ? this.getSupportedCurrencyInfo(supportedCurrencyId) : null;
 
     if (supportedCurrencyInfo && supportedCurrencyInfo?.currencyId?.symbol) {
       console.log("🔍 Found symbol in SDK currency data:", supportedCurrencyInfo?.currencyId?.symbol);
@@ -211,29 +229,35 @@ export class PortfolioService {
   /**
    * Extract chain information from token info
    */
-  private static extractChainInfo(tokenInfo: UserToken): { chainName: string, chainSymbol: string } {
+  private static extractChainInfo(tokenInfo: UserToken): { chainName: string, chainSymbol: string, chainImage: string } {
     const supportedCurrency = tokenInfo.supportedCurrencyId;
     
     // Try to get chain info from SDK data first
-    const supportedCurrencyId = tokenInfo.supportedCurrencyId._id;
-    const supportedCurrencyInfo = this.getSupportedCurrencyInfo(supportedCurrencyId);
+    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string' 
+      ? tokenInfo.supportedCurrencyId 
+      : tokenInfo.supportedCurrencyId?._id;
+    const supportedCurrencyInfo = supportedCurrencyId ? this.getSupportedCurrencyInfo(supportedCurrencyId) : null;
     
     if (supportedCurrencyInfo && supportedCurrencyInfo.chainId) {
       console.log("🔍 Found chain info in SDK data:", {
         name: supportedCurrencyInfo.chainId.name,
-        symbol: supportedCurrencyInfo.chainId.symbol
+        symbol: supportedCurrencyInfo.chainId.symbol,
+        image: supportedCurrencyInfo.nativeCurrencyId?.logo
       });
       return {
         chainName: supportedCurrencyInfo.chainId.name || "Unknown Chain",
-        chainSymbol: supportedCurrencyInfo.chainId.symbol || "UNKNOWN"
+        chainSymbol: supportedCurrencyInfo.chainId.symbol || "UNKNOWN",
+        chainImage: supportedCurrencyInfo.nativeCurrencyId?.logo || "UNKNOWN"
       };
     }
     
     // Fallback: try to extract from the supportedCurrencyId structure
     if (supportedCurrency.chainId && typeof supportedCurrency.chainId === 'object') {
+      const chainId = supportedCurrency.chainId as any; // Type assertion for dynamic structure
       return {
-        chainName: supportedCurrency.chainId.name || "Unknown Chain",
-        chainSymbol: supportedCurrency.chainId.symbol || "UNKNOWN"
+        chainName: chainId?.name || "Unknown Chain",
+        chainSymbol: chainId?.symbol || "UNKNOWN",
+        chainImage: chainId?.nativeCurrencyId?.logo || "UNKNOWN"
       };
     }
     
@@ -241,7 +265,8 @@ export class PortfolioService {
     console.log("🔍 No chain info found");
     return {
       chainName: "Unknown Chain",
-      chainSymbol: "UNKNOWN"
+      chainSymbol: "UNKNOWN",
+      chainImage: "UNKNOWN"
     };
   }
 

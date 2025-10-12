@@ -2,7 +2,7 @@
 import { Buffer } from "buffer";
 import "react-native-get-random-values";
 
-import { PinGuard } from "@/components/auth/PinGuard";
+// import { PinGuard } from "@/components/auth/PinGuard";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
@@ -139,7 +139,7 @@ export default function RootLayout() {
                             : "dark-content"
                         }
                       />
-                      <PinGuard />
+                      {/* <PinGuard /> */}
                       <Stack screenOptions={{ headerShown: false }}>
                         <Stack.Screen
                           name="index"

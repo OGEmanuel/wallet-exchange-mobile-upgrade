@@ -5,15 +5,17 @@ import {
   ProcessedPortfolio,
 } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
+import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, View } from "react-native";
 import { SvgUri } from "react-native-svg";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
 import ZapLoader from "../general/ZapLoader";
+import ManageTokensModal from "../Modals/ManageTokensModal";
 import PortfolioErrorState from "./PortfolioErrorState";
 
 const CryptoIcon = ({ image }: { image?: string }) => {
@@ -50,7 +52,6 @@ const CryptoIcon = ({ image }: { image?: string }) => {
 };
 
 const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
-  const iconColor = PortfolioService.getAssetIconColor(asset.symbol);
   const formattedPrice = PortfolioService.formatCurrency(asset.price);
   const formattedTotalValue = PortfolioService.formatCurrency(
     asset.totalUsdValue
@@ -93,11 +94,7 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
                 paddingHorizontal="s"
                 style={{ paddingVertical: 4 }}
               >
-                <CustomText
-                  variant="light"
-                  fontSize={10}
-                  color="whiteBodyText"
-                >
+                <CustomText variant="light" fontSize={10} color="whiteBodyText">
                   {asset.chainName}
                 </CustomText>
               </Box>
@@ -141,22 +138,27 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
 
 interface AssetsSectionProps {
   portfolio: ProcessedPortfolio | null;
+  mainUserWalletGroup: any;
   isLoading: boolean;
   error: string | null;
   onManagePress?: () => void;
   onRetry?: () => void;
   onLogin?: () => void;
+  onRefreshPortfolio?: () => void;
 }
 
 const AssetsSection = ({
   portfolio,
+  mainUserWalletGroup,
   isLoading,
   error,
   onManagePress = () => {},
   onRetry = () => {},
   onLogin = () => {},
+  onRefreshPortfolio = () => {},
 }: AssetsSectionProps) => {
   const theme = useTheme<Theme>();
+  const [showManageModal, setShowManageModal] = useState(false);
 
   // Debug logging
   console.log("🔍 AssetsSection props:", {
@@ -166,6 +168,11 @@ const AssetsSection = ({
     isLoading,
     error,
   });
+
+  const handleManagePress = () => {
+    setShowManageModal(true);
+    onManagePress();
+  };
 
   if (isLoading) {
     return (
@@ -228,7 +235,7 @@ const AssetsSection = ({
             Assets
           </CustomText>
           <CustomButton
-            onPress={onManagePress}
+            onPress={handleManagePress}
             text="Manage"
             width={90}
             height={32}
@@ -275,7 +282,7 @@ const AssetsSection = ({
           Assets ({portfolio.enabledCount})
         </CustomText>
         <CustomButton
-          onPress={onManagePress}
+          onPress={handleManagePress}
           text="Manage"
           width={90}
           height={32}
@@ -302,4 +309,63 @@ const AssetsSection = ({
   );
 };
 
-export default AssetsSection;
+const AssetsSectionWithModal = (props: AssetsSectionProps) => {
+  const [showManageModal, setShowManageModal] = useState(false);
+
+  const handleManagePress = () => {
+    setShowManageModal(true);
+  };
+
+  const handleToggleToken = async (assetId: string, enabled: boolean) => {
+    try {
+      const sdk = zapSDKService.getSDK();
+      if (sdk && sdk.tokens) {
+        // Use SDK to toggle token status
+        if (enabled) {
+          await sdk.tokens.enableToken({
+            userWalletGroupId: props.mainUserWalletGroup._id,
+            supportedCurrencyId: assetId,
+          });
+        } else {
+          await sdk.tokens.disableToken({
+            userWalletGroupId: props.mainUserWalletGroup._id,
+            supportedCurrencyId: assetId,
+          });
+        }
+        console.log("Token toggled successfully:", assetId, enabled);
+        
+        // Refresh portfolio to update the UI
+        if (props.onRefreshPortfolio) {
+          console.log("Refreshing portfolio after token toggle...");
+          props.onRefreshPortfolio();
+        }
+      } else {
+        console.error("SDK not available for token toggle");
+      }
+    } catch (error) {
+      console.error("Failed to toggle token:", error);
+    }
+  };
+
+  const handleImportToken = () => {
+    console.log("Token imported successfully, refreshing portfolio...");
+    // Refresh portfolio to show the newly imported token
+    props.onRefreshPortfolio?.();
+  };
+
+  return (
+    <>
+      <AssetsSection {...props} onManagePress={handleManagePress} />
+      <ManageTokensModal
+        mainUserWalletGroup={props.mainUserWalletGroup}
+        visible={showManageModal}
+        onClose={() => setShowManageModal(false)}
+        allTokens={props.portfolio?.assets || []}
+        onToggleToken={handleToggleToken}
+        onImportToken={handleImportToken}
+      />
+    </>
+  );
+};
+
+export default AssetsSectionWithModal;
