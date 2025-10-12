@@ -1,5 +1,6 @@
 import { CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -56,6 +57,7 @@ const ItemCard = ({
 
 const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const theme = useTheme<Theme>();
+  const { tradeBottomSheetRef, buyTokensBottomSheetRef } = useBottomSheetRefs();
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -113,7 +115,10 @@ const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
               style={{ width: "100%", height: "100%" }}
             />
           }
-          onPress={() => router.push("/dashboard/home/buy")}
+          onPress={() => {
+            buyTokensBottomSheetRef.current?.snapToIndex(0);
+            tradeBottomSheetRef.current?.snapToPosition("0%");
+          }}
         />
         <Box height={16}></Box>
         <ItemCard
