@@ -10,6 +10,11 @@ const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
 const zapLogo = require("./zapIcon.png");
+const linked = require("./linked.png");
+const firstBank = require("./firstBank.png");
+const arrowsDown = require("./arrowsdown.png");
+const nigeria = require("./naija.png");
+const success = require("./success.png");
 
 export default {
   accounts,
@@ -23,4 +28,9 @@ export default {
   zapLogoWithNameDark,
   zapLogoWithNameLight,
   zapLogo,
+  linked,
+  firstBank,
+  arrowsDown,
+  nigeria,
+success
 };

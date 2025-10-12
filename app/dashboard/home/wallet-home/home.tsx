@@ -21,6 +21,7 @@ import {
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
 import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
 import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
 import AssetsSection from "@/components/dashboard/AssetsSection";
@@ -32,8 +33,11 @@ const Home = () => {
   const OS = Platform.OS;
 
   const theme = useTheme<Theme>();
-  const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
-    useBottomSheetRefs();
+  const {
+    sendTokenRef: bottomsheetRef,
+    recieveTokenRef,
+    tradeBottomSheetRef,
+  } = useBottomSheetRefs();
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   return (
@@ -138,7 +142,7 @@ const Home = () => {
                 />
               }
               title="Trade"
-              action={() => {}}
+              action={() => tradeBottomSheetRef.current?.expand()}
             />
             <Box width={20} />
             <DashboardActionItem
@@ -181,6 +185,7 @@ const Home = () => {
         <SelectTokenBottomSheet ref={bottomsheetRef} />
         <SelectUserTokens ref={recieveTokenRef} />
       </ScrollView>
+      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
     </PageWrapper>
   );
 };
