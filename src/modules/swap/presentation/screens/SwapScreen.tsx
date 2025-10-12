@@ -611,9 +611,7 @@ const Swap = () => {
       <SwapProgressSheet
         ref={progressSheetRef}
         orderDetails={createdOrder}
-        onClose={() => {
-          setCreatedOrder(null);
-        }}
+        onClose={() => {}}
         title="Order Created"
       />
     </PageWrapper>
