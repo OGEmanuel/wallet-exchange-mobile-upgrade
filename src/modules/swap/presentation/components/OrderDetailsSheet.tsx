@@ -12,6 +12,7 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -46,6 +47,14 @@ const OrderDetailsSheet = forwardRef<
     open: () => bottomSheetRef.current?.snapToIndex(0),
     close: () => bottomSheetRef.current?.close(),
   }));
+
+  useEffect(() => {
+    console.log("djdjd");
+    setTimeout(() => {
+      bottomSheetRef.current?.close();
+      onClose?.();
+    }, 5000);
+  }, []);
 
   if (!orderDetails) return null;
 

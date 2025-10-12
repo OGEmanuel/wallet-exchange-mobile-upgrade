@@ -38,6 +38,7 @@ import {
   SwapDetailsCard,
   TokenInputCard,
 } from "../components";
+import SwapProgressSheet from "../components/SwapProgressSheet";
 import { useSwapAnimations } from "../hooks/useSwapAnimations";
 
 const Swap = () => {
@@ -280,6 +281,7 @@ const Swap = () => {
     },
   });
   const orderDetailsSheetRef = useRef<any>(null);
+  const progressSheetRef = useRef<any>(null);
 
   // 🔹 Create order hook
   const {
@@ -600,6 +602,14 @@ const Swap = () => {
 
       <OrderDetailsSheet
         ref={orderDetailsSheetRef}
+        orderDetails={createdOrder}
+        onClose={() => {
+          progressSheetRef.current?.open();
+        }}
+        title="Order Created"
+      />
+      <SwapProgressSheet
+        ref={progressSheetRef}
         orderDetails={createdOrder}
         onClose={() => {
           setCreatedOrder(null);

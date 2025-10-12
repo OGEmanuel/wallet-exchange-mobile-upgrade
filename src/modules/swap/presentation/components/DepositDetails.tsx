@@ -22,6 +22,7 @@ const DepositDetails: React.FC<DepositDetailsProps> = ({
   const theme = useTheme<Theme>();
   const isCrypto = orderDetails?.buyCurrency.currencyId.isCrypto;
   const { truncateString } = useAppUtilities();
+
   return (
     <View style={styles.container}>
       <View style={styles.innerContainer}>
