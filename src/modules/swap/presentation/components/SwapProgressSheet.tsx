@@ -36,6 +36,8 @@ const SwapProgressSheet = forwardRef<
     close: () => bottomSheetRef.current?.close(),
   }));
 
+  console.log("buy amaoutn", orderDetails?.baseCurrency?.currencyId?.code);
+
   return (
     <BottomSheet
       ref={bottomSheetRef}
@@ -76,29 +78,18 @@ const SwapProgressSheet = forwardRef<
 
           <View style={{ width: 24 }} />
         </View>
-        <ProgressView
-          fromAmount={orderDetails?.buyAmount || "0"}
-          fromCurrency={baseCurrency?.displayTicker || ""}
-          toAmount={orderDetails?.sellAmount || "0"}
-          toCurrency={targetCurrency?.displayTicker || ""}
-          recipient={"John Doe"}
-          network={
-            (() => {
-              const chainId = orderDetails?.buyCurrency?.chainId;
-              if (!chainId) return "Network";
-              if (
-                typeof chainId === "object" &&
-                "name" in chainId &&
-                typeof chainId.name === "string"
-              ) {
-                return chainId.name;
-              }
-              return String(chainId);
-            })() as string
-          }
-          status="confirming"
-          orderDetails={orderDetails}
-        />
+        {false && (
+          <ProgressView
+            fromAmount={orderDetails?.buyAmount || "0"}
+            fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
+            toAmount={orderDetails?.sellAmount}
+            toCurrency={orderDetails.sellCurrency?.currencyId?.code || ""}
+            recipient={"John Doe"}
+            network={(() => {})() as string}
+            status="confirming"
+            orderDetails={orderDetails}
+          />
+        )}
       </BottomSheetView>
     </BottomSheet>
   );

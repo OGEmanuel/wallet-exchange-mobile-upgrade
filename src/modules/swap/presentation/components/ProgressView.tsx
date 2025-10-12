@@ -1,3 +1,7 @@
+import { CustomText } from "@/components/general";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import ProgressBar, { ProgressStep } from "./ProgressBar";
@@ -43,6 +47,8 @@ const ProgressView: React.FC<ProgressViewProps> = ({
     { id: "3", label: "Sending", status: "pending" },
   ];
 
+  const theme = useTheme<Theme>();
+
   const getCurrentStepIndex = () => {
     if (status === "confirming") return 0;
     if (status === "swapping") return 1;
@@ -79,21 +85,28 @@ const ProgressView: React.FC<ProgressViewProps> = ({
           },
         ]}
       >
-        <Text style={styles.subtitle} type="h5">
-          Swap {buyCurrency?.name || fromCurrency} for
+        <Text style={[styles.subtitle, { color: theme.colors.bodyTextColor }]}>
+          Swap {orderDetails.buyAmount} {fromCurrency} for
         </Text>
 
         <View style={styles.tokenRow}>
-          {/* <TokenImage
-            size={24}
-            uri={sellCurrency?.image || targetCurrency?.image || ""}
-            name={sellCurrency?.name || targetCurrency?.name || ""}
-          /> */}
-          <Text type="h2">{sellCurrency?.name || toCurrency}</Text>
+          <Image />
+          <CustomText
+            variant="header"
+            style={{ color: theme.colors.bodyTextColor, fontWeight: "400" }}
+          >
+            {orderDetails?.sellAmount} {sellCurrency?.name || toCurrency}
+          </CustomText>
         </View>
 
         <View style={styles.recipientContainer}>
-          <Text style={styles.recipientText} numberOfLines={1}>
+          <Text
+            style={[
+              styles.recipientText,
+              { color: theme.colors.bodyTextColor },
+            ]}
+            numberOfLines={1}
+          >
             To{"  "}
             {orderDetails?.withdrawalAccount?.holderName ||
               recipient ||
@@ -133,16 +146,16 @@ const ProgressView: React.FC<ProgressViewProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    width: "100%",
+    width: "90%",
     backgroundColor: "#1C1F26", // assuming keyPad color
-    borderRadius: 16,
+    borderRadius: 8,
     marginTop: 16,
     padding: 16,
     alignItems: "center",
     gap: 12,
+    alignSelf: "center",
   },
   subtitle: {
-    color: "#8A8A8A", // assuming text-placeholder color
     marginBottom: 8,
   },
   tokenRow: {
