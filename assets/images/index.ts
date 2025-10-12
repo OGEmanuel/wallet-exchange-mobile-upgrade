@@ -20,7 +20,11 @@ const arrowsDown = require("./arrowsdown.png");
 const nigeria = require("./naija.png");
 const success = require("./success.png");
 const down = require("./down.png");
+<<<<<<< HEAD
 >>>>>>> 8cd240c (feat: add down icon and update TokenInputCard for improved token selection UI)
+=======
+const clouds = require("./clouds.gif");
+>>>>>>> bdc28f0 (feat: enhance HomeScreen with new animations and assets)
 
 export default {
   accounts,

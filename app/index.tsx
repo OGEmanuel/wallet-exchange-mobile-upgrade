@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+=======
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+>>>>>>> bdc28f0 (feat: enhance HomeScreen with new animations and assets)
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
@@ -5,6 +11,7 @@ import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
+<<<<<<< HEAD
   ImageBackground,
   StyleSheet,
   View,
@@ -15,6 +22,14 @@ import DirectionButton from "@/components/onboarding/DirectionButton";
 import { SIZES } from "@/data";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+=======
+  Image,
+  ImageBackground,
+  StyleSheet,
+} from "react-native";
+
+import icons from "@/assets/icons";
+>>>>>>> bdc28f0 (feat: enhance HomeScreen with new animations and assets)
 import images from "../assets/images";
 
 export default function HomeScreen() {
@@ -79,6 +94,7 @@ export default function HomeScreen() {
   ]);
 
   return (
+<<<<<<< HEAD
     <LinearGradient
       locations={[0.03, 0.95]}
       colors={["#19087d", "#846fff"]}
@@ -145,6 +161,79 @@ export default function HomeScreen() {
         />
       </ImageBackground>
     </LinearGradient>
+=======
+    <Box flex={1}>
+      <LinearGradient
+        locations={[0.03, 0.95]}
+        colors={["#19087d", "#846fff"]}
+        start={{ x: 0.95, y: 1 }}
+        end={{ x: 0.03, y: 0 }}
+      >
+        <ImageBackground style={styles.container} source={images.clouds}>
+          {/* Hand and phone with vertical animation */}
+          <Animated.Image
+            source={require("../assets/images/hand.png")}
+            style={[
+              styles.handImage,
+              {
+                transform: [{ translateY: handPhoneAnimation }],
+              },
+            ]}
+          />
+
+          {/* Floating icons */}
+          <Animated.Image
+            source={require("../assets/images/btc.png")}
+            style={[
+              styles.bitcoinIcon,
+              {
+                transform: [{ translateY: bitcoinAnimation }],
+              },
+            ]}
+          />
+          <Animated.Image
+            source={require("../assets/images/dollar.png")}
+            style={[
+              styles.dollarIcon,
+              {
+                transform: [{ translateY: dollarAnimation }],
+              },
+            ]}
+          />
+          <Animated.Image
+            source={require("../assets/images/sym.png")}
+            style={[
+              styles.asteriskIcon,
+              {
+                transform: [{ translateY: asteriskAnimation }],
+              },
+            ]}
+          />
+          <CustomText variant="header" color="white" fontSize={40}>
+            Your Funds,
+          </CustomText>
+          <CustomText variant="header" mb="m" color="white" fontSize={40}>
+            Your Wallet
+          </CustomText>
+          <CustomButton
+            text="Get Started"
+            trailingIcon={
+              <Image
+                source={icons.arrowRight}
+                style={{ width: 20, height: 20 }}
+              />
+            }
+            bgColor="white"
+            color={theme.colors.primaryColor}
+            borderRadius={55}
+            height={55}
+            shouldVibrate
+            onPress={() => router.push("/select-track")}
+          />
+        </ImageBackground>
+      </LinearGradient>
+    </Box>
+>>>>>>> bdc28f0 (feat: enhance HomeScreen with new animations and assets)
   );
 }
 
