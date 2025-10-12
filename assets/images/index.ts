@@ -10,10 +10,12 @@ const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
 const down = require("./down.png");
+const clouds = require("./clouds.gif");
 
-export {
+export default {
   accounts,
   checkTerms,
+  clouds,
   docGuide,
   down,
   glass,
