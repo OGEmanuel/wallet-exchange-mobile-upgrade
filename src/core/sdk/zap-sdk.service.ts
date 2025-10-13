@@ -6,6 +6,7 @@
  */
 
 import { ZapSDK } from '@zap/blockchain-sdk';
+import WalletCredentialsStorage from '../storage/wallet-credentials-storage';
 import { createSDKInstance, getSDKConfig } from './zap-sdk.config';
 
 class ZapSDKService {
@@ -285,10 +286,10 @@ class ZapSDKService {
       }
     } catch (error: any) {
       console.log('❌ SDK validation failed:', error);
-      
+
       // Handle specific SDK validation errors
       let errorMessage = 'Invalid private key for this chain';
-      
+
       if (error?.error?.code === "VALIDATION_ERROR") {
         errorMessage = error.error.message || "Invalid private key format";
       } else if (error?.status === 400) {
@@ -300,7 +301,7 @@ class ZapSDKService {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       return {
         isValid: false,
         error: errorMessage
@@ -354,6 +355,98 @@ class ZapSDKService {
       return {
         isValid: false,
         error: error instanceof Error ? error.message : 'Invalid address for this chain'
+      };
+    }
+  }
+
+  /**
+   * Complete wallet creation flow with proper credential storage
+   * Handles addWalletToWalletGroup + addAccountsToExistingWallet + credential storage
+   */
+  public async createWalletInGroup(params: {
+    walletGroupId: string;
+    name: string;
+    seedPhrase: string;
+    userWalletGroupId?: string; // Optional, for updating existing credentials
+  }): Promise<{
+    success: boolean;
+    userWalletGroupId?: string;
+    walletId?: string;
+    derivationIndex?: number;
+    error?: string;
+  }> {
+    if (!this.sdk) {
+      throw new Error('SDK not initialized');
+    }
+
+    try {
+      console.log('🚀 Starting complete wallet creation flow:', {
+        walletGroupId: params.walletGroupId,
+        name: params.name,
+        hasSeedPhrase: !!params.seedPhrase
+      });
+
+      // Step 1: Add wallet to wallet group
+      const addWalletResponse = await this.sdk.wallets.addWalletToWalletGroup({
+        walletGroupId: params.walletGroupId,
+        name: params.name,
+        seedPhrase: params.seedPhrase,
+      });
+
+      console.log('✅ Wallet added to group:', addWalletResponse);
+
+      const walletStorageId = await WalletCredentialsStorage.storeWalletCredential({
+        userWalletGroupId: addWalletResponse.userWalletGroupId,
+        derivationIndex: addWalletResponse.derivationIndex,
+        name: params.name,
+        credential: params.seedPhrase,
+        class: 'SEEDPHRASE' as any,
+      });
+
+      if (walletStorageId) {
+        await WalletCredentialsStorage.markWalletAsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
+        console.log('✅ Wallet marked as created in credentials storage');
+      }
+
+      if (!addWalletResponse.userWalletGroupId) {
+        throw new Error('Failed to get userWalletGroupId from addWalletToWalletGroup');
+      }
+
+      // Step 2: Add accounts to existing wallet
+      const addAccountsResponse = await this.sdk.wallets.addAccountsToExistingWallet({
+        userWalletGroupId: addWalletResponse.userWalletGroupId,
+        seedPhrase: params.seedPhrase,
+      });
+
+      console.log('✅ Accounts added to wallet:', addAccountsResponse);
+
+      if (walletStorageId) {
+        await WalletCredentialsStorage.markWalletAsAccountsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
+        console.log('✅ Wallet and accounts marked as created in credentials storage');
+        
+        // Verify the status was updated correctly
+        const updatedCredential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(addWalletResponse.userWalletGroupId);
+        console.log('🔍 Verification - credential status:', {
+          isCreated: updatedCredential?.isCreated,
+          areAccountsCreated: updatedCredential?.areAccountsCreated,
+          userWalletGroupId: updatedCredential?.userWalletGroupId,
+          walletStorageId: walletStorageId
+        });
+        
+      }
+
+      return {
+        success: true,
+        userWalletGroupId: addWalletResponse.userWalletGroupId,
+        walletId: addWalletResponse.walletId,
+        derivationIndex: addWalletResponse.derivationIndex,
+      };
+
+    } catch (error) {
+      console.error('❌ Complete wallet creation flow failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create wallet'
       };
     }
   }

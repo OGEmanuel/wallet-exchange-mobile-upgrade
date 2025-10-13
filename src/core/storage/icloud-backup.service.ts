@@ -1,3 +1,4 @@
+import CryptoJS from 'crypto-js';
 import * as SecureStore from 'expo-secure-store';
 
 export interface WalletBackup {
@@ -48,13 +49,13 @@ class ICloudBackupService {
       };
 
       const backupKey = `${this.BACKUP_KEY_PREFIX}${walletGroupId}`;
-      
+
       // Store the backup data
       await SecureStore.setItemAsync(backupKey, JSON.stringify(backup));
-      
+
       // Update the backup index
       await this.updateBackupIndex(walletGroupId, walletGroupName);
-      
+
       console.log('✅ Wallet group backup stored successfully');
       return true;
     } catch (error) {
@@ -79,7 +80,7 @@ class ICloudBackupService {
       for (const backupId of index.backupIds) {
         const backupKey = `${this.BACKUP_KEY_PREFIX}${backupId}`;
         const backupData = await SecureStore.getItemAsync(backupKey);
-        
+
         if (backupData) {
           const backup = JSON.parse(backupData);
           // Remove password from returned data for security
@@ -102,7 +103,7 @@ class ICloudBackupService {
     try {
       const backupKey = `${this.BACKUP_KEY_PREFIX}${backupId}`;
       const backupData = await SecureStore.getItemAsync(backupKey);
-      
+
       if (!backupData) {
         return null;
       }
@@ -124,14 +125,14 @@ class ICloudBackupService {
     try {
       const backupKey = `${this.BACKUP_KEY_PREFIX}${backupId}`;
       const backupData = await SecureStore.getItemAsync(backupKey);
-      
+
       if (!backupData) {
         return false;
       }
 
       const backup = JSON.parse(backupData);
       const hashedPassword = await this.hashPassword(password);
-      
+
       return backup.password === hashedPassword;
     } catch (error) {
       console.error('❌ Failed to verify backup password:', error);
@@ -169,10 +170,10 @@ class ICloudBackupService {
     try {
       const backupKey = `${this.BACKUP_KEY_PREFIX}${backupId}`;
       await SecureStore.deleteItemAsync(backupKey);
-      
+
       // Update the backup index
       await this.removeFromBackupIndex(backupId);
-      
+
       console.log('✅ Wallet group backup deleted successfully');
       return true;
     } catch (error) {
@@ -188,12 +189,12 @@ class ICloudBackupService {
     try {
       const indexData = await SecureStore.getItemAsync(this.BACKUP_INDEX_KEY);
       let index = indexData ? JSON.parse(indexData) : { backupIds: [], backupNames: {} };
-      
+
       if (!index.backupIds.includes(backupId)) {
         index.backupIds.push(backupId);
         index.backupNames[backupId] = backupName;
       }
-      
+
       await SecureStore.setItemAsync(this.BACKUP_INDEX_KEY, JSON.stringify(index));
     } catch (error) {
       console.error('❌ Failed to update backup index:', error);
@@ -207,11 +208,11 @@ class ICloudBackupService {
     try {
       const indexData = await SecureStore.getItemAsync(this.BACKUP_INDEX_KEY);
       if (!indexData) return;
-      
+
       const index = JSON.parse(indexData);
       index.backupIds = index.backupIds.filter((id: string) => id !== backupId);
       delete index.backupNames[backupId];
-      
+
       await SecureStore.setItemAsync(this.BACKUP_INDEX_KEY, JSON.stringify(index));
     } catch (error) {
       console.error('❌ Failed to remove from backup index:', error);
@@ -222,13 +223,13 @@ class ICloudBackupService {
    * Hash password for secure storage
    */
   private async hashPassword(password: string): Promise<string> {
-    // In a real implementation, you would use a proper hashing library like bcrypt
-    // For now, we'll use a simple hash (this should be replaced with proper crypto)
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + 'zap_salt_2024');
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    try {
+      return CryptoJS.SHA256(password + 'zap_backup_salt_2024').toString();
+    } catch (error) {
+      console.error('❌ Failed to hash password:', error);
+      // Fallback to simple hash if crypto-js fails
+      return btoa(password + 'zap_backup_salt_2024');
+    }
   }
 
   /**
@@ -255,7 +256,7 @@ class ICloudBackupService {
     try {
       const backups = await this.getWalletGroupBackups();
       const totalWallets = backups.reduce((sum, backup) => sum + backup.wallets.length, 0);
-      const lastBackupDate = backups.length > 0 
+      const lastBackupDate = backups.length > 0
         ? Math.max(...backups.map(b => new Date(b.lastModified).getTime()))
         : undefined;
 

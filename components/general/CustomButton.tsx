@@ -90,11 +90,7 @@ export default function CustomButton({
       }}
     >
       {isLoading && (
-        <ZapLoader 
-          size={24} 
-          showText={false} 
-          style={{ marginRight: 8 }}
-        />
+        <ZapLoader size={24} showText={false} style={{ marginRight: 8 }} />
       )}
       {!isLoading && (
         <>

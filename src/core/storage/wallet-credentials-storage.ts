@@ -106,11 +106,12 @@ class WalletCredentialsStorage {
   static async getCredentialsByUserWalletGroupId(userWalletGroupId: string): Promise<WalletCredential | null> {
     try {
       const allCredentials = await this.getAllCredentials();
+      console.log('🔍 All credentials:', allCredentials);
       return Object.values(allCredentials).find(
         (wallet: WalletCredential) => wallet.userWalletGroupId === userWalletGroupId
       ) || null;
     } catch (error) {
-      console.error('Failed to get wallet credentials by user wallet group ID:', error);
+      console.error('Failed to get wallet credentials by wallet group ID:', error);
       return null;
     }
   }
@@ -207,9 +208,9 @@ class WalletCredentialsStorage {
     try {
       const allCredentials = await this.getAllCredentials();
       return Object.values(allCredentials).filter(
-        wallet => !wallet.isCreated && 
-                  wallet.retryCount < this.MAX_RETRY_COUNT &&
-                  !wallet.isFailed
+        wallet => !wallet.isCreated &&
+          wallet.retryCount < this.MAX_RETRY_COUNT &&
+          !wallet.isFailed
       );
     } catch (error) {
       console.error('Failed to get pending wallets:', error);
@@ -221,10 +222,10 @@ class WalletCredentialsStorage {
     try {
       const allCredentials = await this.getAllCredentials();
       return Object.values(allCredentials).filter(
-        wallet => wallet.isCreated && 
-                  !wallet.areAccountsCreated && 
-                  wallet.retryCount < this.MAX_RETRY_COUNT &&
-                  !wallet.isFailed
+        wallet => wallet.isCreated &&
+          !wallet.areAccountsCreated &&
+          wallet.retryCount < this.MAX_RETRY_COUNT &&
+          !wallet.isFailed
       );
     } catch (error) {
       console.error('Failed to get accounts pending wallets:', error);

@@ -4,7 +4,13 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Lock, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Keyboard, Modal, Pressable, TouchableWithoutFeedback } from "react-native";
+import {
+  Animated,
+  Keyboard,
+  Modal,
+  Pressable,
+  TouchableWithoutFeedback,
+} from "react-native";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 
 interface PinModalProps {
@@ -41,7 +47,7 @@ const PinModal: React.FC<PinModalProps> = ({
       setPinError("");
       setAttempts(0);
       setFocused(false);
-      
+
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 1,
@@ -72,10 +78,10 @@ const PinModal: React.FC<PinModalProps> = ({
 
   const handlePinChange = (value: string) => {
     // Only allow numeric input
-    const numericValue = value.replace(/[^0-9]/g, '');
+    const numericValue = value.replace(/[^0-9]/g, "");
     setPin(numericValue);
     setPinError("");
-    
+
     // Auto-submit when PIN is complete
     if (numericValue.length >= 4) {
       handleSubmit(numericValue);
@@ -84,7 +90,7 @@ const PinModal: React.FC<PinModalProps> = ({
 
   const handleSubmit = async (enteredPin?: string) => {
     const pinToCheck = enteredPin || pin;
-    
+
     if (!pinToCheck || pinToCheck.length < 4) {
       setPinError("Please enter a valid PIN");
       return;
@@ -93,7 +99,7 @@ const PinModal: React.FC<PinModalProps> = ({
     try {
       // In a real app, you would verify the PIN against stored data
       const isValid = await verifyPin(pinToCheck);
-      
+
       if (isValid) {
         setPinError("");
         onSuccess(pinToCheck);
@@ -101,11 +107,13 @@ const PinModal: React.FC<PinModalProps> = ({
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
-        
+
         if (newAttempts >= maxAttempts) {
           setPinError("Too many failed attempts. Please try again later.");
         } else {
-          setPinError(`Invalid PIN. ${maxAttempts - newAttempts} attempts remaining.`);
+          setPinError(
+            `Invalid PIN. ${maxAttempts - newAttempts} attempts remaining.`
+          );
         }
         setPin("");
       }
@@ -141,12 +149,17 @@ const PinModal: React.FC<PinModalProps> = ({
       <Animated.View
         style={{
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
           opacity: fadeAnimation,
         }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <Box flex={1} justifyContent="center" alignItems="center" paddingHorizontal="l">
+          <Box
+            flex={1}
+            justifyContent="center"
+            alignItems="center"
+            paddingHorizontal="l"
+          >
             <Animated.View
               style={{
                 transform: [
@@ -169,9 +182,20 @@ const PinModal: React.FC<PinModalProps> = ({
                 borderColor="borderColor"
               >
                 {/* Header */}
-                <Box flexDirection="row" justifyContent="space-between" alignItems="center" mb="l">
+                <Box
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  mb="l"
+                >
                   <Box flex={1} />
-                  <CustomText variant="medium" fontSize={18} color="white" textAlign="center" flex={2}>
+                  <CustomText
+                    variant="medium"
+                    fontSize={18}
+                    color="white"
+                    textAlign="center"
+                    flex={2}
+                  >
                     {title}
                   </CustomText>
                   <Pressable
@@ -200,7 +224,13 @@ const PinModal: React.FC<PinModalProps> = ({
                   </Box>
                 </Box>
 
-                <CustomText variant="body" fontSize={14} mb="2xl" color="bodyTextColor" textAlign="center">
+                <CustomText
+                  variant="body"
+                  fontSize={14}
+                  mb="2xl"
+                  color="bodyTextColor"
+                  textAlign="center"
+                >
                   {subtitle}
                 </CustomText>
 
@@ -211,12 +241,19 @@ const PinModal: React.FC<PinModalProps> = ({
                   padding="l"
                   mb="l"
                   borderWidth={focused ? 1 : 0}
-                  borderColor={focused ? "primaryColor" : "transparent"}
+                  borderColor={
+                    focused ? "primaryColor" : "secondaryBackgroundColor"
+                  }
                 >
-                  <CustomText variant="medium" fontSize={16} color="white" mb="s">
+                  <CustomText
+                    variant="medium"
+                    fontSize={16}
+                    color="white"
+                    mb="s"
+                  >
                     PIN
                   </CustomText>
-                  
+
                   <Box
                     flexDirection="row"
                     justifyContent="space-between"
@@ -230,9 +267,7 @@ const PinModal: React.FC<PinModalProps> = ({
                         height={10}
                         borderRadius={5}
                         backgroundColor={
-                          pin.length > index
-                            ? theme.colors.primaryColor
-                            : theme.colors.borderColor
+                          pin.length > index ? "primaryColor" : "borderColor"
                         }
                       />
                     ))}
@@ -264,7 +299,12 @@ const PinModal: React.FC<PinModalProps> = ({
                     borderWidth={1}
                     borderColor="error"
                   >
-                    <CustomText variant="body" fontSize={12} color="white" textAlign="center">
+                    <CustomText
+                      variant="body"
+                      fontSize={12}
+                      color="white"
+                      textAlign="center"
+                    >
                       ⚠️ {pinError}
                     </CustomText>
                   </Box>
@@ -279,7 +319,11 @@ const PinModal: React.FC<PinModalProps> = ({
                         opacity: pressed ? 0.5 : 1,
                       })}
                     >
-                      <CustomText variant="body" fontSize={14} color="primaryColor">
+                      <CustomText
+                        variant="body"
+                        fontSize={14}
+                        color="primaryColor"
+                      >
                         Forgot your PIN?
                       </CustomText>
                     </Pressable>

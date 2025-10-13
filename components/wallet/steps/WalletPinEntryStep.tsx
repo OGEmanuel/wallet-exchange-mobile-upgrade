@@ -5,17 +5,19 @@ import NumericKeypad from "@/components/general/NumericKeypad";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ChevronLeft } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Keyboard,
-  TouchableWithoutFeedback
+  Pressable,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface WalletPinEntryStepProps {
-  onSuccess: () => void;
-  onBack: () => void;
+  onSuccess: (pin: string) => void;
+  onBack?: () => void;
 }
 
 export const WalletPinEntryStep: React.FC<WalletPinEntryStepProps> = ({
@@ -81,42 +83,53 @@ export const WalletPinEntryStep: React.FC<WalletPinEntryStepProps> = ({
     }).start();
   };
 
-  const handleVerifyPin = useCallback(async (pinToVerify: string) => {
-    console.log('🔍 Verifying PIN:', pinToVerify, 'Length:', pinToVerify.length);
-    
-    // Double-check we have exactly 4 digits
-    if (pinToVerify.length !== 4) {
-      console.log('❌ PIN length is not 4, skipping verification');
-      return;
-    }
-    
-    try {
-      setIsVerifying(true);
-      setPinError("");
-      hideError();
+  const handleVerifyPin = useCallback(
+    async (pinToVerify: string) => {
+      console.log(
+        "🔍 Verifying PIN:",
+        pinToVerify,
+        "Length:",
+        pinToVerify.length
+      );
 
-      console.log('🔍 Calling pinStorageService.verifyPin with:', pinToVerify);
-      const isValid = await pinStorageService.verifyPin(pinToVerify);
-      console.log('🔍 PIN verification result:', isValid);
-      
-      if (isValid) {
-        console.log('✅ PIN verified successfully');
-        onSuccess();
-      } else {
-        console.log('❌ PIN verification failed');
-        setPinError("Incorrect PIN. Please try again.");
+      // Double-check we have exactly 4 digits
+      if (pinToVerify.length !== 4) {
+        console.log("❌ PIN length is not 4, skipping verification");
+        return;
+      }
+
+      try {
+        setIsVerifying(true);
+        setPinError("");
+        hideError();
+
+        console.log(
+          "🔍 Calling pinStorageService.verifyPin with:",
+          pinToVerify
+        );
+        const isValid = await pinStorageService.verifyPin(pinToVerify);
+        console.log("🔍 PIN verification result:", isValid);
+
+        if (isValid) {
+          console.log("✅ PIN verified successfully");
+          onSuccess(pinToVerify);
+        } else {
+          console.log("❌ PIN verification failed");
+          setPinError("Incorrect PIN. Please try again.");
+          showError();
+          setPin(""); // Clear PIN on error
+        }
+      } catch (error) {
+        console.error("❌ Failed to verify PIN:", error);
+        setPinError("Failed to verify PIN. Please try again.");
         showError();
         setPin(""); // Clear PIN on error
+      } finally {
+        setIsVerifying(false);
       }
-    } catch (error) {
-      console.error('❌ Failed to verify PIN:', error);
-      setPinError("Failed to verify PIN. Please try again.");
-      showError();
-      setPin(""); // Clear PIN on error
-    } finally {
-      setIsVerifying(false);
-    }
-  }, [onSuccess]);
+    },
+    [onSuccess]
+  );
 
   const handleKeyPress = (key: string) => {
     if (key === ".") return; // Ignore dot key
@@ -126,10 +139,10 @@ export const WalletPinEntryStep: React.FC<WalletPinEntryStepProps> = ({
       setPin(newPin);
       setPinError(""); // Clear error when typing
       hideError();
-      
+
       // Only auto-verify when we have exactly 4 digits
       if (newPin.length === 4) {
-        console.log('🔍 PIN is complete, starting verification:', newPin);
+        console.log("🔍 PIN is complete, starting verification:", newPin);
         // Auto-verify when PIN is complete - pass the PIN value directly
         setTimeout(() => {
           handleVerifyPin(newPin);
@@ -146,12 +159,18 @@ export const WalletPinEntryStep: React.FC<WalletPinEntryStepProps> = ({
     }
   };
 
-
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
         <AppBar
           height={70}
+          leading={
+            onBack && (
+              <Pressable onPress={onBack} style={{ padding: 8 }}>
+                <ChevronLeft size={24} color={theme.colors.white} />
+              </Pressable>
+            )
+          }
         />
       </Box>
 
@@ -197,7 +216,7 @@ export const WalletPinEntryStep: React.FC<WalletPinEntryStepProps> = ({
                       backgroundColor: theme.colors.secondaryBackgroundColor,
                       marginHorizontal: theme.spacing.s,
                       borderWidth: 1,
-                      borderColor: pinError 
+                      borderColor: pinError
                         ? theme.colors.error
                         : borderAnimations[index].interpolate({
                             inputRange: [0, 1],

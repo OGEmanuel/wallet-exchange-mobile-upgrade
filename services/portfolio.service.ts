@@ -18,38 +18,27 @@ export class PortfolioService {
 
     try {
       const sdk = zapSDKService.getSDK();
-      console.log("🔍 SDK available:", !!sdk);
-      console.log("🔍 SDK methods:", sdk ? Object.keys(sdk) : "No SDK");
 
       if (sdk) {
-        // Try different SDK methods to get currency data
-        console.log("🔍 Available SDK methods:", Object.keys(sdk));
-
         // Try tokens.getActiveTokens()
         if (sdk.tokens && sdk.tokens.getActiveTokens) {
-          console.log("🔍 Trying sdk.tokens.getActiveTokens()");
           const activeTokensResponse = await sdk.tokens.getActiveTokens();
-          console.log("🔍 Active tokens result:", activeTokensResponse);
 
           // Extract supportedCurrencies from the response structure
           if (activeTokensResponse && activeTokensResponse.data && activeTokensResponse.data.supportedCurrencies) {
             this.supportedCurrencies = activeTokensResponse.data.supportedCurrencies;
-            console.log("🔍 Extracted supportedCurrencies:", this.supportedCurrencies.length);
           } else {
             this.supportedCurrencies = [];
           }
         }
 
         this.currenciesLoaded = true;
-        console.log("✅ Final supported currencies:", this.supportedCurrencies.length);
-        console.log("✅ Supported currencies data:", this.supportedCurrencies);
       } else {
-        console.log("⚠️ SDK not available");
         this.supportedCurrencies = [];
         this.currenciesLoaded = true;
       }
     } catch (error) {
-      console.error("❌ Failed to load supported currencies:", error);
+      console.error("Failed to load supported currencies:", error);
       this.supportedCurrencies = [];
       this.currenciesLoaded = true;
     }
@@ -77,8 +66,6 @@ export class PortfolioService {
     // Get all accounts - we'll filter by enabled status later
     const allAccounts = mainWalletGroupPortfolio.mainWalletPortfolio.accounts;
 
-    console.log("🔍 Total accounts available:", allAccounts.length);
-
     // Create a map of currencyId to token info for quick lookup
     const tokenMap = new Map<string, UserToken>();
     userTokenList.forEach(token => {
@@ -89,22 +76,8 @@ export class PortfolioService {
       
       if (currencyId) {
         tokenMap.set(currencyId, token);
-      } else {
-        console.warn("⚠️ Token missing currency ID:", token);
       }
     });
-
-    console.log("🔍 Token map created with", tokenMap.size, "tokens");
-    console.log("🔍 Available currency IDs:", Array.from(tokenMap.keys()));
-    console.log("🔍 Account currency IDs:", allAccounts.map(acc => acc.supportedCurrencyId));
-
-    // Check for mismatched currency IDs
-    const accountCurrencyIds = allAccounts.map(acc => acc.supportedCurrencyId);
-    const tokenCurrencyIds = Array.from(tokenMap.keys());
-    const missingCurrencyIds = accountCurrencyIds.filter(id => !tokenCurrencyIds.includes(id));
-    if (missingCurrencyIds.length > 0) {
-      console.log("🔍 Missing currency IDs in token map:", missingCurrencyIds);
-    }
 
     // Process assets - include ALL tokens (enabled, disabled, hidden)
     const assets: ProcessedAsset[] = allAccounts
@@ -116,7 +89,6 @@ export class PortfolioService {
         const tokenInfo = tokenMap.get(account.supportedCurrencyId);
         
         if (!tokenInfo) {
-          console.warn("⚠️ No token info found for account:", account.supportedCurrencyId);
           return null;
         }
 
@@ -125,15 +97,6 @@ export class PortfolioService {
         
         // Extract chain information
         const { chainName, chainSymbol, chainImage } = this.extractChainInfo(tokenInfo);
-
-        console.log(`🔍 Extracted for ${account._id}:`, {
-          symbol,
-          name,
-          chainName,
-          chainSymbol,
-          originalChainId: tokenInfo?.supportedCurrencyId?.chainId,
-          originalTokenAddress: tokenInfo?.supportedCurrencyId?.tokenAddress
-        });
 
         return {
           id: account._id,
@@ -161,25 +124,22 @@ export class PortfolioService {
     const enabledAssets = assets.filter(asset => asset.status === 'ENABLED');
     const disabledAssets = assets.filter(asset => asset.status === 'DISABLED');
 
-    console.log("🔍 Processed assets:", {
-      totalAssets: assets.length,
-      enabledAssets: enabledAssets.length,
-      disabledAssets: disabledAssets.length,
-      assets: assets.map(asset => ({
-        symbol: asset.symbol,
-        name: asset.name,
-        balance: asset.balance,
-        totalUsdValue: asset.totalUsdValue,
-        status: asset.status,
-        image: asset.image
-      }))
-    });
+    // Sort assets by USD value (highest first)
+    const sortedAssets = assets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+    const sortedEnabledAssets = enabledAssets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+    const sortedDisabledAssets = disabledAssets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+
+    // Calculate total USD value - use API value or sum of enabled tokens
+    let totalUsdValue = mainWalletGroupPortfolio.totalUsdValue;
+    if (totalUsdValue === 0 || !totalUsdValue) {
+      totalUsdValue = sortedEnabledAssets.reduce((sum, asset) => sum + asset.totalUsdValue, 0);
+    }
 
     return {
-      totalUsdValue: mainWalletGroupPortfolio.totalUsdValue,
-      assets,
-      enabledAssets,
-      disabledAssets,
+      totalUsdValue,
+      assets: sortedAssets,
+      enabledAssets: sortedEnabledAssets,
+      disabledAssets: sortedDisabledAssets,
       totalAssets: assets.length,
       enabledCount: enabledAssets.length,
       disabledCount: disabledAssets.length,
@@ -271,15 +231,10 @@ export class PortfolioService {
   }
 
   /**
-   * Format currency value
+   * Format currency value with 2 decimal places
    */
   static formatCurrency(value: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+    return `$${value.toFixed(2)}`;
   }
 
   /**
@@ -291,14 +246,28 @@ export class PortfolioService {
   }
 
   /**
-   * Format balance with appropriate decimals
+   * Format balance with smart decimal handling
    */
   static formatBalance(balance: number, decimals: number = 6): string {
     if (balance === 0) return '0';
-
-    const formatted = balance.toFixed(decimals);
-    // Remove trailing zeros
-    return parseFloat(formatted).toString();
+    
+    // Smart decimal formatting based on value size
+    if (balance < 0.000001) {
+      // Very small values: show up to 8 decimal places
+      return balance.toFixed(8).replace(/\.?0+$/, '');
+    } else if (balance < 0.001) {
+      // Small values: show up to 6 decimal places
+      return balance.toFixed(6).replace(/\.?0+$/, '');
+    } else if (balance < 1) {
+      // Medium values: show up to 4 decimal places
+      return balance.toFixed(4).replace(/\.?0+$/, '');
+    } else if (balance < 1000) {
+      // Large values: show up to 2 decimal places
+      return balance.toFixed(2).replace(/\.?0+$/, '');
+    } else {
+      // Very large values: show up to 2 decimal places
+      return balance.toFixed(2).replace(/\.?0+$/, '');
+    }
   }
 
   /**

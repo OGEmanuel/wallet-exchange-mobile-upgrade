@@ -5,8 +5,14 @@ import PageWrapper from "@/components/general/PageWrapper";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, BackHandler, Pressable, RefreshControl } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Animated,
+  BackHandler,
+  Pressable,
+  RefreshControl,
+} from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
   ThemedAccountFillIcon,
@@ -19,6 +25,7 @@ import {
 import { DebitCardComponent } from "@/assets/svg/wallet-icons-components/DebitCardIcon";
 import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
+import WalletSelectorBottomSheet from "@/components/bottomsheets/WalletSelectorBottomSheet";
 import AssetsSection from "@/components/dashboard/AssetsSection";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import StickyHeader from "@/components/dashboard/StickyHeader";
@@ -44,15 +51,18 @@ const Home = () => {
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
   const theme = useTheme<Theme>();
   const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
     useBottomSheetRefs();
+  const [showWalletSelector, setShowWalletSelector] = useState(false);
+  const [walletToDelete, setWalletToDelete] = useState<any>(null);
   const {
     retryPendingWallets,
     mainUserWalletGroup,
     portfolio,
     refreshPortfolio,
+    switchWallet,
+    getSDK,
     isLoading,
     isWalletAuthenticated,
     currentWalletUser,
@@ -60,53 +70,36 @@ const Home = () => {
   } = useWallet();
 
   // Handle pull-to-refresh
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     try {
-      console.log("🔄 Starting portfolio refresh...");
       setIsRefreshing(true);
       await refreshPortfolio();
-      console.log("🔄 Portfolio refresh completed");
-      
+
       // Force re-processing of portfolio data
       if (portfolio) {
-        console.log("🔄 Re-processing portfolio data...");
-        setRefreshTrigger(prev => prev + 1);
+        setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
       console.error("Failed to refresh portfolio:", error);
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, [refreshPortfolio, portfolio]);
 
-  // Debug wallet state
-  console.log("🔍 Wallet state:", {
-    isWalletAuthenticated,
-    currentWalletUser,
-    mainUserWalletGroup: mainUserWalletGroup ? "exists" : "null",
-    portfolio: portfolio ? "exists" : "null",
-    isLoading,
-    walletError,
-  });
+  // Handle wallet selector button press
+  const handleWalletSelectorPress = () => {
+    setShowWalletSelector(true);
+  };
 
   // Process portfolio data when it changes
   useEffect(() => {
-    console.log("🔄 Portfolio useEffect triggered, portfolio:", portfolio ? "exists" : "null", "refreshTrigger:", refreshTrigger);
     if (portfolio) {
       const processPortfolio = async () => {
         try {
-          console.log(
-            "📊 Raw portfolio data received:",
-            JSON.stringify(portfolio, null, 2)
-          );
           setIsPortfolioLoading(true);
           setPortfolioError(null);
           const processed = await PortfolioService.processPortfolioData(
             portfolio
-          );
-          console.log(
-            "📊 Processed portfolio data:",
-            JSON.stringify(processed, null, 2)
           );
           setProcessedPortfolio(processed);
         } catch (error) {
@@ -127,18 +120,11 @@ const Home = () => {
   // Load portfolio data on focus
   useFocusEffect(
     React.useCallback(() => {
-      console.log("🔍 useFocusEffect triggered:", {
-        mainUserWalletGroup: mainUserWalletGroup ? "exists" : "null",
-        isLoading,
-        hasFetchedPortfolio: hasFetchedPortfolio.current,
-      });
-
       if (mainUserWalletGroup && !isLoading && !hasFetchedPortfolio.current) {
-        console.log("🔍 Calling refreshPortfolio...");
         hasFetchedPortfolio.current = true;
         refreshPortfolio();
       }
-    }, [mainUserWalletGroup, isLoading])
+    }, [mainUserWalletGroup, isLoading, refreshPortfolio])
   );
 
   // Reset fetch flag when portfolio changes
@@ -216,6 +202,17 @@ const Home = () => {
     return () => backHandler.remove();
   }, []);
 
+  const handleDeleteWallet = (wallet: any) => {
+    console.log("🗑️ Delete wallet from home:", wallet);
+    console.log("🗑️ Setting showDeleteModal to true");
+    setWalletToDelete(wallet);
+    console.log("🗑️ Delete modal state updated");
+  };
+
+  const handleCancelDelete = () => {
+    setWalletToDelete(null);
+  };
+
   return (
     <PageWrapper>
       <StickyHeader
@@ -245,7 +242,14 @@ const Home = () => {
       >
         <AppBar
           title={
-            <Pressable style={{ flexDirection: "row", alignItems: "center" }}>
+            <Pressable
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                opacity: pressed ? 0.5 : 1,
+              })}
+              onPress={handleWalletSelectorPress}
+            >
               <Box
                 width={24}
                 height={24}
@@ -266,7 +270,12 @@ const Home = () => {
             </Pressable>
           }
           leading={
-            <Pressable>
+            <Pressable
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.5 : 1,
+              })}
+              onPress={() => router.push("/dashboard/manage-wallet")}
+            >
               <ThemedSettingsOutlineIcon
                 darkModeColor={theme.colors.white}
                 lightModeColor={theme.colors.white}
@@ -503,6 +512,37 @@ const Home = () => {
       </AppBottomSheet>
       <SelectTokenBottomSheet ref={bottomsheetRef} />
       <SelectUserTokens ref={recieveTokenRef} />
+
+      <WalletSelectorBottomSheet
+        visible={showWalletSelector}
+        onClose={() => setShowWalletSelector(false)}
+        selectedWalletGroupId={mainUserWalletGroup?._id}
+        handleCancelDelete={handleCancelDelete}
+        walletToDelete={walletToDelete}
+        onWalletSelect={async (selectedUserWalletGroup: any) => {
+          // Don't close if selecting the same wallet
+          if (selectedUserWalletGroup._id === mainUserWalletGroup?._id) {
+            setShowWalletSelector(false);
+            return;
+          }
+
+          try {
+            // Switch to the selected wallet
+            await switchWallet(selectedUserWalletGroup._id);
+            setShowWalletSelector(false);
+          } catch (error) {
+            console.error("Failed to switch wallet:", error);
+            Alert.alert("Error", "Failed to switch wallet. Please try again.");
+          }
+        }}
+        onManagePress={() => {
+          // TODO: Handle manage press
+        }}
+        onAddWalletPress={() => {
+          // TODO: Handle add wallet press
+        }}
+        onDeleteWallet={handleDeleteWallet}
+      />
     </PageWrapper>
   );
 };

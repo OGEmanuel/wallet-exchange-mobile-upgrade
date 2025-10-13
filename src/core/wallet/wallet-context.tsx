@@ -28,6 +28,7 @@ import {
   WALLET_GROUP_TYPE,
 } from "../../../configs/constants";
 import zapSDKService from "../sdk/zap-sdk.service";
+import { StorageKeys } from "../storage/storage-types";
 import WalletCredentialsStorage from "../storage/wallet-credentials-storage";
 
 interface WalletContextType {
@@ -69,6 +70,9 @@ interface WalletContextType {
   // Portfolio
   refreshPortfolio: () => Promise<void>;
   getWalletPortfolio: (userWalletGroupId: string) => Promise<any>;
+  
+  // Wallet Groups
+  refreshUserWalletGroups: () => Promise<void>;
 
   // Transactions
   sendTransaction: (
@@ -87,6 +91,11 @@ interface WalletContextType {
 
   // Account Management
   retryPendingWallets: () => Promise<void>;
+  isCreatingWallet: boolean;
+  setIsCreatingWallet: (creating: boolean) => void;
+  
+  // Wallet Switching
+  switchWallet: (userWalletGroupId: string) => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -119,6 +128,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [isTransactionHistoryAvailable, setIsTransactionHistoryAvailable] =
     useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -289,8 +299,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           ) {
             setUserWalletGroups(uWalletGroups.userWalletGroups);
             setIsUserWalletGroups(true);
+            // Check for stored main wallet group ID first, then SDK, then fallback to first wallet
+            const storedMainWalletGroupId = await SecureStore.getItemAsync(StorageKeys.MAIN_WALLET_GROUP_ID);
+            const sdkMainWalletGroupId = await sdk.secureTokenManager.getMainWalletGroupId();
             const mainUserWalletGroupId =
-              (await sdk.secureTokenManager.getMainWalletGroupId()) ||
+              storedMainWalletGroupId ||
+              sdkMainWalletGroupId ||
               uWalletGroups.userWalletGroups[0]._id;
             setMainUserWalletGroup(
               uWalletGroups.userWalletGroups.find(
@@ -1122,6 +1136,30 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
+  // Wallet Groups methods
+  const refreshUserWalletGroups = async (): Promise<void> => {
+    try {
+      if (!isWalletAuthenticated || !currentWalletUser) {
+        console.log("⚠️ Cannot refresh wallet groups - not authenticated");
+        return;
+      }
+
+      const sdk = zapSDKService.getSDK();
+      if (!sdk) {
+        console.log("⚠️ Cannot refresh wallet groups - SDK not available");
+        return;
+      }
+
+      console.log("🔄 Refreshing user wallet groups...");
+      const uWalletGroups = await sdk.getUserWalletGroups(currentWalletUser);
+      console.log("✅ User wallet groups refreshed:", uWalletGroups.length);
+      
+      setUserWalletGroups(uWalletGroups);
+    } catch (error) {
+      console.error("❌ Failed to refresh user wallet groups:", error);
+    }
+  };
+
   // Portfolio methods
   const refreshPortfolio = async (): Promise<void> => {
     try {
@@ -1295,6 +1333,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Retry creating pending wallets
   const retryPendingWallets = async (): Promise<void> => {
+    console.log('🔄 retryPendingWallets called - checking for pending wallets');
+    
+    // Skip retry if we're in the middle of creating a wallet
+    if (isLoading || isCreatingWallet) {
+      console.log('⏸️ Skipping retry - wallet creation in progress');
+      return;
+    }
+    
     try {
       const pendingWallets = await WalletCredentialsStorage.getPendingWallets();
       const accountsPendingWallets =
@@ -1376,6 +1422,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       for (const account of accountsPendingWallets) {
+        console.log('🔄 Retrying accounts for wallet:', {
+          id: account.id,
+          name: account.name,
+          userWalletGroupId: account.userWalletGroupId,
+          isCreated: account.isCreated,
+          areAccountsCreated: account.areAccountsCreated
+        });
         try {
           const result = await createAccounts({
             userWalletGroupId: account.userWalletGroupId || "",
@@ -1426,6 +1479,50 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     return zapSDKService.isSDKInitialized() ? zapSDKService.getSDK() : null;
   };
 
+  // Wallet switching
+  const switchWallet = async (userWalletGroupId: string): Promise<void> => {
+    try {
+      const sdk = zapSDKService.getSDK();
+      if (!sdk) {
+        throw new Error("SDK not initialized");
+      }
+
+      // Find the selected user wallet group
+      const selectedGroup = userWalletGroups.find(
+        (group) => group._id === userWalletGroupId
+      );
+
+      if (!selectedGroup) {
+        throw new Error("Selected wallet group not found");
+      }
+
+      // Update the main user wallet group state
+      setMainUserWalletGroup(selectedGroup);
+
+      // Store the main wallet group ID in storage for persistence
+      await SecureStore.setItemAsync(StorageKeys.MAIN_WALLET_GROUP_ID, userWalletGroupId);
+
+      // Get credentials for the selected wallet group
+      const credentials =
+        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+          userWalletGroupId
+        );
+      setCurrentSeedPhrase(credentials?.credential.toString() || null);
+
+      // Refresh portfolio for the new wallet group
+      const portfolioData = await sdk.portfolio.getUserPortfolio(
+        currentWalletUser || "",
+        {
+          mainUserWalletGroupId: userWalletGroupId,
+        }
+      );
+      setPortfolio(portfolioData);
+    } catch (error) {
+      console.error("Failed to switch wallet:", error);
+      throw error;
+    }
+  };
+
   const contextValue: WalletContextType = {
     // State
     isInitialized,
@@ -1456,6 +1553,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     // Portfolio
     refreshPortfolio,
     getWalletPortfolio,
+    
+    // Wallet Groups
+    refreshUserWalletGroups,
 
     // Transactions
     sendTransaction,
@@ -1470,6 +1570,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
     // Account Management
     retryPendingWallets,
+    isCreatingWallet,
+    setIsCreatingWallet,
+    
+    // Wallet Switching
+    switchWallet,
   };
 
   return (

@@ -18,7 +18,7 @@
  */
 
 /**
- * Formats currency values with locale support
+ * Formats currency values with 2 decimal places
  * @param amount - Amount to format
  * @param currency - Currency code (default: 'USD')
  * @param locale - Locale string (default: 'en-US')
@@ -29,10 +29,7 @@ export const formatCurrency = (
   currency: string = 'USD',
   locale: string = 'en-US'
 ): string => {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-  }).format(amount);
+  return `$${amount.toFixed(2)}`;
 };
 
 /**

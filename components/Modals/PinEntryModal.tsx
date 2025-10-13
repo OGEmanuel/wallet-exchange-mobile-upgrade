@@ -4,25 +4,26 @@ import { Modal } from "react-native";
 
 interface PinEntryModalProps {
   visible: boolean;
-  onSuccess: () => void;
+  onSuccess: (pin: string) => void;
   onClose: () => void;
 }
 
 export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   visible,
-  onSuccess,
+  onSuccess = (pin: string) => {},
   onClose,
 }) => {
+  console.log(visible)
   return (
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="fullScreen"
-      onRequestClose={() => {}} // Prevent back button dismissal
+      onRequestClose={onClose} // Prevent back button dismissal
     >
       <WalletPinEntryStep
-        onSuccess={onSuccess}
-        onBack={() => {}} // Remove back functionality
+        onSuccess={(pin: string) => onSuccess(pin)}
+        onBack={onClose}
       />
     </Modal>
   );

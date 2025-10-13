@@ -1,4 +1,3 @@
-import CloseIcon from "@/assets/svg/wallet-icons-components/CloseIcon";
 import SearchIcon from "@/assets/svg/wallet-icons-components/SearchIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import Box from "@/components/general/Box";
@@ -180,26 +179,27 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
     >
       <Box flex={1} backgroundColor="mainBackgroundColor">
         {/* Header */}
+        <Pressable onPress={onClose}>
+            <Box
+              width={60}
+              alignSelf="center"
+              height={4}
+              backgroundColor="white"
+              borderRadius={2}
+              marginTop="s"
+            />
+          </Pressable>
         <Box
-          flexDirection="row"
-          alignItems="center"
-          justifyContent="space-between"
-          paddingHorizontal="m"
           paddingTop="l"
           paddingBottom="m"
+          alignItems="center"
           borderBottomColor="borderColor"
         >
           <Box width={24} />
           <CustomText variant="bodyBold" fontSize={18} color="headerTextColor">
             Edit Token List
           </CustomText>
-          <Pressable onPress={onClose}>
-            <CloseIcon
-              width={24}
-              height={24}
-              color={theme.colors.headerTextColor}
-            />
-          </Pressable>
+          
         </Box>
 
         {/* Search Bar */}

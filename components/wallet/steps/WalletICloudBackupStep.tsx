@@ -225,7 +225,7 @@ export const WalletICloudBackupStep: React.FC<WalletICloudBackupStepProps> = ({
                         overflow="hidden"
                       >
                         <Identicon
-                          value={wallet.address}
+                          value={wallet?.name || "0x0000000000000000000000000000000000000000"}
                           size={36}
                         />
                       </Box>
