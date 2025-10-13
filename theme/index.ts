@@ -66,6 +66,7 @@ const DARK_COLOR_PALLET = {
   cardBorder: "#39393F",
   pendingColor: "#EDB118",
   surfaceContainer: "#1F232D",
+  cardBorder: "#39393F",
 };
 
 const theme = createTheme({

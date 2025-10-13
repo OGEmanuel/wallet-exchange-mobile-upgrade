@@ -1,6 +1,10 @@
 import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
+<<<<<<< HEAD
 import { Box, PageWrapper } from "@/components/general";
+=======
+import { Box, CustomText, PageWrapper } from "@/components/general";
+>>>>>>> 5967650 (feat: refactor SelectTrack component for improved styling and functionality)
 import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
@@ -169,11 +173,15 @@ const SelectTrack = () => {
   return (
     <Wrapper>
       <Box style={styles.container}>
+<<<<<<< HEAD
         <ThemedText
           type="subtitle"
           color={theme.colors.bodyTextColor}
           style={{ fontSize: 32 }}
         >
+=======
+        <CustomText variant="header" fontSize={32}>
+>>>>>>> 5967650 (feat: refactor SelectTrack component for improved styling and functionality)
           Pick a start
         </ThemedText>
         <ScrollView contentContainerStyle={{ paddingTop: 40 }}>
