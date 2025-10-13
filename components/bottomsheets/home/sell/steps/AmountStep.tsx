@@ -64,7 +64,7 @@ const AmountStep: React.FC<SellFlowProps> = ({
           />
           <Image
             source={icons.down}
-            tintColor={"white"}
+            tintColor={isDark ? "white" : "black"}
             style={{ width: 20, height: 20 }}
           />
         </Box>
@@ -164,7 +164,7 @@ const AmountStep: React.FC<SellFlowProps> = ({
       >
         <Box flexDirection="row" alignItems="center" gap="s">
           <Image source={images.zapLogo} style={{ width: 16, height: 16 }} />
-          <CustomText variant="body" color="white">
+          <CustomText variant="body" color="bodyTextColor">
             Zap Exchange
           </CustomText>
           <Image source={images.linked} style={{ width: 16, height: 16 }} />

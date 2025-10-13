@@ -65,7 +65,15 @@ const DetailsStep: React.FC<
         >
           <CustomText
             variant="body"
-            color={activeTab === "Summary" ? "black" : "bodyTextColor"}
+            color={
+              isDark
+                ? activeTab === "Summary"
+                  ? "black"
+                  : "bodyTextColor"
+                : activeTab === "Summary"
+                ? "white"
+                : "black"
+            }
           >
             Summary
           </CustomText>
@@ -85,7 +93,15 @@ const DetailsStep: React.FC<
         >
           <CustomText
             variant="body"
-            color={activeTab === "Details" ? "black" : "bodyTextColor"}
+            color={
+              isDark
+                ? activeTab === "Details"
+                  ? "black"
+                  : "bodyTextColor"
+                : activeTab === "Details"
+                ? "white"
+                : "black"
+            }
           >
             Details
           </CustomText>
