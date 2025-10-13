@@ -99,9 +99,9 @@ const SetUp = () => {
           width={"100%"}
           // height={56}
           borderRadius={56}
-          text="Import existing wallet"
+          text="Import Existing Wallet"
           onPress={() => setShowImportWalletModal(true)}
-          borderWidth={2}
+          borderWidth={1}
           bgColor="transparent"
           borderColor={theme.colors.borderColor}
           color={theme.colors.bodyTextColor}
