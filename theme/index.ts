@@ -29,6 +29,7 @@ const COLOR_PALLET = {
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
   surfaceContainer: "#1F232D",
+  cardBorder: "#39393F",
 };
 
 const DARK_COLOR_PALLET = {
@@ -60,6 +61,7 @@ const DARK_COLOR_PALLET = {
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
   surfaceContainer: "#1F232D",
+  cardBorder: "#39393F",
 };
 
 const theme = createTheme({

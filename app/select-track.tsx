@@ -1,11 +1,8 @@
 import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
-import {
-  Box,
-  CustomButton,
-  CustomText,
-  PageWrapper,
-} from "@/components/general";
+import { Box, CustomText, PageWrapper } from "@/components/general";
+import ThemedText from "@/components/general/ThemedText";
+import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
@@ -14,6 +11,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { PropsWithChildren, useRef, useState } from "react";
+import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
@@ -56,32 +54,35 @@ const Card = ({
       height={131}
       borderRadius={10}
       borderWidth={colorTheme === "dark" ? 0.5 : 0}
-      borderColor="borderColor"
+      borderColor="cardBorder"
       flexDirection="row"
       p="m"
       alignItems="center"
       mb="l"
-      bg="secondaryBackgroundColor"
+      bg="surfaceContainer"
     >
       <Box justifyContent="center">{image}</Box>
       <Box ml="m" justifyContent="center">
-        <CustomText variant="bodyMedium" fontSize={18}>
+        <ThemedText
+          style={{ marginBottom: 4 }}
+          color={colors.bodyTextColor}
+          type="subtitle"
+        >
           {title}
-        </CustomText>
-        <CustomText variant="body" fontSize={12} mb="m" mt="s">
+        </ThemedText>
+        <ThemedText
+          type="cardTitle"
+          style={{ marginBottom: 24 }}
+          color={colors.placeholderTextColor}
+        >
           {body}
-        </CustomText>
-        <CustomButton
-          text={btnText}
-          onPress={onPress}
-          width={100}
-          height={25}
-          borderRadius={25}
-          bgColor={colors.white}
-          color={colors.primaryColor}
-          variant="bodySubheader"
-          fontSize={10}
-        />
+        </ThemedText>
+
+        <TouchableOpacity onPress={onPress} style={styles.button}>
+          <ThemedText style={{ fontSize: 10 }} color={colors.primaryColor}>
+            {btnText}
+          </ThemedText>
+        </TouchableOpacity>
       </Box>
     </Box>
   );
@@ -116,7 +117,7 @@ const SelectTrack = () => {
       image: (
         <Image
           source={require("@/assets/images/onb1.png")}
-          style={{ width: 73, height: 73 }}
+          style={{ width: 57, height: 72 }}
           contentFit="contain"
         />
       ),
@@ -144,7 +145,7 @@ const SelectTrack = () => {
       image: (
         <Image
           source={require("@/assets/images/onb3.png")}
-          style={{ width: 73, height: 73 }}
+          style={{ width: 58, height: 74 }}
           contentFit="contain"
         />
       ),
@@ -165,7 +166,7 @@ const SelectTrack = () => {
   ];
   return (
     <Wrapper>
-      <Box padding="m">
+      <Box style={styles.container}>
         <CustomText variant="header" fontSize={32}>
           Pick a start
         </CustomText>
@@ -194,3 +195,20 @@ const SelectTrack = () => {
 };
 
 export default SelectTrack;
+
+const styles = StyleSheet.create({
+  container: {
+    width: SIZES.width * 0.9,
+    alignSelf: "center",
+    marginTop: 54,
+  },
+  button: {
+    backgroundColor: "#FBFBFB",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    borderRadius: 32,
+    height: 23,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
