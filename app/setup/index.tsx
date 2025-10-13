@@ -13,6 +13,7 @@ import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { ChevronLeft, CircleQuestionMark } from "lucide-react-native";
 import React, { useState } from "react";
+import { Platform } from "react-native";
 
 const SetUp = () => {
   const [isTermsAndConditonsOpen, setIsTermsAndConditonsOpen] = useState(false);
