@@ -8,10 +8,19 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import React, { forwardRef, useCallback } from "react";
+import React, { forwardRef } from "react";
 import { Pressable } from "react-native";
 import { ChevronRight } from "react-native-feather";
+
+export type Token = {
+  id: string;
+  symbol: string;
+  name: string;
+  balance: number;
+  image?: any;
+  icon?: string;
+  price?: number;
+};
 
 const ItemCard = ({
   title,
@@ -57,25 +66,35 @@ const ItemCard = ({
 
 const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const theme = useTheme<Theme>();
-  const { tradeBottomSheetRef, buyTokensBottomSheetRef } = useBottomSheetRefs();
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={1}
-      />
-    ),
-    []
-  );
+  const {
+    tradeBottomSheetRef,
+    buyTokensBottomSheetRef,
+    sellTokensBottomSheetRef,
+  } = useBottomSheetRefs();
+
+  const openSellFlow = () => {
+    tradeBottomSheetRef.current?.close();
+
+    setTimeout(() => {
+      sellTokensBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
+  };
 
   return (
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["50%"]}
+      snapPoints={["35%"]}
       enablePanDownToClose
-      backdropComponent={renderBackdrop}
+      enableOverDrag={false}
+      enableDynamicSizing={false}
+      backdropComponent={(props: any) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+        />
+      )}
       style={{
         backgroundColor: theme.colors.mainBackgroundColor,
       }}
@@ -131,11 +150,12 @@ const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
               style={{ width: "100%", height: "100%" }}
             />
           }
-          onPress={() => router.push("/dashboard/home/sell")}
+          onPress={openSellFlow}
         />
       </BottomSheetView>
     </BottomSheet>
   );
 });
 
+TradeSelectBottomSheet.displayName = "TradeSelectBottomSheet";
 export default TradeSelectBottomSheet;

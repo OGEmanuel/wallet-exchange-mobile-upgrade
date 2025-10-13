@@ -1,12 +1,11 @@
-import { View, Text } from "react-native";
-import React from "react";
-import Box from "../general/Box";
-import CustomText from "../general/CustomText";
-import CustomButton from "../general/CustomButton";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import React from "react";
 import { ScrollView } from "react-native-gesture-handler";
+import Box from "../general/Box";
+import CustomButton from "../general/CustomButton";
+import CustomText from "../general/CustomText";
 
 const AssetCard = ({ coin }: { coin: string }) => {
   return (
@@ -85,7 +84,7 @@ const AssetsSection = () => {
           borderColor={theme.colors.borderColor}
         />
       </Box>
-      <ScrollView>
+      <ScrollView nestedScrollEnabled>
         {Array.from([1, 2, 4, 5, 6, 7, 78, 8, 9]).map((item) => {
           return <AssetCard key={item} coin="Btc" />;
         })}

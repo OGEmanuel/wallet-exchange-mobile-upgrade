@@ -27,6 +27,7 @@ const chainsBottomSheetRef = createRef<BottomSheet>();
 const bankBottomSheetRef = createRef<BottomSheet>();
 const tradeBottomSheetRef = createRef<BottomSheet>();
 const buyTokensBottomSheetRef = createRef<BottomSheet>();
+const sellTokensBottomSheetRef = createRef<BottomSheet>();
 
 const useBottomSheetRefs = () => {
   // render method for global bottomsheet
@@ -61,6 +62,7 @@ const useBottomSheetRefs = () => {
     bankBottomSheetRef,
     tradeBottomSheetRef,
     buyTokensBottomSheetRef,
+    sellTokensBottomSheetRef,
     render,
   };
 };

@@ -29,6 +29,7 @@ const COLOR_PALLET = {
   secondaryColor: "#C7E64D",
   modalBackgroundColor: "#1F232D",
   pendingColor: "#EDB118",
+  tabBarLemonColor: "#232B0F"
 };
 
 const DARK_COLOR_PALLET = {

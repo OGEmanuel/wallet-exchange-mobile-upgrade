@@ -20,12 +20,13 @@ import {
   ThemedSettingsOutlineIcon,
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
-import AppBottomSheet from "@/components/Modals/AppBottomSheet";
 import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
 import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
+import SellBottomSheet from "@/components/bottomsheets/home/sell/SellBottomsheet";
 import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
 import AssetsSection from "@/components/dashboard/AssetsSection";
+import AppBottomSheet from "@/components/Modals/AppBottomSheet";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { ScrollView } from "react-native-gesture-handler";
 
@@ -39,6 +40,7 @@ const Home = () => {
     recieveTokenRef,
     tradeBottomSheetRef,
     buyTokensBottomSheetRef,
+    sellTokensBottomSheetRef,
   } = useBottomSheetRefs();
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
 
@@ -132,7 +134,7 @@ const Home = () => {
                 />
               }
               title="Send"
-              action={() => bottomsheetRef.current?.snapToIndex(0)}
+              action={() => bottomsheetRef.current?.snapToIndex(1)}
             />
             <Box width={20} />
             <DashboardActionItem
@@ -144,7 +146,11 @@ const Home = () => {
                 />
               }
               title="Trade"
-              action={() => tradeBottomSheetRef.current?.expand()}
+              action={() => {
+                console.log("Trade button clicked");
+                console.log("BottomSheet ref:", tradeBottomSheetRef.current);
+                tradeBottomSheetRef.current?.snapToIndex(0);
+              }}
             />
             <Box width={20} />
             <DashboardActionItem
@@ -178,17 +184,17 @@ const Home = () => {
         <Box flex={0.4} paddingHorizontal="m">
           <AssetsSection />
         </Box>
-
-        <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
-          <Box>
-            <CustomText>Recieve Tokens</CustomText>
-          </Box>
-        </AppBottomSheet>
-        <SelectTokenBottomSheet ref={bottomsheetRef} />
-        <SelectUserTokens ref={recieveTokenRef} />
-        <SelectBuyTokens ref={buyTokensBottomSheetRef} />
-        <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
       </ScrollView>
+      <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
+        <Box>
+          <CustomText>Recieve Tokens</CustomText>
+        </Box>
+      </AppBottomSheet>
+      <SelectTokenBottomSheet ref={bottomsheetRef} />
+      <SelectUserTokens ref={recieveTokenRef} />
+      <SelectBuyTokens ref={buyTokensBottomSheetRef} />
+      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
+      <SellBottomSheet ref={sellTokensBottomSheetRef} />
     </PageWrapper>
   );
 };
