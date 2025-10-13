@@ -144,7 +144,14 @@ const SelectBankStep: React.FC<SellFlowProps> = ({
           onPress={() => onPickBank(BANKS[0])}
           width={"100%"}
           borderRadius={50}
-          bgColor={theme.colors.secondaryBackgroundColor}
+          color={
+            isDark ? theme.colors.bodyTextColor : theme.colors.bodyTextColor
+          }
+          bgColor={
+            isDark
+              ? theme.colors.secondaryBackgroundColor
+              : theme.colors.secondaryBackgroundColor
+          }
         />
       </Box>
     </BottomSheetView>

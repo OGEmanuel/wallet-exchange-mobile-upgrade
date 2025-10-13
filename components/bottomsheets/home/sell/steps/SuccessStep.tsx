@@ -20,6 +20,7 @@ const SuccessStep: React.FC<SuccessStepProps> = ({
   onGoToHistory,
 }) => {
   const theme = useTheme<Theme>();
+  const isDark = theme.colors.headerTextColor === "#FBFBFB";
 
   return (
     <BottomSheetView
@@ -41,7 +42,7 @@ const SuccessStep: React.FC<SuccessStepProps> = ({
       <Box
         p="m"
         alignContent="center"
-        bg="modalBackgroundColor"
+        bg={isDark ? "modalBackgroundColor" : "secondaryBackgroundColor"}
         borderRadius={10}
         borderWidth={1}
         justifyContent="center"
@@ -136,7 +137,14 @@ const SuccessStep: React.FC<SuccessStepProps> = ({
           borderRadius={50}
           borderWidth={1}
           borderColor="#39393F"
-          bgColor={theme.colors.mainBackgroundColor}
+          color={
+            isDark ? theme.colors.bodyTextColor : theme.colors.bodyTextColor
+          }
+          bgColor={
+            isDark
+              ? theme.colors.mainBackgroundColor
+              : theme.colors.secondaryBackgroundColor
+          }
         />
       </Box>
     </BottomSheetView>

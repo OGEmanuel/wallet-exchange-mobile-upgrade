@@ -45,7 +45,7 @@ const ConfirmingStep: React.FC<ConfirmingStepProps> = ({
       <Box
         p="m"
         alignContent="center"
-        bg="modalBackgroundColor"
+        bg={isDark ? "modalBackgroundColor" : "secondaryBackgroundColor"}
         borderRadius={10}
         justifyContent="center"
         alignItems="center"

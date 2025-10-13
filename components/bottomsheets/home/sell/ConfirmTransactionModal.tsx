@@ -22,7 +22,7 @@ const ConfirmTransactionModal: React.FC<ConfirmTransactionModalProps> = ({
   onConfirm,
 }) => {
   const theme = useTheme<Theme>();
-
+  const isDark = theme.colors.headerTextColor === "#FBFBFB";
   return (
     <Modal
       visible={visible}
@@ -66,7 +66,7 @@ const ConfirmTransactionModal: React.FC<ConfirmTransactionModalProps> = ({
             />
 
             <Box
-              bg="modalBackgroundColor"
+              bg={isDark ? "modalBackgroundColor" : "secondaryBackgroundColor"}
               borderRadius={8}
               style={{ padding: 10, marginBottom: 4 }}
               gap="m"
@@ -109,7 +109,7 @@ const ConfirmTransactionModal: React.FC<ConfirmTransactionModalProps> = ({
             </Box>
 
             <Box
-              bg="modalBackgroundColor"
+              bg={isDark ? "modalBackgroundColor" : "secondaryBackgroundColor"}
               borderRadius={8}
               style={{ padding: 10 }}
               mb="m"
@@ -151,7 +151,13 @@ const ConfirmTransactionModal: React.FC<ConfirmTransactionModalProps> = ({
             </Box>
           </Box>
 
-          <Box bg="modalBackgroundColor" borderRadius={8} p="m" mb="m" gap="m">
+          <Box
+            bg={isDark ? "modalBackgroundColor" : "secondaryBackgroundColor"}
+            borderRadius={8}
+            p="m"
+            mb="m"
+            gap="m"
+          >
             <Box
               alignItems="center"
               flexDirection="row"
@@ -284,7 +290,7 @@ const ConfirmTransactionModal: React.FC<ConfirmTransactionModalProps> = ({
                     width={20}
                     height={20}
                     darkModeColor={theme.colors.bodyTextColor}
-                    lightModeColor={theme.colors.bodyTextColor}
+                    lightModeColor={theme.colors.white}
                   />
                 </Box>
               }
