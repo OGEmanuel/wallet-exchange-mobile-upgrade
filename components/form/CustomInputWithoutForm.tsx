@@ -44,7 +44,6 @@ export default function CustomInputWithoutForm(
       <Box
         style={[
           {
-            borderWidth: !props.noBorder ? 1.5 : 0,
             borderRadius: 8,
             borderColor: focused
               ? theme.colors.primaryColor
@@ -68,6 +67,7 @@ export default function CustomInputWithoutForm(
               color: props.color ?? "white",
               fontSize: 14,
               textTransform: "none",
+              fontFamily: "PlusJakartaSans_Regular",
             },
             style,
           ]}
@@ -78,9 +78,7 @@ export default function CustomInputWithoutForm(
           keyboardType={props.keyboardType}
           secureTextEntry={showPassword ? false : true}
           autoCapitalize="none"
-          placeholderTextColor={
-            props.placeholderTextColor ?? theme.colors.bodyTextColor
-          }
+          placeholderTextColor={theme.colors.placeholderTextColor}
         />
         {props.iconRight && props.iconRight}
         {props.isPassword && (

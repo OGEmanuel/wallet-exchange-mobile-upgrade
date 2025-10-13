@@ -1,6 +1,6 @@
 import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
-import { Box, CustomText, PageWrapper } from "@/components/general";
+import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
@@ -103,6 +103,8 @@ const SelectTrack = () => {
   // Check if user is logged in (has a user object and is not a guest)
   const isUserLoggedIn = user && !user.isGuest;
 
+  const theme = useTheme<Theme>();
+
   const item: {
     title: string;
     body: string;
@@ -167,9 +169,13 @@ const SelectTrack = () => {
   return (
     <Wrapper>
       <Box style={styles.container}>
-        <CustomText variant="header" fontSize={32}>
+        <ThemedText
+          type="subtitle"
+          color={theme.colors.bodyTextColor}
+          style={{ fontSize: 32 }}
+        >
           Pick a start
-        </CustomText>
+        </ThemedText>
         <ScrollView contentContainerStyle={{ paddingTop: 40 }}>
           {item.map((item, index) => (
             <Card {...item} key={index.toString()} />

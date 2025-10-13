@@ -1,19 +1,18 @@
-import React, { useState } from "react";
-import Box from "@/components/general/Box";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import CustomText from "@/components/general/CustomText";
+import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import ImportWalletModal from "@/components/Modals/ImportWalletModal";
+import TermsAndConditions from "@/components/Modals/TermsAndConditions";
+import OnboardingInformationModal from "@/components/Modals/onboardingInformationModal";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
+import AppBar from "@/components/general/AppBar";
+import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
+import ThemedText from "@/components/general/ThemedText";
+import { Theme } from "@/theme";
+import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
+import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { ChevronLeft, CircleQuestionMark } from "lucide-react-native";
-import ImportWalletModal from "@/components/Modals/ImportWalletModal";
-import WhatIsSeedPhraseModal from "@/components/Modals/WhatIsSeedPhraseModal";
-import OnboardingInformationModal from "@/components/Modals/onboardingInformationModal";
-import AppBar from "@/components/general/AppBar";
-import AppBottomSheet from "@/components/Modals/AppBottomSheet";
-import TermsAndConditions from "@/components/Modals/TermsAndConditions";
-import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
+import React, { useState } from "react";
 
 const SetUp = () => {
   const [isTermsAndConditonsOpen, setIsTermsAndConditonsOpen] = useState(false);
@@ -58,12 +57,21 @@ const SetUp = () => {
       />
 
       <Box flex={1}>
-        <CustomText variant="medium" fontSize={22}>
+        <ThemedText
+          type="subtitle"
+          color={theme.colors.bodyTextColor}
+          style={{ fontSize: 22, marginBottom: 12 }}
+        >
           Name your wallet
-        </CustomText>
-        <CustomText variant="body" fontSize={14} mt="m" mb="m">
+        </ThemedText>
+        <ThemedText
+          type="default"
+          color={theme.colors.bodyTextColor}
+          style={{ marginBottom: 32 }}
+        >
           Choose a nice name for your wallet
-        </CustomText>
+        </ThemedText>
+
         <CustomInputWithoutForm
           label=""
           onChange={(e) => setWalletName(e as string)}
