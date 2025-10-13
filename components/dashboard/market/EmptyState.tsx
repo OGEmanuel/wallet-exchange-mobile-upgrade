@@ -1,4 +1,4 @@
-import { glass } from "@/assets/images";
+import images from "@/assets/images";
 import { CustomText } from "@/components/general";
 import CustomButton from "@/components/general/CustomButton";
 import React from "react";
@@ -43,7 +43,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           .easing(Easing.bezierFn(0.16, 1, 0.3, 1))}
       >
         <Image
-          source={source || glass}
+          source={source || images.glass}
           style={{ maxWidth: 300, maxHeight: 200 }}
           resizeMode="contain"
         />

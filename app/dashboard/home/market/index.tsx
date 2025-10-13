@@ -1,6 +1,8 @@
 import images from "@/assets/images";
+import CurrencyTab from "@/components/dashboard/market/CurrencyTab";
 import EmptyState from "@/components/dashboard/market/EmptyState";
 import FilterPill from "@/components/dashboard/market/FilterPill";
+import Loader from "@/components/dashboard/market/Loader";
 import MarketTableItem from "@/components/dashboard/market/MarketTableItem";
 import SwitchTab from "@/components/dashboard/market/SwitchTab";
 import TableHeader from "@/components/dashboard/market/TableHeader";
@@ -14,7 +16,7 @@ import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/cu
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 const Explore = () => {
@@ -29,10 +31,10 @@ const Explore = () => {
   const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
     undefined
   );
-  const [filteredCurrencies, setFilteredCurrencies] = useState<
-    (CurrencyModel | undefined)[] | null
-  >(null);
-  // State for market data and loading states
+  // const [filteredCurrencies, setFilteredCurrencies] = useState<
+  //   (CurrencyModel | undefined)[] | null
+  // >(null);
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -104,17 +106,51 @@ const Explore = () => {
     });
   }, []);
 
+  // Function to fetch watchlist tokens
+  const loadWatchlistTokens = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      await fetchWatchlistTokens({
+        body: {},
+        params: {},
+        extra: user,
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred while loading watchlist. Please try again."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchWatchlistTokens, user]);
+
+  useEffect(() => {
+    if (currencies && currencies.length > 0) {
+      const usd = currencies.find((c) => c.code === "USD");
+      const ngn = currencies.find((c) => c.code === "NGN");
+
+      setUsdCurrency(usd);
+      setNairaCurrency(ngn);
+      setSelectedCurrency(usd); // default USD
+      // setFilteredCurrencies([usd, ngn]);
+    }
+  }, [currencies]);
+
   useEffect(() => {
     loadCurrencies();
     loadMarketTokens();
   }, []);
 
   // Load watchlist when switching to watchlist tab
-  // useEffect(() => {
-  //   if (!isTokens && user) {
-  //     loadWatchlistTokens();
-  //   }
-  // }, [isTokens, user, loadWatchlistTokens]);
+  useEffect(() => {
+    if (!isTokens && user) {
+      loadWatchlistTokens();
+    }
+  }, [isTokens, user, loadWatchlistTokens]);
 
   const categories = ["All", "Top Gainers", "Top Losers"];
 
@@ -169,16 +205,18 @@ const Explore = () => {
 
   // Get the current data to display based on tab selection
   const currentData = isTokens ? filteredMarketTokens : filteredWatchlistTokens;
+
   const currentLoading = isTokens
     ? isLoading && !marketTokens
     : isLoading && !watchlistTokens;
+
   const currentError = isTokens
     ? !!errorMessage && !marketTokens
     : !!errorMessage && !watchlistTokens;
 
   // Check if watchlist is empty (has been loaded but no items)
-  const isWatchlistEmpty =
-    !isTokens && watchlistTokens && watchlistTokens.length === 0;
+  // const isWatchlistEmpty =
+  //   !isTokens && watchlistTokens && watchlistTokens.length === 0;
 
   const watchlistEmptyState = (
     <Box
@@ -217,7 +255,6 @@ const Explore = () => {
         />
       </Box>
 
-      {/* Category Filters */}
       <Box
         flexDirection="row"
         alignItems="center"
@@ -236,57 +273,28 @@ const Explore = () => {
             />
           ))}
         </Box>
-        <Box
-          flexDirection="row"
-          bg="secondaryBackgroundColor"
-          borderRadius={20}
-          padding="s"
-        >
-          {filteredCurrencies &&
-            filteredCurrencies?.map((currency, index) => (
-              <Pressable
-                key={index}
-                onPress={() => setSelectedCurrency(currency)}
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 20,
-                  backgroundColor:
-                    selectedCurrency?.code === currency?.code
-                      ? "rgba(196, 230, 77, 0.2)"
-                      : "transparent",
-                  borderWidth:
-                    selectedCurrency?.code === currency?.code ? 1 : 0,
-                  borderColor:
-                    selectedCurrency?.code === currency?.code
-                      ? "#C7E64D"
-                      : "transparent",
-                }}
-                android_ripple={{
-                  color: "rgba(255,255,255,0.1)",
-                  borderless: true,
-                }}
-              >
-                <CustomText variant="body" fontSize={10} color="bodyTextColor">
-                  {currency?.code}
-                </CustomText>
-              </Pressable>
-            ))}
-        </Box>
+
+        <CurrencyTab
+          selectedCurrency={selectedCurrency?.code as "USD" | "NGN"}
+          setSelectedCurrency={(code) => {
+            const foundCurrency = currencies?.find((c) => c.code === code);
+            setSelectedCurrency(foundCurrency);
+          }}
+        />
       </Box>
 
       <LoaderWrapper
         isLoading={currentLoading}
         isError={currentError}
         errorMessage={errorMessage}
-        onRetry={loadMarketTokens}
+        onRetry={isTokens ? loadMarketTokens : loadWatchlistTokens}
         isEmpty={
-          !isLoading &&
-          !!errorMessage &&
-          filteredMarketTokens &&
-          filteredMarketTokens.length === 0
+          !currentLoading &&
+          !currentError &&
+          (!currentData || currentData?.length === 0)
         }
-        existingData={filteredMarketTokens}
+        emptyComponent={watchlistEmptyState}
+        existingData={!currentData}
       >
         <Box
           bg="secondaryBackgroundColor"
@@ -303,7 +311,7 @@ const Explore = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 10 }}
           >
-            {filteredMarketTokens?.map((item, index) => (
+            {currentData?.map((item, index) => (
               <MarketTableItem
                 key={index}
                 item={item}
@@ -316,6 +324,7 @@ const Explore = () => {
           </ScrollView>
         </Box>
       </LoaderWrapper>
+      <Loader visible={currentLoading} />
     </PageWrapper>
   );
 };

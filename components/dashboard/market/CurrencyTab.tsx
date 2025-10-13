@@ -19,7 +19,8 @@ const CurrencyTab: React.FC<CurrencyTabProps> = ({
       flexDirection="row"
       bg="secondaryBackgroundColor"
       borderRadius={20}
-      padding="s"
+      // padding="s"
+      style={{ padding: 4 }}
     >
       {currencies.map((currency) => (
         <Pressable
