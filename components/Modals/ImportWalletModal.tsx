@@ -1,14 +1,14 @@
-import { View, Text, Pressable } from "react-native";
-import React from "react";
-import FullPaperModalWrapper from "./FullPaperModalWrapper";
-import CustomText from "../general/CustomText";
-import Box from "../general/Box";
-import { Image } from "expo-image";
-import { ChevronRight } from "lucide-react-native";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import { router } from "expo-router";
 import useActiveTheme from "@/hooks/useTheme";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { ChevronRight } from "lucide-react-native";
+import React from "react";
+import { Pressable } from "react-native";
+import Box from "../general/Box";
+import CustomText from "../general/CustomText";
+import FullPaperModalWrapper from "./FullPaperModalWrapper";
 // import { Pressable } from "react-native-gesture-handler";
 
 const ITEMS: {
@@ -31,7 +31,7 @@ const ITEMS: {
   },
   {
     type: "CLOUD",
-    header: "Restore from Icloud",
+    header: "Restore from iCloud",
     body: "Restore your wallet from your iCloud",
     action: () => router.push("/setup/import-wallet/restorefromcloud"),
   },
@@ -84,7 +84,8 @@ const ImportCard = ({
       borderWidth={1}
       borderColor="borderColor"
       borderRadius={20}
-      mb="m"
+      mb="l"
+      paddingHorizontal="s"
     >
       <Pressable
         onPress={(e) => {
@@ -92,15 +93,22 @@ const ImportCard = ({
           action();
           close();
         }}
-        style={{
+        style={({ pressed }) => ({
           flex: 1,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
           padding: 8,
-        }}
+          opacity: pressed ? 0.3 : 1,
+        })}
       >
-        <Box width={40} height={40} overflow="hidden" borderRadius={10}>
+        <Box
+          width={40}
+          height={40}
+          overflow="hidden"
+          borderRadius={10}
+          alignItems="center"
+        >
           <Image
             source={getImage()}
             contentFit="cover"
@@ -113,7 +121,7 @@ const ImportCard = ({
           </CustomText>
           <CustomText
             variant="body"
-            color="headerTextColor"
+            color="placeholderTextColor"
             fontSize={12}
             numberOfLines={2}
             ellipsizeMode="tail"
@@ -153,7 +161,7 @@ const ImportWalletModal = ({
     >
       <Box
         width={"100%"}
-        height={100}
+        height={80}
         alignItems="center"
         justifyContent="center"
         mb="l"
@@ -168,15 +176,21 @@ const ImportWalletModal = ({
           style={{ width: 100, height: 100 }}
         />
       </Box>
-      <CustomText variant="medium" textAlign="center" fontSize={22}>
-        Import an exisiting wallet
+      <CustomText variant="medium" textAlign="center" fontSize={22} mt="l">
+        Import an existing wallet
       </CustomText>
       <CustomText variant="body" textAlign="center" mt="m" mb="l" fontSize={14}>
         Import a wallet you already own by any of these methods
       </CustomText>
-      {ITEMS.map((item, index) => (
-        <ImportCard {...item} key={index.toString()} close={() => onClose()} />
-      ))}
+      <Box pb="l">
+        {ITEMS.map((item, index) => (
+          <ImportCard
+            {...item}
+            key={index.toString()}
+            close={() => onClose()}
+          />
+        ))}
+      </Box>
     </FullPaperModalWrapper>
   );
 };

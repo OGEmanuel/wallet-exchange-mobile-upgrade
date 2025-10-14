@@ -1,20 +1,24 @@
-import { selectStage } from "@/state/reducers/sendPage.reducer";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
+import { selectStage, setStage } from "@/state/reducers/sendPage.reducer";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { forwardRef, useCallback } from "react";
-import { useSelector } from "react-redux";
+import { router } from "expo-router";
+import React, { forwardRef, useCallback, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Box from "../../general/Box";
 import Addresses from "./Addresses";
 import Chains from "./Chains";
 import Tokens from "./Tokens";
 
-const SelectTokenBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
+const SelectTokenBottomSheet = forwardRef<BottomSheet, object>((props, ref) => {
   const stage = useSelector(selectStage);
+  const dispatch = useDispatch();
   const theme = useTheme<Theme>();
+  
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -26,16 +30,32 @@ const SelectTokenBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     []
   );
 
+  const handleTokenSelect = useCallback((token: ProcessedAsset) => {
+    // Close the bottom sheet and navigate to send screen with selected token
+    (ref as any)?.current?.close();
+    router.push(`/dashboard/home/send-token?tokenId=${token.id}`);
+  }, [ref]);
+
+  const handleModalClose = useCallback(() => {
+    // Reset stage to token when modal closes
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
+  // Reset stage to token when component mounts
+  useEffect(() => {
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
   const renderComponent = React.useCallback(() => {
     switch (stage) {
       case "token":
-        return <Tokens />;
+        return <Tokens onTokenSelect={handleTokenSelect} />;
       case "chains":
         return <Chains />;
       case "addresses":
         return <Addresses />;
     }
-  }, [stage]);
+  }, [stage, handleTokenSelect]);
 
   return (
     <BottomSheet
@@ -44,6 +64,7 @@ const SelectTokenBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
       snapPoints={["80%", "90%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
+      onClose={handleModalClose}
       style={{
         backgroundColor: theme.colors.mainBackgroundColor,
       }}
@@ -78,5 +99,7 @@ const SelectTokenBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+SelectTokenBottomSheet.displayName = 'SelectTokenBottomSheet';
 
 export default SelectTokenBottomSheet;

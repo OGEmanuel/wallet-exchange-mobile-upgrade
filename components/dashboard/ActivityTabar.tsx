@@ -1,9 +1,9 @@
-import { View, Text, Animated, Pressable, Dimensions } from "react-native";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef } from "react";
+import { Animated, Pressable, View } from "react-native";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
 
 interface IProps {
   activeTab: "EXCHANGE" | "WALLET";
@@ -54,7 +54,7 @@ const ActivityTabar = ({ activeTab, onPress }: IProps) => {
       />
 
       <Pressable
-        style={{ width: "50%", zIndex: 1 }}
+        style={{ width: "50%", zIndex: 0 }}
         onPress={() => {
           handleTabPress("EXCHANGE");
         }}
@@ -78,7 +78,7 @@ const ActivityTabar = ({ activeTab, onPress }: IProps) => {
         </View>
       </Pressable>
       <Pressable
-        style={{ width: "50%", zIndex: 1 }}
+        style={{ width: "50%", zIndex: 0 }}
         onPress={() => {
           handleTabPress("WALLET");
         }}

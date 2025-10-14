@@ -6,7 +6,7 @@ import {
 } from "@/components/general";
 import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
-import { Dimensions, Animated, Easing } from "react-native";
+import { Animated, Dimensions, Easing } from "react-native";
 
 const { width: WIDTH, height: HEIGHT } = Dimensions.get("screen");
 

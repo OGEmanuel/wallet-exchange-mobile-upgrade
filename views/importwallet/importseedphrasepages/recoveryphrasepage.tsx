@@ -1,28 +1,30 @@
-import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import CustomTextareaWithoutForm from "@/components/form/CustomTextarea";
+import AppBar from "@/components/general/AppBar";
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+import WhatIsSeedPhraseModal from "@/components/Modals/onboardingInformationModal";
 import {
   selectCurrentPage,
+  selectSeedPhrase,
   setCurrentPage,
+  setSeedPhrase,
 } from "@/state/reducers/currentPage.reducer";
-import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
-import { ChevronLeft, CircleQuestionMark, Copy } from "lucide-react-native";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
-import CustomButton from "@/components/general/CustomButton";
+import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
-import CustomTextareaWithoutForm from "@/components/form/CustomTextarea";
-import WhatIsSeedPhraseModal from "@/components/Modals/onboardingInformationModal";
-import AppBar from "@/components/general/AppBar";
+import { ChevronLeft, CircleQuestionMark, Copy } from "lucide-react-native";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 const RecoveryPhrasePage = () => {
   // states
   const [showWhatIsASeedPhreasModal, setShowImportWalletModal] =
     React.useState(false);
-  const [seedPhrase, setSeedPhrase] = React.useState("");
 
   const theme = useTheme<Theme>();
   const dispatch = useDispatch();
+  const seedPhrase = useSelector(selectSeedPhrase);
   const currentStep = useSelector(selectCurrentPage);
 
   const handleNext = () => {
@@ -73,11 +75,11 @@ const RecoveryPhrasePage = () => {
       </CustomText>
 
       <CustomTextareaWithoutForm
-        onChange={(e) => setSeedPhrase(e as string)}
+        onChange={(e) => dispatch(setSeedPhrase(e.toString()))}
         value={seedPhrase}
         label=""
-        placeholder="Use spaces between the words if you’re using recovery phrase"
-        placeholderTextColor={theme.colors.bodyTextColor}
+        placeholder="Use spaces between the words if you're using recovery phrase"
+        placeholderTextColor={theme.colors.placeholderTextColor}
       />
       <Box flexDirection="row" mt="m">
         <Copy size={20} color={theme.colors.bodyTextColor} />

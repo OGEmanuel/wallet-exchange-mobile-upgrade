@@ -1,10 +1,10 @@
-import { Animated, Modal, View, TouchableOpacity } from "react-native";
-import React from "react";
-import Box from "../general/Box";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { ThemedCancelIcon } from "@/assets/svg/wallet-icons-components";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import React from "react";
+import { Animated, Modal, TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Box from "../general/Box";
 
 interface AppBottomSheetProps {
   isVisible: boolean;
@@ -45,8 +45,8 @@ const AppBottomSheet = ({
           <Animated.View
             style={{
               backgroundColor: theme.colors.mainBackgroundColor,
-              // borderTopLeftRadius: 32,
-              // borderTopRightRadius: 32,
+              borderTopLeftRadius: 32,
+              borderTopRightRadius: 32,
               padding: 20,
               minHeight: minHeight,
               maxHeight: maxHeight,

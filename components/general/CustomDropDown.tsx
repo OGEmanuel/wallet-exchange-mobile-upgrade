@@ -1,10 +1,10 @@
-import { View, Text, DimensionValue } from "react-native";
-import React from "react";
-import Box from "./Box";
-import { SelectList } from "react-native-dropdown-select-list";
-import { ChevronDown } from "lucide-react-native";
-import { color, useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { ChevronDown } from "lucide-react-native";
+import React from "react";
+import { DimensionValue } from "react-native";
+import { SelectList } from "react-native-dropdown-select-list";
+import Box from "./Box";
 
 interface IProps {
   data: { value: string; label: string }[];
@@ -24,9 +24,9 @@ const CustomDropDown = ({
     <Box width="100%" height={height}>
       <SelectList
         data={data}
-        arrowicon={() => (
+        arrowicon={
           <ChevronDown size={20} color={theme.colors.bodyTextColor} />
-        )}
+        }
         setSelected={(value: string) => onChange(value)}
         save="value"
         search={false}

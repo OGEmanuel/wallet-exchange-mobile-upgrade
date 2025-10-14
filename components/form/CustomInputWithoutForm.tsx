@@ -17,6 +17,8 @@ interface Props {
   color?: string;
   noBorder?: boolean;
   boxStyle?: ViewStyle;
+  borderOnFocus?: boolean;
+  borderColorOnFocus?: string;
   // placeholderTextColor?: string;
 }
 
@@ -25,6 +27,9 @@ export default function CustomInputWithoutForm(
 ) {
   const { label, value, onChange, style, noBorder = true, ...rest } = props;
   const [focused, setFocused] = React.useState(false);
+  const [borderOnFocus, setBorderOnFocus] = React.useState(
+    props.borderOnFocus ?? true
+  );
   const [showPassword, setShowPassword] = React.useState(() => {
     if (props.isPassword) {
       return false;
@@ -44,11 +49,16 @@ export default function CustomInputWithoutForm(
       <Box
         style={[
           {
-            borderWidth: !noBorder ? 1.5 : 0,
+            borderWidth: props.noBorder
+              ? focused && borderOnFocus
+                ? 1.5
+                : 0
+              : 0,
             borderRadius: 8,
-            borderColor: focused
-              ? theme.colors.primaryColor
-              : theme.colors.borderColor,
+            borderColor:
+              focused && borderOnFocus
+                ? props.borderColorOnFocus ?? theme.colors.primaryColor
+                : theme.colors.borderColor,
             backgroundColor: theme.colors.secondaryBackgroundColor,
             height: 50,
             paddingHorizontal: 10,
@@ -68,6 +78,7 @@ export default function CustomInputWithoutForm(
               color: props.color ?? "white",
               fontSize: 14,
               textTransform: "none",
+              fontFamily: "PlusJakartaSans_Regular",
             },
             style,
           ]}
@@ -78,9 +89,7 @@ export default function CustomInputWithoutForm(
           keyboardType={props.keyboardType}
           secureTextEntry={showPassword ? false : true}
           autoCapitalize="none"
-          placeholderTextColor={
-            props.placeholderTextColor ?? theme.colors.bodyTextColor
-          }
+          placeholderTextColor={theme.colors.placeholderTextColor}
         />
         {props.iconRight && props.iconRight}
         {props.isPassword && (

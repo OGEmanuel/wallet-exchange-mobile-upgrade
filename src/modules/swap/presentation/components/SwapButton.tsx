@@ -38,7 +38,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
           justifyContent: "center",
           alignItems: "center",
           padding: 8,
-          zIndex: 10,
+          zIndex: 0,
           opacity: disabled ? 0.5 : 1,
         },
       ]}

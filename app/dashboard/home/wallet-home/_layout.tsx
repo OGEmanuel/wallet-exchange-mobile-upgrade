@@ -5,11 +5,11 @@ import {
   ThemedSwap1Icon,
   ThemedWalletFilledIcon,
 } from "@/assets/svg/wallet-icons-components";
+import ThemedMoreIcon from "@/assets/svg/wallet-icons-components/ThemedMoreIcon";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 import React from "react";
 import { Platform } from "react-native";
@@ -34,7 +34,7 @@ const TabBarIcon = ({
       <CustomText
         variant="body"
         fontSize={10}
-        color={focused ? "tabBarActiveColor" : "bodyTextColor"}
+        color={focused ? "tabBarActiveColor" : "inActiveBtnColor"}
       >
         {label}
       </CustomText>
@@ -42,7 +42,7 @@ const TabBarIcon = ({
   );
 };
 
-const _layout = () => {
+const Layout = () => {
   const theme = useTheme<Theme>();
   return (
     <Tabs
@@ -50,10 +50,20 @@ const _layout = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: theme.colors.mainBackgroundColor,
+          backgroundColor: "rgba(19, 23, 34, 0.95)",
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          borderTopWidth: 1,
           height: OS === "ios" ? 90 : 70,
           paddingTop: 20,
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          backdropFilter: "blur(20px)",
         },
+        tabBarInactiveTintColor: theme.colors.inActiveBtnColor,
       }}
     >
       <Tabs.Screen
@@ -68,12 +78,12 @@ const _layout = () => {
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }
@@ -97,12 +107,12 @@ const _layout = () => {
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }
@@ -113,12 +123,12 @@ const _layout = () => {
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }
@@ -134,18 +144,18 @@ const _layout = () => {
           tabBarIcon: ({ focused }) => (
             <TabBarIcon
               focused={focused}
-              label="Exchange"
+              label="Swap"
               icon={
                 <ThemedSwap1Icon
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }
@@ -155,34 +165,7 @@ const _layout = () => {
         }}
       />
 
-      <Tabs.Screen
-        name="wallet"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabBarIcon
-              focused={focused}
-              label="Wallet"
-              icon={
-                <ThemedWalletFilledIcon
-                  darkModeColor={
-                    focused
-                      ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
-                  }
-                  lightModeColor={
-                    focused
-                      ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
-                  }
-                />
-              }
-            />
-          ),
-          tabBarShowLabel: false,
-        }}
-      />
-
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="swap"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -207,7 +190,7 @@ const _layout = () => {
           ),
           tabBarShowLabel: false,
         }}
-      />
+      /> */}
 
       <Tabs.Screen
         name="activity"
@@ -221,12 +204,12 @@ const _layout = () => {
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }
@@ -244,12 +227,19 @@ const _layout = () => {
               focused={focused}
               label="More"
               icon={
-                <Image
-                  source={require("@/assets/svg/wallet-icons/more.svg")}
-                  style={{
-                    width: 24,
-                    height: 24,
-                  }}
+                <ThemedMoreIcon
+                  width={24}
+                  height={24}
+                  darkModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.inActiveBtnColor
+                  }
+                  lightModeColor={
+                    focused
+                      ? theme.colors.tabBarActiveColor
+                      : theme.colors.inActiveBtnColor
+                  }
                 />
               }
             />
@@ -261,4 +251,4 @@ const _layout = () => {
   );
 };
 
-export default _layout;
+export default Layout;

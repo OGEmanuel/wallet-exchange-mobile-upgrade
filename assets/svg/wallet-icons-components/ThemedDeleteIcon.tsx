@@ -1,50 +1,27 @@
-import React from 'react';
-import { SvgXml } from 'react-native-svg';
-import { useColorScheme } from 'react-native';
+import * as React from "react";
+import Svg, { Path, SvgProps } from "react-native-svg";
 
-interface ThemedDeleteIconProps {
-  width?: number;
-  height?: number;
-  style?: any;
-  lightModeColor?: string;
-  darkModeColor?: string;
+function SvgComponent(props: SvgProps) {
+  return (
+    <Svg
+      width={20}
+      height={21}
+      viewBox="0 0 20 21"
+      fill="none"
+      {...props}
+    >
+      <Path
+        d="M6.667 9.881a.833.833 0 000 1.667h6.667a.833.833 0 000-1.667H6.667z"
+        fill="#FF696A"
+      />
+      <Path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M19.167 10.714a9.167 9.167 0 11-18.334 0 9.167 9.167 0 0118.334 0zm-1.667 0a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z"
+        fill="#FF696A"
+      />
+    </Svg>
+  );
 }
 
-const ThemedDeleteIcon: React.FC<ThemedDeleteIconProps> = ({ 
-  width = 20, 
-  height = 20, 
-  style,
-  lightModeColor = '#121212',
-  darkModeColor = '#FFFFFF'
-}) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  
-  // Define colors for light and dark modes
-  const lightColor = lightModeColor;
-  const darkColor = darkModeColor;
-  
-  // Select color based on theme
-  const strokeColor = isDark ? darkColor : lightColor;
-  const fillColor = isDark ? darkColor : lightColor;
-  
-  // SVG content with dynamic color
-  const svgContent = `<svg   viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-<path d="M2.5 5H4.16667H17.5" stroke="${strokeColor}" stroke- stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M15.8333 4.99996V16.6666C15.8333 17.1087 15.6577 17.5326 15.3452 17.8451C15.0326 18.1577 14.6087 18.3333 14.1667 18.3333H5.83334C5.39131 18.3333 4.96739 18.1577 4.65483 17.8451C4.34227 17.5326 4.16667 17.1087 4.16667 16.6666V4.99996M6.66667 4.99996V3.33329C6.66667 2.89127 6.84227 2.46734 7.15483 2.15478C7.46739 1.84222 7.89131 1.66663 8.33334 1.66663H11.6667C12.1087 1.66663 12.5326 1.84222 12.8452 2.15478C13.1577 2.46734 13.3333 2.89127 13.3333 3.33329V4.99996" stroke="${strokeColor}" stroke- stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M8.33333 9.16663V14.1666" stroke="${strokeColor}" stroke- stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M11.6667 9.16663V14.1666" stroke="${strokeColor}" stroke- stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-`;
-
-  return (
-    <SvgXml
-      xml={svgContent}
-      width={width}
-      height={height}
-      style={style}
-    />
-  );
-};
-
-export default ThemedDeleteIcon;
+export default SvgComponent;

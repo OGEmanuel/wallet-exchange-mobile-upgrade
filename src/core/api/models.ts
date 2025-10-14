@@ -99,6 +99,7 @@ export const StorageKeys = {
   TOKEN_DATA: "tokenDataKey", // Authentication tokens
   APP_THEME: "appTheme",
   BIOMETRIC_ENABLED: "biometricEnabled", // Biometric authentication enabled
+  MAIN_WALLET_GROUP_ID: "mainWalletGroupId", // Currently selected main wallet group ID
 } as const;
 
 /**

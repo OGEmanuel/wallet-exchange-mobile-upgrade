@@ -169,6 +169,7 @@ export default function OTPInput({
               selectTextOnFocus
               textAlign="center"
               cursorColor={theme.colors.primaryColor}
+              returnKeyType="done"
             />
           </Pressable>
         ))}

@@ -1,26 +1,24 @@
-import React from "react";
-import Box from "@/components/general/Box";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import CustomText from "@/components/general/CustomText";
-import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import CustomButton from "@/components/general/CustomButton";
-import { router } from "expo-router";
-import { ChevronLeft, CircleQuestionMark } from "lucide-react-native";
 import ImportWalletModal from "@/components/Modals/ImportWalletModal";
 import OnboardingInformationModal from "@/components/Modals/onboardingInformationModal";
+import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import AppBar from "@/components/general/AppBar";
-import { NativeSyntheticEvent, TextInputChangeEventData } from "react-native";
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+import { selectWalletName, setWalletName } from "@/state/reducers/currentPage.reducer";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { router } from "expo-router";
+import { ChevronLeft, CircleQuestionMark } from "lucide-react-native";
+import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  selectWalletName,
-  setWalletName,
-} from "@/state/reducers/currentPage.reducer";
+
 interface IProps {
   onContinuePress: () => void;
   title?: string;
   showHelpIcon?: boolean;
   onBackPress?: () => void;
+  isWalletLoading: boolean;
 }
 
 const NameYourWallet = ({
@@ -28,14 +26,16 @@ const NameYourWallet = ({
   title = "",
   showHelpIcon = true,
   onBackPress,
+  isWalletLoading,
 }: IProps) => {
-  const walletName = useSelector(selectWalletName);
-  const dispatch = useDispatch();
 
   const [open, setIsOpen] = React.useState(false);
   const [showImportWalletModal, setShowImportWalletModal] =
     React.useState(false);
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
+  const walletName = useSelector(selectWalletName);
+
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor" padding="m">
       <OnboardingInformationModal
@@ -75,16 +75,17 @@ const NameYourWallet = ({
         <CustomInputWithoutForm
           label={title}
           onChange={(e) => {
-            dispatch(setWalletName(e));
+            dispatch(setWalletName(e.toString()));
           }}
           value={walletName}
           placeholder="Wallet name"
-          placeholderTextColor={theme.colors.bodyTextColor}
+          placeholderTextColor={theme.colors.placeholderTextColor}
         />
         <Box height={50} />
         <CustomButton
           disabled={walletName.length < 1}
           disabledColor={theme.colors.borderColor}
+          isLoading={isWalletLoading}
           width={"100%"}
           height={56}
           borderRadius={56}

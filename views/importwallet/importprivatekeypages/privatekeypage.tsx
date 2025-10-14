@@ -1,21 +1,24 @@
-import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import CustomTextareaWithoutForm from "@/components/form/CustomTextarea";
+import AppBar from "@/components/general/AppBar";
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomDropDown from "@/components/general/CustomDropDown";
+import CustomText from "@/components/general/CustomText";
+import WhatIsSeedPhraseModal from "@/components/Modals/onboardingInformationModal";
 import {
   selectCurrentPage,
+  selectKeyName,
+  selectPrivateKey,
   setCurrentPage,
+  setKeyName,
+  setPrivateKey,
 } from "@/state/reducers/currentPage.reducer";
-import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
-import { ChevronLeft, CircleQuestionMark, Copy } from "lucide-react-native";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
-import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import CustomButton from "@/components/general/CustomButton";
+import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
-import CustomTextareaWithoutForm from "@/components/form/CustomTextarea";
-import WhatIsSeedPhraseModal from "@/components/Modals/onboardingInformationModal";
-import AppBar from "@/components/general/AppBar";
-import CustomDropDown from "@/components/general/CustomDropDown";
+import { ChevronLeft, CircleQuestionMark, Copy } from "lucide-react-native";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 const data = [
   { label: "1", value: "Bitcoin" },
@@ -36,8 +39,8 @@ const PrivateKeyPage = () => {
   const currentStep = useSelector(selectCurrentPage);
 
   const [showModal, setShowModal] = React.useState(false);
-  const [privateKey, setPrivateKey] = React.useState("");
-  const [keyName, setKeyName] = React.useState("");
+  const privateKey = useSelector(selectPrivateKey);
+  const keyName = useSelector(selectKeyName);
 
   const handleNext = () => {
     dispatch(setCurrentPage(2));
@@ -84,17 +87,17 @@ const PrivateKeyPage = () => {
       <CustomDropDown
         data={data}
         placeholder="Select Chain"
-        onChange={(value) => setKeyName(value as string)}
+        onChange={(value) => dispatch(setKeyName(value.toString()))}
       />
 
       <Box height={0} />
 
       <CustomTextareaWithoutForm
-        onChange={(value) => setPrivateKey(value as string)}
+        onChange={(value) => dispatch(setPrivateKey(value.toString()))}
         value={privateKey}
         label=""
         placeholder="Enter your 64 character private key"
-        placeholderTextColor={theme.colors.bodyTextColor}
+        placeholderTextColor={theme.colors.placeholderTextColor}
       />
       <Box flexDirection="row" mt="m">
         <Copy size={20} color={theme.colors.bodyTextColor} />
