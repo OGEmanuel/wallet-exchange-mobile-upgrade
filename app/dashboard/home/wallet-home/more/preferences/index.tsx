@@ -35,12 +35,12 @@ const ItemCard = ({ title, icon, onPress }: ItemCardProps) => {
     >
       <Box flexDirection="row" alignItems="center">
         {icon}
-        <CustomText variant="medium" fontSize={16} ml="m">
+        <CustomText variant="bodyMedium" fontSize={16} ml="m">
           {title}
         </CustomText>
       </Box>
 
-      <ChevronRight size={25} color={theme.colors.bodyTextColor} />
+      <ChevronRight size={20} color={theme.colors.bodyTextColor} />
     </Pressable>
   );
 };
