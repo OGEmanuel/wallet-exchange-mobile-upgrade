@@ -57,11 +57,18 @@ export default function RootLayout() {
     PlusJakartaSans_SemiBold: require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
 
     // New Science fonts
-    NewScience_Regular: require("../assets/fonts/fonnts.com-New_Science_Regular.otf"),
-    NewScience_Light: require("../assets/fonts/fonnts.com-New_Science_Light.otf"),
-    NewScience_Medium: require("../assets/fonts/fonnts.com-New_Science_Medium.otf"),
-    NewScience_Bold: require("../assets/fonts/fonnts.com-New_Science_Bold.otf"),
-    NewScience_SemiBold: require("../assets/fonts/fonnts.com-New_Science_SemiBold.otf"),
+    NewScience_Regular: require("../assets/fonts/New_Science_Regular.otf"),
+    NewScience_Light: require("../assets/fonts/New_Science_Light.otf"),
+    NewScience_Medium: require("../assets/fonts/New_Science_Medium.otf"),
+    NewScience_Bold: require("../assets/fonts/New_Science_Bold.otf"),
+    NewScience_SemiBold: require("../assets/fonts/New_Science_SemiBold.otf"),
+    NewScience_Thin: require("../assets/fonts/New_Science_Thin.otf"),
+    NewScience_Bold_Extended: require("../assets/fonts/New_Science_Bold_Extended.otf"),
+    NewScience_Light_Extended: require("../assets/fonts/New_Science_Light_Extended.otf"),
+    NewScience_Medium_Extended: require("../assets/fonts/New_Science_Medium_Extended.otf"),
+    NewScience_Regular_Extended: require("../assets/fonts/New_Science_Regular_Extended.otf"),
+    NewScience_SemiBold_Extended: require("../assets/fonts/New_Science_SemiBold_Extended.otf"),
+    NewScience_Thin_Extended: require("../assets/fonts/New_Science_Thin_Extended.otf"),
   });
 
   useEffect(() => {

@@ -53,13 +53,15 @@ export default function CustomButton({
   onPress,
 }: IProps) {
   const handlePress = () => {
+    console.log("hehehhe");
+
     if (isLoading || disabled) {
       return;
     }
     if (shouldVibrate) {
       // Vibration.vibrate();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onPress();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else {
       onPress();
     }

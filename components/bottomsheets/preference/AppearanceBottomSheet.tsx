@@ -6,7 +6,6 @@ import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { PinInputRef } from "@pakenfit/react-native-pin-input";
 import { useTheme } from "@shopify/restyle";
 import { Sparkles, VibrateIcon } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
@@ -49,6 +48,7 @@ const AppearanceCard = ({
           alignItems: "center",
           marginTop: 10,
         }}
+        onPress={() => onPress()}
       >
         <Box
           width={20}
@@ -97,8 +97,7 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const [language, setLanguage] = React.useState(supportedLanguages[0]);
   const [isActive, setIsActive] = React.useState(false);
   const theme = useTheme<Theme>();
-  const pinref = React.useRef<PinInputRef>(null);
-  const { colorTheme } = useActiveTheme();
+  const { toggleTheme, colorTheme, setTheme } = useActiveTheme();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -178,8 +177,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Light"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={colorTheme === "light"}
+            onPress={() => setTheme("light")}
             image={
               <Image
                 source={require("@/assets/images/lightmodeimg.png")}
@@ -191,8 +190,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Dark"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={colorTheme === "dark"}
+            onPress={() => setTheme("dark")}
             image={
               <Image
                 source={require("@/assets/images/darkmodeimg.png")}

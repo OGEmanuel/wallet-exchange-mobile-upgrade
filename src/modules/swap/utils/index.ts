@@ -5,6 +5,9 @@
 
 import { SupportedCurrency } from "../data/remote";
 
+// Re-export format utilities
+export * from "./formatUtils";
+
 export interface FormattingOptions {
   baseAmount: number;
   targetAmount: number;
@@ -117,4 +120,49 @@ export function formatBaseToUsd(baseToUsd: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+/**
+ * Formats input amounts with accounting-style formatting (e.g., 100000 -> 100,000)
+ * @param value - The input value to format
+ * @param isCrypto - Whether the currency is crypto (affects decimal places)
+ * @returns Formatted string with proper comma separators
+ */
+export function formatInputAmount(
+  value: string,
+  isCrypto: boolean = false
+): string {
+  // Remove any non-numeric characters except decimal point
+  const cleanValue = value.replace(/[^0-9.]/g, "");
+
+  // Split by decimal point
+  const parts = cleanValue.split(".");
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+
+  // Add commas to integer part
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  // For crypto, limit decimal places to 8, for fiat limit to 2
+  const maxDecimals = isCrypto ? 8 : 2;
+  const formattedDecimal = decimalPart
+    ? decimalPart.substring(0, maxDecimals)
+    : "";
+
+  // Combine parts
+  return decimalPart
+    ? `${formattedInteger}.${formattedDecimal}`
+    : formattedInteger;
+}
+
+/**
+ * Parses a formatted input string back to a number
+ * @param formattedValue - The formatted string (e.g., "1,000.50")
+ * @returns The numeric value
+ */
+export function parseFormattedAmount(formattedValue: string): number {
+  // Remove commas and convert to number
+  const cleanValue = formattedValue.replace(/,/g, "");
+  const numValue = parseFloat(cleanValue);
+  return isNaN(numValue) ? 0 : numValue;
 }

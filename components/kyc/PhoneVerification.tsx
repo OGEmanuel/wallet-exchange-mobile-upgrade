@@ -1,7 +1,8 @@
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
@@ -22,6 +23,8 @@ export default function PhoneVerification({
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(90);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const { authPhoneNumber, verifyPhoneNumberOtp } = useKyc();
 
   const handleOtpChange = (code: string) => {
     setOtp(code);
@@ -33,10 +36,7 @@ export default function PhoneVerification({
     console.log("Verifying OTP:", code);
   };
 
-  const handleResend = () => {
-    // Reset countdown and disable resend
-    setCountdown(90);
-    setIsResendDisabled(true);
+  const triggerTimer = () => {
 
     // Start countdown
     const interval = setInterval(() => {
@@ -51,14 +51,50 @@ export default function PhoneVerification({
     }, 1000);
   };
 
+  const resetTimer = () => {
+    setCountdown(90);
+    triggerTimer();
+  };
+
   const handleVerify = () => {
     if (otp.length === 6) {
-      // Handle verification logic here
-      console.log("Verifying OTP:", otp);
+      setIsVerifying(true);
+      verifyPhoneNumberOtp({
+        identifier: `+${countryCode}${phoneNumber}`,
+        isOnboarding: true,
+        otp: otp,
+      }).then(() => {
+        onOTPVerified();
+      }).catch((error) => {
+        // console.log(error);
+      }).finally(() => {
+        setIsVerifying(false);
+      });
       // For now, just call the callback - in real app, verify with backend
-      onOTPVerified();
+      // onOTPVerified();
     }
   };
+
+  const handleResend = () => {
+    setIsResendDisabled(true);
+
+    authPhoneNumber({
+      phone: phoneNumber,
+      countryCode: countryCode.replaceAll("+", "") || null,
+      isWhatsApp: false,
+    }).then(() => {
+      resetTimer();
+    }).catch((error) => {
+      // console.log(error);
+    }).finally(() => {
+      setIsResendDisabled(false);
+    });
+  };
+
+  // Trigger countdown timer when component mounts
+  useEffect(() => {
+    triggerTimer();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -91,8 +127,9 @@ export default function PhoneVerification({
           bgColor={colors.primaryColor}
           color={colors.white}
           variant="bodySubheader"
+          isLoading={isVerifying}
           fontSize={16}
-          disabled={otp.length !== 6}
+          disabled={otp.length !== 6 || isResendDisabled}
           disabledColor={colors.borderColor}
         />
       </View>

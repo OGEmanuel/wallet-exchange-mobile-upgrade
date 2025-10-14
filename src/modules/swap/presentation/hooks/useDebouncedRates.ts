@@ -34,7 +34,7 @@ export const useDebouncedRates = ({
 
   fetchRatesRef.current = async () => {
     // Don't fetch if we don't have both currencies or if amount is too small
-    if (!baseCurrency?._id || !targetCurrency?._id || baseAmount < minAmount) {
+    if (!baseCurrency?._id || !targetCurrency?._id) {
       return;
     }
 

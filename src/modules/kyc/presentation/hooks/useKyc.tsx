@@ -1,4 +1,7 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { StorageKeys, TokenData } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { AppDispatch, AppRootState } from "@/state";
@@ -38,28 +41,79 @@ const useKyc = () => {
     return response;
   };
 
+  const loadUserFromStorage = async (): Promise<UserModel | null> => {
+    try {
+      const persistedUser = await storageService.get<UserModel>(
+        StorageKeys.USER_PROFILE
+      );
+      if (persistedUser) {
+        dispatch(kycActions.setUser(persistedUser));
+        return persistedUser;
+      }
+      return null;
+    } catch (error) {
+      console.error("Failed to load user from storage:", error);
+      return null;
+    }
+  };
+
+  const clearUserData = async (): Promise<void> => {
+    try {
+      // Clear from Redux store
+      dispatch(kycActions.setUser(null as any));
+
+      // Clear from storage
+      await storageService.remove(StorageKeys.USER_PROFILE);
+
+      console.log("User data cleared successfully");
+    } catch (error) {
+      console.error("Failed to clear user data:", error);
+    }
+  };
+
+  const hasPersistedUserData = async (): Promise<boolean> => {
+    try {
+      const persistedUser = await storageService.get<UserModel>(
+        StorageKeys.USER_PROFILE
+      );
+      return persistedUser !== null;
+    } catch (error) {
+      console.error("Failed to check persisted user data:", error);
+      return false;
+    }
+  };
+
   return {
     fetchUserById,
+    loadUserFromStorage,
+    clearUserData,
+    hasPersistedUserData,
     updateUser: async (payload: UserModel | null) => {
       const updatedUser = {
         ...user,
-        ...payload || {},
+        ...(payload || {}),
         metaData: {
           ...user?.metaData,
-          ...payload?.metaData || {},
+          ...(payload?.metaData || {}),
         },
       };
 
-      const {metaData,  ...userDataWithoutTheMetaData} = {
+      const { metaData, ...userDataWithoutTheMetaData } = {
         ...updatedUser,
-        ...payload || {},
+        ...(payload || {}),
       };
 
       dispatch(kycActions.setUser(updatedUser));
-      
+
+      // Persist user data immediately to storage
+      try {
+        await storageService.save(StorageKeys.USER_PROFILE, updatedUser);
+      } catch (error) {
+        console.error("Failed to persist user data:", error);
+      }
+
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
         fetchUserById(updatedUser).then((response) => {
-          
           if (response.data) {
             const fetchedUserData = {
               ...userDataWithoutTheMetaData,
@@ -70,13 +124,17 @@ const useKyc = () => {
               },
             };
 
-            dispatch(kycActions.setUser({...fetchedUserData}));
+            dispatch(kycActions.setUser({ ...fetchedUserData }));
 
             if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
-              if (userDataWithoutTheMetaData?.phone) delete userDataWithoutTheMetaData.phone;
+              if (userDataWithoutTheMetaData?.phone)
+                delete userDataWithoutTheMetaData.phone;
             }
 
-            storageService.save(StorageKeys.USER_PROFILE, userDataWithoutTheMetaData);
+            storageService.save(
+              StorageKeys.USER_PROFILE,
+              userDataWithoutTheMetaData
+            );
           }
         });
       }
@@ -107,17 +165,27 @@ const useKyc = () => {
 
       const authVerificationData = response.data;
 
-      if (
-        authVerificationData
-      ) {
+      if (authVerificationData) {
         try {
+          // const responseData = response.data as any;
           const tokenData: TokenData = {
-            token: authVerificationData?.token || null,
-            refreshToken: authVerificationData?.refreshToken || null,
-            expiresAt: null,
+            token: responseData.token || null,
+            refreshToken: responseData.refreshToken || null,
+            expiresAt:
+              responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
           };
-          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-          console.log("Tokens stored successfully after email verification");
+
+          // Only save if we have at least a token
+          if (tokenData.token) {
+            await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+            console.log("Tokens stored successfully after email verification", {
+              hasToken: !!tokenData.token,
+              hasRefreshToken: !!tokenData.refreshToken,
+              expiresAt: tokenData.expiresAt,
+            });
+          } else {
+            console.warn("No token found in response data");
+          }
         } catch (error) {
           console.error(
             "Failed to store tokens after email verification:",
@@ -141,7 +209,18 @@ const useKyc = () => {
 
       // Update user state if username was successfully added and user data is returned
       if (response.success && response.data) {
-        dispatch(kycActions.setUser(response.data as UserModel));
+        const updatedUser = response.data as UserModel;
+        dispatch(kycActions.setUser(updatedUser));
+
+        // Persist the updated user data
+        try {
+          await storageService.save(StorageKeys.USER_PROFILE, updatedUser);
+        } catch (error) {
+          console.error(
+            "Failed to persist user data after adding username:",
+            error
+          );
+        }
       }
 
       return response;

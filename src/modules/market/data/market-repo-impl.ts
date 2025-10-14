@@ -6,6 +6,7 @@ import { TokenHistoryDetailModel } from "../domain/entities/models/token-history
 import { WatchlistTokenModel } from "../domain/entities/models/watchlist-token-model";
 import { AddToWatchlistParams } from "../domain/entities/params/add-to-watchlist-params";
 import { MarketRepo } from "../domain/market-repo";
+import { PriceAlertData, PriceAlertResponse } from "./remote/market-remote-datasource";
 import { MarketRemoteDataSourceImpl } from "./remote/market-remote-datasource-impl";
 
 export class MarketRepoImpl implements MarketRepo {
@@ -29,5 +30,17 @@ export class MarketRepoImpl implements MarketRepo {
   
   async fetchWatchlistTokens(payload: GeneralRequestModel<unknown, unknown, UserModel | null>): Promise<GeneralResponseModel<WatchlistTokenModel[] | null | undefined>> {
     return this.remoteDatasource.fetchWatchlistTokens(payload);
+  }
+
+  async createPriceAlert(payload: GeneralRequestModel<PriceAlertData, unknown, unknown>): Promise<GeneralResponseModel<PriceAlertResponse>> {
+    return this.remoteDatasource.createPriceAlert(payload);
+  }
+
+  async addToWatchlist(payload: GeneralRequestModel<AddToWatchlistParams, unknown, unknown>): Promise<GeneralResponseModel<WatchlistTokenModel>> {
+    return this.remoteDatasource.addToWatchlist(payload);
+  }
+
+  async removeFromWatchlist(payload: GeneralRequestModel<string, unknown, unknown>): Promise<GeneralResponseModel<{ success: boolean; message: string }>> {
+    return this.remoteDatasource.removeFromWatchlist(payload);
   }
 }

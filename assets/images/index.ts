@@ -9,11 +9,16 @@ const checkTerms = require("./checkTerms.png");
 const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
+const down = require("./down.png");
+const clouds = require("./clouds.gif");
+const zapLogo = require("./zapIcon.png");
 
-export {
+export default {
   accounts,
   checkTerms,
+  clouds,
   docGuide,
+  down,
   glass,
   idCard,
   lemonBG,
@@ -21,4 +26,5 @@ export {
   startVerification,
   zapLogoWithNameDark,
   zapLogoWithNameLight,
+  zapLogo,
 };

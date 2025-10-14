@@ -1,0 +1,68 @@
+import { StorageKeys, TokenData } from "@/src/core/api/models";
+import { storageService } from "@/src/core/storage/app-storage";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { AppDispatch } from "@/state";
+import { kycActions } from "@/state/reducers/kyc-reducer";
+import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+
+interface AppInitializationState {
+  isInitialized: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export const useAppInitialization = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const [state, setState] = useState<AppInitializationState>({
+    isInitialized: false,
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        // Load persisted user data
+        const persistedUser = await storageService.get<UserModel>(
+          StorageKeys.USER_PROFILE
+        );
+        if (persistedUser) {
+          dispatch(kycActions.setUser(persistedUser));
+          console.log("User data loaded from storage:", persistedUser);
+        }
+
+        // Load persisted token data
+        const persistedTokens = await storageService.get<TokenData>(
+          StorageKeys.TOKEN_DATA
+        );
+        if (persistedTokens) {
+          console.log("Token data loaded from storage");
+          // You can dispatch token actions here if you have a token reducer
+        }
+
+        setState({
+          isInitialized: true,
+          isLoading: false,
+          error: null,
+        });
+
+        console.log("App initialization completed successfully");
+      } catch (error) {
+        console.error("App initialization failed:", error);
+        setState({
+          isInitialized: false,
+          isLoading: false,
+          error:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
+      }
+    };
+
+    initializeApp();
+  }, [dispatch]);
+
+  return state;
+};

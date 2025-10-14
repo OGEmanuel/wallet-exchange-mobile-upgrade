@@ -5,6 +5,7 @@ import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { CustomButton, CustomText } from "../general";
 import CountryPhoneInput from "./CountryPhoneInput";
 import CountrySelect from "./CountrySelect";
@@ -21,14 +22,17 @@ export default function PhoneNumber({
   onSkip,
   onBack,
 }: PhoneNumberProps) {
-  const [selectedCountry, setSelectedCountry] = useState<CountryData | undefined>(undefined);
+  const [selectedCountry, setSelectedCountry] = useState<
+    CountryData | undefined
+  >(undefined);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showOTP, setShowOTP] = useState(false);
   const [verified, setVerified] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const theme = useTheme<Theme>();
   const { authPhoneNumber } = useKyc();
-  const [verifyPhoneNumberLoading, setVerifyPhoneNumberLoading] = useState(false);
+  const [verifyPhoneNumberLoading, setVerifyPhoneNumberLoading] =
+    useState(false);
 
   const handleCountrySelect = (country: CountryData) => {
     setSelectedCountry(country);
@@ -50,7 +54,10 @@ export default function PhoneNumber({
   const handleOTPVerified = () => {
     setVerified(true);
     setShowOTP(false);
-    onPhoneVerified?.(phoneNumber, selectedCountry?.phoneCode.replaceAll("+", "") || "");
+    onPhoneVerified?.(
+      phoneNumber,
+      selectedCountry?.phoneCode.replaceAll("+", "") || ""
+    );
   };
 
   const handleContinue = () => {
@@ -61,13 +68,16 @@ export default function PhoneNumber({
         phone: phoneNumber,
         countryCode: selectedCountry?.phoneCode.replaceAll("+", "") || null,
         isWhatsApp: false,
-      }).then(() => {
-        // setShowOTP(true);
-      }).catch((error) => {
-        console.log(error);
-      }).finally(() => {
-        setVerifyPhoneNumberLoading(false);
-      });
+      })
+        .then(() => {
+          setShowOTP(true);
+        })
+        .catch((error) => {
+          // console.log(error);
+        })
+        .finally(() => {
+          setVerifyPhoneNumberLoading(false);
+        });
     }
   };
 
@@ -83,44 +93,46 @@ export default function PhoneNumber({
   }
 
   return (
-    <View style={styles.container}>
-      <CustomText variant="header" style={styles.title}>
-        Choose country
-      </CustomText>
-      <CustomText variant="body" style={styles.subtitle}>
-        Select a country to start your ID verification.
-      </CustomText>
-      <View style={styles.inputContainer}>
-        <CountrySelect
-          value={selectedCountry}
-          onSelect={(value) => {
-            if (!Array.isArray(value))
-              handleCountrySelect(value);
-          }}
-          placeholder="Select country"
-          showFlag={true}
-          showPhoneCode={true}
-        />
+    <>
+      <KeyboardAwareScrollView style={{ flex: 1 }}>
+        <View style={styles.container}>
+          <CustomText variant="header" style={styles.title}>
+            Choose country
+          </CustomText>
+          <CustomText variant="body" style={styles.subtitle}>
+            Select a country to start your ID verification.
+          </CustomText>
+          <View style={styles.inputContainer}>
+            <CountrySelect
+              value={selectedCountry}
+              onSelect={(value) => {
+                if (!Array.isArray(value)) handleCountrySelect(value);
+              }}
+              placeholder="Select country"
+              showFlag={true}
+              showPhoneCode={true}
+            />
 
-        <CountryPhoneInput
-          verified={verified}
-          onOtpSent={(data) => {
-            setPhoneNumber(data.phone);
-            setVerified(true);
-          }}
-          phoneDets={{
-            phone: phoneNumber,
-            countryCode: selectedCountry?.phoneCode || "",
-          }}
-          onValidate={(isValid) => {
-            setIsValid(isValid);
-          }}
-          selectedCountry={selectedCountry}
-          onPhoneChange={handlePhoneChange}
-          showVerifyButton={true}
-        />
-      </View>
-
+            <CountryPhoneInput
+              verified={verified}
+              onOtpSent={(data) => {
+                setPhoneNumber(data.phone);
+                setVerified(true);
+              }}
+              phoneDets={{
+                phone: phoneNumber,
+                countryCode: selectedCountry?.phoneCode || "",
+              }}
+              onValidate={(isValid) => {
+                setIsValid(isValid);
+              }}
+              selectedCountry={selectedCountry}
+              onPhoneChange={handlePhoneChange}
+              showVerifyButton={true}
+            />
+          </View>
+        </View>
+      </KeyboardAwareScrollView>
       <View style={styles.buttonContainer}>
         <View style={styles.buttonsRow}>
           <CustomButton
@@ -154,7 +166,7 @@ export default function PhoneNumber({
           />
         </View>
       </View>
-    </View>
+    </>
   );
 }
 
@@ -197,7 +209,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: "absolute",
-    bottom: 150,
+    bottom: 100,
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
   },
