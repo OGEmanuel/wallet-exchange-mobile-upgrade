@@ -1,8 +1,8 @@
 import images from "@/assets/images";
 import CurrencyTab from "@/components/dashboard/market/CurrencyTab";
 import EmptyState from "@/components/dashboard/market/EmptyState";
-import FilterPill from "@/components/dashboard/market/FilterPill";
 import Loader from "@/components/dashboard/market/Loader";
+import MarketFilter from "@/components/dashboard/market/MarketFilter";
 import MarketTableItem from "@/components/dashboard/market/MarketTableItem";
 import SwitchTab from "@/components/dashboard/market/SwitchTab";
 import TableHeader from "@/components/dashboard/market/TableHeader";
@@ -265,7 +265,7 @@ const Explore = () => {
       >
         <Box flexDirection="row">
           {categories.map((category, index) => (
-            <FilterPill
+            <MarketFilter
               key={index}
               label={category}
               active={selectedCategory === category}
