@@ -1,4 +1,4 @@
-import { checkTerms, docGuide } from "@/assets/images";
+import images from "@/assets/images";
 import ThemedCameraIcon from "@/assets/svg/wallet-icons-components/ThemedCameraIcon";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
@@ -145,7 +145,7 @@ export default function DocumentCapure({
           </View>
         ) : (
           <Image
-            source={docGuide}
+            source={images.docGuide}
             style={{ height: 110 }}
             resizeMode="contain"
           />
@@ -175,7 +175,7 @@ export default function DocumentCapure({
           </View>
         </TouchableOpacity>
         <Image
-          source={checkTerms}
+          source={images.checkTerms}
           style={{ width: 16, height: 20, marginRight: 8 }}
           resizeMode="contain"
         />

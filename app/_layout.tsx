@@ -3,6 +3,7 @@ import { Buffer } from "buffer";
 import "react-native-get-random-values";
 
 // import { PinGuard } from "@/components/auth/PinGuard";
+import { AppInitializer } from "@/components/AppInitializer";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
@@ -136,6 +137,7 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
+            <AppInitializer>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
                 <NetworkProvider>
@@ -163,6 +165,7 @@ export default function RootLayout() {
                 </NetworkProvider>
               </QueryClientProvider>
             </ThemeProvider>
+            </AppInitializer>
           </Provider>
         </GestureHandlerRootView>
       </View>

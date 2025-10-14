@@ -65,6 +65,7 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
         placeholder="Enter your email address"
         noBorder={true}
         keyboardType="email-address"
+        color={theme.colors.bodyTextColor}
       />
       <View style={{ marginTop: 24 }}>
         <CustomButton
