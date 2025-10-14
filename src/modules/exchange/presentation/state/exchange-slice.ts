@@ -1,8 +1,14 @@
+<<<<<<< HEAD
 import { GeneralResponseModel } from '@/src/core/api/http-types';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 <<<<<<< HEAD
 <<<<<<< HEAD
 import { ExchangeActivityModel } from '@zap/blockchain-sdk';
+=======
+import { GeneralResponseModel } from "@/src/core/api/http-types";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { ExchangeActivityModel } from "@zap/blockchain-sdk";
+>>>>>>> 3cff675 (feat(exchange): implement exchange activities feature with data fetching and state management)
 
 interface ExchangeState {
   exchangeActivities: GeneralResponseModel<ExchangeActivityModel[]> | null;
@@ -25,9 +31,10 @@ const initialState: ExchangeState = {
 };
 
 const exchangeSlice = createSlice({
-  name: 'exchange',
+  name: "exchange",
   initialState,
   reducers: {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     setExchangeActivities: (state, action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>) => {
@@ -37,6 +44,12 @@ const exchangeSlice = createSlice({
 =======
     setExchangeActivities: (state, action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>) => {
 >>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
+=======
+    setExchangeActivities: (
+      state,
+      action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>
+    ) => {
+>>>>>>> 3cff675 (feat(exchange): implement exchange activities feature with data fetching and state management)
       state.exchangeActivities = action.payload;
     },
   },

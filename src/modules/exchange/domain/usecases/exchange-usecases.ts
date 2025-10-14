@@ -1,5 +1,9 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 import { ExchangeActivityModel } from '@zap/blockchain-sdk';
@@ -9,11 +13,15 @@ import { ExchangeActivity } from '@zap/blockchain-sdk';
 =======
 import { ExchangeActivityModel } from '@zap/blockchain-sdk';
 >>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
+=======
+import { ExchangeActivityModel } from "@zap/blockchain-sdk";
+>>>>>>> 3cff675 (feat(exchange): implement exchange activities feature with data fetching and state management)
 import { ExchangeRepoImpl } from "../../data/exchange-repo-impl";
 
 export class ExchangeUsecases {
   private readonly repo = new ExchangeRepoImpl();
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   async fetchExchangeActivities(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
@@ -23,6 +31,11 @@ export class ExchangeUsecases {
 =======
   async fetchExchangeActivities(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
 >>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
+=======
+  async fetchExchangeActivities(
+    payload: GeneralRequestModel<UserModel, unknown, unknown>
+  ): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
+>>>>>>> 3cff675 (feat(exchange): implement exchange activities feature with data fetching and state management)
     return this.repo.fetchExchangeActivities(payload);
   }
 }

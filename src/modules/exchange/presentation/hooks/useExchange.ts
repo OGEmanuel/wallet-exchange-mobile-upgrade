@@ -1,4 +1,7 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppDispatch } from "@/state";
 <<<<<<< HEAD
@@ -16,8 +19,9 @@ import { exchangeActions } from "../state/exchange-slice";
 
 const useExchange = () => {
   const dispatch = useDispatch<AppDispatch>();
-  
+
   return {
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     fetchExchangeActivities: async (payload: GeneralRequestModel<UserModel, unknown, PaginationOptions>): Promise<GeneralResponseModel<ExchangeActivityModel[]>> => {
@@ -27,6 +31,11 @@ const useExchange = () => {
 =======
     fetchExchangeActivities: async (payload: GeneralRequestModel<UserModel, unknown, PaginationOptions>): Promise<GeneralResponseModel<ExchangeActivityModel[]>> => {
 >>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
+=======
+    fetchExchangeActivities: async (
+      payload: GeneralRequestModel<UserModel, unknown, PaginationOptions>
+    ): Promise<GeneralResponseModel<ExchangeActivityModel[]>> => {
+>>>>>>> 3cff675 (feat(exchange): implement exchange activities feature with data fetching and state management)
       const usecase = new ExchangeUsecases();
       const response = await usecase.fetchExchangeActivities(payload);
       dispatch(exchangeActions.setExchangeActivities(response));
