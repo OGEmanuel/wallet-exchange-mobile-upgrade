@@ -14,9 +14,9 @@ const BackupCompleteScreen = () => {
   console.log("🔍 Backup Complete - Received walletGroupId:", walletGroupId);
 
   const handleContinue = () => {
-    console.log("🔍 Backup Complete - Navigating with walletGroupId:", walletGroupId);
-    // Navigate back to wallet group detail page with the correct walletGroupId
-    router.push(`/dashboard/manage-wallet/wallet-group-detail?walletGroupId=${walletGroupId}`);
+    console.log("🔍 Backup Complete - Navigating to wallet home screen");
+    // Navigate to wallet home screen after successful backup
+    router.push("/dashboard/home/wallet-home/home");
   };
 
   return (

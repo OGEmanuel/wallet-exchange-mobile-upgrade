@@ -6,6 +6,7 @@ import "react-native-get-random-values";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
+import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
 import { WalletProvider } from "@/src/core/wallet/wallet-context";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
@@ -118,6 +119,7 @@ export default function RootLayout() {
     };
   }, []); // Remove colorScheme dependency to prevent unnecessary re-runs
 
+  // Early return after all hooks are called
   if (!fontsLoaded && !error) {
     return null;
   }
@@ -129,9 +131,10 @@ export default function RootLayout() {
           <Provider store={store}>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
-                <ChainsProvider>
-                  <WalletProvider>
-                    <BottomSheetProvider>
+                <NetworkProvider>
+                  <ChainsProvider>
+                    <WalletProvider>
+                      <BottomSheetProvider>
                       <StatusBar
                         barStyle={
                           colorTheme === "dark"
@@ -147,9 +150,10 @@ export default function RootLayout() {
                         />
                       </Stack>
                       <BottomSheetManager />
-                    </BottomSheetProvider>
-                  </WalletProvider>
-                </ChainsProvider>
+                      </BottomSheetProvider>
+                    </WalletProvider>
+                  </ChainsProvider>
+                </NetworkProvider>
               </QueryClientProvider>
             </ThemeProvider>
           </Provider>

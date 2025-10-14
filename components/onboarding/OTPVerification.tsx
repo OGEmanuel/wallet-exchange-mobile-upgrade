@@ -1,4 +1,5 @@
 import { useZapSDK } from "@/src/core/sdk/useZapSDK";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
@@ -36,7 +37,7 @@ export default function OTPVerification({
 
     setLoading(true);
     try {
-      const result = await sdk.validateExchangeOtp(email, otp);
+      const result = await zapSDKService.validateExchangeOtp(email, otp);
       
       if (result.success) {
         Alert.alert('Success', 'Email verified successfully!');
@@ -59,7 +60,7 @@ export default function OTPVerification({
     }
 
     try {
-      const result = await sdk.sendExchangeOtp(email);
+      const result = await zapSDKService.sendExchangeOtp(email);
       
       if (result.success) {
         Alert.alert('Success', 'OTP resent to your email');

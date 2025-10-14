@@ -1,4 +1,5 @@
 import { useZapSDK } from '@/src/core/sdk/useZapSDK';
+import zapSDKService from '@/src/core/sdk/zap-sdk.service';
 import { Theme } from '@/theme';
 import { useTheme } from '@shopify/restyle';
 import React, { useEffect, useState } from 'react';
@@ -34,7 +35,7 @@ export default function SwapWithSDK({ onSwapSuccess }: SwapWithSDKProps) {
 
     try {
       // Load supported tokens from SDK
-      const tokens = await sdk.tokens.getSupportedTokens();
+      const tokens = await zapSDKService.getSupportedTokens();
       console.log('Supported tokens:', tokens);
     } catch (error) {
       console.error('Failed to load tokens:', error);

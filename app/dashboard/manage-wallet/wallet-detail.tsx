@@ -2,6 +2,7 @@ import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
 import { AppBar, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import Identicon from "@/components/general/Identicon";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -12,8 +13,6 @@ import React, { useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
- 
- 
 interface WalletDetailProps {}
 
 const WalletDetail: React.FC<WalletDetailProps> = () => {
@@ -29,24 +28,27 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
 
   // Debug logging
   console.log("🔍 Wallet Detail - Looking for walletId:", walletId);
-  console.log("🔍 Available userWalletGroups:", userWalletGroups?.map(g => ({
-    id: g._id,
-    walletGroupId: g.walletGroupId?._id,
-    walletName: g.walletId?.name
-  })));
+  console.log(
+    "🔍 Available userWalletGroups:",
+    userWalletGroups?.map((g) => ({
+      id: g._id,
+      walletGroupId: g.walletGroupId?._id,
+      walletName: g.name,
+    }))
+  );
 
   // Find the wallet
   const wallet = userWalletGroups?.find(
     (userWalletGroup) => userWalletGroup.walletId._id === walletId
   );
-  
+
   console.log("🔍 Found wallet:", wallet ? "Yes" : "No");
   if (wallet) {
     console.log("🔍 Wallet structure:", {
       id: wallet._id,
       walletId: wallet.walletId,
       walletGroupId: wallet.walletGroupId,
-      derivationIndex: wallet.walletId?.walletDepth
+      derivationIndex: wallet.walletId?.walletDepth,
     });
   }
 
@@ -56,7 +58,9 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
         <Box style={{ paddingTop: insets.top }}>
           <AppBar
             title="Edit wallet"
-            leading={<ArrowLeft2 size={24} color={theme.colors.headerTextColor} />}
+            leading={
+              <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
+            }
           />
         </Box>
         <Box flex={1} justifyContent="center" alignItems="center">
@@ -68,12 +72,10 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
     );
   }
 
-
   const handleEditName = () => {
     setIsEditingName(true);
-    setEditedName(wallet.walletId?.name || "");
+    setEditedName(wallet.name || "");
   };
-
 
   const handleSaveName = async () => {
     try {
@@ -84,13 +86,13 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
       }
 
       // Update wallet name via SDK
-      await sdk.wallets.updateWallet(wallet.walletId?._id, {
+      await zapSDKService.updateUserWalletGroupName(wallet._id, {
         name: editedName,
       });
 
       // Update the local wallet name immediately
-      if (wallet.walletId) {
-        wallet.walletId.name = editedName;
+      if (wallet.name) {
+        wallet.name = editedName;
       }
 
       setIsEditingName(false);
@@ -109,7 +111,9 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
   };
 
   const handleWalletAddresses = () => {
-    router.push(`/dashboard/manage-wallet/wallet-addresses?walletId=${walletId}`);
+    router.push(
+      `/dashboard/manage-wallet/wallet-addresses?walletId=${walletId}`
+    );
   };
 
   const handlePrivateKeys = () => {
@@ -120,13 +124,14 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
     router.push(`/dashboard/manage-wallet/secret-phrase?walletId=${walletId}`);
   };
 
-
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
         <AppBar
           title="Edit wallet"
-          leading={<ArrowLeft2 size={24} color={theme.colors.headerTextColor} />}
+          leading={
+            <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
+          }
         />
       </Box>
 
@@ -142,9 +147,17 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
           alignItems="center"
         >
           <Box marginBottom="m" borderRadius={12} overflow="hidden">
-            <Identicon value={wallet.walletId?.name || wallet.walletId?._id || wallet._id || "0x0000000000000000000000000000000000000000"} size={60} />
+            <Identicon
+              value={
+                wallet.name ||
+                wallet.walletId?._id ||
+                wallet._id ||
+                "0x0000000000000000000000000000000000000000"
+              }
+              size={60}
+            />
           </Box>
-          
+
           <Box
             flexDirection="row"
             alignItems="center"
@@ -173,7 +186,7 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
                 fontSize={18}
                 color="headerTextColor"
               >
-                {wallet.walletId?.name || "Unnamed Wallet"}
+                {wallet.name || "Unnamed Wallet"}
               </CustomText>
             )}
             <Box flexDirection="row" alignItems="center">
@@ -316,7 +329,6 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
             </Pressable>
           </Box>
         </Box>
-
       </ScrollView>
     </Box>
   );

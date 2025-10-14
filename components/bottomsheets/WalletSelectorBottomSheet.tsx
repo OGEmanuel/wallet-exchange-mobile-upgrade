@@ -7,6 +7,10 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import AddressesStorage from "@/src/core/storage/addresses-storage";
+import PrivateKeysStorage from "@/src/core/storage/private-keys-storage";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -60,7 +64,7 @@ const WalletSelectorBottomSheet = ({
   // Process and group wallet groups from context
   const walletGroupsMap = new Map();
 
-  (userWalletGroups || []).forEach((userWalletGroup) => {
+  (userWalletGroups && Array.isArray(userWalletGroups) ? userWalletGroups : []).forEach((userWalletGroup) => {
     // Get the actual wallet group ID and name
     const walletGroupId = userWalletGroup.walletGroupId?._id;
     const walletGroupName =
@@ -70,7 +74,7 @@ const WalletSelectorBottomSheet = ({
     // Get wallet info
     const walletInfo = userWalletGroup.walletId;
     const walletName =
-      walletInfo?.name || `Wallet ${walletInfo?._id?.slice(-4) || "Unknown"}`;
+      userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
     const totalValue = walletInfo?.totalUsdValue
       ? `$${walletInfo.totalUsdValue}`
       : "$0.00";
@@ -153,18 +157,61 @@ const WalletSelectorBottomSheet = ({
         throw new Error("SDK not available");
       }
 
+      // Debug the wallet structure
+      console.log("🔍 walletToDelete structure:", JSON.stringify(walletToDelete, null, 2));
+      console.log("🔍 walletToDelete.walletGroupId:", walletToDelete.walletGroupId);
+      console.log("🔍 walletToDelete keys:", Object.keys(walletToDelete));
+
       // Call SDK to delete wallet group
       console.log(
         "🗑️ Calling SDK to delete wallet group:",
-        walletToDelete.userWalletGroupId
+        walletToDelete.groupId
       );
-      await sdk.wallets.deleteUserWalletGroup(walletToDelete.userWalletGroupId);
+      await zapSDKService.deleteWalletGroup(walletToDelete.groupId);
 
       console.log("✅ Wallet group deleted successfully");
+
+      // Clear stored credentials for all user wallet groups in this wallet group
+      try {
+        const walletGroupId = walletToDelete.groupId;
+
+        // Get all user wallet groups for this wallet group
+        const allUserWalletGroups =
+          userWalletGroups?.filter(
+            (group) => group.walletGroupId._id === walletGroupId
+          ) || [];
+
+        console.log(
+          `🧹 Clearing credentials for ${allUserWalletGroups.length} user wallet groups`
+        );
+
+        // Clear credentials for each user wallet group
+        for (const userWalletGroupToDelete of allUserWalletGroups) {
+          await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(
+            userWalletGroupToDelete._id
+          );
+
+          await PrivateKeysStorage.clearPrivateKeys(
+            userWalletGroupToDelete._id
+          );
+          await AddressesStorage.clearAddresses(userWalletGroupToDelete._id);
+        }
+
+        console.log(
+          "✅ Cleared stored credentials for all wallets in deleted wallet group"
+        );
+      } catch (error) {
+        console.error("❌ Failed to clear stored credentials:", error);
+        // Don't throw here, as the wallet group is already deleted on the server
+      }
 
       // Close both modals
       console.log("🗑️ Closing PIN modal");
       await setShowPinModal(false);
+
+      // Refresh wallet groups and portfolio
+      await refreshUserWalletGroups();
+      await refreshPortfolio();
 
       console.log("🗑️ Closing local delete modal");
 

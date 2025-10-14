@@ -90,6 +90,7 @@ const SelectChainBottomSheet = forwardRef<
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingVertical: 25,
+          paddingBottom: 100, // Add bottom padding for tab bar
           flexGrow: 1, // Allow content to grow but maintain minimum height
         }}
       >

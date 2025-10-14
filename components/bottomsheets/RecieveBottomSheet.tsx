@@ -1,19 +1,17 @@
+import {
+  ThemedLinkExternalIcon
+} from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { forwardRef, useState, useCallback } from "react";
-import { Pressable } from "react-native";
+import React, { forwardRef, useCallback, useState } from "react";
 import { Box, CustomText } from "../general";
-import {
-  ThemedCopyIcon,
-  ThemedLinkExternalIcon,
-} from "@/assets/svg/wallet-icons-components";
 
 const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const [activeTab, setActiveTab] = useState<1 | 2>(1);
+  const [activeTab, setActiveTab] = useState<1 | 2>(1); // Remove unused state
   const theme = useTheme<Theme>();
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -62,10 +60,11 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           backgroundColor: theme.colors.mainBackgroundColor,
           paddingHorizontal: 20,
           paddingTop: 30,
+          paddingBottom: 100,
         }}
       >
         <CustomText variant="bodyMedium" fontSize={18} textAlign="center">
-          Recieve
+          Receive
         </CustomText>
         <CustomText variant="body" fontSize={12} mt="s" textAlign="center">
           June 23, 2024 at 12.00 PM
@@ -113,7 +112,7 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
             height={30}
           >
             <CustomText color="disabledTextColor" fontSize={12}>
-              Recieved From
+              Received From
             </CustomText>
             <CustomText fontSize={12}>0xd5321...de32</CustomText>
           </Box>
@@ -166,5 +165,7 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+RecieveBottomSheet.displayName = "RecieveBottomSheet";
 
 export default RecieveBottomSheet;

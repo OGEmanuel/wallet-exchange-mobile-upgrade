@@ -11,6 +11,7 @@ import { SvgUri } from "react-native-svg";
 import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
+import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
@@ -18,7 +19,7 @@ import { Switch } from "react-native-gesture-handler";
 import ImportTokenModal from "./ImportTokenModal";
 import SuccessModal from "./SuccessModal";
 
-const CryptoIcon = ({ image }: { image?: string }) => {
+const CryptoIcon = React.memo(({ image }: { image?: string }) => {
   return (
     <Box
       width={40}
@@ -47,7 +48,9 @@ const CryptoIcon = ({ image }: { image?: string }) => {
       )}
     </Box>
   );
-};
+});
+
+CryptoIcon.displayName = 'CryptoIcon';
 
 interface ManageTokensModalProps {
   visible: boolean;
@@ -358,14 +361,14 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                           color="disabledTextColor"
                           mr="s"
                         >
-                          {token.balance} {token.symbol}
+                          {formatNumber(token.balance, 4)} {token.symbol}
                         </CustomText>
                         <CustomText
                           variant="light"
                           fontSize={13}
                           color="headerTextColor"
                         >
-                          ${token.totalUsdValue}
+                          {formatCurrency(token.totalUsdValue)}
                         </CustomText>
                       </Box>
                     </Box>

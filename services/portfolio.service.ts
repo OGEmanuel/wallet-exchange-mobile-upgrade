@@ -61,6 +61,16 @@ export class PortfolioService {
   static async processPortfolioData(portfolioData: PortfolioResponse): Promise<ProcessedPortfolio> {
     // Load supported currencies first
     await this.loadSupportedCurrencies();
+
+    console.log('🔍 Portfolio data structure:', {
+      hasMainWalletGroupPortfolio: !!portfolioData.mainWalletGroupPortfolio,
+      hasUserTokenList: !!portfolioData.userTokenList,
+      userTokenListType: typeof portfolioData.userTokenList,
+      userTokenListLength: Array.isArray(portfolioData.userTokenList) ? portfolioData.userTokenList.length : 'not array',
+      portfolioDataKeys: Object.keys(portfolioData),
+      fullPortfolioData: portfolioData
+    });
+
     const { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
     // Get all accounts - we'll filter by enabled status later
@@ -68,35 +78,107 @@ export class PortfolioService {
 
     // Create a map of currencyId to token info for quick lookup
     const tokenMap = new Map<string, UserToken>();
-    userTokenList.forEach(token => {
+
+    // Extract the actual array from userTokenList
+    let actualUserTokenList;
+    if (Array.isArray(userTokenList)) {
+      actualUserTokenList = userTokenList;
+    } else if (userTokenList && typeof userTokenList === 'object' && userTokenList.data) {
+      actualUserTokenList = userTokenList.data;
+    } else {
+      actualUserTokenList = [];
+    }
+
+    console.log('🔍 Extracted userTokenList:', {
+      original: userTokenList,
+      extracted: actualUserTokenList,
+      isArray: Array.isArray(actualUserTokenList),
+      length: Array.isArray(actualUserTokenList) ? actualUserTokenList.length : 'not array'
+    });
+
+    // Safety check for userTokenList
+    if (!actualUserTokenList || !Array.isArray(actualUserTokenList)) {
+      console.warn('⚠️ userTokenList is undefined or not an array:', userTokenList);
+      return {
+        totalUsdValue: 0,
+        assets: [],
+        enabledCount: 0,
+        disabledCount: 0,
+        enabledAssets: [],
+        disabledAssets: [],
+        totalAssets: 0,
+      };
+    }
+
+    console.log('🔍 Processing tokens:', actualUserTokenList.length, 'tokens found');
+
+    actualUserTokenList.forEach((token, index) => {
+      console.log(`🔍 Token ${index}:`, {
+        id: token._id,
+        status: token.status,
+        supportedCurrencyId: token.supportedCurrencyId,
+        customName: token.customName,
+        customSymbol: token.customSymbol
+      });
+
       // Handle both cases: supportedCurrencyId as object or string
-      const currencyId = typeof token.supportedCurrencyId === 'string' 
-        ? token.supportedCurrencyId 
+      const currencyId = typeof token.supportedCurrencyId === 'string'
+        ? token.supportedCurrencyId
         : token.supportedCurrencyId?._id;
-      
+
       if (currencyId) {
         tokenMap.set(currencyId, token);
+        console.log(`✅ Added token to map: ${currencyId}`);
       }
     });
 
-    // Process assets - include ALL tokens (enabled, disabled, hidden)
-    const assets: ProcessedAsset[] = allAccounts
+    console.log('🔍 Token map size:', tokenMap.size);
+
+    console.log('🔍 Processing accounts:', allAccounts.length, 'accounts found');
+
+    // Debug: Log the first few accounts to see their structure
+    if (allAccounts.length > 0) {
+      console.log('🔍 First account structure:', JSON.stringify(allAccounts[0], null, 2));
+      console.log('🔍 Token map keys:', Array.from(tokenMap.keys()));
+    }
+
+    // Process assets from accounts (tokens with balances)
+    const accountAssets: ProcessedAsset[] = allAccounts
       .filter(account => {
-        const tokenInfo = tokenMap.get(account.supportedCurrencyId);
+        // Extract the _id from supportedCurrencyId object
+        const currencyId = typeof account.supportedCurrencyId === 'string'
+          ? account.supportedCurrencyId
+          : account.supportedCurrencyId?._id;
+
+        const tokenInfo = tokenMap.get(currencyId);
+        console.log(`🔍 Account ${currencyId}:`, {
+          hasTokenInfo: !!tokenInfo,
+          balance: account.balance,
+          totalUsdValue: account.totalUsdValue,
+          accountStructure: account
+        });
         return tokenInfo; // Include all tokens regardless of status
       })
       .map(account => {
-        const tokenInfo = tokenMap.get(account.supportedCurrencyId);
-        
+        // Extract the _id from supportedCurrencyId object
+        const currencyId = typeof account.supportedCurrencyId === 'string'
+          ? account.supportedCurrencyId
+          : account.supportedCurrencyId?._id;
+
+        const tokenInfo = tokenMap.get(currencyId);
+
         if (!tokenInfo) {
           return null;
         }
 
         // Extract symbol and name from token info
         const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(tokenInfo);
-        
+
         // Extract chain information
         const { chainName, chainSymbol, chainImage } = this.extractChainInfo(tokenInfo);
+
+        // Get the numeric chain ID directly from the account's chainId
+        const numericChainId = account.chainId?.chainId || parseInt(account.chainId) || undefined;
 
         return {
           id: account._id,
@@ -107,10 +189,10 @@ export class PortfolioService {
           price: account.balance > 0 ? account.totalUsdValue / account.balance : 0,
           change: 0, // We don't have price change data from the API
           changeType: 'positive' as const,
-          image: tokenInfo?.supportedCurrencyId.image || this.getDefaultTokenImage(symbol),
-          isStable: tokenInfo?.supportedCurrencyId.isStable || false,
+          image: account.supportedCurrencyId?.image || '',
+          isStable: account.supportedCurrencyId?.isStable || false,
           status: tokenInfo?.status,
-          chainId: tokenInfo?.supportedCurrencyId.chainId,
+          chainId: numericChainId,
           chainName,
           chainSymbol,
           chainImage,
@@ -119,6 +201,58 @@ export class PortfolioService {
         };
       })
       .filter(asset => asset !== null) as ProcessedAsset[];
+
+    // Process ALL tokens from userTokenList (for token management)
+    const allTokenAssets: ProcessedAsset[] = actualUserTokenList.map((token, index) => {
+      const currencyId = typeof token.supportedCurrencyId === 'string'
+        ? token.supportedCurrencyId
+        : token.supportedCurrencyId?._id;
+
+      if (!currencyId) {
+        return null;
+      }
+
+
+      // Extract symbol and name from token info
+      const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(token);
+
+      // Extract chain information
+      const { chainName, chainSymbol, chainImage } = this.extractChainInfo(token);
+
+      // Get the numeric chain ID from the token's supportedCurrencyId
+      const numericChainId = token.supportedCurrencyId?.chainId || undefined;
+
+      // Get the image from the supported currencies using the currencyId
+      const currencyData = this.supportedCurrencies?.find(currency => currency._id === currencyId);
+      // Use the base currency logo from the nested currencyId object, not the chain-specific image
+      const tokenImage = currencyData?.currencyId?.logo || '';
+      
+
+      return {
+        id: token._id || currencyId,
+        symbol,
+        name,
+        balance: 0, // No balance for tokens without accounts
+        totalUsdValue: 0, // No USD value for tokens without accounts
+        price: 0,
+        change: 0,
+        changeType: 'positive' as const,
+        image: tokenImage,
+        isStable: currencyData?.isStable || false,
+        status: token.status,
+        chainId: numericChainId,
+        chainName,
+        chainSymbol,
+        chainImage,
+        tokenAddress: currencyData?.tokenAddress,
+        decimals: currencyData?.decimals,
+      };
+    }).filter(asset => asset !== null) as ProcessedAsset[];
+
+    // Combine account assets with all token assets, removing duplicates
+    const accountAssetIds = new Set(accountAssets.map(asset => asset.id));
+    const uniqueTokenAssets = allTokenAssets.filter(asset => !accountAssetIds.has(asset.id));
+    const assets = [...accountAssets, ...uniqueTokenAssets];
 
     // Separate enabled and disabled assets
     const enabledAssets = assets.filter(asset => asset.status === 'ENABLED');
@@ -157,8 +291,8 @@ export class PortfolioService {
     }
 
     // Try to get currency info from SDK data first
-    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string' 
-      ? tokenInfo.supportedCurrencyId 
+    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string'
+      ? tokenInfo.supportedCurrencyId
       : tokenInfo.supportedCurrencyId?._id;
     const supportedCurrencyInfo = supportedCurrencyId ? this.getSupportedCurrencyInfo(supportedCurrencyId) : null;
 
@@ -191,13 +325,13 @@ export class PortfolioService {
    */
   private static extractChainInfo(tokenInfo: UserToken): { chainName: string, chainSymbol: string, chainImage: string } {
     const supportedCurrency = tokenInfo.supportedCurrencyId;
-    
+
     // Try to get chain info from SDK data first
-    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string' 
-      ? tokenInfo.supportedCurrencyId 
+    const supportedCurrencyId = typeof tokenInfo.supportedCurrencyId === 'string'
+      ? tokenInfo.supportedCurrencyId
       : tokenInfo.supportedCurrencyId?._id;
     const supportedCurrencyInfo = supportedCurrencyId ? this.getSupportedCurrencyInfo(supportedCurrencyId) : null;
-    
+
     if (supportedCurrencyInfo && supportedCurrencyInfo.chainId) {
       console.log("🔍 Found chain info in SDK data:", {
         name: supportedCurrencyInfo.chainId.name,
@@ -210,7 +344,7 @@ export class PortfolioService {
         chainImage: supportedCurrencyInfo.nativeCurrencyId?.logo || "UNKNOWN"
       };
     }
-    
+
     // Fallback: try to extract from the supportedCurrencyId structure
     if (supportedCurrency.chainId && typeof supportedCurrency.chainId === 'object') {
       const chainId = supportedCurrency.chainId as any; // Type assertion for dynamic structure
@@ -220,7 +354,7 @@ export class PortfolioService {
         chainImage: chainId?.nativeCurrencyId?.logo || "UNKNOWN"
       };
     }
-    
+
     // Final fallback
     console.log("🔍 No chain info found");
     return {
@@ -250,7 +384,7 @@ export class PortfolioService {
    */
   static formatBalance(balance: number, decimals: number = 6): string {
     if (balance === 0) return '0';
-    
+
     // Smart decimal formatting based on value size
     if (balance < 0.000001) {
       // Very small values: show up to 8 decimal places
@@ -268,43 +402,5 @@ export class PortfolioService {
       // Very large values: show up to 2 decimal places
       return balance.toFixed(2).replace(/\.?0+$/, '');
     }
-  }
-
-  /**
-   * Get default token image based on symbol
-   */
-  private static getDefaultTokenImage(symbol: string): string {
-    const imageMap: Record<string, string> = {
-      'BTC': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747927465/Updated/BTC/Bitcoin_oulleo.svg',
-      'ETH': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747862691/currencies/logos/ethereum.svg',
-      'USDT': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747867509/supportedCurrencies/icons/USDT-ETH.svg',
-      'USDC': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747867509/supportedCurrencies/icons/USDC-ETH.svg',
-      'BNB': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747867507/supportedCurrencies/icons/BNB-BSC.svg',
-      'MATIC': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747866777/supportedCurrencies/icons/MATIC-POLYGON.svg',
-      'ARB': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747866774/supportedCurrencies/icons/ARB-ARBITRUM.svg',
-      'SOL': 'https://res.cloudinary.com/dbkwvangu/image/upload/v1747867507/supportedCurrencies/icons/SOL-SOLANA.svg',
-    };
-
-    return imageMap[symbol] || '';
-  }
-
-  /**
-   * Get asset icon color based on symbol
-   */
-  static getAssetIconColor(symbol: string): string {
-    const colorMap: Record<string, string> = {
-      'BTC': '#F7931A',
-      'ETH': '#627EEA',
-      'USDT': '#26A17B',
-      'USDC': '#2775CA',
-      'BNB': '#F3BA2F',
-      'SOL': '#9945FF',
-      'MATIC': '#8247E5',
-      'ARB': '#28A0F0',
-      'OP': '#FF0420',
-      'DAI': '#F5AC37',
-    };
-
-    return colorMap[symbol] || '#6B7280';
   }
 }
