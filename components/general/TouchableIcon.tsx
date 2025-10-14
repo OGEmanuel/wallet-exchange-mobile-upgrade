@@ -12,15 +12,17 @@ export default function TouchableIcon({
   source,
   height = 20,
   width = 20,
+  tintColor,
 }: {
   onPress?: ((event: GestureResponderEvent) => void) | undefined;
   source?: ImageSourcePropType | undefined;
   height?: number;
   width?: number;
+  tintColor?: string;
 }) {
   return (
     <TouchableOpacity onPress={onPress}>
-      <Image source={source} style={{ height, width }} />
+      <Image source={source} style={{ height, width }} tintColor={tintColor} />
     </TouchableOpacity>
   );
 }

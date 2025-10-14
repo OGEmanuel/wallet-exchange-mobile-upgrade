@@ -65,6 +65,8 @@ const checkbox = require("./checkbox.png");
 const sumsubLighting = require("./lightening-light.png");
 const sumsubLightingDark = require("./lightening.png");
 const arrowRight = require("./arrow-right.png");
+const scan = require("./scan.png");
+const chevronDown = require("./chevronDown.png");
 
 export default {
   apple,
@@ -131,4 +133,6 @@ export default {
   sumsubLightingDark,
   checkbox,
   arrowRight,
+  scan,
+  chevronDown,
 };

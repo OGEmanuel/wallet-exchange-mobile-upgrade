@@ -1,9 +1,9 @@
-import { DimensionValue } from "react-native";
-import React from "react";
 import { Theme } from "@/theme";
-import Box from "./Box";
 import { useTheme } from "@shopify/restyle";
-import CustomText from "./CustomText";
+import React from "react";
+import { DimensionValue } from "react-native";
+import Box from "./Box";
+import ThemedText from "./ThemedText";
 
 interface IProps {
   leading?: React.ReactNode;
@@ -42,9 +42,7 @@ const AppBar = ({
       <Box>{leading}</Box>
       <Box>
         {title && (
-          <CustomText variant={variant} fontSize={fontSize}>
-            {title}
-          </CustomText>
+          <ThemedText color={theme.colors.bodyTextColor}> {title}</ThemedText>
         )}
       </Box>
       <Box>{trailing}</Box>
