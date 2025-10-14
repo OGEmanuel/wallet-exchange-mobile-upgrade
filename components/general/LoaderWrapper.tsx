@@ -5,6 +5,7 @@ import { Animated, Dimensions, ViewStyle } from 'react-native';
 import Box from './Box';
 import CustomButton from './CustomButton';
 import CustomText from './CustomText';
+import ZapLoader from './ZapLoader';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -264,31 +265,17 @@ const LoaderWrapper: React.FC<LoaderWrapperProps> = ({
     }
 
     return (
-      <Box
-        flex={1}
-        alignItems="center"
-        justifyContent="center"
-        paddingHorizontal="l"
-        style={fullScreen ? { minHeight: screenHeight } : {}}
-      >
-        <Box
-          alignItems="center"
-          justifyContent="center"
-          width={100}
-          height={100}
-          marginBottom="l"
-        >
-          {/* <LottieView
-            source={require('../../../assets/jsons/loader.json')}
-            style={{ width: '100%', height: '100%' }}
-            autoPlay
-            loop
-          /> */}
-        </Box>
-        <CustomText variant="bodyMedium" color="bodyTextColor">
-          Loading...
-        </CustomText>
-      </Box>
+      <ZapLoader 
+        size={100}
+        text="Loading..."
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: theme.spacing.l,
+          ...(fullScreen ? { minHeight: screenHeight } : {})
+        }}
+      />
     );
   };
 

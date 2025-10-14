@@ -9,6 +9,8 @@ const checkTerms = require("./checkTerms.png");
 const noBank = require("./noBank.png");
 const lemonBG = require("./sharecardbg.png");
 const glass = require("./glass.png");
+const down = require("./down.png");
+const clouds = require("./clouds.gif");
 const zapLogo = require("./zapIcon.png");
 const linked = require("./linked.png");
 const firstBank = require("./firstBank.png");
@@ -19,7 +21,9 @@ const success = require("./success.png");
 export default {
   accounts,
   checkTerms,
+  clouds,
   docGuide,
+  down,
   glass,
   idCard,
   lemonBG,
@@ -32,5 +36,5 @@ export default {
   firstBank,
   arrowsDown,
   nigeria,
-success
+  success
 };

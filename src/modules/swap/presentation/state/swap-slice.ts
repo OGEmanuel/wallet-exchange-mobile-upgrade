@@ -1,5 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { SupportedCurrency } from "../../domain/entities/currency.types";
+import {
+    SupportedCurrency,
+    SwapRateModel,
+} from "../../domain/entities/currency.types";
 
 interface MarketRate {
   rate: number;
@@ -44,6 +47,16 @@ interface SwapState {
   // Error and loading states
   error: string | null;
   isLoading: boolean;
+
+  // React-native-swap compatible fields
+  isSwapped: boolean;
+  fetchingSwapRate: boolean;
+  supportedCurrencies?: SupportedCurrency[] | null;
+  supportedCurrenciesError?: string | null;
+  swapRate?: SwapRateModel | null;
+  swapRateError?: string | null;
+  sellCurrency?: SupportedCurrency | null;
+  receiveCurrency?: SupportedCurrency | null;
 }
 
 const initialState: SwapState = {
@@ -63,6 +76,15 @@ const initialState: SwapState = {
   isUpdatingFromRate: false,
   error: null,
   isLoading: false,
+  // React-native-swap compatible fields
+  supportedCurrencies: null,
+  supportedCurrenciesError: null,
+  fetchingSwapRate: false,
+  swapRate: null,
+  swapRateError: null,
+  sellCurrency: null,
+  receiveCurrency: null,
+  isSwapped: false,
 };
 
 const swapSlice = createSlice({
@@ -173,6 +195,59 @@ const swapSlice = createSlice({
       state.baseCurrency = null;
       state.targetCurrency = null;
     },
+
+    // React-native-swap compatible actions
+    setSupportedCurrencies: (
+      state,
+      action: PayloadAction<SupportedCurrency[] | null | undefined>
+    ) => {
+      state.supportedCurrencies = action.payload;
+      state.currencies = action.payload || [];
+    },
+    setFetchingSwapRate: (state, action: PayloadAction<boolean>) => {
+      state.fetchingSwapRate = action.payload;
+      state.isRateLoading = action.payload;
+    },
+    setSwapRate: (
+      state,
+      action: PayloadAction<SwapRateModel | null | undefined>
+    ) => {
+      state.swapRate = action.payload;
+    },
+    setSellCurrency: (
+      state,
+      action: PayloadAction<SupportedCurrency | null | undefined>
+    ) => {
+      state.sellCurrency = action.payload;
+      state.baseCurrency = action.payload;
+    },
+    setSupportedCurrenciesError: (
+      state,
+      action: PayloadAction<string | null | undefined>
+    ) => {
+      state.supportedCurrenciesError = action.payload;
+    },
+    setReceiveCurrency: (
+      state,
+      action: PayloadAction<SupportedCurrency | null | undefined>
+    ) => {
+      state.receiveCurrency = action.payload;
+      state.targetCurrency = action.payload;
+    },
+    setIsSwapped: (state, action: PayloadAction<boolean>) => {
+      state.isSwapped = action.payload;
+    },
+    setSwapRateError: (
+      state,
+      action: PayloadAction<string | null | undefined>
+    ) => {
+      state.swapRateError = action.payload;
+      state.error = action.payload;
+    },
+    resetSupportedCurrencies: (state) => {
+      state.supportedCurrencies = null;
+      state.fetchingSwapRate = false;
+    },
   },
 });
 
@@ -212,6 +287,20 @@ export const {
   resetSwapState,
   resetAmounts,
   resetCurrencies,
+
+  // React-native-swap compatible actions
+  setSupportedCurrencies,
+  setFetchingSwapRate,
+  setSwapRate,
+  setSellCurrency,
+  setSupportedCurrenciesError,
+  setReceiveCurrency,
+  setIsSwapped,
+  setSwapRateError,
+  resetSupportedCurrencies,
 } = swapSlice.actions;
+
+// Export actions as swapActions for compatibility
+export const swapActions = swapSlice.actions;
 
 export default swapSlice.reducer;

@@ -1,47 +1,21 @@
-import React from 'react';
-import { SvgXml } from 'react-native-svg';
-import { useColorScheme } from 'react-native';
+import * as React from "react";
+import Svg, { Path, SvgProps } from "react-native-svg";
 
-interface ThemedCheckIconProps {
-  width?: number;
-  height?: number;
-  style?: any;
-  lightModeColor?: string;
-  darkModeColor?: string;
+function SvgComponent(props: SvgProps) {
+  return (
+    <Svg
+      width={24}
+      height={25}
+      viewBox="0 0 24 25"
+      fill="none"
+      {...props}
+    >
+      <Path
+        d="M10.6 14.728l-2.175-2.175s-.412-.27-.687-.262a.976.976 0 00-.688.287.948.948 0 00-.275.7c0 .283.092.516.275.7l2.85 2.85a.948.948 0 00.7.275.948.948 0 00.7-.275l5.675-5.675a.894.894 0 00.263-.688.979.979 0 00-.288-.687.948.948 0 00-.7-.275.948.948 0 00-.7.275l-4.95 4.95zm1.4 8.2a9.731 9.731 0 01-3.9-.788 10.09 10.09 0 01-3.175-2.137c-.9-.9-1.612-1.959-2.137-3.175a9.732 9.732 0 01-.788-3.9c0-1.384.263-2.684.788-3.9a10.092 10.092 0 012.137-3.175c.9-.9 1.958-1.613 3.175-2.138a9.743 9.743 0 013.9-.787c1.383 0 2.683.262 3.9.787a10.105 10.105 0 013.175 2.138c.9.9 1.612 1.958 2.137 3.175a9.733 9.733 0 01.788 3.9 9.732 9.732 0 01-.788 3.9 10.092 10.092 0 01-2.137 3.175c-.9.9-1.958 1.612-3.175 2.137a9.731 9.731 0 01-3.9.788z"
+        fill="#C7E64D"
+      />
+    </Svg>
+  );
 }
 
-const ThemedCheckIcon: React.FC<ThemedCheckIconProps> = ({ 
-  width = 24, 
-  height = 24, 
-  style,
-  lightModeColor = '#121212',
-  darkModeColor = '#FFFFFF'
-}) => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  
-  // Define colors for light and dark modes
-  const lightColor = lightModeColor;
-  const darkColor = darkModeColor;
-  
-  // Select color based on theme
-  const strokeColor = isDark ? darkColor : lightColor;
-  const fillColor = isDark ? darkColor : lightColor;
-  
-  // SVG content with dynamic color
-  const svgContent = `<svg   viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-<path d="M20 6L9 17L4 12" stroke="${strokeColor}" stroke- stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-`;
-
-  return (
-    <SvgXml
-      xml={svgContent}
-      width={width}
-      height={height}
-      style={style}
-    />
-  );
-};
-
-export default ThemedCheckIcon;
+export default SvgComponent;

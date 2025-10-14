@@ -2,8 +2,9 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import * as Haptics from "expo-haptics";
 import React, { JSX } from "react";
-import { ActivityIndicator, DimensionValue, Pressable } from "react-native";
+import { DimensionValue, Pressable } from "react-native";
 import CustomText from "./CustomText";
+import ZapLoader from "./ZapLoader";
 
 interface IProps {
   width?: DimensionValue;
@@ -27,7 +28,7 @@ interface IProps {
   trailingIcon?: JSX.Element;
   leadingIcon?: JSX.Element;
   iconPosition?: "LEFT" | "RIGHT";
-  variant?: "bodySubheader" | "subheader";
+  variant?: "bodySubheader" | "subheader" | "body";
 }
 
 export default function CustomButton({
@@ -68,7 +69,7 @@ export default function CustomButton({
   const theme = useTheme<Theme>();
   return (
     <Pressable
-      style={{
+      style={({ pressed }) => ({
         width,
         height,
         borderWidth,
@@ -78,11 +79,11 @@ export default function CustomButton({
             ? disabledColor
             : bgColor || theme.colors.primaryColor,
         borderRadius,
-        opacity: disabled ? 0.5 : 1,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",
-      }}
+        opacity: disabled ? 0.5 : pressed ? 0.3 : 1,
+      })}
       onPress={handlePress}
       android_ripple={{
         color: "rgba(255, 255, 255, 0.3)",
@@ -90,7 +91,9 @@ export default function CustomButton({
         radius: 20,
       }}
     >
-      {isLoading && <ActivityIndicator color={color} />}
+      {isLoading && (
+        <ZapLoader size={24} showText={false} style={{ marginRight: 8 }} />
+      )}
       {!isLoading && (
         <>
           {leadingIcon && leadingIcon}

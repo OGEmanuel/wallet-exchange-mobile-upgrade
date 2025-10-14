@@ -1,54 +1,355 @@
-import BalanceCard from "@/components/dashboard/BalanceCard";
 import DashboardActionItem from "@/components/dashboard/DashboardActionItem";
-import AppBar from "@/components/general/AppBar";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import PageWrapper from "@/components/general/PageWrapper";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bank } from "iconsax-react-nativejs";
-import { ChevronDown } from "lucide-react-native";
-import React, { useState } from "react";
-import { Platform, Pressable } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Animated,
+  BackHandler,
+  Pressable,
+  RefreshControl,
+} from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
+  ThemedAccountFillIcon,
   ThemedQrCodeIcon,
   ThemedScanIcon,
   ThemedSendIcon,
   ThemedSettingsOutlineIcon,
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
-import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
-import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
-import SellBottomSheet from "@/components/bottomsheets/home/sell/SellBottomsheet";
+import { DebitCardComponent } from "@/assets/svg/wallet-icons-components/DebitCardIcon";
 import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
 import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
+import WalletSelectorBottomSheet from "@/components/bottomsheets/WalletSelectorBottomSheet";
 import AssetsSection from "@/components/dashboard/AssetsSection";
+import BalanceCard from "@/components/dashboard/BalanceCard";
+import StickyHeader from "@/components/dashboard/StickyHeader";
+import { AppBar } from "@/components/general";
+import Identicon from "@/components/general/Identicon";
 import AppBottomSheet from "@/components/Modals/AppBottomSheet";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { ProcessedPortfolio } from "@/interfaces/portfolio.interface";
+import { PortfolioService } from "@/services/portfolio.service";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
+import { ChevronDown } from "lucide-react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import Svg, { Path, SvgProps } from "react-native-svg";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const OS = Platform.OS;
-
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const [processedPortfolio, setProcessedPortfolio] =
+    useState<ProcessedPortfolio | null>(null);
+  const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const theme = useTheme<Theme>();
+  const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
+    useBottomSheetRefs();
+  const [showWalletSelector, setShowWalletSelector] = useState(false);
+  const [walletToDelete, setWalletToDelete] = useState<any>(null);
   const {
-    sendTokenRef: bottomsheetRef,
-    recieveTokenRef,
-    tradeBottomSheetRef,
-    buyTokensBottomSheetRef,
-    sellTokensBottomSheetRef,
-  } = useBottomSheetRefs();
+    retryPendingWallets,
+    mainUserWalletGroup,
+    portfolio,
+    refreshPortfolio,
+    switchWallet,
+    getSDK,
+    isLoading,
+    isWalletAuthenticated,
+    currentWalletUser,
+    error: walletError,
+  } = useWallet();
+
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    try {
+      setIsRefreshing(true);
+      await refreshPortfolio();
+
+      // Force re-processing of portfolio data
+      if (portfolio) {
+        setRefreshTrigger((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Failed to refresh portfolio:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refreshPortfolio, portfolio]);
+
+  // Handle wallet selector button press
+  const handleWalletSelectorPress = () => {
+    setShowWalletSelector(true);
+  };
+
+  // Process portfolio data when it changes
+  useEffect(() => {
+    if (portfolio) {
+      const processPortfolio = async () => {
+        try {
+          setIsPortfolioLoading(true);
+          setPortfolioError(null);
+          const processed = await PortfolioService.processPortfolioData(
+            portfolio
+          );
+          setProcessedPortfolio(processed);
+        } catch (error) {
+          console.error("Failed to process portfolio data:", error);
+          setPortfolioError("Failed to process portfolio data");
+        } finally {
+          setIsPortfolioLoading(false);
+        }
+      };
+
+      processPortfolio();
+    }
+  }, [portfolio, refreshTrigger]);
+
+  // Track if portfolio has been fetched to prevent infinite loops
+  const hasFetchedPortfolio = useRef(false);
+
+  // Load portfolio data on focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (mainUserWalletGroup && !isLoading && !hasFetchedPortfolio.current) {
+        hasFetchedPortfolio.current = true;
+        refreshPortfolio();
+      }
+    }, [mainUserWalletGroup, isLoading, refreshPortfolio])
+  );
+
+  // Reset fetch flag when portfolio changes
+  useEffect(() => {
+    if (portfolio) {
+      hasFetchedPortfolio.current = false;
+    }
+  }, [portfolio]);
+
+  // Animation values for staggered card stack entrance
+  const cardStackAnimations = useRef([
+    new Animated.Value(0), // Start with 0 opacity
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+
+  // React Native SVG Components
+
+  const Card1Component = (props: SvgProps) => (
+    <Svg width={297} height={120} viewBox="0 0 297 16" fill="none" {...props}>
+      <Path
+        d="M0 11.75C0 5.26 5.26 0 11.75 0h273.5C291.739 0 297 5.26 297 11.75V16H0v-4.25z"
+        fill="#fff"
+        opacity={0.9}
+      />
+    </Svg>
+  );
+
+  const Card2Component = (props: SvgProps) => (
+    <Svg width={268} height={105} viewBox="0 0 268 18" fill="none" {...props}>
+      <Path
+        d="M0 10.617C0 4.753 4.753 0 10.617 0h246.766C263.247 0 268 4.753 268 10.617V18H0v-7.383z"
+        fill="#fff"
+        opacity={0.6}
+      />
+    </Svg>
+  );
   // const navigation = useNavigation<DrawerNavigationProp<any>>();
+
+  // Retry pending wallets when user enters wallet home
+  useEffect(() => {
+    retryPendingWallets();
+  }, []); // Remove retryPendingWallets from dependencies to prevent multiple calls
+
+  // Check if current wallet needs account derivation
+  useEffect(() => {
+    const checkAndDeriveAccounts = async () => {
+      if (mainUserWalletGroup && portfolio) {
+        const accounts = portfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
+        console.log("🔍 Current wallet accounts:", accounts.length);
+        
+        if (accounts.length === 0) {
+          console.log("⚠️ No accounts found for current wallet, attempting to derive accounts...");
+          try {
+            // Try to derive accounts for the current wallet
+            const sdk = getSDK();
+            if (sdk && currentWalletUser) {
+              console.log("🔄 Attempting to derive accounts for wallet:", mainUserWalletGroup._id);
+              
+              // Get the seed phrase for this wallet
+              const credentials = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(mainUserWalletGroup._id);
+              if (credentials?.credential) {
+                console.log("🔄 Deriving multi-chain addresses...");
+                const addresses = await zapSDKService.deriveMultiChainAddresses(
+                  credentials.credential.toString(),
+                  0 // derivation index
+                );
+                console.log("✅ Derived addresses:", addresses);
+                
+                // Try to add accounts to existing wallet
+                console.log("🔄 Adding accounts to existing wallet...");
+                await zapSDKService.addAccountsToExistingWallet({
+                  userWalletGroupId: mainUserWalletGroup._id,
+                  seedPhrase: credentials.credential.toString()
+                });
+                console.log("✅ Accounts added successfully");
+                
+                // Refresh portfolio
+                await refreshPortfolio();
+              } else {
+                console.log("❌ No credentials found for wallet:", mainUserWalletGroup._id);
+              }
+            }
+          } catch (error) {
+            console.error("❌ Failed to derive accounts:", error);
+          }
+        }
+      }
+    };
+
+    checkAndDeriveAccounts();
+  }, [mainUserWalletGroup, portfolio, getSDK, currentWalletUser, refreshPortfolio]);
+
+  // Animate card stack sliding in one after another - only when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      const animateCardStack = () => {
+        cardStackAnimations.forEach((animation, index) => {
+          Animated.timing(animation, {
+            toValue: 1,
+            duration: 600,
+            delay: index * 200, // Stagger each card by 200ms
+            useNativeDriver: true,
+          }).start();
+        });
+      };
+
+      // Start animation after a short delay
+      const timer = setTimeout(animateCardStack, 500);
+      return () => clearTimeout(timer);
+    }, [cardStackAnimations])
+  );
+
+  // Prevent back navigation to setup screen
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Prevent going back to setup - just return true to consume the event
+        return true;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
+
+  const handleDeleteWallet = (wallet: any) => {
+    console.log("🗑️ Delete wallet from home:", wallet);
+    console.log("🗑️ Setting showDeleteModal to true");
+    setWalletToDelete(wallet);
+    console.log("🗑️ Delete modal state updated");
+  };
+
+  const handleCancelDelete = () => {
+    setWalletToDelete(null);
+  };
 
   return (
     <PageWrapper>
-      <ScrollView>
+      <StickyHeader
+        isVisible={showStickyHeader}
+        portfolioValue={processedPortfolio?.totalUsdValue || 0}
+        portfolioChange={0} // We don't have change data from the API
+        portfolioChangePercentage={0} // We don't have change data from the API
+      />
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        decelerationRate={10000}
+        onScroll={(event) => {
+          const scrollY = event.nativeEvent.contentOffset.y;
+          // Show sticky header when scrolled past the balance section (approximately 200px)
+          setShowStickyHeader(scrollY > 200);
+        }}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primaryColor}
+            colors={[theme.colors.primaryColor]}
+          />
+        }
+      >
+        <AppBar
+          title={
+            <Pressable
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                opacity: pressed ? 0.5 : 1,
+              })}
+              onPress={handleWalletSelectorPress}
+            >
+              <Box
+                width={24}
+                height={24}
+                borderRadius={4}
+                marginRight="s"
+                overflow="hidden"
+                flexDirection="row"
+              >
+                <Identicon
+                  value={mainUserWalletGroup?.name || "Wallet"}
+                  size={24}
+                />
+              </Box>
+              <CustomText variant="body" fontSize={16} color="white">
+                {mainUserWalletGroup?.name || "Wallet"}
+              </CustomText>
+              <ChevronDown size={16} color="white" style={{ marginLeft: 4 }} />
+            </Pressable>
+          }
+          leading={
+            <Pressable
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.5 : 1,
+              })}
+              onPress={() => router.push("/dashboard/manage-wallet")}
+            >
+              <ThemedSettingsOutlineIcon
+                darkModeColor={theme.colors.white}
+                lightModeColor={theme.colors.white}
+                width={24}
+                height={24}
+              />
+            </Pressable>
+          }
+          trailing={
+            <Pressable>
+              <ThemedScanIcon
+                darkModeColor={theme.colors.white}
+                lightModeColor={theme.colors.white}
+                width={24}
+                height={24}
+              />
+            </Pressable>
+          }
+        />
         <LinearGradient
-          colors={["#27BA0F00", "#6045FF33"]}
+          colors={["rgba(96, 69, 255, 0)", "rgba(96, 69, 255, 1)"]}
+          start={{ x: 0, y: 0.45 }}
+          end={{ x: 0, y: 1.4 }}
           style={{
             flex: 0.6,
             borderBottomLeftRadius: 20,
@@ -56,68 +357,25 @@ const Home = () => {
             overflow: "hidden",
           }}
         >
-          <AppBar
-            backgroundColor="transparent"
-            height={OS === "android" ? 50 : 50}
-            leading={
-              <Pressable>
-                <ThemedSettingsOutlineIcon
-                  darkModeColor={theme.colors.white}
-                  lightModeColor={theme.colors.black}
-                />
-              </Pressable>
-            }
-            trailing={
-              <ThemedScanIcon
-                darkModeColor={theme.colors.white}
-                lightModeColor={theme.colors.black}
-              />
-            }
-            title={
-              <Pressable
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "auto",
-                }}
-              >
-                <Box
-                  width={20}
-                  height={20}
-                  borderRadius={2}
-                  bg="secondaryBackgroundColor"
-                >
-                  <Image
-                    source={require("@/assets/images/rect2.png")}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: 2,
-                    }}
-                  />
-                </Box>
-                <CustomText variant="body" fontSize={14} marginHorizontal="m">
-                  Daggerman
-                </CustomText>
-                <ChevronDown size={20} color={theme.colors.bodyTextColor} />
-              </Pressable>
-            }
+          <Box height={15} />
+          <BalanceCard
+            portfolioValue={processedPortfolio?.totalUsdValue || 0}
+            portfolioChange={0} // We don't have change data from the API
+            portfolioChangePercentage={0} // We don't have change data from the API
+            walletName={mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
           />
-          <Box height={30} />
-          <BalanceCard />
           <Box
             width={"100%"}
-            height={100}
             flexDirection="row"
             justifyContent="space-between"
-            paddingHorizontal="2xl"
-            mt="m"
+            paddingHorizontal="xl"
+            mt="xl"
           >
-            {/* <ReceiveTokenActionItem /> */}
             <DashboardActionItem
               icon={
                 <ThemedQrCodeIcon
+                  width={20}
+                  height={20}
                   darkModeColor={theme.colors.bodyTextColor}
                   lightModeColor={theme.colors.bodyTextColor}
                 />
@@ -129,33 +387,34 @@ const Home = () => {
             <DashboardActionItem
               icon={
                 <ThemedSendIcon
+                  width={20}
+                  height={20}
                   darkModeColor={theme.colors.bodyTextColor}
                   lightModeColor={theme.colors.bodyTextColor}
                 />
               }
               title="Send"
-              action={() => bottomsheetRef.current?.snapToIndex(1)}
+              action={() => bottomsheetRef.current?.snapToIndex(0)}
             />
             <Box width={20} />
             <DashboardActionItem
               icon={
-                <Bank
-                  color={theme.colors.bodyTextColor}
-                  size={25}
-                  variant="Bold"
+                <ThemedAccountFillIcon
+                  width={20}
+                  height={20}
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
                 />
               }
               title="Trade"
-              action={() => {
-                console.log("Trade button clicked");
-                console.log("BottomSheet ref:", tradeBottomSheetRef.current);
-                tradeBottomSheetRef.current?.snapToIndex(0);
-              }}
+              action={() => {}}
             />
             <Box width={20} />
             <DashboardActionItem
               icon={
                 <ThemedSwap1Icon
+                  width={20}
+                  height={20}
                   darkModeColor={theme.colors.bodyTextColor}
                   lightModeColor={theme.colors.bodyTextColor}
                 />
@@ -172,19 +431,131 @@ const Home = () => {
             justifyContent="flex-end"
             flex={1}
           >
-            <Image
-              source={require("@/assets/images/cardds.png")}
-              style={{
-                width: "80%",
-                height: 80,
-              }}
-            />
+            {/* Card Stack with Staggered Animation */}
+            <Box
+              position="relative"
+              width="100%"
+              height={120}
+              alignItems="center"
+            >
+              {/* Card 3 - Back (cards) - 268px × 18px */}
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  opacity: cardStackAnimations[2],
+                  zIndex: 97,
+                  transform: [
+                    {
+                      translateY: cardStackAnimations[2].interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: [100, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Card2Component />
+              </Animated.View>
+
+              {/* Card 2 - Middle (cards-1) - 297px × 16px */}
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  opacity: cardStackAnimations[1],
+                  zIndex: 98,
+                  transform: [
+                    {
+                      translateY: cardStackAnimations[1].interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: [100, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Card1Component />
+              </Animated.View>
+
+              {/* Card 1 - Front (debitCard) - 327px × 120px */}
+              <Animated.View
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  opacity: cardStackAnimations[0],
+                  zIndex: 99,
+                  transform: [
+                    {
+                      translateY: cardStackAnimations[0].interpolate({
+                        inputRange: [-1, 1],
+                        outputRange: [100, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    router.push("/dashboard/home/wallet-home/cards");
+                  }}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.8 : 1,
+                  })}
+                >
+                  <DebitCardComponent />
+                </Pressable>
+              </Animated.View>
+            </Box>
           </Box>
         </LinearGradient>
+
         <Box flex={0.4} paddingHorizontal="m">
-          <AssetsSection />
+          {/* Debug info - remove this later */}
+          {/* {__DEV__ && (
+            <Box mb="m" p="s" bg="secondaryBackgroundColor" borderRadius={8}>
+              <CustomText color="white" fontSize={12}>
+                Debug: Portfolio {portfolio ? "exists" : "null"}, Processed{" "}
+                {processedPortfolio ? "exists" : "null"}, Loading{" "}
+                {isLoading ? "yes" : "no"}
+              </CustomText>
+              <CustomButton
+                onPress={() => {
+                  console.log("🔍 Manual portfolio refresh triggered");
+                  refreshPortfolio();
+                }}
+                text="Refresh Portfolio"
+                width={120}
+                height={30}
+                fontSize={10}
+              />
+            </Box>
+          )} */}
+
+          <AssetsSection
+            mainUserWalletGroup={mainUserWalletGroup}
+            portfolio={processedPortfolio}
+            isLoading={isPortfolioLoading || isLoading}
+            error={portfolioError}
+            onRefreshPortfolio={refreshPortfolio}
+            onManagePress={() => {
+              // Navigate to manage assets page
+            }}
+            onRetry={async () => {
+              try {
+                setPortfolioError(null);
+                await refreshPortfolio();
+              } catch (err) {
+                console.error("Failed to retry portfolio:", err);
+                setPortfolioError("Failed to refresh portfolio");
+              }
+            }}
+            onLogin={() => {
+              // Navigate to login page
+              router.push("/setup");
+            }}
+          />
         </Box>
       </ScrollView>
+
       <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
         <Box>
           <CustomText>Recieve Tokens</CustomText>
@@ -192,9 +563,31 @@ const Home = () => {
       </AppBottomSheet>
       <SelectTokenBottomSheet ref={bottomsheetRef} />
       <SelectUserTokens ref={recieveTokenRef} />
-      <SelectBuyTokens ref={buyTokensBottomSheetRef} />
-      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
-      <SellBottomSheet ref={sellTokensBottomSheetRef} />
+
+      <WalletSelectorBottomSheet
+        visible={showWalletSelector}
+        onClose={() => setShowWalletSelector(false)}
+        selectedWalletGroupId={mainUserWalletGroup?._id}
+        handleCancelDelete={handleCancelDelete}
+        walletToDelete={walletToDelete}
+        onWalletSelect={async (selectedUserWalletGroup: any) => {
+          // Don't close if selecting the same wallet
+          if (selectedUserWalletGroup._id === mainUserWalletGroup?._id) {
+            setShowWalletSelector(false);
+            return;
+          }
+
+          try {
+            // Switch to the selected wallet
+            await switchWallet(selectedUserWalletGroup._id);
+            setShowWalletSelector(false);
+          } catch (error) {
+            console.error("Failed to switch wallet:", error);
+            Alert.alert("Error", "Failed to switch wallet. Please try again.");
+          }
+        }}
+        onDeleteWallet={handleDeleteWallet}
+      />
     </PageWrapper>
   );
 };

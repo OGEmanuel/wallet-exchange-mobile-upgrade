@@ -1,13 +1,19 @@
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
-import { ChevronDown } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Animated, Pressable, TextInput } from "react-native";
+import {
+  Animated,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+} from "react-native";
 
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
+
+import icons from "@/assets/icons";
 import { Theme } from "@/theme";
+import { Image } from "expo-image";
 import { formatInputAmount, parseFormattedAmount } from "../../utils";
 
 // Create animated components
@@ -91,33 +97,32 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
             flex: 1,
             paddingVertical: 8,
             paddingHorizontal: 0,
+            fontFamily: "NewScience_Bold",
           }}
           editable={!isReceive}
         />
-        <Pressable onPress={onTokenSelect || (() => {})}>
-          <CustomButton
-            width={107}
-            height={36}
-            borderRadius={36}
-            bgColor={theme.colors.mainBackgroundColor}
-            text={tokenSymbol}
-            fontSize={12}
-            onPress={onTokenSelect || (() => {})}
-            leadingIcon={
-              <Image
-                source={tokenImage}
-                style={{ width: 20, height: 20, marginRight: 5 }}
-              />
-            }
-            trailingIcon={
-              <ChevronDown
-                color={theme.colors.bodyTextColor}
-                size={12}
-                style={{ marginLeft: 5 }}
-              />
-            }
+
+        <TouchableOpacity
+          style={[
+            styles.selectedToken,
+            { backgroundColor: theme.colors.mainBackgroundColor },
+          ]}
+          onPress={onTokenSelect || (() => {})}
+        >
+          <Image source={tokenImage} style={styles.selectedTokenImage} />
+          <CustomText
+            variant="body"
+            style={{ fontSize: 14, fontWeight: "400" }}
+            marginRight="s"
+          >
+            {tokenSymbol === "₦" ? "NGN" : tokenSymbol}
+          </CustomText>
+          <Image
+            source={icons.down}
+            style={styles.selectedTokenImage}
+            tintColor={theme.colors.bodyTextColor}
           />
-        </Pressable>
+        </TouchableOpacity>
       </Box>
 
       {isReceive ? (
@@ -162,3 +167,22 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
 };
 
 export default TokenInputCard;
+
+const styles = StyleSheet.create({
+  selectedToken: {
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 107,
+    height: 36,
+    maxWidth: 120,
+    borderRadius: 36,
+    paddingHorizontal: 8,
+    justifyContent: "space-between",
+  },
+  selectedTokenImage: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: 5,
+  },
+});

@@ -5,6 +5,7 @@ import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { Keyboard, Pressable } from "react-native";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
 import Box from "../general/Box";
@@ -104,6 +105,8 @@ export default function EmailVerification({
 
   return (
     <>
+    <Pressable onPress={() => Keyboard.dismiss()} style={{flex: 1}}>
+
       <Box alignItems="center" marginBottom="s" marginTop="xl">
         <CustomText
           variant="header"
@@ -111,7 +114,7 @@ export default function EmailVerification({
           color="headerTextColor"
           textAlign="center"
           marginBottom="m"
-        >
+          >
           Email Verification
         </CustomText>
       </Box>
@@ -148,14 +151,15 @@ export default function EmailVerification({
           borderRadius={56}
           bgColor={
             isCodeComplete && !isVerifying
-              ? theme.colors.primaryColor
-              : theme.colors.inActiveBtnColor
+            ? theme.colors.primaryColor
+            : theme.colors.inActiveBtnColor
           }
           color="white"
           fontSize={16}
           variant="bodySubheader"
-        />
+          />
       </Box>
+          </Pressable>
     </>
   );
 }

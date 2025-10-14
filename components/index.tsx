@@ -20,3 +20,4 @@ export { default as OTPInput } from "./form/OTPInput";
 // Hooks
 export { useAppBottomSheet } from "../hooks/useAppBottomSheet";
 
+export { default as TouchableIcon } from "./general/TouchableIcon";

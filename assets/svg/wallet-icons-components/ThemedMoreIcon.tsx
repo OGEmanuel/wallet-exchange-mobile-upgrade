@@ -1,6 +1,6 @@
 import React from "react";
-import Svg, { Path } from "react-native-svg";
 import { useColorScheme } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 interface ThemedMoreIconProps {
   width?: number;
@@ -26,12 +26,49 @@ const ThemedMoreIcon: React.FC<ThemedMoreIconProps> = ({
     <Svg
       width={width}
       height={height}
-      viewBox="0 0 24 24" // adjust if original viewBox differs
+      viewBox="0 0 24 24"
       style={style}
     >
-      {/* Example traced path from the SVG */}
+      {/* 3x3 grid of dots */}
+      {/* Top row */}
       <Path
-        d="M12 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 21a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"
+        d="M6 5a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M12 5a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M18 5a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      
+      {/* Middle row */}
+      <Path
+        d="M6 12a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M12 12a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M18 12a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      
+      {/* Bottom row */}
+      <Path
+        d="M6 19a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M12 19a2 2 0 110-4 2 2 0 010 4z"
+        fill={fillColor}
+      />
+      <Path
+        d="M18 19a2 2 0 110-4 2 2 0 010 4z"
         fill={fillColor}
       />
     </Svg>

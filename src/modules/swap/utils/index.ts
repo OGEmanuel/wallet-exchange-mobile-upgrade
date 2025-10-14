@@ -5,6 +5,9 @@
 
 import { SupportedCurrency } from "../data/remote";
 
+// Re-export format utilities
+export * from "./formatUtils";
+
 export interface FormattingOptions {
   baseAmount: number;
   targetAmount: number;

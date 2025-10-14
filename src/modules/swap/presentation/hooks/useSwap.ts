@@ -95,9 +95,7 @@ export const useSwap = () => {
 
   const handleBaseAmountChange = useCallback(
     (amount: string) => {
-      console.log("handleBaseAmountChange called with:", amount);
       const numAmount = parseFormattedAmount(amount);
-      console.log("Dispatching setBaseAmount with:", numAmount);
       dispatch(setBaseAmount(numAmount));
     },
     [dispatch]

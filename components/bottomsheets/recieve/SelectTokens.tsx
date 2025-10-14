@@ -1,20 +1,28 @@
-import { selectStage } from "@/state/reducers/recievePage.reducer";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
+import { useChains } from "@/src/core/chains/chains-context";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { selectStage, setStage } from "@/state/reducers/recievePage.reducer";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { forwardRef, useCallback } from "react";
-import { useSelector } from "react-redux";
+import React, { forwardRef, useCallback, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Box from "../../general/Box";
-import ImportCustomToken from "./ImportCustomToken";
+import ImportTokenModal from "../../Modals/ImportTokenModal";
+import ReceiveQRCode from "./ReceiveQRCode";
+import ReceiveTokens from "./ReceiveTokens";
 import ShowQRcode from "./ShowQRcode";
-import Tokens from "./Tokens";
 
-const SelectUserTokens = forwardRef<BottomSheet, {}>((props, ref) => {
+const SelectUserTokens = forwardRef<BottomSheet, object>((props, ref) => {
   const stage = useSelector(selectStage);
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
+  const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(null);
+  const { mainUserWalletGroup } = useWallet();
+  const { walletChains } = useChains();
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -26,16 +34,57 @@ const SelectUserTokens = forwardRef<BottomSheet, {}>((props, ref) => {
     []
   );
 
+  const handleTokenSelect = (token: ProcessedAsset) => {
+    setSelectedToken(token);
+    // Navigate to QR code stage
+    // This would need to be handled by the reducer
+  };
+
+  const handleBack = useCallback(() => {
+    setSelectedToken(null);
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
+  // Reset state when modal closes
+  const handleModalClose = useCallback(() => {
+    setSelectedToken(null);
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
+  const handleImportToken = useCallback((tokenData: {
+    chain: string;
+    contractAddress: string;
+    symbol: string;
+    decimals: string;
+    tokenAddress: string;
+  }) => {
+    console.log("Import token data:", tokenData);
+    // Handle token import success
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
   const renderComponent = React.useCallback(() => {
     switch (stage) {
       case "token":
-        return <Tokens />;
+        return <ReceiveTokens onTokenSelect={handleTokenSelect} />;
       case "qrcode":
-        return <ShowQRcode />;
+        return selectedToken ? (
+          <ReceiveQRCode selectedToken={selectedToken} onBack={handleBack} />
+        ) : (
+          <ShowQRcode />
+        );
       case "import":
-        return <ImportCustomToken />;
+        return (
+          <ImportTokenModal 
+            visible={true} 
+            onClose={() => dispatch(setStage("token"))}
+            onImportToken={handleImportToken}
+            allChains={walletChains}
+            mainUserWalletGroup={mainUserWalletGroup}
+          />
+        );
     }
-  }, [stage]);
+  }, [stage, selectedToken, handleBack, dispatch, handleImportToken, mainUserWalletGroup, walletChains]);
 
   return (
     <BottomSheet
@@ -45,6 +94,7 @@ const SelectUserTokens = forwardRef<BottomSheet, {}>((props, ref) => {
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       enableOverDrag={false}
+      onClose={handleModalClose}
       style={{
         backgroundColor: theme.colors.mainBackgroundColor,
       }}
@@ -72,6 +122,7 @@ const SelectUserTokens = forwardRef<BottomSheet, {}>((props, ref) => {
           backgroundColor: theme.colors.mainBackgroundColor,
           paddingHorizontal: 20,
           paddingTop: 30,
+          paddingBottom: 100, // Add bottom padding for tab bar
         }}
       >
         {renderComponent()}
@@ -79,5 +130,7 @@ const SelectUserTokens = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+SelectUserTokens.displayName = 'SelectUserTokens';
 
 export default SelectUserTokens;
