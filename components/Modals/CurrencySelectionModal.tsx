@@ -28,6 +28,8 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
   const [offset, setOffset] = React.useState(1);
   const [data, setData] = React.useState<CurrencyModel[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const currencyFilters = ["NGN", "USD", "EUR", "GBP", "CAD"];
+
   const dispatch = useDispatch();
   const { getCurrencies } = useSettings();
 
@@ -94,7 +96,7 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
           </Box>
 
           <FlatList
-            data={data}
+            data={currencyFilters}
             key={"_id"}
             onEndReachedThreshold={0.5}
             onEndReached={() => {
@@ -116,7 +118,6 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
             )}
             renderItem={({ item, index }) => (
               <Pressable
-                key={item._id}
                 onPress={() => {
                   dispatch(setActiveCurrency(item));
                   onSelectCurrency();
@@ -141,14 +142,7 @@ const CurrencySelectionModal: React.FC<CurrencySelectionModalProps> = ({
                   <Box flexDirection="row" alignItems="center" flex={1}>
                     <Box flex={1}>
                       <CustomText variant="bodyBold" color="headerTextColor">
-                        {item.code}
-                      </CustomText>
-                      <CustomText
-                        variant="body"
-                        color="bodyTextColor"
-                        fontSize={12}
-                      >
-                        {item.name}
+                        {item}
                       </CustomText>
                     </Box>
                   </Box>

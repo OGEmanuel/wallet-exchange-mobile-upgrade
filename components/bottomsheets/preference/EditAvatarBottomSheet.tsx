@@ -30,22 +30,6 @@ const BG_COLORS = [
   "#9E472F",
 ];
 
-// Pre-loaded avatar images
-const AVATARS = [
-  require("@/assets/images/avatar/a1.png"),
-  require("@/assets/images/avatar/a2.png"),
-  require("@/assets/images/avatar/a3.png"),
-  require("@/assets/images/avatar/a4.png"),
-  require("@/assets/images/avatar/a5.png"),
-  require("@/assets/images/avatar/a6.png"),
-  require("@/assets/images/avatar/a7.png"),
-  require("@/assets/images/avatar/a8.png"),
-  require("@/assets/images/avatar/a9.png"),
-  require("@/assets/images/avatar/a10.png"),
-  require("@/assets/images/avatar/a11.png"),
-  require("@/assets/images/avatar/a5.png"),
-];
-
 const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
@@ -108,7 +92,7 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["80%", "60%"]}
+      snapPoints={["70%", "90%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       style={{
@@ -141,7 +125,7 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         }}
       >
         <SettingsHeader title="Choose your avatar" onBackPress={() => {}} />
-        <Box paddingHorizontal="m" mt="m" width={"100%"} flex={1}>
+        <Box paddingHorizontal="m" mt="m" width={"100%"} flex={0.83}>
           <Box width={"100%"} alignItems="center">
             <Box
               width={100}
@@ -235,7 +219,7 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
             />
           </Box>
         </Box>
-        <Box height={80} justifyContent="center" paddingHorizontal="m">
+        <Box height={70} justifyContent="center" paddingHorizontal="m">
           <CustomButton
             width={"100%"}
             borderRadius={50}

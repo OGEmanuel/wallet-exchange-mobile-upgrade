@@ -1,5 +1,6 @@
 import { Box, CustomText } from "@/components/general";
 import { supportedLanguages } from "@/data";
+import usePreferences from "@/hooks/usePreferences";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
 import BottomSheet, {
@@ -95,9 +96,14 @@ const SwitchCards = ({
 
 const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const [language, setLanguage] = React.useState(supportedLanguages[0]);
-  const [isActive, setIsActive] = React.useState(false);
   const theme = useTheme<Theme>();
-  const { toggleTheme, colorTheme, setTheme } = useActiveTheme();
+  const { toggleTheme, colorTheme, themeMode, setTheme, setSystemTheme } = useActiveTheme();
+  const {
+    hapticsEnabled,
+    animationsEnabled,
+    toggleHaptics,
+    toggleAnimations,
+  } = usePreferences();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -164,8 +170,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         >
           <AppearanceCard
             title="System"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={themeMode === "system"}
+            onPress={() => setSystemTheme()}
             image={
               <Image
                 source={require("@/assets/images/systemthemeimg.png")}
@@ -177,7 +183,7 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Light"
-            isActive={colorTheme === "light"}
+            isActive={themeMode === "light"}
             onPress={() => setTheme("light")}
             image={
               <Image
@@ -190,7 +196,7 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Dark"
-            isActive={colorTheme === "dark"}
+            isActive={themeMode === "dark"}
             onPress={() => setTheme("dark")}
             image={
               <Image
@@ -213,15 +219,15 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           <SwitchCards
             icon={<VibrateIcon color={theme.colors.bodyTextColor} size={30} />}
             title="Enable Haptics"
-            isActive={isActive}
-            onSwitchPressed={() => setIsActive(!isActive)}
+            isActive={hapticsEnabled}
+            onSwitchPressed={toggleHaptics}
           />
 
           <SwitchCards
             icon={<Sparkles color={theme.colors.bodyTextColor} size={30} />}
             title="Enable Animations"
-            isActive={isActive}
-            onSwitchPressed={() => setIsActive(!isActive)}
+            isActive={animationsEnabled}
+            onSwitchPressed={toggleAnimations}
           />
         </Box>
       </BottomSheetView>
