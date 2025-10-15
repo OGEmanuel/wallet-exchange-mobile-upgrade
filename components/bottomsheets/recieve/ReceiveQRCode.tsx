@@ -1,5 +1,6 @@
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
+import ZapLoader from "@/components/general/ZapLoader";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import AddressesStorage from "@/src/core/storage/addresses-storage";
 import { formatNumber } from "@/src/core/utils/format-utils";
@@ -82,7 +83,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
   if (isLoading) {
     return (
       <Box flex={1} justifyContent="center" alignItems="center">
-        <CustomText color="disabledTextColor">Loading address...</CustomText>
+        <ZapLoader size={80} showText={true} text="Loading address..." />
       </Box>
     );
   }
@@ -112,7 +113,6 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
         backgroundColor="secondaryBackgroundColor"
         padding="m"
         borderRadius={12}
-        marginBottom="l"
       >
         <Box width={40} height={40} marginRight="m">
           {selectedToken.image ? (

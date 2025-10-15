@@ -165,7 +165,7 @@ const Layout = () => {
         }}
       />
 
-      {/* <Tabs.Screen
+      <Tabs.Screen
         name="swap"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -190,7 +190,7 @@ const Layout = () => {
           ),
           tabBarShowLabel: false,
         }}
-      /> */}
+      />
 
       <Tabs.Screen
         name="activity"

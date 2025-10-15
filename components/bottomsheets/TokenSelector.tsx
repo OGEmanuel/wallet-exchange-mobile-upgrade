@@ -2,29 +2,36 @@ import SearchIcon from "@/assets/svg/wallet-icons-components/SearchIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
-import { ProcessedAsset, ProcessedPortfolio } from "@/interfaces/portfolio.interface";
-import { PortfolioService } from "@/services/portfolio.service";
+import ZapLoader from "@/components/general/ZapLoader";
+import ImportTokenModal from "@/components/Modals/ImportTokenModal";
+import {
+  ProcessedAsset
+} from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
+import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import { setStage } from "@/state/reducers/recievePage.reducer";
+import { AppRootState } from "@/state";
+import { selectStage, setStage } from "@/state/reducers/recievePage.reducer";
+import { selectAllSupportedTokens } from "@/state/selectors/portfolio.selectors";
 import theme, { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput } from "react-native";
 import { SvgUri } from "react-native-svg";
-import { useDispatch } from "react-redux";
-import SelectChainBottomSheet from "../SelectChainBottomSheet";
+import { useDispatch, useSelector } from "react-redux";
+import ReceiveQRCode from "./recieve/ReceiveQRCode";
+import SelectChainBottomSheet from "./SelectChainBottomSheet";
 
 const CryptoIcon = React.memo(({ image }: { image?: string }) => {
   return (
     <Box
-      width={40}
-      height={40}
-      borderRadius={20}
+      width={35}
+      height={35}
+      borderRadius={17.5}
       marginRight="m"
       overflow="hidden"
       backgroundColor="secondaryBackgroundColor"
@@ -51,45 +58,32 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
   );
 });
 
-CryptoIcon.displayName = 'CryptoIcon';
+CryptoIcon.displayName = "CryptoIcon";
 
-interface ReceiveTokensProps {
+interface TokenSelectorProps {
+  mode: "send" | "receive";
   onTokenSelect: (token: ProcessedAsset) => void;
 }
 
-const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
+const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
-  const { portfolio } = useWallet();
-  const [processedPortfolio, setProcessedPortfolio] = useState<ProcessedPortfolio | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const dispatch = useDispatch();
+  const { mainUserWalletGroup, refreshPortfolio } = useWallet();
+  
+  // Redux state
+  const allTokens = useSelector(selectAllSupportedTokens);
+  const { isPortfolioLoading } = useSelector((state: AppRootState) => state.portfolio);
   const { walletChains } = useChains();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(null);
+  
+  // For receive mode, get the current stage
+  const stage = useSelector(selectStage);
+  const dispatch = useDispatch();
 
-  // Process portfolio data when portfolio changes
-  useEffect(() => {
-    const processPortfolio = async () => {
-      if (!portfolio) {
-        setProcessedPortfolio(null);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const processed = await PortfolioService.processPortfolioData(portfolio);
-        setProcessedPortfolio(processed);
-      } catch (error) {
-        console.error("❌ ReceiveTokens - Failed to process portfolio data:", error);
-        setProcessedPortfolio(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    processPortfolio();
-  }, [portfolio]);
+  // Portfolio data now comes from Redux selectors
 
   // Get unique chains from all tokens
   const availableChains = useMemo(() => {
@@ -108,18 +102,9 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
     return [...chains.sort((a, b) => a.name.localeCompare(b.name))];
   }, [walletChains]);
 
-  // Get enabled tokens from processed portfolio
-  const enabledTokens = useMemo(() => {
-    if (!processedPortfolio?.assets) {
-      return [];
-    }
-
-    return processedPortfolio.assets.filter((asset: ProcessedAsset) => asset.status === 'ENABLED');
-  }, [processedPortfolio]);
-
   // Filter tokens based on search and chain
   const filteredTokens = useMemo(() => {
-    let filtered = enabledTokens;
+    let filtered = allTokens || [];
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -133,28 +118,81 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
 
     // Filter by chain
     if (selectedChain && selectedChain !== "ALL") {
-      filtered = filtered.filter((token) => token.chainSymbol === selectedChain);
+      filtered = filtered.filter(
+        (token) => token.chainSymbol === selectedChain
+      );
     }
 
     return filtered;
-  }, [enabledTokens, searchQuery, selectedChain]);
-
-
+  }, [allTokens, searchQuery, selectedChain]);
 
   const handleTokenPress = (token: ProcessedAsset) => {
+    if (mode === "receive") {
+      setSelectedToken(token);
+    }
     onTokenSelect(token);
-    // Navigate to QR code stage
-    dispatch(setStage("qrcode"));
   };
+
+  const handleImportToken = async (tokenData: {
+    chain: string;
+    contractAddress: string;
+    symbol: string;
+    decimals: string;
+    tokenAddress: string;
+  }) => {
+    try {
+      console.log("🔄 Importing token:", tokenData);
+      
+      // Use the SDK service to add the token
+      await zapSDKService.addToken({
+        userWalletGroupId: mainUserWalletGroup._id,
+        tokenAddress: tokenData.contractAddress,
+        chainId: tokenData.chain,
+      });
+
+      console.log("✅ Token imported successfully");
+      
+      // Refresh the portfolio to show the new token
+      await refreshPortfolio();
+      
+      // Close the modal
+      setShowImportModal(false);
+    } catch (error) {
+      console.error("❌ Failed to import token:", error);
+      // You might want to show an error message to the user here
+    }
+  };
+
+  const handleBack = useCallback(() => {
+    setSelectedToken(null);
+    dispatch(setStage("token"));
+  }, [dispatch]);
+
+  const title = mode === "send" ? "Send Tokens" : "Receive Tokens";
+
+  // For receive mode, show QR code when stage is "qrcode"
+  if (mode === "receive" && stage === "qrcode" && selectedToken) {
+    return (
+      <ReceiveQRCode
+        selectedToken={selectedToken} 
+        onBack={handleBack} 
+      />
+    );
+  }
 
   return (
     <Box flex={1}>
       {/* Header */}
-      <Box flexDirection="row" alignItems="center" justifyContent="space-between" mb="l">
+      <Box
+        flexDirection="row"
+        alignItems="center"
+        justifyContent="space-between"
+        mb="l"
+      >
         <CustomText variant="header" fontSize={20} color="headerTextColor">
-          Receive Tokens
+          {title}
         </CustomText>
-        <Pressable onPress={() => dispatch(setStage("import"))}>
+        <Pressable onPress={() => setShowImportModal(true)}>
           <CustomText color="secondaryColor" fontSize={14}>
             Import Token
           </CustomText>
@@ -171,7 +209,11 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
         paddingVertical="s"
         marginBottom="l"
       >
-        <SearchIcon width={20} height={20} color={theme.colors.disabledTextColor} />
+        <SearchIcon
+          width={20}
+          height={20}
+          color={theme.colors.disabledTextColor}
+        />
         <TextInput
           style={{
             flex: 1,
@@ -210,9 +252,9 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
                 .map((chain, index) => (
                   <Box
                     key={chain.symbol}
-                    width={32}
-                    height={32}
-                    borderRadius={16}
+                    width={28}
+                    height={28}
+                    borderRadius={14}
                     backgroundColor="secondaryBackgroundColor"
                     borderWidth={0}
                     justifyContent="center"
@@ -269,10 +311,15 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
 
       {/* Tokens List */}
       <Box flex={1}>
-        <CustomText variant="body" fontSize={14} color="disabledTextColor" marginBottom="s">
+        <CustomText
+          variant="body"
+          fontSize={14}
+          color="disabledTextColor"
+          marginBottom="s"
+        >
           Your tokens ({filteredTokens.length})
         </CustomText>
-        
+
         <ScrollView
           style={{
             backgroundColor: theme.colors.secondaryBackgroundColor,
@@ -281,17 +328,24 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
           }}
           contentContainerStyle={{
             padding: 12,
+            paddingBottom: 100, // Add bottom padding to account for tab bar
           }}
           showsVerticalScrollIndicator={false}
         >
-          {isLoading ? (
-            <Box alignItems="center" justifyContent="center" paddingVertical="xl">
-              <CustomText color="disabledTextColor" textAlign="center">
-                Loading tokens...
-              </CustomText>
+          {isPortfolioLoading ? (
+            <Box
+              alignItems="center"
+              justifyContent="center"
+              paddingVertical="xl"
+            >
+              <ZapLoader size={60} showText={true} text="Loading tokens..." />
             </Box>
           ) : filteredTokens.length === 0 ? (
-            <Box alignItems="center" justifyContent="center" paddingVertical="xl">
+            <Box
+              alignItems="center"
+              justifyContent="center"
+              paddingVertical="xl"
+            >
               <CustomText color="disabledTextColor" textAlign="center">
                 {searchQuery ? "No tokens found" : "No enabled tokens"}
               </CustomText>
@@ -312,10 +366,14 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
                 })}
               >
                 <CryptoIcon image={token.image} />
-                
+
                 <Box flex={1}>
                   <Box flexDirection="row" alignItems="center" marginBottom="s">
-                    <CustomText variant="body" fontSize={16} color="headerTextColor">
+                    <CustomText
+                      variant="body"
+                      fontSize={16}
+                      color="headerTextColor"
+                    >
                       {token.symbol}
                     </CustomText>
                     {token.chainSymbol && (
@@ -326,28 +384,47 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
                         paddingVertical="s"
                         marginLeft="s"
                       >
-                        <CustomText variant="body" fontSize={10} color="disabledTextColor">
+                        <CustomText
+                          variant="body"
+                          fontSize={10}
+                          color="disabledTextColor"
+                        >
                           {token.chainSymbol}
                         </CustomText>
                       </Box>
                     )}
                   </Box>
-                  <CustomText variant="body" fontSize={12} color="disabledTextColor">
+                  <CustomText
+                    variant="body"
+                    fontSize={12}
+                    color="disabledTextColor"
+                  >
                     {token.name}
                   </CustomText>
                 </Box>
 
                 <Box alignItems="flex-end">
-                  <CustomText variant="body" fontSize={14} color="headerTextColor">
+                  <CustomText
+                    variant="body"
+                    fontSize={14}
+                    color="headerTextColor"
+                  >
                     {formatNumber(token.balance, 4)} {token.symbol}
                   </CustomText>
-                  <CustomText variant="body" fontSize={12} color="disabledTextColor">
+                  <CustomText
+                    variant="body"
+                    fontSize={12}
+                    color="disabledTextColor"
+                  >
                     {formatCurrency(token.totalUsdValue)}
                   </CustomText>
                 </Box>
 
                 <Box marginLeft="s">
-                  <ArrowRight2 size={16} color={theme.colors.disabledTextColor} />
+                  <ArrowRight2
+                    size={16}
+                    color={theme.colors.disabledTextColor}
+                  />
                 </Box>
               </Pressable>
             ))
@@ -360,8 +437,17 @@ const ReceiveTokens: React.FC<ReceiveTokensProps> = ({ onTokenSelect }) => {
         ref={chainBottomSheetRef}
         onChainSelect={setSelectedChain}
       />
+
+      {/* Import Token Modal - Self-contained */}
+      <ImportTokenModal
+        visible={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportToken={handleImportToken}
+        allChains={walletChains}
+        mainUserWalletGroup={mainUserWalletGroup}
+      />
     </Box>
   );
 };
 
-export default ReceiveTokens;
+export default TokenSelector;

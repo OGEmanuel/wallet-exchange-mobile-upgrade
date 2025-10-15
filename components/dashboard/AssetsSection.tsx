@@ -1,16 +1,19 @@
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import {
-  ProcessedAsset,
-  ProcessedPortfolio,
+  ProcessedAsset
 } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { AppRootState } from "@/state";
+import { selectAllSupportedTokens, selectEnabledPortfolioAssets } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, View } from "react-native";
 import { SvgUri } from "react-native-svg";
+import { useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
@@ -18,12 +21,14 @@ import ZapLoader from "../general/ZapLoader";
 import ManageTokensModal from "../Modals/ManageTokensModal";
 import PortfolioErrorState from "./PortfolioErrorState";
 
-const CryptoIcon = ({ image }: { image?: string }) => {
+const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
+  const [imageError, setImageError] = React.useState(false);
+  
   return (
     <View
       style={{
-        width: 40,
-        height: 40,
+        width: 25,
+        height: 25,
         borderRadius: 20,
         marginRight: 12,
         overflow: "hidden",
@@ -32,18 +37,23 @@ const CryptoIcon = ({ image }: { image?: string }) => {
         alignItems: "center",
       }}
     >
-      {image ? (
+      {image && !imageError ? (
         <SvgUri
           uri={image}
-          width={35}
-          height={35}
+          width={25}
+          height={25}
           onError={() => {
             console.log("Failed to load token image:", image);
+            setImageError(true);
           }}
           style={{
             borderRadius: 20,
           }}
         />
+      ) : symbol ? (
+        <CustomText fontSize={12} color="white" fontWeight="bold">
+          {symbol.charAt(0)}
+        </CustomText>
       ) : (
         <ZapLogo />
       )}
@@ -62,11 +72,20 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
   );
   const formattedChange = PortfolioService.formatPercentage(asset.change);
 
+  const handleTokenPress = () => {
+    // Pass supportedCurrencyId._id for navigation, token details will extract currencyId
+    const supportedCurrencyId = asset.supportedCurrencyId?._id || asset.supportedCurrencyId;
+    router.push(`/dashboard/home/token-details/${supportedCurrencyId}`);
+  };
+
   return (
-    <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}>
+    <Pressable
+      style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+      onPress={handleTokenPress}
+    >
       <Box
         width="100%"
-        height={70}
+        height={60}
         borderRadius={12}
         style={{ backgroundColor: "#1F232D" }}
         mb="s"
@@ -77,12 +96,12 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
         paddingVertical="m"
       >
         <Box flexDirection="row" alignItems="center" flex={1}>
-          <CryptoIcon image={asset.image} />
+          <CryptoIcon image={asset.image} symbol={asset.symbol} />
           <Box flex={1}>
             <Box flexDirection="row" alignItems="center" mb="s">
               <CustomText
                 variant="bodyBold"
-                fontSize={16}
+                fontSize={14}
                 color="headerTextColor"
                 mr="s"
               >
@@ -102,7 +121,7 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
             <Box flexDirection="row" alignItems="center">
               <CustomText
                 variant="light"
-                fontSize={13}
+                fontSize={12}
                 color="disabledTextColor"
                 mr="s"
               >
@@ -110,7 +129,7 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
               </CustomText>
               <CustomText
                 variant="light"
-                fontSize={13}
+                fontSize={12}
                 color={asset.changeType === "positive" ? "success" : "error"}
               >
                 {formattedChange}
@@ -121,13 +140,13 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
         <Box alignItems="flex-end">
           <CustomText
             variant="bodyBold"
-            fontSize={16}
+            fontSize={14}
             color="headerTextColor"
             mb="s"
           >
             {formattedTotalValue}
           </CustomText>
-          <CustomText variant="light" fontSize={13} color="disabledTextColor">
+          <CustomText variant="light" fontSize={12} color="disabledTextColor">
             {formattedBalance} {asset.symbol}
           </CustomText>
         </Box>
@@ -137,10 +156,7 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
 };
 
 interface AssetsSectionProps {
-  portfolio: ProcessedPortfolio | null;
   mainUserWalletGroup: any;
-  isLoading: boolean;
-  error: string | null;
   onManagePress?: () => void;
   onRetry?: () => void;
   onLogin?: () => void;
@@ -148,33 +164,30 @@ interface AssetsSectionProps {
 }
 
 const AssetsSection = ({
-  portfolio,
   mainUserWalletGroup,
-  isLoading,
-  error,
   onManagePress = () => {},
   onRetry = () => {},
   onLogin = () => {},
   onRefreshPortfolio = () => {},
 }: AssetsSectionProps) => {
   const theme = useTheme<Theme>();
-  const [showManageModal, setShowManageModal] = useState(false);
+  
+  // Redux state
+  const enabledAssets = useSelector(selectEnabledPortfolioAssets);
+  const { isPortfolioLoading, portfolioError } = useSelector((state: AppRootState) => state.portfolio);
 
   // Debug logging
-  console.log("🔍 AssetsSection props:", {
-    portfolio: portfolio
-      ? `${portfolio.enabledAssets?.length || 0} enabled assets`
-      : "null",
-    isLoading,
-    error,
+  console.log("🔍 AssetsSection Redux state:", {
+    enabledAssets: enabledAssets?.length || 0,
+    isLoading: isPortfolioLoading,
+    error: portfolioError,
   });
 
   const handleManagePress = () => {
-    setShowManageModal(true);
     onManagePress();
   };
 
-  if (isLoading) {
+  if (isPortfolioLoading) {
     return (
       <Box width={"100%"} flex={1} style={{ marginBottom: 60 }}>
         <Box
@@ -196,7 +209,7 @@ const AssetsSection = ({
     );
   }
 
-  if (error) {
+  if (portfolioError) {
     return (
       <Box width={"100%"} flex={1} style={{ marginBottom: 60 }}>
         <Box
@@ -212,7 +225,7 @@ const AssetsSection = ({
           </CustomText>
         </Box>
         <PortfolioErrorState
-          error={error}
+          error={portfolioError}
           onRetry={onRetry}
           onLogin={onLogin}
         />
@@ -220,7 +233,7 @@ const AssetsSection = ({
     );
   }
 
-  if (!portfolio || !portfolio.enabledAssets || portfolio.enabledAssets.length === 0) {
+  if (!enabledAssets || enabledAssets.length === 0) {
     return (
       <Box width={"100%"} flex={1} style={{ marginBottom: 60 }}>
         <Box
@@ -279,7 +292,7 @@ const AssetsSection = ({
         mt="s"
       >
         <CustomText fontSize={18} variant="bodyBold" color="headerTextColor">
-          Assets ({portfolio.enabledCount})
+          Assets ({enabledAssets.length})
         </CustomText>
         <CustomButton
           onPress={handleManagePress}
@@ -302,7 +315,7 @@ const AssetsSection = ({
           borderColor={theme.colors.borderColor}
         />
       </Box>
-      {portfolio.enabledAssets.map((asset, index) => {
+      {enabledAssets.map((asset, index) => {
         return <AssetCard key={asset.id} asset={asset} />;
       })}
     </Box>
@@ -311,6 +324,9 @@ const AssetsSection = ({
 
 const AssetsSectionWithModal = (props: AssetsSectionProps) => {
   const [showManageModal, setShowManageModal] = useState(false);
+  
+  // Redux state for modal
+  const allTokens = useSelector(selectAllSupportedTokens);
 
   const handleManagePress = () => {
     setShowManageModal(true);
@@ -333,7 +349,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           });
         }
         console.log("Token toggled successfully:", assetId, enabled);
-        
+
         // Refresh portfolio to update the UI
         if (props.onRefreshPortfolio) {
           console.log("Refreshing portfolio after token toggle...");
@@ -360,7 +376,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
         mainUserWalletGroup={props.mainUserWalletGroup}
         visible={showManageModal}
         onClose={() => setShowManageModal(false)}
-        allTokens={props.portfolio?.assets || []}
+        allTokens={allTokens || []}
         onToggleToken={handleToggleToken}
         onImportToken={handleImportToken}
       />

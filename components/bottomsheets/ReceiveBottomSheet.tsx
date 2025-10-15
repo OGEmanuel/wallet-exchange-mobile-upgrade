@@ -1,3 +1,4 @@
+
 import {
   ThemedLinkExternalIcon
 } from "@/assets/svg/wallet-icons-components";
@@ -28,7 +29,7 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["40%", "50%"]}
+      snapPoints={["80%", "90%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       style={{
@@ -60,11 +61,11 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           backgroundColor: theme.colors.mainBackgroundColor,
           paddingHorizontal: 20,
           paddingTop: 30,
-          paddingBottom: 100,
+          paddingBottom: 100, // Add bottom padding for tab bar
         }}
       >
         <CustomText variant="bodyMedium" fontSize={18} textAlign="center">
-          Receive
+          Recieve
         </CustomText>
         <CustomText variant="body" fontSize={12} mt="s" textAlign="center">
           June 23, 2024 at 12.00 PM
@@ -112,7 +113,7 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
             height={30}
           >
             <CustomText color="disabledTextColor" fontSize={12}>
-              Received From
+              Recieved From
             </CustomText>
             <CustomText fontSize={12}>0xd5321...de32</CustomText>
           </Box>
@@ -165,7 +166,5 @@ const RecieveBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
-
-RecieveBottomSheet.displayName = "RecieveBottomSheet";
 
 export default RecieveBottomSheet;

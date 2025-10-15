@@ -11,6 +11,70 @@ export class PortfolioService {
   private static currenciesLoaded = false;
 
   /**
+   * Select only ENABLED portfolio entries (not deleted)
+   */
+  static selectEnabledPortfolio(entries: any[]): any[] {
+    return entries.filter(entry =>
+      entry.status === 'ENABLED' && !entry.isDeleted
+    );
+  }
+
+  /**
+   * Select all supported tokens (no status filter)
+   */
+  static selectAllSupportedTokens(supported: any[]): any[] {
+    return supported.filter(token =>
+      token.isWalletActive && !token.isDeleted
+    );
+  }
+
+  /**
+   * Map portfolio entries to supported currencies
+   */
+  static mapPortfolioToSupported(entries: any[], supportedById: Map<string, any>): any[] {
+    return entries.map(entry => ({
+      ...entry,
+      supportedCurrency: supportedById.get(entry.supportedCurrencyId)
+    }));
+  }
+
+  /**
+   * Map supported currencies to base currencies
+   */
+  static mapSupportedToCurrency(supported: any[], currencyById: Map<string, any>): any[] {
+    return supported.map(supportedCurrency => ({
+      ...supportedCurrency,
+      currency: currencyById.get(supportedCurrency.currencyId)
+    }));
+  }
+
+  /**
+   * Select accounts by supported currency ID
+   */
+  static selectAccountsBySupportedCurrency(accounts: any[], supportedCurrencyId: string): any[] {
+    return accounts.filter(account =>
+      account.supportedCurrencyId === supportedCurrencyId && !account.isDeleted
+    );
+  }
+
+  /**
+   * Sum balances and USD values from accounts
+   */
+  static sumBalancesAndUsd(accounts: any[]): { balance: number; totalUsdValue: number } {
+    return accounts.reduce((sum, account) => ({
+      balance: sum.balance + (account.balance || 0),
+      totalUsdValue: sum.totalUsdValue + (account.totalUsdValue || 0)
+    }), { balance: 0, totalUsdValue: 0 });
+  }
+
+  /**
+   * Get currency market key for API calls
+   */
+  static currencyMarketKey(supportedCurrency: any): string {
+    return supportedCurrency.currencyId;
+  }
+
+  /**
    * Load supported currencies from SDK
    */
   static async loadSupportedCurrencies(): Promise<void> {
@@ -59,17 +123,10 @@ export class PortfolioService {
    * Process raw portfolio data into a more usable format
    */
   static async processPortfolioData(portfolioData: PortfolioResponse): Promise<ProcessedPortfolio> {
+    console.log('🚨🚨🚨 PortfolioService.processPortfolioData called with:', portfolioData);
+    console.log('🚨🚨🚨 This should definitely show up in the logs!');
     // Load supported currencies first
     await this.loadSupportedCurrencies();
-
-    console.log('🔍 Portfolio data structure:', {
-      hasMainWalletGroupPortfolio: !!portfolioData.mainWalletGroupPortfolio,
-      hasUserTokenList: !!portfolioData.userTokenList,
-      userTokenListType: typeof portfolioData.userTokenList,
-      userTokenListLength: Array.isArray(portfolioData.userTokenList) ? portfolioData.userTokenList.length : 'not array',
-      portfolioDataKeys: Object.keys(portfolioData),
-      fullPortfolioData: portfolioData
-    });
 
     const { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
@@ -89,12 +146,6 @@ export class PortfolioService {
       actualUserTokenList = [];
     }
 
-    console.log('🔍 Extracted userTokenList:', {
-      original: userTokenList,
-      extracted: actualUserTokenList,
-      isArray: Array.isArray(actualUserTokenList),
-      length: Array.isArray(actualUserTokenList) ? actualUserTokenList.length : 'not array'
-    });
 
     // Safety check for userTokenList
     if (!actualUserTokenList || !Array.isArray(actualUserTokenList)) {
@@ -113,13 +164,6 @@ export class PortfolioService {
     console.log('🔍 Processing tokens:', actualUserTokenList.length, 'tokens found');
 
     actualUserTokenList.forEach((token, index) => {
-      console.log(`🔍 Token ${index}:`, {
-        id: token._id,
-        status: token.status,
-        supportedCurrencyId: token.supportedCurrencyId,
-        customName: token.customName,
-        customSymbol: token.customSymbol
-      });
 
       // Handle both cases: supportedCurrencyId as object or string
       const currencyId = typeof token.supportedCurrencyId === 'string'
@@ -138,38 +182,59 @@ export class PortfolioService {
 
     // Debug: Log the first few accounts to see their structure
     if (allAccounts.length > 0) {
-      console.log('🔍 First account structure:', JSON.stringify(allAccounts[0], null, 2));
       console.log('🔍 Token map keys:', Array.from(tokenMap.keys()));
     }
 
     // Process assets from accounts (tokens with balances)
     const accountAssets: ProcessedAsset[] = allAccounts
       .filter(account => {
-        // Extract the _id from supportedCurrencyId object
-        const currencyId = typeof account.supportedCurrencyId === 'string'
+        // Extract the supportedCurrencyId for tokenMap lookup
+        const supportedCurrencyId = typeof account.supportedCurrencyId === 'string'
           ? account.supportedCurrencyId
           : account.supportedCurrencyId?._id;
 
-        const tokenInfo = tokenMap.get(currencyId);
-        console.log(`🔍 Account ${currencyId}:`, {
-          hasTokenInfo: !!tokenInfo,
-          balance: account.balance,
-          totalUsdValue: account.totalUsdValue,
-          accountStructure: account
+        console.log('🔍 Account supportedCurrencyId (filter):', {
+          accountId: account.accountId,
+          supportedCurrencyId: account.supportedCurrencyId,
+          extractedSupportedCurrencyId: supportedCurrencyId
         });
+
+        const tokenInfo = tokenMap.get(supportedCurrencyId);
+
         return tokenInfo; // Include all tokens regardless of status
       })
       .map(account => {
-        // Extract the _id from supportedCurrencyId object
-        const currencyId = typeof account.supportedCurrencyId === 'string'
+        // Extract the supportedCurrencyId for tokenMap lookup
+        const supportedCurrencyId = typeof account.supportedCurrencyId === 'string'
           ? account.supportedCurrencyId
           : account.supportedCurrencyId?._id;
 
-        const tokenInfo = tokenMap.get(currencyId);
+        // Extract the currencyId for markets API (ProcessedAsset.id)
+        const currencyId = typeof account.supportedCurrencyId === 'string'
+          ? account.supportedCurrencyId
+          : account.supportedCurrencyId?.currencyId;
+
+        console.log('🔍 Account IDs (map):', {
+          accountId: account.accountId,
+          supportedCurrencyId: supportedCurrencyId,
+          currencyId: currencyId
+        });
+
+        const tokenInfo = tokenMap.get(supportedCurrencyId);
 
         if (!tokenInfo) {
           return null;
         }
+
+        // Debug image paths
+        console.log('🔍 Image debugging for account:', {
+          accountId: account.accountId,
+          supportedCurrencyId: supportedCurrencyId,
+          tokenInfoImage: tokenInfo?.supportedCurrencyId?.image,
+          accountImage: account.supportedCurrencyId?.image,
+          tokenInfoKeys: tokenInfo ? Object.keys(tokenInfo) : null,
+          supportedCurrencyKeys: tokenInfo?.supportedCurrencyId ? Object.keys(tokenInfo.supportedCurrencyId) : null,
+        });
 
         // Extract symbol and name from token info
         const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(tokenInfo);
@@ -180,8 +245,10 @@ export class PortfolioService {
         // Get the numeric chain ID directly from the account's chainId
         const numericChainId = account.chainId?.chainId || parseInt(account.chainId) || undefined;
 
+        console.log('🚨🚨🚨 Creating ProcessedAsset with supportedCurrencyId:', supportedCurrencyId);
+        console.log('🚨🚨🚨 Navigation will use supportedCurrencyId, token details will extract currencyId!');
         return {
-          id: account._id,
+          id: supportedCurrencyId,
           symbol,
           name,
           balance: account.balance,
@@ -189,7 +256,11 @@ export class PortfolioService {
           price: account.balance > 0 ? account.totalUsdValue / account.balance : 0,
           change: 0, // We don't have price change data from the API
           changeType: 'positive' as const,
-          image: account.supportedCurrencyId?.image || '',
+          image: tokenInfo?.supportedCurrencyId?.image ||
+            account.supportedCurrencyId?.image ||
+            tokenInfo?.image ||
+            account.image ||
+            (symbol ? `https://cryptoicons.org/api/icon/${symbol.toLowerCase()}/25` : ''),
           isStable: account.supportedCurrencyId?.isStable || false,
           status: tokenInfo?.status,
           chainId: numericChainId,
@@ -198,15 +269,19 @@ export class PortfolioService {
           chainImage,
           tokenAddress: tokenInfo?.supportedCurrencyId.tokenAddress,
           decimals: tokenInfo?.supportedCurrencyId.decimals,
+          // Store the full supportedCurrency data for easy access
+          supportedCurrencyId: account.supportedCurrencyId,
+          currencyId: currencyId, // For markets API
         };
       })
       .filter(asset => asset !== null) as ProcessedAsset[];
 
     // Process ALL tokens from userTokenList (for token management)
     const allTokenAssets: ProcessedAsset[] = actualUserTokenList.map((token, index) => {
+      console.log(token, "------->TOKEN<------");
       const currencyId = typeof token.supportedCurrencyId === 'string'
         ? token.supportedCurrencyId
-        : token.supportedCurrencyId?._id;
+        : token.supportedCurrencyId?.currencyId; // Use the actual currencyId from token
 
       if (!currencyId) {
         return null;
@@ -224,9 +299,23 @@ export class PortfolioService {
 
       // Get the image from the supported currencies using the currencyId
       const currencyData = this.supportedCurrencies?.find(currency => currency._id === currencyId);
-      // Use the base currency logo from the nested currencyId object, not the chain-specific image
-      const tokenImage = currencyData?.currencyId?.logo || '';
-      
+      // Try multiple image sources
+      const tokenImage = currencyData?.currencyId?.logo ||
+        currencyData?.image ||
+        token.supportedCurrencyId?.image ||
+        token.image ||
+        (symbol ? `https://cryptoicons.org/api/icon/${symbol.toLowerCase()}/25` : '');
+
+      // Debug image paths for allTokenAssets
+      console.log('🔍 Image debugging for allTokenAssets:', {
+        tokenId: token._id,
+        currencyId: currencyId,
+        currencyDataImage: currencyData?.currencyId?.logo,
+        tokenImage: tokenImage,
+        currencyDataKeys: currencyData ? Object.keys(currencyData) : null,
+        currencyIdKeys: currencyData?.currencyId ? Object.keys(currencyData.currencyId) : null,
+      });
+
 
       return {
         id: token._id || currencyId,
@@ -297,7 +386,6 @@ export class PortfolioService {
     const supportedCurrencyInfo = supportedCurrencyId ? this.getSupportedCurrencyInfo(supportedCurrencyId) : null;
 
     if (supportedCurrencyInfo && supportedCurrencyInfo?.currencyId?.symbol) {
-      console.log("🔍 Found symbol in SDK currency data:", supportedCurrencyInfo?.currencyId?.symbol);
       return { symbol: supportedCurrencyInfo?.currencyId?.symbol, name: name };
     }
 
@@ -365,10 +453,15 @@ export class PortfolioService {
   }
 
   /**
-   * Format currency value with 2 decimal places
+   * Format currency value with 2 decimal places and comma separators
    */
   static formatCurrency(value: number): string {
-    return `$${value.toFixed(2)}`;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   }
 
   /**
@@ -380,9 +473,9 @@ export class PortfolioService {
   }
 
   /**
-   * Format balance with smart decimal handling
+   * Format balance with smart decimal handling and comma separators
    */
-  static formatBalance(balance: number, decimals: number = 6): string {
+  static formatBalance(balance: number, decimals: number = 8): string {
     if (balance === 0) return '0';
 
     // Smart decimal formatting based on value size
@@ -399,8 +492,48 @@ export class PortfolioService {
       // Large values: show up to 2 decimal places
       return balance.toFixed(2).replace(/\.?0+$/, '');
     } else {
-      // Very large values: show up to 2 decimal places
-      return balance.toFixed(2).replace(/\.?0+$/, '');
+      // Very large values: use comma formatting with 2 decimal places
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(balance);
+    }
+  }
+
+  /**
+   * Get all supported tokens from processed portfolio data
+   */
+  static async fetchTokenList(): Promise<ProcessedAsset[]> {
+    try {
+      console.log("🔄 Getting token list from portfolio data...");
+
+      // Get the current portfolio data from Redux or process it
+      const sdk = zapSDKService.getSDK();
+      if (!sdk || !sdk.portfolio) {
+        throw new Error('SDK or portfolio module not available');
+      }
+
+      // Get portfolio data
+      const portfolioData = await sdk.portfolio.getUserPortfolio();
+      if (!portfolioData) {
+        throw new Error('No portfolio data available');
+      }
+
+      // Process the portfolio data to get all tokens
+      const processed = await this.processPortfolioData(portfolioData);
+
+      console.log("✅ Token list from portfolio:", {
+        totalTokens: processed.assets?.length || 0,
+        enabledTokens: processed.enabledAssets?.length || 0,
+        disabledTokens: processed.disabledAssets?.length || 0,
+        sampleToken: processed.assets?.[0],
+      });
+
+      // Return all assets (both enabled and disabled)
+      return processed.assets || [];
+    } catch (error) {
+      console.error("❌ Failed to get token list from portfolio:", error);
+      throw error;
     }
   }
 }

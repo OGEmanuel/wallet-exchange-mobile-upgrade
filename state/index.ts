@@ -7,6 +7,7 @@ import utilitiesReducer from "../src/modules/utilities/presentation/state/utilit
 import activityPageReducer from "./reducers/activityPage.reducer";
 import currentPageReducer from "./reducers/currentPage.reducer";
 import kycReducer from "./reducers/kyc-reducer";
+import portfolioReducer from "./reducers/portfolio.reducer";
 import { recievePageSlice } from "./reducers/recievePage.reducer";
 import { sendPageSlice } from "./reducers/sendPage.reducer";
 import walletConnectedReducer from "./reducers/wallet.reducer";
@@ -21,6 +22,7 @@ export const store = configureStore({
     recievePage: recievePageSlice.reducer,
     utilities: utilitiesReducer,
     market: marketReducer,
+    portfolio: portfolioReducer,
     swap: swapReducer,
     buy: buyReducer,
     settings: settingsReducer,

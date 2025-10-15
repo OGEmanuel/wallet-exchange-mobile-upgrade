@@ -53,8 +53,6 @@ export default function CustomButton({
   onPress,
 }: IProps) {
   const handlePress = () => {
-    console.log("hehehhe");
-
     if (isLoading || disabled) {
       return;
     }

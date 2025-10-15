@@ -151,6 +151,9 @@ export interface ProcessedAsset {
   chainImage: string;
   tokenAddress: string | null;
   decimals: number;
+  // Additional fields for easy access
+  supportedCurrencyId?: any; // Full supportedCurrency object
+  currencyId?: string; // For markets API
 }
 
 export interface ProcessedPortfolio {

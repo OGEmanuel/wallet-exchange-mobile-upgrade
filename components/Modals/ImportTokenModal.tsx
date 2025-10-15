@@ -44,9 +44,10 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
   mainUserWalletGroup,
 }) => {
   const theme = useTheme<Theme>();
-  const [selectedChain, setSelectedChain] = useState(allChains[0]);
+  
+  const [selectedChain, setSelectedChain] = useState(allChains?.[0] || null);
   const [selectedChainImage, setSelectedChainImage] = useState(
-    allChains[0].nativeCurrencyId.logo
+    allChains?.[0]?.nativeCurrencyId?.logo || ""
   );
   const [contractAddress, setContractAddress] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
@@ -55,6 +56,11 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
   const [contractAddressError, setContractAddressError] = useState("");
   const [isLoadingTokenDetails, setIsLoadingTokenDetails] = useState(false);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
+  
+  // Safety check for empty chains array
+  if (!allChains || allChains.length === 0) {
+    return null;
+  }
 
   const validateContractAddress = (address: string): boolean => {
     // Basic Ethereum address validation (42 characters, starts with 0x)
@@ -116,7 +122,9 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
     } else if (text.trim() && validateContractAddress(text.trim())) {
       setContractAddressError("");
       // Fetch token details when valid address is entered
-      fetchTokenDetails(text.trim(), selectedChain._id.toString());
+      if (selectedChain) {
+        fetchTokenDetails(text.trim(), selectedChain._id.toString());
+      }
     } else {
       setContractAddressError("");
     }
@@ -149,6 +157,11 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       }
 
       // Import the token using SDK
+      if (!selectedChain) {
+        Alert.alert("Error", "Please select a chain");
+        return;
+      }
+      
       const importResult = await zapSDKService.addToken({
         chainId: selectedChain._id.toString(),
         tokenAddress: tokenAddress || contractAddress.trim(),
@@ -158,14 +171,30 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       console.log("Token import result:", importResult);
       
       if (importResult && importResult.data) {
-        // Call the import token callback directly
-        onImportToken({
-          chain: selectedChain.name,
-          contractAddress: contractAddress.trim(),
-          symbol: tokenSymbol.trim(),
-          decimals: tokenDecimals.trim(),
-          tokenAddress: tokenAddress || contractAddress.trim(),
-        });
+        // Show success message and close modal
+        Alert.alert(
+          "Success", 
+          "Token imported successfully!",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Close the modal
+                onClose();
+                // Call the callback if provided
+                if (onImportToken) {
+                  onImportToken({
+                    chain: selectedChain?.name || "",
+                    contractAddress: contractAddress.trim(),
+                    symbol: tokenSymbol.trim(),
+                    decimals: tokenDecimals.trim(),
+                    tokenAddress: tokenAddress || contractAddress.trim(),
+                  });
+                }
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
       console.error("Failed to import token:", error);
@@ -293,7 +322,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
                     color="headerTextColor"
                     flex={1}
                   >
-                    {selectedChain.name}
+                    {selectedChain?.name || "Select Chain"}
                   </CustomText>
                   <ChevronDown
                     size={20}

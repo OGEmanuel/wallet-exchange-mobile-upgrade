@@ -1,4 +1,4 @@
-import DashboardActionItem from "@/components/dashboard/DashboardActionItem";
+import ActionButtons from "@/components/dashboard/ActionButtons";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import PageWrapper from "@/components/general/PageWrapper";
@@ -15,16 +15,11 @@ import {
 } from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
-  ThemedAccountFillIcon,
-  ThemedQrCodeIcon,
   ThemedScanIcon,
-  ThemedSendIcon,
   ThemedSettingsOutlineIcon,
-  ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
 import { DebitCardComponent } from "@/assets/svg/wallet-icons-components/DebitCardIcon";
-import SelectUserTokens from "@/components/bottomsheets/recieve/SelectTokens";
-import SelectTokenBottomSheet from "@/components/bottomsheets/send/SelectTokens";
+import TokenSelectorBottomSheet from "@/components/bottomsheets/TokenSelectorBottomSheet";
 import WalletSelectorBottomSheet from "@/components/bottomsheets/WalletSelectorBottomSheet";
 import AssetsSection from "@/components/dashboard/AssetsSection";
 import BalanceCard from "@/components/dashboard/BalanceCard";
@@ -32,32 +27,35 @@ import StickyHeader from "@/components/dashboard/StickyHeader";
 import { AppBar } from "@/components/general";
 import Identicon from "@/components/general/Identicon";
 import AppBottomSheet from "@/components/Modals/AppBottomSheet";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
-import { ProcessedPortfolio } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { setAllSupportedTokens, setPortfolioError, setPortfolioLoading, setProcessedPortfolio, setRawPortfolio } from "@/state/reducers/portfolio.reducer";
+import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { ChevronDown } from "lucide-react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Svg, { Path, SvgProps } from "react-native-svg";
+import { useDispatch, useSelector } from "react-redux";
 
 const Home = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
-  const [processedPortfolio, setProcessedPortfolio] =
-    useState<ProcessedPortfolio | null>(null);
-  const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
-  const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const theme = useTheme<Theme>();
-  const { sendTokenRef: bottomsheetRef, recieveTokenRef } =
-    useBottomSheetRefs();
+  const sendTokenRef = useRef<BottomSheet>(null);
+  const recieveTokenRef = useRef<BottomSheet>(null);
   const [showWalletSelector, setShowWalletSelector] = useState(false);
   const [walletToDelete, setWalletToDelete] = useState<any>(null);
+  
+  // Redux state
+  const dispatch = useDispatch();
+  const processedPortfolio = useSelector(selectProcessedPortfolio);
+  
   const {
     retryPendingWallets,
     mainUserWalletGroup,
@@ -93,28 +91,32 @@ const Home = () => {
     setShowWalletSelector(true);
   };
 
-  // Process portfolio data when it changes
+  // Process portfolio data when it changes and store in Redux
   useEffect(() => {
     if (portfolio) {
       const processPortfolio = async () => {
         try {
-          setIsPortfolioLoading(true);
-          setPortfolioError(null);
+          dispatch(setPortfolioLoading(true));
+          dispatch(setPortfolioError(null));
           const processed = await PortfolioService.processPortfolioData(
             portfolio
           );
-          setProcessedPortfolio(processed);
+          // Store in Redux
+          dispatch(setRawPortfolio(portfolio));
+          dispatch(setProcessedPortfolio(processed));
+          // Also store all tokens for send/receive and manage token lists
+          dispatch(setAllSupportedTokens(processed.assets || []));
         } catch (error) {
           console.error("Failed to process portfolio data:", error);
-          setPortfolioError("Failed to process portfolio data");
+          dispatch(setPortfolioError("Failed to process portfolio data"));
         } finally {
-          setIsPortfolioLoading(false);
+          dispatch(setPortfolioLoading(false));
         }
       };
 
       processPortfolio();
     }
-  }, [portfolio, refreshTrigger]);
+  }, [portfolio, refreshTrigger, dispatch]);
 
   // Track if portfolio has been fetched to prevent infinite loops
   const hasFetchedPortfolio = useRef(false);
@@ -175,19 +177,29 @@ const Home = () => {
   useEffect(() => {
     const checkAndDeriveAccounts = async () => {
       if (mainUserWalletGroup && portfolio) {
-        const accounts = portfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
+        const accounts =
+          portfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts ||
+          [];
         console.log("🔍 Current wallet accounts:", accounts.length);
-        
+
         if (accounts.length === 0) {
-          console.log("⚠️ No accounts found for current wallet, attempting to derive accounts...");
+          console.log(
+            "⚠️ No accounts found for current wallet, attempting to derive accounts..."
+          );
           try {
             // Try to derive accounts for the current wallet
             const sdk = getSDK();
             if (sdk && currentWalletUser) {
-              console.log("🔄 Attempting to derive accounts for wallet:", mainUserWalletGroup._id);
-              
+              console.log(
+                "🔄 Attempting to derive accounts for wallet:",
+                mainUserWalletGroup._id
+              );
+
               // Get the seed phrase for this wallet
-              const credentials = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(mainUserWalletGroup._id);
+              const credentials =
+                await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+                  mainUserWalletGroup._id
+                );
               if (credentials?.credential) {
                 console.log("🔄 Deriving multi-chain addresses...");
                 const addresses = await zapSDKService.deriveMultiChainAddresses(
@@ -195,19 +207,22 @@ const Home = () => {
                   0 // derivation index
                 );
                 console.log("✅ Derived addresses:", addresses);
-                
+
                 // Try to add accounts to existing wallet
                 console.log("🔄 Adding accounts to existing wallet...");
                 await zapSDKService.addAccountsToExistingWallet({
                   userWalletGroupId: mainUserWalletGroup._id,
-                  seedPhrase: credentials.credential.toString()
+                  seedPhrase: credentials.credential.toString(),
                 });
                 console.log("✅ Accounts added successfully");
-                
+
                 // Refresh portfolio
                 await refreshPortfolio();
               } else {
-                console.log("❌ No credentials found for wallet:", mainUserWalletGroup._id);
+                console.log(
+                  "❌ No credentials found for wallet:",
+                  mainUserWalletGroup._id
+                );
               }
             }
           } catch (error) {
@@ -218,7 +233,13 @@ const Home = () => {
     };
 
     checkAndDeriveAccounts();
-  }, [mainUserWalletGroup, portfolio, getSDK, currentWalletUser, refreshPortfolio]);
+  }, [
+    mainUserWalletGroup,
+    portfolio,
+    getSDK,
+    currentWalletUser,
+    refreshPortfolio,
+  ]);
 
   // Animate card stack sliding in one after another - only when screen is focused
   useFocusEffect(
@@ -364,63 +385,22 @@ const Home = () => {
             portfolioChangePercentage={0} // We don't have change data from the API
             walletName={mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
           />
-          <Box
-            width={"100%"}
-            flexDirection="row"
-            justifyContent="space-between"
-            paddingHorizontal="xl"
-            mt="xl"
-          >
-            <DashboardActionItem
-              icon={
-                <ThemedQrCodeIcon
-                  width={20}
-                  height={20}
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              }
-              title="Recieve"
-              action={() => recieveTokenRef.current?.snapToIndex(1)}
-            />
-            <Box width={20} />
-            <DashboardActionItem
-              icon={
-                <ThemedSendIcon
-                  width={20}
-                  height={20}
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              }
-              title="Send"
-              action={() => bottomsheetRef.current?.snapToIndex(0)}
-            />
-            <Box width={20} />
-            <DashboardActionItem
-              icon={
-                <ThemedAccountFillIcon
-                  width={20}
-                  height={20}
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              }
-              title="Trade"
-              action={() => {}}
-            />
-            <Box width={20} />
-            <DashboardActionItem
-              icon={
-                <ThemedSwap1Icon
-                  width={20}
-                  height={20}
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              }
-              title="Swap"
-              action={() => {}}
+          <Box mt="xl">
+            <ActionButtons
+              onReceive={() => recieveTokenRef.current?.snapToIndex(1)}
+              onSend={() => {
+                sendTokenRef.current?.snapToIndex(1);
+              }}
+              onTrade={() => {}}
+              onSwap={() => {
+                router.push("/dashboard/home/wallet-home/exchange");
+              }}
+              size={50}
+              iconSize={20}
+              textSize={12}
+              backgroundColor="rgba(255,255,255,0.2)"
+              textColor={theme.colors.bodyTextColor}
+              showLabels={true}
             />
           </Box>
 
@@ -532,20 +512,17 @@ const Home = () => {
 
           <AssetsSection
             mainUserWalletGroup={mainUserWalletGroup}
-            portfolio={processedPortfolio}
-            isLoading={isPortfolioLoading || isLoading}
-            error={portfolioError}
             onRefreshPortfolio={refreshPortfolio}
             onManagePress={() => {
               // Navigate to manage assets page
             }}
             onRetry={async () => {
               try {
-                setPortfolioError(null);
+                dispatch(setPortfolioError(null));
                 await refreshPortfolio();
               } catch (err) {
                 console.error("Failed to retry portfolio:", err);
-                setPortfolioError("Failed to refresh portfolio");
+                dispatch(setPortfolioError("Failed to refresh portfolio"));
               }
             }}
             onLogin={() => {
@@ -561,8 +538,21 @@ const Home = () => {
           <CustomText>Recieve Tokens</CustomText>
         </Box>
       </AppBottomSheet>
-      <SelectTokenBottomSheet ref={bottomsheetRef} />
-      <SelectUserTokens ref={recieveTokenRef} />
+      <TokenSelectorBottomSheet
+        key="send-token-selector"
+        ref={sendTokenRef}
+        mode="send"
+        onTokenSelect={(token) => {
+          console.log("🏠 HOME: Token selected:", {
+            id: token.id,
+            symbol: token.symbol,
+            name: token.name,
+          });
+          // Navigate to send-token screen with the selected token
+          router.push(`/dashboard/home/send-token?tokenId=${token.id}`);
+        }}
+      />
+      <TokenSelectorBottomSheet ref={recieveTokenRef} mode="receive" />
 
       <WalletSelectorBottomSheet
         visible={showWalletSelector}

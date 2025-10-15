@@ -1,7 +1,12 @@
 import { ThemedFaceIDIcon } from "@/assets/svg/wallet-icons-components";
 import NetworkFeeCard from "@/components/dashboard/NetworkFeeCard";
 import { CustomButton, CustomText } from "@/components/general";
-import { selectStage } from "@/state/reducers/sendPage.reducer";
+import { PinEntryModal } from "@/components/Modals/PinEntryModal";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
+import { formatNumberWithCommas } from "@/react-native-swap/utils/formatUtils";
+import { PortfolioService } from "@/services/portfolio.service";
+import { pinStorageService } from "@/src/core/storage/pin-storage.service";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -9,201 +14,342 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
-import React, { forwardRef, useCallback } from "react";
+import React, { forwardRef, useCallback, useEffect, useState } from "react";
 import { Pressable } from "react-native";
-import { useSelector } from "react-redux";
+import { SvgUri } from "react-native-svg";
 import Box from "../../general/Box";
+import Identicon from "../../general/Identicon";
 
-const ConfirmSend = forwardRef<BottomSheet, { send: () => void }>(
-  (props, ref) => {
-    const { send } = props;
-    const stage = useSelector(selectStage);
-    const theme = useTheme<Theme>();
-    const renderBackdrop = useCallback(
-      (props: any) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={1}
-        />
-      ),
-      []
-    );
+interface ConfirmSendProps {
+  send: () => void;
+  selectedToken: ProcessedAsset;
+  recipientAddress: string;
+  amount: string;
+  usdValue: number;
+  networkFee?: {
+    fee: string;
+    feeInUSD: string;
+    speed: string;
+    gasPrice?: string;
+    gasLimit?: string;
+    feeRate?: number;
+  } | null;
+  onClose?: () => void;
+  onTransactionComplete?: () => void;
+}
 
-    return (
-      <BottomSheet
-        ref={ref}
-        index={-1}
-        snapPoints={["60%"]}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
+const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
+  const {
+    send,
+    selectedToken,
+    recipientAddress,
+    amount,
+    usdValue,
+    networkFee,
+    onClose,
+  } = props;
+  const theme = useTheme<Theme>();
+  const { mainUserWalletGroup } = useWallet();
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSendPress = async () => {
+    // Check if PIN is required
+    const hasPin = await pinStorageService.hasPin();
+
+    if (hasPin) {
+      setShowPinEntry(true);
+    } else {
+      // No PIN required, proceed with send
+      setIsProcessing(true);
+      send();
+    }
+  };
+
+  const handlePinSuccess = (pin: string) => {
+    setShowPinEntry(false);
+    setIsProcessing(true);
+    // Add a small delay to show the PIN modal closing before starting the transaction
+    setTimeout(() => {
+      send();
+    }, 300);
+  };
+
+  const handlePinClose = () => {
+    setShowPinEntry(false);
+  };
+
+  // Reset processing state after a timeout (fallback)
+  useEffect(() => {
+    if (isProcessing) {
+      const timeout = setTimeout(() => {
+        setIsProcessing(false);
+      }, 30000); // 30 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [isProcessing]);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={1}
+      />
+    ),
+    []
+  );
+
+  // Don't render if selectedToken is null
+  if (!selectedToken) {
+    return null;
+  }
+
+  return (
+    <BottomSheet
+      ref={ref}
+      index={-1}
+      snapPoints={["70%"]}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      style={{
+        backgroundColor: theme.colors.mainBackgroundColor,
+      }}
+      handleComponent={() => (
+        <Box
+          height={20}
+          bg="mainBackgroundColor"
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Box height={4} bg="white" width={50} borderRadius={2} />
+        </Box>
+      )}
+    >
+      <BottomSheetView
         style={{
+          flex: 1,
+          width: "100%",
+          height: "100%",
           backgroundColor: theme.colors.mainBackgroundColor,
+          paddingHorizontal: 20,
+          paddingTop: 10,
         }}
-        handleComponent={() => (
+      >
+        <CustomText textAlign="center" variant="medium" mb="s">
+          Confirm Send
+        </CustomText>
+
+        {/* Wallet Header */}
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          justifyContent="center"
+          width="100%"
+          marginTop="m"
+          marginBottom="m"
+        >
           <Box
+            width={20}
             height={20}
+            borderRadius={2}
+            mr="s"
             bg="secondaryBackgroundColor"
-            justifyContent="center"
-            alignItems="center"
+          >
+            <Identicon
+              value={
+                mainUserWalletGroup?.name ||
+                "0x0000000000000000000000000000000000000000"
+              }
+              size={20}
+            />
+          </Box>
+          <CustomText variant="body" fontSize={14} color="bodyTextColor">
+            {mainUserWalletGroup?.name || "Wallet"}
+          </CustomText>
+          <Box width={20} />
+        </Box>
+
+        <Box alignItems="center" mb="m">
+          <Pressable
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "auto",
+              marginTop: 20,
+              marginBottom: 30,
+            }}
           >
             <Box
-              height={4}
-              bg="mainBackgroundColor"
-              width={50}
-              borderRadius={2}
-            />
-          </Box>
-        )}
-      >
-        <BottomSheetView
-          style={{
-            flex: 1,
-            width: "100%",
-            height: "100%",
-            backgroundColor: theme.colors.secondaryBackgroundColor,
-            paddingHorizontal: 20,
-            paddingTop: 30,
-          }}
-        >
-          <CustomText textAlign="center" variant="bodySubheader">
-            Confirm Send
-          </CustomText>
-          <Box alignItems="center" mb="m">
-            <Pressable
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "auto",
-                marginTop: 20,
-                marginBottom: 30,
-              }}
+              width={20}
+              height={20}
+              borderRadius={10}
+              bg="secondaryBackgroundColor"
+              overflow="hidden"
+              justifyContent="center"
+              alignItems="center"
             >
-              <Box
-                width={20}
-                height={20}
-                borderRadius={2}
-                bg="secondaryBackgroundColor"
-              >
-                <Image
-                  source={require("@/assets/images/rect2.png")}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    borderRadius: 2,
-                  }}
-                />
-              </Box>
-              <CustomText variant="body" fontSize={14} marginHorizontal="m">
-                Daggerman
-              </CustomText>
-            </Pressable>
-
-            <Box position="relative" width={"100%"}>
-              <Box
-                flexDirection="row"
-                justifyContent="center"
-                alignItems="center"
-                width={"100%"}
-                height={101}
-                borderRadius={12}
-                bg="mainBackgroundColor"
-                p="m"
-              >
-                <Box flex={1}>
-                  <CustomText>You're sending</CustomText>
-                  <CustomText
-                    variant="subheader"
-                    fontSize={22}
-                    style={{ marginVertical: 4 }}
-                  >
-                    0.099TRX
-                  </CustomText>
-                  <CustomText>$10.00</CustomText>
-                </Box>
-                <Image
-                  source={require("@/assets/images/tron.png")}
-                  style={{ width: 30, height: 30 }}
-                  contentFit="contain"
-                />
-              </Box>
-
-              <Box
-                flexDirection="row"
-                justifyContent="center"
-                alignItems="center"
-                width={"100%"}
-                height={101}
-                borderRadius={12}
-                bg="mainBackgroundColor"
-                mt="s"
-                p="m"
-              >
-                <Box flex={1}>
-                  <CustomText>To</CustomText>
-                  <CustomText
-                    variant="subheader"
-                    fontSize={22}
-                    style={{ marginVertical: 4 }}
-                  >
-                    Rabidranger.eth
-                  </CustomText>
-                </Box>
-                <Image
-                  source={require("@/assets/images/eth.png")}
-                  style={{ width: 30, height: 30 }}
-                  contentFit="contain"
-                />
-              </Box>
-              <Image
-                source={require("@/assets/images/arrowsdown.png")}
-                style={{
-                  width: 40,
-                  height: 40,
-                  position: "absolute",
-                  left: "45%",
-                  top: "40%",
-                }}
-                contentFit="contain"
-              />
+              {selectedToken.image ? (
+                <SvgUri uri={selectedToken.image} width={20} height={20} />
+              ) : (
+                <Box width={20} height={20} bg="secondaryBackgroundColor" />
+              )}
             </Box>
-          </Box>
-          <NetworkFeeCard />
-          <Box
-            width={"100%"}
-            flexDirection="row"
-            justifyContent="space-between"
-            mt="l"
-          >
-            <CustomButton
-              width={"49%"}
-              borderRadius={50}
-              text="Cancel"
-              bgColor={theme.colors.borderColor}
-              onPress={() => {}}
+            <CustomText variant="body" fontSize={14} marginHorizontal="m">
+              {selectedToken.symbol}
+            </CustomText>
+          </Pressable>
+
+          <Box position="relative" width={"100%"}>
+            <Box
+              flexDirection="row"
+              justifyContent="center"
+              alignItems="center"
+              width={"100%"}
+              height={101}
+              borderRadius={12}
+              bg="modalBackgroundColor"
+              p="m"
+            >
+              <Box flex={1}>
+                <CustomText>You&apos;re sending</CustomText>
+                <CustomText
+                  variant="subheader"
+                  fontSize={22}
+                  style={{ marginVertical: 4 }}
+                >
+                  {formatNumberWithCommas(amount)}{" "}
+                  {selectedToken.symbol}
+                </CustomText>
+                <CustomText>{PortfolioService.formatCurrency(usdValue)}</CustomText>
+              </Box>
+              <Box
+                width={30}
+                height={30}
+                borderRadius={15}
+                overflow="hidden"
+                justifyContent="center"
+                alignItems="center"
+              >
+                {selectedToken.image ? (
+                  <SvgUri uri={selectedToken.image} width={30} height={30} />
+                ) : (
+                  <Box width={30} height={30} bg="secondaryBackgroundColor" />
+                )}
+              </Box>
+            </Box>
+
+            <Box
+              flexDirection="row"
+              justifyContent="center"
+              alignItems="center"
+              width={"100%"}
+              height={101}
+              borderRadius={12}
+              bg="modalBackgroundColor"
+              mt="s"
+              p="m"
+            >
+              <Box flex={1}>
+                <CustomText>To</CustomText>
+                <CustomText
+                  variant="subheader"
+                  fontSize={16}
+                  style={{ marginVertical: 4 }}
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {recipientAddress}
+                </CustomText>
+              </Box>
+              <Box
+                width={30}
+                height={30}
+                borderRadius={15}
+                overflow="hidden"
+                justifyContent="center"
+                alignItems="center"
+              >
+                {selectedToken.chainImage ? (
+                  <SvgUri
+                    uri={selectedToken.chainImage}
+                    width={30}
+                    height={30}
+                  />
+                ) : (
+                  <Box width={30} height={30} bg="secondaryBackgroundColor" />
+                )}
+              </Box>
+            </Box>
+            <Image
+              source={require("@/assets/images/arrowsdown.png")}
+              style={{
+                width: 40,
+                height: 40,
+                position: "absolute",
+                left: "45%",
+                top: "40%",
+              }}
+              contentFit="contain"
             />
-            <CustomButton
-              width={"49%"}
-              borderRadius={50}
-              text="Send"
-              trailingIcon={
+          </Box>
+        </Box>
+        <NetworkFeeCard
+          networkFee={networkFee}
+          selectedToken={selectedToken}
+          amount={amount}
+        />
+        <Box
+          width={"100%"}
+          flexDirection="row"
+          justifyContent="space-between"
+          mt="l"
+        >
+          <CustomButton
+            width={"49%"}
+            borderRadius={50}
+            text="Cancel"
+            bgColor={theme.colors.borderColor}
+            onPress={onClose || (() => {})}
+          />
+          <CustomButton
+            width={"49%"}
+            borderRadius={50}
+            text={isProcessing ? "Processing..." : "Send"}
+            disabled={isProcessing}
+            trailingIcon={
+              isProcessing ? (
+                <Box ml="s">
+                  <CustomText variant="body" fontSize={12} color="white">
+                    ⏳
+                  </CustomText>
+                </Box>
+              ) : (
                 <Box ml="s">
                   <ThemedFaceIDIcon
                     darkModeColor={theme.colors.bodyTextColor}
                     lightModeColor={theme.colors.bodyTextColor}
                   />
                 </Box>
-              }
-              onPress={() => {
-                send();
-              }}
-            />
-          </Box>
-        </BottomSheetView>
-      </BottomSheet>
-    );
-  }
-);
+              )
+            }
+            onPress={handleSendPress}
+          />
+        </Box>
+
+        {/* PIN Entry Modal */}
+        <PinEntryModal
+          visible={showPinEntry}
+          onSuccess={handlePinSuccess}
+          onClose={handlePinClose}
+        />
+      </BottomSheetView>
+    </BottomSheet>
+  );
+});
+
+ConfirmSend.displayName = "ConfirmSend";
 
 export default ConfirmSend;
