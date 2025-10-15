@@ -12,7 +12,7 @@ import {
 } from "@zap/blockchain-sdk";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import { RelativePathString, router } from "expo-router";
+import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { uniqueId } from "lodash";
 import React, {
@@ -1313,9 +1313,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       try {
         if (router && typeof router.replace === "function") {
           setHasNavigatedToWallet(true);
-          router.replace(
-            "/dashboard/home/wallet-home/home" as RelativePathString
-          );
+          // router.replace(
+          //   "/dashboard/home/wallet-home/home" as RelativePathString
+          // );
           console.log("✅ Successfully navigated to wallet home");
         } else {
           console.log(`Router not ready, attempt ${attempts + 1}/5`);
