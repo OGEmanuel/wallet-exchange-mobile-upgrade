@@ -76,13 +76,13 @@ const BankAccountBottomSheet = forwardRef<
     }
 
     // Currency-specific validation
-    if (selectedCurrency?.code === "GBP" && !formData.sortCode) {
+    if (selectedCurrency === "GBP" && !formData.sortCode) {
       Alert.alert("Error", "Sort Code is required for GBP accounts");
       return;
     }
 
     if (
-      selectedCurrency?.code === "CAD" &&
+      selectedCurrency === "CAD" &&
       (!formData.institutionNumber || !formData.transitNumber)
     ) {
       Alert.alert(
@@ -92,17 +92,17 @@ const BankAccountBottomSheet = forwardRef<
       return;
     }
 
-    if (selectedCurrency?.code === "EUR" && !formData.iban) {
+    if (selectedCurrency === "EUR" && !formData.iban) {
       Alert.alert("Error", "IBAN is required for EUR accounts");
       return;
     }
 
-    if (selectedCurrency?.code === "USD" && !formData.wireRoutingNumber) {
+    if (selectedCurrency === "USD" && !formData.wireRoutingNumber) {
       Alert.alert("Error", "Wire Routing Number is required for USD accounts");
       return;
     }
 
-    if (selectedCurrency?.code === "NGN" && !formData.bankName) {
+    if (selectedCurrency === "NGN" && !formData.bankName) {
       Alert.alert("Error", "Please select a bank for NGN accounts");
       return;
     }
@@ -134,7 +134,7 @@ const BankAccountBottomSheet = forwardRef<
       setLoading(true);
       createAccount({
         body: {
-          currencyId: selectedCurrency ? selectedCurrency._id : undefined,
+          currencyId: selectedCurrency ? selectedCurrency: undefined,
           userId: userDetails?._id as string,
           bankId: activeBank ? activeBank._id : undefined,
           holderName: formData.accountHolderName
@@ -729,7 +729,7 @@ const BankAccountBottomSheet = forwardRef<
   );
 
   const renderForm = () => {
-    switch (selectedCurrency?.code) {
+    switch (selectedCurrency) {
       case "NGN":
         return renderNGNForm();
       case "GBP":
@@ -787,7 +787,7 @@ const BankAccountBottomSheet = forwardRef<
             textAlign="center"
             style={{ fontFamily: "NewScience_Bold" }}
           >
-            Add {selectedCurrency?.code} Account
+            Add {selectedCurrency} Account
           </CustomText>
         </Box>
 

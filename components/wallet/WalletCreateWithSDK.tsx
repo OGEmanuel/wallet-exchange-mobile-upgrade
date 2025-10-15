@@ -1,4 +1,5 @@
 import { useZapSDK } from "@/src/core/sdk/useZapSDK";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
@@ -31,7 +32,7 @@ export default function WalletCreateWithSDK({
     }
 
     try {
-      const seedPhrase = sdk.generateSeedPhrase();
+      const seedPhrase = zapSDKService.generateSeedPhrase();
       setGeneratedSeedPhrase(seedPhrase);
       setShowSeedPhrase(true);
     } catch (error) {
@@ -58,7 +59,7 @@ export default function WalletCreateWithSDK({
 
     setLoading(true);
     try {
-      const result = await sdk.createWalletGroupMultipurpose({
+      const result = await zapSDKService.createWalletGroupMultipurpose({
         name: walletName,
         seedPhrase: generatedSeedPhrase,
         walletType: "SEEDPHRASE",

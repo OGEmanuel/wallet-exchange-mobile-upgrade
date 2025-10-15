@@ -6,24 +6,24 @@ import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import { ActivityIndicator, Linking, Pressable } from "react-native";
-import { WebView } from "react-native-webview";
+import { Linking, Pressable } from "react-native";
 
 const DATA: { title: string; isExternal: boolean; link?: string }[] = [
-  {
-    title: "Chat with support",
-    link: "/dashboard/home/wallet-home/more/help/chat",
-    isExternal: false,
-  },
   {
     title: "Tutorial",
     link: "/dashboard/home/wallet-home/more/help/tutorials",
     isExternal: false,
   },
   {
+    title: "Chat with support",
+    link: "https://zap.africa/helpcenter",
+    isExternal: true,
+  },
+  
+  {
     title: "FAQs",
-    isExternal: false,
-    link: "/dashboard/home/wallet-home/more/help/faq",
+    isExternal: true,
+    link: "https://zap.africa/article?id=FAQs",
   },
 ];
 
@@ -80,8 +80,8 @@ const Help = () => {
         title="Help & Support"
         onBackPress={() => router.back()}
       />
-      <Box flex={1} bg="mainBackgroundColor">
-        <WebView
+      <Box flex={1} bg="mainBackgroundColor" paddingHorizontal="m">
+        {/* <WebView
           startInLoadingState={true}
           source={{ uri: "https://zap.africa/helpcenter" }}
           style={{ flex: 1, backgroundColor: "transparent" }}
@@ -99,10 +99,10 @@ const Help = () => {
               <CustomText>Loading details</CustomText>
             </Box>
           )}
-        />
-        {/* {DATA.map((item, index) => (
+        /> */}
+        {DATA.map((item, index) => (
           <ItemCard key={index.toString()} {...item} />
-        ))} */}
+        ))}
       </Box>
     </PageWrapper>
   );

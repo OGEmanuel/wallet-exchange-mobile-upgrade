@@ -1,5 +1,11 @@
-import { accounts, idCard } from "@/assets/images";
-import { CountryVerificationDocumentModel, FilteredVerifiedCountryDocumentModel, filterVerificationClasses, groupByVerificationClass, userSubmittedDocumentIsApprovedOrPending } from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import images from "@/assets/images";
+import {
+  CountryVerificationDocumentModel,
+  FilteredVerifiedCountryDocumentModel,
+  filterVerificationClasses,
+  groupByVerificationClass,
+  userSubmittedDocumentIsApprovedOrPending,
+} from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
@@ -32,12 +38,20 @@ export default function IdentityVerification({
   const [showIdVerificationFlow, setShowIdVerificationFlow] = useState(false);
   const [bvnCompleted, setBvnCompleted] = useState(false);
   const [idCompleted, setIdCompleted] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<VerifiedCountryModel | null | undefined>(user?.countryId || null);
-  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[] | null | undefined>(null);
+  const [selectedCountry, setSelectedCountry] = useState<
+    VerifiedCountryModel | null | undefined
+  >(user?.countryId || null);
+  const [documentTypes, setDocumentTypes] = useState<
+    CountryVerificationDocumentModel[] | null | undefined
+  >(null);
   const [countryDocumentsLoading, setCountryDocumentsLoading] = useState(false);
-  const [fetchDocumentTypesError, setFetchDocumentTypesError] = useState<string | null>(null);
+  const [fetchDocumentTypesError, setFetchDocumentTypesError] = useState<
+    string | null
+  >(null);
   const { fetchVerifiedCountries, fetchDocumentTypes } = useUtilities();
-  const { verifiedCountries } = useSelector((state: AppRootState) => state.utilities);
+  const { verifiedCountries } = useSelector(
+    (state: AppRootState) => state.utilities
+  );
 
   useEffect(() => {
     if (user?.countryId) {
@@ -67,7 +81,10 @@ export default function IdentityVerification({
 
   useEffect(() => {
     if (documentTypes) {
-      const bvnCompleted = userSubmittedDocumentIsApprovedOrPending(documentTypes, user);
+      const bvnCompleted = userSubmittedDocumentIsApprovedOrPending(
+        documentTypes,
+        user
+      );
       setBvnCompleted(!!bvnCompleted);
     }
   }, [documentTypes]);
@@ -80,13 +97,18 @@ export default function IdentityVerification({
       body: selectedCountry || null,
       params: {},
       extra: {},
-    }).then((response) => {
-      if (response?.data) {
-        setDocumentTypes(response.data || null);
-      }
     })
+      .then((response) => {
+        if (response?.data) {
+          setDocumentTypes(response.data || null);
+        }
+      })
       .catch((e) => {
-        setFetchDocumentTypesError(e instanceof Error ? e.message : "An unexpected error occurred. Please try again.");
+        setFetchDocumentTypesError(
+          e instanceof Error
+            ? e.message
+            : "An unexpected error occurred. Please try again."
+        );
       })
       .finally(() => {
         setCountryDocumentsLoading(false);
@@ -167,43 +189,48 @@ export default function IdentityVerification({
 
   const filteredVerificationClasses = filterVerificationClasses(documentTypes);
 
-  const countryDocuments: FilteredVerifiedCountryDocumentModel = groupByVerificationClass(documentTypes);
+  const countryDocuments: FilteredVerifiedCountryDocumentModel =
+    groupByVerificationClass(documentTypes);
   const creditDocuments = countryDocuments.credit;
-  const userSubmittedCreditDocumentIsApproved = userSubmittedDocumentIsApprovedOrPending(creditDocuments, user);
-
+  const userSubmittedCreditDocumentIsApproved =
+    userSubmittedDocumentIsApprovedOrPending(creditDocuments, user);
 
   const identityDocuments = countryDocuments.identity;
 
-  const userHasSubmittedIdentityDocument = userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
+  const userHasSubmittedIdentityDocument =
+    userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
 
-  const steps = filteredVerificationClasses?.map((verificationClass) => (
+  const steps = filteredVerificationClasses?.map((verificationClass) =>
     verificationClass.toLocaleLowerCase() === "credit"
       ? {
-        title: "Bank Verification",
-        description:
-          "This is a unqiue set of numbers that is tied to your bank account.",
-        status: userSubmittedCreditDocumentIsApproved ? "completed" : "pending",
-        isCompleted: !!userSubmittedCreditDocumentIsApproved,
-        isActionable: true,
-        icon: accounts,
-        // limit: "",
-        onPress: handleBvnPress,
-      }
-      : verificationClass.toLocaleLowerCase() === "identity" ? {
-        title: "ID Verification",
-        description:
-          "Kindly take clear a picture of your government issued document.",
-        status: userHasSubmittedIdentityDocument ? "completed" : "pending",
-        isCompleted: !!userHasSubmittedIdentityDocument,
-        // isActionable: bvnCompleted, // Only actionable after BVN is completed
-        isActionable: true, // Only actionable after BVN is completed
-        limit: "Unlimited",
-        icon: idCard,
-        onPress: handleIdPress,
-      } : {}
-    )
+          title: "Bank Verification",
+          description:
+            "This is a unqiue set of numbers that is tied to your bank account.",
+          status: userSubmittedCreditDocumentIsApproved
+            ? "completed"
+            : "pending",
+          isCompleted: !!userSubmittedCreditDocumentIsApproved,
+          isActionable: true,
+          icon: images.accounts,
+          limit: "",
+          onPress: handleBvnPress,
+        }
+      : verificationClass.toLocaleLowerCase() === "identity"
+      ? {
+          title: "ID Verification",
+          description:
+            "Kindly take clear a picture of your government issued document.",
+          status: userHasSubmittedIdentityDocument ? "completed" : "pending",
+          isCompleted: !!userHasSubmittedIdentityDocument,
+          // isActionable: bvnCompleted, // Only actionable after BVN is completed
+          isActionable: true, // Only actionable after BVN is completed
+          limit: "Unlimited",
+          icon: images.idCard,
+          onPress: handleIdPress,
+        }
+      : {}
   );
-  
+
   return (
     <View style={styles.container}>
       <CustomText variant="header" style={styles.title}>
@@ -214,10 +241,13 @@ export default function IdentityVerification({
         data is saf
       </CustomText>
 
-      <Select options={(verifiedCountries || []).map((country) => ({
-        label: country.name || "",
-        value: country,
-      })) || []}
+      <Select
+        options={
+          (verifiedCountries || []).map((country) => ({
+            label: country.name || "",
+            value: country,
+          })) || []
+        }
         disabled={!!user?.countryId?._id}
         searchable
         value={selectedCountry}
@@ -233,7 +263,7 @@ export default function IdentityVerification({
                   ...user?.metaData?.documentVerification,
                   selectedVerifiedCountry: value,
                 },
-              }
+              },
             });
           }
         }}
@@ -249,7 +279,11 @@ export default function IdentityVerification({
           <ProgressTrack
             currentStep={currentStep}
             totalSteps={filteredVerificationClasses?.length || 0}
-            stepLabels={documentTypes?.map((document) => document.verificationClass || "") || []}
+            stepLabels={
+              documentTypes?.map(
+                (document) => document.verificationClass || ""
+              ) || []
+            }
           />
 
           <View style={styles.cardsContainer}>

@@ -18,21 +18,31 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
 
   const { authEmail } = useKyc();
 
-  const handleLogin = () => {
-    setLoading(true);
-    authEmail({ email })
-      .then((res) => {
-        console.log(res);
-        // navigate to email verification
-        onLoginSuccess?.(email);
-      })
-      .catch((err) => {
-        // If you need to do anything with error.
-        // But there's already a default toast mechanism for each API call
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      const response = await authEmail({ email });
+      console.log(response.data);
+      onLoginSuccess?.(email);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
+    }
+    // setLoading(true);
+    // authEmail({ email })
+    //   .then((res) => {
+    //     console.log(res);
+    //     // navigate to email verification
+    //     onLoginSuccess?.(email);
+    //   })
+    //   .catch((err) => {
+    //     // If you need to do anything with error.
+    //     // But there's already a default toast mechanism for each API call
+    //   })
+    //   .finally(() => {
+    //     setLoading(false);
+    //   });
   };
 
   return (
@@ -54,6 +64,8 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
         onChange={setEmail}
         placeholder="Enter your email address"
         noBorder={true}
+        keyboardType="email-address"
+        color={theme.colors.bodyTextColor}
       />
       <View style={{ marginTop: 24 }}>
         <CustomButton

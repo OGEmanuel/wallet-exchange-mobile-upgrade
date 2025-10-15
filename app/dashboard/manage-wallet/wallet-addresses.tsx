@@ -3,6 +3,7 @@ import { AppBar, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import ChainLogo from "@/components/general/ChainLogo";
 import { useChains } from "@/src/core/chains/chains-context";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import AddressesStorage from "@/src/core/storage/addresses-storage";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -150,7 +151,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
         // Derive all addresses once using the SDK
         console.log("🔍 Deriving all addresses once...");
         console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
-        const derivedResult = await sdk.blockchain.deriveMultiChainAddresses(
+        const derivedResult = await zapSDKService.deriveMultiChainAddresses(
           storedCredentials.credential, // seed phrase
           wallet.walletDepth || 0
         );

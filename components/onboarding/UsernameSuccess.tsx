@@ -36,13 +36,13 @@ export default function UsernameSuccess({
     // Start the spin animation
     Animated.timing(spinValue, {
       toValue: 1,
-      duration: 2000,
+      duration: 3000,
       useNativeDriver: true,
     }).start(() => {
       // Auto-trigger completion after animation
       setTimeout(() => {
         onComplete?.();
-      }, 1000);
+      }, 2000);
     });
   }, [onComplete]);
 
@@ -59,11 +59,12 @@ export default function UsernameSuccess({
         style={[
           styles.userCard,
           {
-            backgroundColor: theme.colors.primaryColor,
             borderWidth: 0,
             transform: [{ rotateY: spin }],
             alignSelf: "center",
             marginTop: 100,
+            width: SCREEN_WIDTH * 0.9,
+            alignItems: "center",
           },
         ]}
       >
@@ -86,6 +87,7 @@ export default function UsernameSuccess({
               color: theme.colors.bodyTextColor,
               width: SCREEN_WIDTH * 0.9,
               marginTop: 20,
+              textAlign: "center",
             },
           ]}
         >

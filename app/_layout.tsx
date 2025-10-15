@@ -3,9 +3,11 @@ import { Buffer } from "buffer";
 import "react-native-get-random-values";
 
 // import { PinGuard } from "@/components/auth/PinGuard";
+import { AppInitializer } from "@/components/AppInitializer";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
+import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
 import { WalletProvider } from "@/src/core/wallet/wallet-context";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
@@ -56,11 +58,18 @@ export default function RootLayout() {
     PlusJakartaSans_SemiBold: require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
 
     // New Science fonts
-    NewScience_Regular: require("../assets/fonts/fonnts.com-New_Science_Regular.otf"),
-    NewScience_Light: require("../assets/fonts/fonnts.com-New_Science_Light.otf"),
-    NewScience_Medium: require("../assets/fonts/fonnts.com-New_Science_Medium.otf"),
-    NewScience_Bold: require("../assets/fonts/fonnts.com-New_Science_Bold.otf"),
-    NewScience_SemiBold: require("../assets/fonts/fonnts.com-New_Science_SemiBold.otf"),
+    NewScience_Regular: require("../assets/fonts/New_Science_Regular.otf"),
+    NewScience_Light: require("../assets/fonts/New_Science_Light.otf"),
+    NewScience_Medium: require("../assets/fonts/New_Science_Medium.otf"),
+    NewScience_Bold: require("../assets/fonts/New_Science_Bold.otf"),
+    NewScience_SemiBold: require("../assets/fonts/New_Science_SemiBold.otf"),
+    NewScience_Thin: require("../assets/fonts/New_Science_Thin.otf"),
+    NewScience_Bold_Extended: require("../assets/fonts/New_Science_Bold_Extended.otf"),
+    NewScience_Light_Extended: require("../assets/fonts/New_Science_Light_Extended.otf"),
+    NewScience_Medium_Extended: require("../assets/fonts/New_Science_Medium_Extended.otf"),
+    NewScience_Regular_Extended: require("../assets/fonts/New_Science_Regular_Extended.otf"),
+    NewScience_SemiBold_Extended: require("../assets/fonts/New_Science_SemiBold_Extended.otf"),
+    NewScience_Thin_Extended: require("../assets/fonts/New_Science_Thin_Extended.otf"),
   });
 
   useEffect(() => {
@@ -118,6 +127,7 @@ export default function RootLayout() {
     };
   }, []); // Remove colorScheme dependency to prevent unnecessary re-runs
 
+  // Early return after all hooks are called
   if (!fontsLoaded && !error) {
     return null;
   }
@@ -127,11 +137,13 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
+            <AppInitializer>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
-                <ChainsProvider>
-                  <WalletProvider>
-                    <BottomSheetProvider>
+                <NetworkProvider>
+                  <ChainsProvider>
+                    <WalletProvider>
+                      <BottomSheetProvider>
                       <StatusBar
                         barStyle={
                           colorTheme === "dark"
@@ -147,11 +159,13 @@ export default function RootLayout() {
                         />
                       </Stack>
                       <BottomSheetManager />
-                    </BottomSheetProvider>
-                  </WalletProvider>
-                </ChainsProvider>
+                      </BottomSheetProvider>
+                    </WalletProvider>
+                  </ChainsProvider>
+                </NetworkProvider>
               </QueryClientProvider>
             </ThemeProvider>
+            </AppInitializer>
           </Provider>
         </GestureHandlerRootView>
       </View>

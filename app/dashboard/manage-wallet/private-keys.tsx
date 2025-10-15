@@ -4,6 +4,7 @@ import ChainLogo from "@/components/general/ChainLogo";
 import PrivateKeyGuardScreen from "@/components/guards/PrivateKeyGuardScreen";
 import { PinEntryModal } from "@/components/Modals/PinEntryModal";
 import { useChains } from "@/src/core/chains/chains-context";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import PrivateKeysStorage from "@/src/core/storage/private-keys-storage";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -41,6 +42,10 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
 
   // Find the wallet
   // The walletId parameter is actually the userWalletGroup._id, not the individual wallet._id
+  console.log("🔍 Debug - walletId from params:", walletId);
+  console.log("🔍 Debug - userWalletGroups:", userWalletGroups?.length);
+  console.log("🔍 Debug - userWalletGroups data:", userWalletGroups?.map(g => ({ _id: g._id, walletId: g.walletId?._id })));
+  
   const userWalletGroup = userWalletGroups?.find(
     (group) => group?.walletId?._id === walletId
   );
@@ -73,6 +78,221 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
     console.log("🔐 PIN success, closing modals");
     setShowPinModal(false);
     setShowGuardScreen(false);
+    // Trigger derivation after PIN success
+    triggerDerivation();
+  };
+
+  // Trigger derivation after PIN success
+  const triggerDerivation = async () => {
+    console.log("🔍 Triggering derivation after PIN success...");
+    
+    if (!userWalletGroup || !wallet || !walletChains || walletChains.length === 0) {
+      console.log("❌ Missing required data for derivation");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // First, try to get stored private keys
+      console.log("🔍 Checking for stored private keys...");
+      console.log("🔍 Using userWalletGroup._id:", userWalletGroup._id);
+      const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(userWalletGroup._id);
+      console.log("🔍 Stored private keys result:", storedPrivateKeys);
+      
+      if (storedPrivateKeys && storedPrivateKeys.length > 0) {
+        console.log("✅ Found stored private keys, using them");
+        
+        // Convert stored private keys to display format
+        const keys = storedPrivateKeys.map(storedKey => ({
+          chain: storedKey.chainName,
+          symbol: storedKey.chainSymbol,
+          privateKey: storedKey.privateKey,
+          chainId: storedKey.chainId,
+          logoUrl: storedKey.logoUrl,
+          isEVM: storedKey.isEVM,
+          currency: undefined, // Not stored in private keys storage
+        }));
+
+        setPrivateKeys(keys);
+        setIsLoading(false);
+        return;
+      } else {
+        console.log("ℹ️ No stored private keys found, will derive them");
+      }
+
+      // Get stored credentials to access seed phrase
+      console.log("🔍 Debug - userWalletGroup._id:", userWalletGroup._id);
+      const storedCredentials =
+        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+          userWalletGroup._id
+        );
+      console.log("🔍 Debug - storedCredentials:", storedCredentials);
+
+      if (!storedCredentials || !storedCredentials.credential) {
+        console.log("❌ No stored credentials found");
+        setPrivateKeys([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const sdk = getSDK();
+      if (!sdk) {
+        console.log("❌ SDK not available");
+        setPrivateKeys([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Derive all addresses once using the SDK
+      console.log("🔍 Deriving all addresses once...");
+      console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
+      const derivedResult = await zapSDKService.deriveMultiChainAddresses(
+        storedCredentials.credential, // seed phrase
+        wallet.walletDepth || 0
+      );
+      console.log("🔍 Derived result:", derivedResult);
+
+      const keys = [];
+      const processedChains = new Set();
+      const privateKeysToStore: any[] = [];
+
+      console.log("🔍 Debug - walletChains:", walletChains);
+      console.log("🔍 Debug - derivedResult.privateKeys:", derivedResult.privateKeys);
+      
+      // Process each chain from walletChains directly
+      for (const chainData of walletChains) {
+        console.log("🔍 Debug - processing chain:", chainData.symbol, chainData.name);
+        if (processedChains.has(chainData.symbol)) continue;
+        
+        // Mark this chain as processed to avoid duplicates
+        processedChains.add(chainData.symbol);
+
+        // Map chain symbols to the keys used in the derived result
+        const chainSymbolMap = {
+          'ETH': 'eth',
+          'BTC': 'btc', 
+          'SOL': 'sol',
+          'TRX': 'trx',
+          'MATIC': 'eth', // Polygon uses ETH derivation
+          'ARB': 'eth',   // Arbitrum uses ETH derivation
+          'OP': 'eth',    // Optimism uses ETH derivation
+          'BASE': 'eth'   // Base uses ETH derivation
+        };
+
+        const mappedSymbol = chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
+        console.log("🔍 Debug - mappedSymbol:", mappedSymbol);
+        if (!mappedSymbol) {
+          console.log("🔍 Debug - no mapped symbol for:", chainData.symbol);
+          continue;
+        }
+        
+        // Get the derived private key for this chain
+        const privateKey = derivedResult.privateKeys?.[mappedSymbol];
+        console.log("🔍 Debug - privateKey:", privateKey);
+        if (!privateKey) {
+          console.log("🔍 Debug - no derived private key for:", mappedSymbol);
+          continue;
+        }
+
+        const keyData = {
+          chain: chainData.name,
+          symbol: chainData.symbol,
+          privateKey: privateKey,
+          chainId: chainData.chainId,
+          logoUrl: chainData.nativeCurrencyId?.logo,
+          isEVM: chainData.isEVM,
+        };
+
+        console.log("🔍 Debug - adding private key:", keyData);
+        keys.push(keyData);
+
+        // Store for secure storage
+        privateKeysToStore.push({
+          chainId: chainData.chainId,
+          chainSymbol: chainData.symbol,
+          chainName: chainData.name,
+          privateKey: privateKey,
+          logoUrl: chainData.nativeCurrencyId?.logo,
+          isEVM: chainData.isEVM,
+          timestamp: Date.now(),
+        });
+      }
+
+      console.log("🔍 Private keys from derivation:", keys);
+
+      // Store private keys securely for future use
+      if (privateKeysToStore.length > 0) {
+        try {
+          console.log("🔍 Storing private keys for userWalletGroup._id:", userWalletGroup._id);
+          console.log("🔍 Private keys to store:", privateKeysToStore.length);
+          await PrivateKeysStorage.storePrivateKeys(userWalletGroup._id, privateKeysToStore);
+          console.log("✅ Stored private keys securely");
+        } catch (error) {
+          console.error("❌ Failed to store private keys:", error);
+        }
+      } else {
+        console.log("⚠️ No private keys to store");
+      }
+
+      setPrivateKeys(keys);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("❌ Failed to process private keys:", error);
+      setPrivateKeys([]);
+      setIsLoading(false);
+    }
+  };
+
+  // Test function to force derivation and storage
+  const testDerivation = async () => {
+    console.log("🧪 Testing derivation and storage...");
+    try {
+      const sdk = getSDK();
+      if (!sdk) {
+        console.log("❌ SDK not available for test");
+        return;
+      }
+
+      const storedCredentials = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+        userWalletGroup._id
+      );
+      
+      if (!storedCredentials || !storedCredentials.credential) {
+        console.log("❌ No credentials for test");
+        return;
+      }
+
+      console.log("🧪 Deriving test private keys...");
+      const derivedResult = await zapSDKService.deriveMultiChainAddresses(
+        storedCredentials.credential,
+        wallet.walletDepth || 0
+      );
+      
+      console.log("🧪 Derived result:", derivedResult);
+      console.log("🧪 Private keys:", derivedResult.privateKeys);
+      
+      // Test storage
+      const testKeys = [{
+        chainId: 1,
+        chainSymbol: 'ETH',
+        chainName: 'Ethereum',
+        privateKey: derivedResult.privateKeys?.eth || 'test-key',
+        logoUrl: 'test-logo',
+        isEVM: true,
+        timestamp: Date.now(),
+      }];
+      
+      await PrivateKeysStorage.storePrivateKeys(userWalletGroup._id, testKeys);
+      console.log("🧪 Test storage successful");
+      
+      // Test retrieval
+      const retrieved = await PrivateKeysStorage.getPrivateKeys(userWalletGroup._id);
+      console.log("🧪 Retrieved keys:", retrieved);
+      
+    } catch (error) {
+      console.error("🧪 Test failed:", error);
+    }
   };
 
   const formatPrivateKey = (privateKey: string) => {
@@ -94,203 +314,13 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
     return `${start}...${end}`;
   };
 
-      // Get private keys from storage or derive them
-      useEffect(() => {
-        let isMounted = true; // Flag to prevent state updates if component unmounts
-
-        const getPrivateKeys = async () => {
-          console.log("🔍 Debug - wallet:", wallet);
-          console.log("🔍 Debug - walletChains:", walletChains);
-
-          if (!wallet || !walletChains || walletChains.length === 0) {
-            console.log("❌ Missing required data");
-            if (isMounted) {
-              setIsLoading(false);
-            }
-            return;
-          }
-
-          try {
-            if (isMounted) {
-              setIsLoading(true);
-            }
-
-            // First, try to get stored private keys
-            console.log("🔍 Checking for stored private keys...");
-            const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(userWalletGroup._id);
-            
-            if (storedPrivateKeys && storedPrivateKeys.length > 0) {
-              console.log("✅ Found stored private keys, using them");
-              
-              // Convert stored private keys to display format
-              const keys = storedPrivateKeys.map(storedKey => ({
-                chain: storedKey.chainName,
-                symbol: storedKey.chainSymbol,
-                privateKey: storedKey.privateKey,
-                chainId: storedKey.chainId,
-                logoUrl: storedKey.logoUrl,
-                isEVM: storedKey.isEVM,
-                currency: undefined, // Not stored in private keys storage
-              }));
-
-              if (isMounted) {
-                setPrivateKeys(keys);
-                setIsLoading(false);
-              }
-              return;
-            }
-
-            console.log("ℹ️ No stored private keys found, deriving them...");
-
-            if (chainsLoading) {
-              console.log("⏳ Waiting for chains to load...");
-              return;
-            }
-            
-            if (!walletChains || walletChains.length === 0) {
-              console.log("❌ No wallet chains available");
-              if (isMounted) {
-                setPrivateKeys([]);
-                setIsLoading(false);
-              }
-              return;
-            }
-
-            // Get stored credentials to access seed phrase
-            const storedCredentials =
-              await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
-                userWalletGroup.walletGroupId._id
-              );
-            console.log("🔍 Debug - storedCredentials:", storedCredentials);
-
-            if (!storedCredentials || !storedCredentials.credential) {
-              console.log("❌ No stored credentials found");
-              if (isMounted) {
-                setPrivateKeys([]);
-                setIsLoading(false);
-              }
-              return;
-            }
-
-            const sdk = getSDK();
-            if (!sdk) {
-              console.log("❌ SDK not available");
-              if (isMounted) {
-                setPrivateKeys([]);
-                setIsLoading(false);
-              }
-              return;
-            }
-
-            // Derive all addresses once using the SDK
-            console.log("🔍 Deriving all addresses once...");
-            console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
-            const derivedResult = await sdk.blockchain.deriveMultiChainAddresses(
-              storedCredentials.credential, // seed phrase
-              wallet.walletDepth || 0
-            );
-            console.log("🔍 Derived result:", derivedResult);
-
-            if (!isMounted) return; // Check if component is still mounted
-
-            const keys = [];
-            const processedChains = new Set();
-            const privateKeysToStore: any[] = [];
-
-            console.log("🔍 Debug - walletChains:", walletChains);
-            console.log("🔍 Debug - derivedResult.privateKeys:", derivedResult.privateKeys);
-            
-            // Process each chain from walletChains directly
-            for (const chainData of walletChains) {
-              console.log("🔍 Debug - processing chain:", chainData.symbol, chainData.name);
-              if (processedChains.has(chainData.symbol)) continue;
-              
-              // Mark this chain as processed to avoid duplicates
-              processedChains.add(chainData.symbol);
-
-              // Map chain symbols to the keys used in the derived result
-              const chainSymbolMap = {
-                'ETH': 'eth',
-                'BTC': 'btc', 
-                'SOL': 'sol',
-                'TRX': 'trx',
-                'MATIC': 'eth', // Polygon uses ETH derivation
-                'ARB': 'eth',   // Arbitrum uses ETH derivation
-                'OP': 'eth',    // Optimism uses ETH derivation
-                'BASE': 'eth'   // Base uses ETH derivation
-              };
-
-              const mappedSymbol = chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
-              console.log("🔍 Debug - mappedSymbol:", mappedSymbol);
-              if (!mappedSymbol) {
-                console.log("🔍 Debug - no mapped symbol for:", chainData.symbol);
-                continue;
-              }
-              
-              // Get the derived private key for this chain
-              const privateKey = derivedResult.privateKeys?.[mappedSymbol];
-              console.log("🔍 Debug - privateKey:", privateKey);
-              if (!privateKey) {
-                console.log("🔍 Debug - no derived private key for:", mappedSymbol);
-                continue;
-              }
-
-              const keyData = {
-                chain: chainData.name,
-                symbol: chainData.symbol,
-                privateKey: privateKey,
-                chainId: chainData.chainId,
-                logoUrl: chainData.nativeCurrencyId?.logo,
-                isEVM: chainData.isEVM,
-              };
-
-              console.log("🔍 Debug - adding private key:", keyData);
-              keys.push(keyData);
-
-              // Store for secure storage
-              privateKeysToStore.push({
-                chainId: chainData.chainId,
-                chainSymbol: chainData.symbol,
-                chainName: chainData.name,
-                privateKey: privateKey,
-                logoUrl: chainData.nativeCurrencyId?.logo,
-                isEVM: chainData.isEVM,
-                timestamp: Date.now(),
-              });
-            }
-
-            console.log("🔍 Private keys from derivation:", keys);
-
-            // Store private keys securely for future use
-            if (privateKeysToStore.length > 0) {
-              try {
-                await PrivateKeysStorage.storePrivateKeys(userWalletGroup._id, privateKeysToStore);
-                console.log("✅ Stored private keys securely");
-              } catch (error) {
-                console.error("❌ Failed to store private keys:", error);
-              }
-            }
-
-            if (isMounted) {
-              setPrivateKeys(keys);
-              setIsLoading(false);
-            }
-          } catch (error) {
-            console.error("❌ Failed to process private keys:", error);
-            if (isMounted) {
-              setPrivateKeys([]);
-              setIsLoading(false);
-            }
-          }
-        };
-
-        getPrivateKeys();
-
-        // Cleanup function
-        return () => {
-          isMounted = false;
-        };
-      }, [userWalletGroup?._id, walletChains?.length, chainsLoading, getSDK, wallet, walletChains]);
+  // Initialize loading state when component mounts
+  useEffect(() => {
+    if (!showGuardScreen) {
+      // Only set loading if we're past the guard screen
+      setIsLoading(true);
+    }
+  }, [showGuardScreen]);
 
   if (!wallet) {
     return (
@@ -356,9 +386,23 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
             </Box>
           ) : privateKeys.length === 0 ? (
             <Box flex={1} justifyContent="center" alignItems="center" paddingVertical="xl">
-              <CustomText variant="body" color="disabledTextColor">
+              <CustomText variant="body" color="disabledTextColor" marginBottom="m">
                 No private keys found
               </CustomText>
+              <Pressable
+                onPress={testDerivation}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: theme.colors.primaryColor,
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                })}
+              >
+                <CustomText variant="body" color="white">
+                  Test Derivation
+                </CustomText>
+              </Pressable>
             </Box>
           ) : (
             privateKeys.map((keyData, index) => (

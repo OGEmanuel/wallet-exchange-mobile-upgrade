@@ -5,9 +5,52 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, ZapSDK } from '@zap/blockchain-sdk';
 import WalletCredentialsStorage from '../storage/wallet-credentials-storage';
+import NetworkErrorHandler from '../utils/network-error-handler';
 import { createSDKInstance, getSDKConfig } from './zap-sdk.config';
+
+export interface SendTransactionRequest {
+  fromAddress: string;
+  toAddress: string;
+  amount: string | number;
+  chainSymbol: string;
+  privateKey: string;
+  gasPrice?: string | number;
+  gasLimit?: string | number;
+  maxFeePerGas?: string | number; // EIP-1559
+  maxPriorityFeePerGas?: string | number; // EIP-1559
+  tokenAddress?: string; // For ERC-20 tokens
+  tokenMintAddress?: string; // For SPL tokens (Solana)
+  tokenContractAddress?: string; // For TRC-20 tokens (Tron)
+  tokenDecimals?: number; // Token decimals for all token types
+  memo?: string; // For Solana and Tron memo support
+  nonce?: number;
+}
+
+export interface AddAccountsToExistingWalletRequest {
+  userWalletGroupId?: string;
+  walletId?: string;
+  walletGroupId?: string;
+  seedPhrase?: string;           // For seedphrase-based accounts
+  privateKey?: string;           // For private key-based accounts
+  searchChain?: string;          // Optional chain specification for private key/watch address
+  watchAddress?: string;         // For watch-only accounts
+  derivationIndex?: number;      // Derivation index (default: 0)
+}
+
+export interface TokenDetailsRequest {
+  tokenAddress: string;
+  chainId: string;
+}
+
+export interface CreateWalletGroupMultipurposeParams {
+  name: string;
+  seedPhrase?: string;
+  privateKey?: string;
+  watchAddress?: string;
+  walletType?: WALLET_GROUP_TYPE
+}
 
 class ZapSDKService {
   private static instance: ZapSDKService;
@@ -70,6 +113,185 @@ class ZapSDKService {
       throw new Error('SDK not initialized. Call initialize() first.');
     }
     return this.sdk;
+  }
+
+  /**
+   * Execute SDK call with network error handling
+   */
+  public async executeWithNetworkHandling<T>(
+    operation: () => Promise<T>,
+    context: string = 'SDK operation'
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      const networkError = NetworkErrorHandler.handleSDKError(error, context);
+      throw networkError;
+    }
+  }
+
+  /**
+   * Execute SDK call with retry on network errors
+   */
+  public async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    context: string = 'SDK operation',
+    maxRetries: number = 3
+  ): Promise<T> {
+    try {
+      return await NetworkErrorHandler.retryWithBackoff(operation, maxRetries);
+    } catch (error) {
+      const networkError = NetworkErrorHandler.handleSDKError(error, context);
+      throw networkError;
+    }
+  }
+
+  // Wallet Operations
+  public async createWalletGroupMultipurpose(params: CreateWalletGroupMultipurposeParams) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().createWalletGroupMultipurpose(params),
+      'createWalletGroupMultipurpose'
+    );
+  }
+
+  public async updateWalletGroup(walletGroupId: string, params: UpdateWalletGroupRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().wallets.updateWalletGroup(walletGroupId, params),
+      'updateWalletGroup'
+    );
+  }
+
+  public async deleteWalletGroup(walletGroupId: string) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().wallets.deleteWalletGroup(walletGroupId),
+      'deleteWalletGroup'
+    );
+  }
+
+  public async updateUserWalletGroupName(userWalletGroupId: string, params: UpdateUserWalletGroupNameRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().wallets.updateUserWalletGroupName(userWalletGroupId, params),
+      'updateUserWalletGroupName'
+    );
+  }
+
+  public async addAccountsToExistingWallet(params: AddAccountsToExistingWalletRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().wallets.addAccountsToExistingWallet(params),
+      'addAccountsToExistingWallet'
+    );
+  }
+
+  // Token Operations
+  public async enableToken(params: EnableTokenRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().tokens.enableToken(params),
+      'enableToken'
+    );
+  }
+
+  public async disableToken(params: DisableTokenRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().tokens.disableToken(params),
+      'disableToken'
+    );
+  }
+
+  public async getTokenDetails(params: TokenDetailsRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().tokens.getTokenDetails(params),
+      'getTokenDetails'
+    );
+  }
+
+  public async addToken(params: AddTokenRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().tokens.addToken(params),
+      'addToken'
+    );
+  }
+
+  // Blockchain Operations
+  public async deriveMultiChainAddresses(seedPhrase: string, walletDepth: number) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().blockchain.deriveMultiChainAddresses(seedPhrase, walletDepth),
+      'deriveMultiChainAddresses'
+    );
+  }
+
+  public async sendTransaction(params: SendTransactionRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().blockchain.sendTransaction(params),
+      'sendTransaction'
+    );
+  }
+
+  // Auth Operations
+  public async login(params: LoginRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().walletAuth.login(params),
+      'login'
+    );
+  }
+
+  public async logoutFromExchange() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().logoutFromExchange(),
+      'logoutFromExchange'
+    );
+  }
+
+  public async sendExchangeOtp(email: string) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().sendExchangeOtp(email),
+      'sendExchangeOtp'
+    );
+  }
+
+  public async validateExchangeOtp(email: string, otp: string) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().validateExchangeOtp(email, otp),
+      'validateExchangeOtp'
+    );
+  }
+
+  public async getCurrentUserId() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().walletAuth.getCurrentUserId(),
+      'getCurrentUserId'
+    );
+  }
+
+  public async isExchangeAuthenticated() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().isExchangeAuthenticated(),
+      'isExchangeAuthenticated'
+    );
+  }
+
+  public async getExchangeUserId() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().getExchangeUserId(),
+      'getExchangeUserId'
+    );
+  }
+
+  public async getUserWalletGroups(userId: string, options?: { useCache?: boolean }) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().wallets.getUserWalletGroups(userId, { useCache: options?.useCache }),
+      'getUserWalletGroups'
+    );
+  }
+
+  public async getMainWalletGroupId() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().secureTokenManager.getMainWalletGroupId(),
+      'getMainWalletGroupId'
+    );
+  }
+
+  public generateSeedPhrase() {
+    return this.getSDK().generateSeedPhrase();
   }
 
   /**
@@ -423,7 +645,7 @@ class ZapSDKService {
       if (walletStorageId) {
         await WalletCredentialsStorage.markWalletAsAccountsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
         console.log('✅ Wallet and accounts marked as created in credentials storage');
-        
+
         // Verify the status was updated correctly
         const updatedCredential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(addWalletResponse.userWalletGroupId);
         console.log('🔍 Verification - credential status:', {
@@ -432,7 +654,7 @@ class ZapSDKService {
           userWalletGroupId: updatedCredential?.userWalletGroupId,
           walletStorageId: walletStorageId
         });
-        
+
       }
 
       return {

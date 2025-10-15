@@ -76,7 +76,7 @@ const ManageWalletScreen = () => {
     // Get wallet info
     const walletInfo = userWalletGroup.walletId;
     const walletName =
-      walletInfo?.name || `Wallet ${walletInfo?._id?.slice(-4) || "Unknown"}`;
+      userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
     const totalValue = walletInfo?.totalUsdValue
       ? formatCurrency(walletInfo.totalUsdValue)
       : "$0.00";

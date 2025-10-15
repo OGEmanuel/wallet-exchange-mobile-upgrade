@@ -1,4 +1,3 @@
-import { zapLogoWithNameDark } from "@/assets/images";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
@@ -26,9 +25,11 @@ type ScreenStep =
 export default function ZapperSiginBottomSheet({
   ref,
   onContinue,
+  onClose,
 }: {
   ref: React.RefObject<AnimatedGradientBottomSheetRef | null>;
   onContinue?: () => void;
+  onClose?: () => void;
 }) {
   const { colors } = useTheme<Theme>();
   const { authEmail } = useKyc();
@@ -139,11 +140,12 @@ export default function ZapperSiginBottomSheet({
           colors.mainBackgroundColor,
           colors.mainBackgroundColor,
         ]}
+        onClose={onClose}
       >
         <View style={styles.handle} />
         <View style={styles.backContainer}></View>
         <Image
-          source={zapLogoWithNameDark}
+          source={require("@/assets/images/zapLogoDark.png")}
           style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
           resizeMode="contain"
         />

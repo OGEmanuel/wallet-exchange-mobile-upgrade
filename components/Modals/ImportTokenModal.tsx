@@ -82,7 +82,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       }
 
       // Call SDK to get token details
-      const tokenDetails = await sdk.tokens.getTokenDetails({
+      const tokenDetails = await zapSDKService.getTokenDetails({
         chainId: chainId,
         tokenAddress: contractAddress,
       });
@@ -149,7 +149,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       }
 
       // Import the token using SDK
-      const importResult = await sdk.tokens.addToken({
+      const importResult = await zapSDKService.addToken({
         chainId: selectedChain._id.toString(),
         tokenAddress: tokenAddress || contractAddress.trim(),
         userWalletGroupId: mainUserWalletGroup._id,

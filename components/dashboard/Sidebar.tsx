@@ -1,13 +1,12 @@
 import {
-  ThemedBookIcon,
+  ThemedAddressBookIcon,
+  ThemedBankAccountIcon,
+  ThemedChartIcon,
   ThemedFaceIDIcon,
-  ThemedGiftFill3Icon,
-  ThemedHeatIcon,
   ThemedHelpIcon,
-  ThemedResolveChatIcon,
-  ThemedSettingsFillIcon,
-  ThemedStarFillIcon,
+  ThemedStarFillIcon
 } from "@/assets/svg/wallet-icons-components";
+import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { StorageKeys } from "@/src/core/api/models";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
@@ -26,7 +25,7 @@ import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
-import { Link } from "iconsax-react-nativejs";
+import { Link, Setting4 } from "iconsax-react-nativejs";
 import React, { useEffect, useState } from "react";
 import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
@@ -45,28 +44,21 @@ const Sidebar = () => {
   const theme = useTheme<Theme>();
   const { changePinRef } = useBottomSheetRefs();
   const [hasHardware, setHasHardware] = useState(false);
+  const OS = Platform.OS;
 
   useEffect(() => {
     (async () => {
       const has = await LocalAuthentication.hasHardwareAsync();
       if (has) {
         // ANDROID CHECK
-        if (
-          Platform.OS === "android" &&
-          has &&
-          LocalAuthentication.AuthenticationType.FINGERPRINT
-        ) {
+        if (Platform.OS === "android" && has) {
           setHasHardware(true);
         } else {
           setHasHardware(false);
         }
 
         // IOS CHECK
-        if (
-          Platform.OS === "ios" &&
-          has &&
-          LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
-        ) {
+        if (Platform.OS === "ios" && has) {
           setHasHardware(true);
         } else {
           setHasHardware(false);
@@ -91,22 +83,22 @@ const Sidebar = () => {
 
   // adding the data hear
   const SIDEBAR_DATA: ISidebarItem[] = [
+    // {
+    //   icon: (
+    //     <ThemedResolveChatIcon
+    //       width={20}
+    //       height={20}
+    //       darkModeColor={theme.colors.bodyTextColor}
+    //       lightModeColor={theme.colors.bodyTextColor}
+    //     />
+    //   ),
+    //   title: "Wallet Connect",
+    //   link: "/dashboard/home/connect",
+    //   isActive: false,
+    // },
     {
       icon: (
-        <ThemedResolveChatIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Wallet Connect",
-      link: "/dashboard/home/connect",
-      isActive: false,
-    },
-    {
-      icon: (
-        <ThemedHeatIcon
+        <ThemedBankAccountIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
@@ -119,7 +111,7 @@ const Sidebar = () => {
     },
     {
       icon: (
-        <ThemedBookIcon
+        <ThemedAddressBookIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
@@ -132,25 +124,33 @@ const Sidebar = () => {
     },
     {
       icon: (
-        <ThemedGiftFill3Icon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.tabBarActiveColor}
-          lightModeColor={theme.colors.tabBarActiveColor}
-        />
-      ),
-      title: "Affilates & Referrals",
-      link: "/dashboard/home/reward",
-      isActive: true,
-    },
-    {
-      icon: (
-        <ThemedSettingsFillIcon
+        <ThemedChartIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
           lightModeColor={theme.colors.bodyTextColor}
         />
+      ),
+      title: "Markets",
+      link: "/dashboard/home/market",
+      isActive: false,
+    },
+    // {
+    //   icon: (
+    //     <ThemedGiftFill3Icon
+    //       width={20}
+    //       height={20}
+    //       darkModeColor={theme.colors.tabBarActiveColor}
+    //       lightModeColor={theme.colors.tabBarActiveColor}
+    //     />
+    //   ),
+    //   title: "Affilates & Referrals",
+    //   link: "/dashboard/home/reward",
+    //   isActive: true,
+    // },
+    {
+      icon: (
+        <Setting4 color={theme.colors.bodyTextColor} size={20} variant="Outline" />
       ),
       title: "Preferences",
       link: "/dashboard/home/wallet-home/more/preferences",
@@ -161,7 +161,7 @@ const Sidebar = () => {
   const SIDEBAR_SECURITY_DATA: ISidebarItem[] = [
     {
       icon: (
-        <ThemedBookIcon
+        <ThemedNumpadIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
@@ -253,7 +253,7 @@ const Sidebar = () => {
         end={{ x: 0, y: 1 }}
         style={{
           width: "100%",
-          height: 150,
+          height: OS === "ios" ? 150 : 130,
           paddingHorizontal: 20,
           paddingBottom: 10,
           justifyContent: "flex-end",

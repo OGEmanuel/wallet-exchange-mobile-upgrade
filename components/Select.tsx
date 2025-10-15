@@ -136,15 +136,22 @@ const SelectComponent = <T,>(
               ) : (
                 <>
                   {selectedOption?.prefix && (
-                    <View style={styles.optionPrefix}>{selectedOption.prefix}</View>
+                    <View style={styles.optionPrefix}>
+                      {selectedOption.prefix}
+                    </View>
                   )}
                   <CustomText
-                    style={[styles.selectedText, { color: colors.bodyTextColor }]}
+                    style={[
+                      styles.selectedText,
+                      { color: colors.bodyTextColor },
+                    ]}
                   >
-                    { selectedOption?.label || selectedLabel }
+                    {selectedOption?.label || selectedLabel}
                   </CustomText>
                   {selectedOption?.suffix && (
-                    <View style={styles.optionSuffix}>{selectedOption.suffix}</View>
+                    <View style={styles.optionSuffix}>
+                      {selectedOption.suffix}
+                    </View>
                   )}
                 </>
               )}
@@ -191,6 +198,7 @@ const SelectComponent = <T,>(
 
           <FlatList
             data={filteredOptions}
+            nestedScrollEnabled
             keyExtractor={(item, index) => `${item.label}-${index}`}
             renderItem={({ item }) => (
               <Pressable

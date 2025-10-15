@@ -1,4 +1,5 @@
 import { useZapSDK } from '@/src/core/sdk/useZapSDK';
+import zapSDKService from '@/src/core/sdk/zap-sdk.service';
 import { Theme } from '@/theme';
 import { useTheme } from '@shopify/restyle';
 import React, { useEffect, useState } from 'react';
@@ -35,7 +36,10 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
       setIsLoading(true);
       setError(null);
       
-      const portfolioData = await sdk.portfolio.getPortfolio();
+      const portfolioData = await zapSDKService.executeWithNetworkHandling(
+        () => sdk.portfolio.getPortfolio(),
+        'getPortfolio'
+      );
       setPortfolio(portfolioData);
     } catch (error) {
       console.error('Failed to load portfolio:', error);

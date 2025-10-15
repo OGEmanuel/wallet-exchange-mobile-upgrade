@@ -3,7 +3,7 @@ import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { DimensionValue } from "react-native";
 import Box from "./Box";
-import CustomText from "./CustomText";
+import ThemedText from "./ThemedText";
 
 interface IProps {
   leading?: React.ReactNode;
@@ -44,9 +44,7 @@ const AppBar = ({
       </Box>
       <Box flex={2} alignItems="center" justifyContent="center">
         {title && (
-          <CustomText variant={variant} fontSize={fontSize}>
-            {title}
-          </CustomText>
+          <ThemedText color={theme.colors.bodyTextColor}> {title}</ThemedText>
         )}
       </Box>
       <Box flex={1} flexDirection="row" alignItems="center" justifyContent="flex-end">

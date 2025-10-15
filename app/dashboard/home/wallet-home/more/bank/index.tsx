@@ -1,4 +1,3 @@
-import { noBank } from "@/assets/images";
 import BankAccountBottomSheet from "@/components/bottomsheets/BankAccountBottomSheet";
 import EditAccountBottomSheet from "@/components/bottomsheets/EditAccountBottomSheet";
 import BankBottomSheet from "@/components/bottomsheets/preference/BankBottomSheet";
@@ -104,7 +103,7 @@ const Explore = () => {
 
   const filteredAccounts = accounts.filter((account) => {
     const matchesFilter =
-      selectedFilter === "All" || account.currency.code === selectedFilter;
+      selectedFilter === "All" || account.currency === selectedFilter;
     const matchesSearch =
       account.accountHolderName
         .toLowerCase()
@@ -175,7 +174,7 @@ const Explore = () => {
         title="No Accounts"
         info="You haven't added any accounts. Add a bank account to receive your naira"
         onPress={handleAddNewAccount}
-        source={noBank}
+        source={require('@/assets/images/noBank.png')}
       >
         <CustomText variant="body">+ Add New Account</CustomText>
       </EmptyState>

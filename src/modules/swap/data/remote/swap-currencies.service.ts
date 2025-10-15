@@ -68,11 +68,27 @@ export const useFetchCurrencies = (
         setError(null);
       }
 
+      const requestId = Math.random().toString(36).substr(2, 9);
+      const route = `/supportedCurrencies?includeFiat=${includeFiat}`;
+
+      console.log(`💰 [${requestId}] Fetching Supported Currencies:`, {
+        route,
+        includeFiat,
+        retryAttempt,
+        timestamp: new Date().toISOString(),
+      });
+
       try {
         const response: ApiResponse<SupportedCurrenciesResponse> =
           await swapApiService.get<SupportedCurrenciesResponse>(
             `/supportedCurrencies?includeFiat=${includeFiat}`
           );
+
+        console.log(`✅ [${requestId}] Currencies Fetched Successfully:`, {
+          route,
+          response: JSON.stringify(response, null, 2),
+          timestamp: new Date().toISOString(),
+        });
 
         if (response.success && response.data && isMountedRef.current) {
           setCurrencies(response.data?.data || []);
@@ -90,6 +106,13 @@ export const useFetchCurrencies = (
           throw new Error(response.message || "Failed to fetch currencies");
         }
       } catch (err) {
+        console.error(`❌ [${requestId}] Currencies Fetch Failed:`, {
+          route,
+          includeFiat,
+          retryAttempt,
+          error: err,
+          timestamp: new Date().toISOString(),
+        });
         const apiError = err as any;
 
         if (isMountedRef.current) {
@@ -190,4 +213,3 @@ export const getCachedCurrencies = (
   const cached = currencyCache.get(cacheKey);
   return cached ? cached.data?.data : null;
 };
-

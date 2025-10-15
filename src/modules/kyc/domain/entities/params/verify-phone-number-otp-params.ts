@@ -1,6 +1,6 @@
 // TODO: Add the correct parameters for the verify phone number otp
 export interface VerifyPhoneNumberOtpParams {
-  phoneNumber: string | null;
-  countryCode: string | null;
+  identifier: string | null;
   otp: string | null;
+  isOnboarding: boolean | null;
 }

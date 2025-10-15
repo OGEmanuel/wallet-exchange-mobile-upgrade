@@ -1,3 +1,4 @@
+import { ThemedThemeIcon } from "@/assets/svg/wallet-icons-components";
 import AppearanceBottomSheet from "@/components/bottomsheets/preference/AppearanceBottomSheet";
 import ChangeCurrencyBottomSheet from "@/components/bottomsheets/preference/ChangeCurrencyBottomSheet";
 import LanguageBottomSheet from "@/components/bottomsheets/preference/LanguageBottomSheet";
@@ -7,7 +8,8 @@ import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
-import { Bell, ChevronRight, Currency } from "lucide-react-native";
+import { Money4 } from "iconsax-react-nativejs";
+import { Bell, ChevronRight, Speech } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
 
@@ -33,12 +35,12 @@ const ItemCard = ({ title, icon, onPress }: ItemCardProps) => {
     >
       <Box flexDirection="row" alignItems="center">
         {icon}
-        <CustomText variant="medium" fontSize={16} ml="m">
+        <CustomText variant="bodyMedium" fontSize={16} ml="m">
           {title}
         </CustomText>
       </Box>
 
-      <ChevronRight size={25} color={theme.colors.bodyTextColor} />
+      <ChevronRight size={20} color={theme.colors.bodyTextColor} />
     </Pressable>
   );
 };
@@ -54,14 +56,19 @@ const Index = () => {
     {
       title: "Default Currency",
       icon: (
-        <Currency width={24} height={24} color={theme.colors.bodyTextColor} />
+        <Money4 width={24} height={24} color={theme.colors.bodyTextColor} />
       ),
       onPress: () => currencyBottomSheetRef.current?.snapToIndex(1),
     },
     {
       title: "Appearance",
       icon: (
-        <Currency width={24} height={24} color={theme.colors.bodyTextColor} />
+        <ThemedThemeIcon
+          width={24}
+          height={24}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
       ),
       onPress: () => appearanceBottomSheetRef.current?.snapToIndex(1),
     },
@@ -75,14 +82,16 @@ const Index = () => {
     },
     {
       title: "Language",
-      icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
+      icon: (
+        <Speech width={24} height={24} color={theme.colors.bodyTextColor} />
+      ),
       onPress: () => languageBottomSheetRef.current?.snapToIndex(1),
     },
-    {
-      title: "App Icon",
-      icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
-      onPress: () => {},
-    },
+    // {
+    //   title: "App Icon",
+    //   icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
+    //   onPress: () => {},
+    // },
   ];
   return (
     <PageWrapper>

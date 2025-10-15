@@ -1,0 +1,248 @@
+react-native-swap/
+│
+├── 📱 COMPONENTS (7 files)
+│   ├── CurrencySelector.tsx         (~200 lines) Modal for selecting currencies
+│   ├── ErrorIndicator.tsx           (~80 lines)  Error display with retry
+│   ├── ReceiveSection.tsx           (~150 lines) "To" section with input
+│   ├── SellSection.tsx              (~180 lines) "From" section with dollar mode
+│   ├── SwapButton.tsx               (~100 lines) Animated swap button
+│   └── WithdrawalAddressInput.tsx   (~100 lines) Address input for crypto
+│
+├── 🎯 SCREENS (1 file)
+│   └── SwapScreen.tsx               (~250 lines) Main orchestrator screen
+│
+├── 🔧 HOOKS (1 file)
+│   └── useSwapLogic.ts              (~300 lines) All business logic & state
+│
+├── 💾 STATE (1 file)
+│   └── swapSlice.ts                 (~70 lines)  Redux slice
+│
+├── 🏪 STORE (1 file)
+│   └── index.ts                     (~30 lines)  Redux store config
+│
+├── 📝 TYPES (1 file)
+│   └── index.ts                     (~50 lines)  TypeScript definitions
+│
+├── 🛠️ UTILS (1 file)
+│   └── formatUtils.ts               (~80 lines)  Formatting functions
+│
+├── 📖 DOCUMENTATION (8 files - 2,200+ lines total)
+│   ├── README.md                    (~200 lines) Main overview & features
+│   ├── INTEGRATION_GUIDE.md         (~300 lines) Step-by-step integration
+│   ├── COMPONENT_OVERVIEW.md        (~400 lines) Architecture & structure
+│   ├── ANIMATIONS.md                (~300 lines) Animation documentation
+│   ├── STATE_MANAGEMENT.md          (~400 lines) State architecture
+│   ├── API_INTEGRATION.md           (~500 lines) Backend integration guide
+│   ├── INDEX.md                     (~300 lines) File reference index
+│   └── SUMMARY.md                   (~200 lines) Project summary
+│
+├── ⚙️ CONFIGURATION (2 files)
+│   ├── package.json                 (~20 lines)  Dependencies & metadata
+│   └── tsconfig.json                (~25 lines)  TypeScript config
+│
+├── 💡 EXAMPLES (1 file)
+│   └── App.example.tsx              (~40 lines)  Complete working example
+│
+└── 📄 REFERENCE (1 file)
+    └── FILE_TREE.txt                This file - Visual structure
+
+────────────────────────────────────────────────────────────────────
+
+TOTAL: 21 FILES
+- Code Files: 15 (TypeScript/TSX)
+- Documentation: 8 (Markdown)
+- Configuration: 2 (JSON)
+
+TOTAL LINES: ~4,000
+- Components: ~1,200 lines
+- Logic: ~600 lines
+- Documentation: ~2,200 lines
+
+────────────────────────────────────────────────────────────────────
+
+DEPENDENCIES (5):
+✓ react-native-reanimated    (Animations)
+✓ react-native-gesture-handler (Touch handling)
+✓ @reduxjs/toolkit           (State management)
+✓ react-redux                (React bindings for Redux)
+✓ lodash                     (Utilities - debounce)
+
+────────────────────────────────────────────────────────────────────
+
+KEY FEATURES:
+✓ Swap animation (300ms smooth transition)
+✓ Dollar value pulse animation
+✓ Currency selection with search
+✓ Input formatting with commas
+✓ Dollar/crypto mode toggle
+✓ Error handling with retry
+✓ Dark mode support
+✓ Loading states & shimmer effects
+✓ Withdrawal address input
+✓ Debounced rate fetching (1s)
+
+────────────────────────────────────────────────────────────────────
+
+QUICK START:
+1. npm install react-native-reanimated react-native-gesture-handler @reduxjs/toolkit react-redux lodash
+2. Copy react-native-swap folder to your project
+3. Import SwapScreen and wrap with Redux Provider
+4. Done! Works with mock data immediately
+
+NEXT STEPS:
+1. Read README.md for overview
+2. Follow INTEGRATION_GUIDE.md for setup
+3. Check App.example.tsx for usage
+4. Connect to API using API_INTEGRATION.md
+
+────────────────────────────────────────────────────────────────────
+
+COMPONENT HIERARCHY:
+
+SwapScreen
+├── ErrorIndicator (conditional)
+├── SellSection
+│   ├── Currency selector button
+│   ├── Amount input
+│   └── Dollar value display
+├── SwapButton
+└── ReceiveSection
+    ├── Currency selector button
+    └── Amount input
+├── WithdrawalAddressInput (conditional - crypto only)
+└── CurrencySelector (modal)
+
+────────────────────────────────────────────────────────────────────
+
+DATA FLOW:
+
+User Input
+    ↓
+Local State (swapMetaData)
+    ↓
+Debounced Function (1s delay)
+    ↓
+API Call (mock or real)
+    ↓
+Redux State Update
+    ↓
+Components Re-render
+    ↓
+UI Updates (with animation)
+
+────────────────────────────────────────────────────────────────────
+
+REDUX STATE STRUCTURE:
+
+swap/
+├── supportedCurrencies []
+├── sellCurrency {}
+├── receiveCurrency {}
+├── swapRate {}
+├── isSwapped (boolean)
+├── fetchingSwapRate (boolean)
+├── swapRateError (string | null)
+└── supportedCurrenciesError (string | null)
+
+────────────────────────────────────────────────────────────────────
+
+ANIMATIONS (4 types):
+
+1. Swap Transition
+   - Duration: 300ms
+   - Type: translateY
+   - Trigger: Swap button press
+
+2. Dollar Pulse
+   - Duration: 2s cycle
+   - Type: scale (1.0 → 1.1)
+   - Repeat: Infinite
+
+3. Button Shake
+   - Duration: 400ms
+   - Type: translateY (±5px)
+   - Trigger: Every 10s
+
+4. Loading Pulse
+   - Duration: 1s cycle
+   - Type: scale (1.0 → 1.1)
+   - Trigger: When fetching rates
+
+────────────────────────────────────────────────────────────────────
+
+PLATFORM SUPPORT:
+
+✓ iOS (14.0+)
+✓ Android (API 21+)
+✓ Dark Mode (automatic)
+✓ Portrait & Landscape
+✓ Expo & Bare React Native
+
+────────────────────────────────────────────────────────────────────
+
+CUSTOMIZATION POINTS:
+
+Easy:
+- Colors (search & replace hex codes)
+- Fonts (update fontFamily in styles)
+- Spacing (modify padding/margin)
+- Border radius (change borderRadius values)
+
+Medium:
+- Add new animations
+- Change debounce timing
+- Add new input fields
+- Modify layout
+
+Advanced:
+- Add new Redux state
+- Extend business logic
+- Add API integration
+- Add new features
+
+────────────────────────────────────────────────────────────────────
+
+PRODUCTION CHECKLIST:
+
+□ Install dependencies
+□ Copy folder to project
+□ Integrate Redux store
+□ Test with mock data
+□ Customize UI (colors, fonts)
+□ Connect to backend API
+□ Test all currencies
+□ Test error scenarios
+□ Test on iOS & Android
+□ Test dark mode
+□ Add analytics
+□ Add transaction confirmation
+□ Test with real users
+□ Deploy!
+
+────────────────────────────────────────────────────────────────────
+
+DOCUMENTATION MAP:
+
+Getting Started          → README.md
+Integration             → INTEGRATION_GUIDE.md
+Architecture            → COMPONENT_OVERVIEW.md
+Animations              → ANIMATIONS.md
+State Management        → STATE_MANAGEMENT.md
+API Connection          → API_INTEGRATION.md
+File Reference          → INDEX.md
+Quick Summary           → SUMMARY.md
+Example Code            → App.example.tsx
+
+────────────────────────────────────────────────────────────────────
+
+VERSION: 1.0.0
+CREATED: October 9, 2025
+STATUS: Production Ready (after API integration)
+LICENSE: MIT (free to use and modify)
+
+────────────────────────────────────────────────────────────────────
+
+🎉 You're all set! Start with README.md
+
+────────────────────────────────────────────────────────────────────
+

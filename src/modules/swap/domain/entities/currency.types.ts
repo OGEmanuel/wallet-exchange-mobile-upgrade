@@ -91,3 +91,32 @@ export interface UseFetchCurrenciesReturn {
   clearCache: () => void;
 }
 
+// Type alias for react-native-swap compatibility
+export type SupportedCurrencyModel = SupportedCurrency;
+
+// Swap metadata for managing input states
+export interface SwapMetaData {
+  isDollarMode: boolean;
+  dollarValue: string | null | undefined;
+  sellInputValue: string;
+  receiveInputValue: string;
+}
+
+// Swap rate model
+export interface SwapRateModel {
+  sellAmount?: number;
+  buyAmount?: number;
+  sellRate?: number;
+  buyRate?: number;
+  sellCurrency?: SupportedCurrency;
+  buyCurrency?: SupportedCurrency;
+}
+
+// Fetch swap rate request params
+export interface FetchSwapRateRequestParams {
+  sellSupportedCurrencyId: string;
+  buySupportedCurrencyId: string;
+  buyAmount?: number;
+  sellAmount?: number;
+}
+

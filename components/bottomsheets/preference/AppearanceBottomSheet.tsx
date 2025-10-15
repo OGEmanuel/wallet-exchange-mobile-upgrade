@@ -1,12 +1,12 @@
 import { Box, CustomText } from "@/components/general";
 import { supportedLanguages } from "@/data";
+import usePreferences from "@/hooks/usePreferences";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { PinInputRef } from "@pakenfit/react-native-pin-input";
 import { useTheme } from "@shopify/restyle";
 import { Sparkles, VibrateIcon } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
@@ -49,6 +49,7 @@ const AppearanceCard = ({
           alignItems: "center",
           marginTop: 10,
         }}
+        onPress={() => onPress()}
       >
         <Box
           width={20}
@@ -95,10 +96,14 @@ const SwitchCards = ({
 
 const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const [language, setLanguage] = React.useState(supportedLanguages[0]);
-  const [isActive, setIsActive] = React.useState(false);
   const theme = useTheme<Theme>();
-  const pinref = React.useRef<PinInputRef>(null);
-  const { colorTheme } = useActiveTheme();
+  const { toggleTheme, colorTheme, themeMode, setTheme, setSystemTheme } = useActiveTheme();
+  const {
+    hapticsEnabled,
+    animationsEnabled,
+    toggleHaptics,
+    toggleAnimations,
+  } = usePreferences();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -165,8 +170,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         >
           <AppearanceCard
             title="System"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={themeMode === "system"}
+            onPress={() => setSystemTheme()}
             image={
               <Image
                 source={require("@/assets/images/systemthemeimg.png")}
@@ -178,8 +183,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Light"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={themeMode === "light"}
+            onPress={() => setTheme("light")}
             image={
               <Image
                 source={require("@/assets/images/lightmodeimg.png")}
@@ -191,8 +196,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <AppearanceCard
             title="Dark"
-            isActive={isActive}
-            onPress={() => setIsActive(true)}
+            isActive={themeMode === "dark"}
+            onPress={() => setTheme("dark")}
             image={
               <Image
                 source={require("@/assets/images/darkmodeimg.png")}
@@ -214,15 +219,15 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           <SwitchCards
             icon={<VibrateIcon color={theme.colors.bodyTextColor} size={30} />}
             title="Enable Haptics"
-            isActive={isActive}
-            onSwitchPressed={() => setIsActive(!isActive)}
+            isActive={hapticsEnabled}
+            onSwitchPressed={toggleHaptics}
           />
 
           <SwitchCards
             icon={<Sparkles color={theme.colors.bodyTextColor} size={30} />}
             title="Enable Animations"
-            isActive={isActive}
-            onSwitchPressed={() => setIsActive(!isActive)}
+            isActive={animationsEnabled}
+            onSwitchPressed={toggleAnimations}
           />
         </Box>
       </BottomSheetView>

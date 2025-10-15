@@ -311,7 +311,7 @@ export const useSwapAnimations = () => {
   const sellContainerStyle = {
     opacity: sellContainerAnim,
     transform: [{ translateY: sellCardY }, { translateX: sellCardShakeX }],
-    zIndex: 1,
+    zIndex: 0,
   };
 
   const receiveContainerStyle = {
@@ -320,7 +320,7 @@ export const useSwapAnimations = () => {
       { translateY: receiveCardY },
       { translateX: receiveCardShakeX },
     ],
-    zIndex: 2,
+    zIndex: 0,
   };
 
   const swapButtonStyle = {

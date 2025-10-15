@@ -35,6 +35,8 @@ import AppBottomSheet from "@/components/Modals/AppBottomSheet";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { ProcessedPortfolio } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
@@ -167,7 +169,56 @@ const Home = () => {
   // Retry pending wallets when user enters wallet home
   useEffect(() => {
     retryPendingWallets();
-  }, [retryPendingWallets]);
+  }, []); // Remove retryPendingWallets from dependencies to prevent multiple calls
+
+  // Check if current wallet needs account derivation
+  useEffect(() => {
+    const checkAndDeriveAccounts = async () => {
+      if (mainUserWalletGroup && portfolio) {
+        const accounts = portfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
+        console.log("🔍 Current wallet accounts:", accounts.length);
+        
+        if (accounts.length === 0) {
+          console.log("⚠️ No accounts found for current wallet, attempting to derive accounts...");
+          try {
+            // Try to derive accounts for the current wallet
+            const sdk = getSDK();
+            if (sdk && currentWalletUser) {
+              console.log("🔄 Attempting to derive accounts for wallet:", mainUserWalletGroup._id);
+              
+              // Get the seed phrase for this wallet
+              const credentials = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(mainUserWalletGroup._id);
+              if (credentials?.credential) {
+                console.log("🔄 Deriving multi-chain addresses...");
+                const addresses = await zapSDKService.deriveMultiChainAddresses(
+                  credentials.credential.toString(),
+                  0 // derivation index
+                );
+                console.log("✅ Derived addresses:", addresses);
+                
+                // Try to add accounts to existing wallet
+                console.log("🔄 Adding accounts to existing wallet...");
+                await zapSDKService.addAccountsToExistingWallet({
+                  userWalletGroupId: mainUserWalletGroup._id,
+                  seedPhrase: credentials.credential.toString()
+                });
+                console.log("✅ Accounts added successfully");
+                
+                // Refresh portfolio
+                await refreshPortfolio();
+              } else {
+                console.log("❌ No credentials found for wallet:", mainUserWalletGroup._id);
+              }
+            }
+          } catch (error) {
+            console.error("❌ Failed to derive accounts:", error);
+          }
+        }
+      }
+    };
+
+    checkAndDeriveAccounts();
+  }, [mainUserWalletGroup, portfolio, getSDK, currentWalletUser, refreshPortfolio]);
 
   // Animate card stack sliding in one after another - only when screen is focused
   useFocusEffect(
@@ -259,12 +310,12 @@ const Home = () => {
                 flexDirection="row"
               >
                 <Identicon
-                  value={mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
+                  value={mainUserWalletGroup?.name || "Wallet"}
                   size={24}
                 />
               </Box>
               <CustomText variant="body" fontSize={16} color="white">
-                {mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
+                {mainUserWalletGroup?.name || "Wallet"}
               </CustomText>
               <ChevronDown size={16} color="white" style={{ marginLeft: 4 }} />
             </Pressable>
@@ -534,12 +585,6 @@ const Home = () => {
             console.error("Failed to switch wallet:", error);
             Alert.alert("Error", "Failed to switch wallet. Please try again.");
           }
-        }}
-        onManagePress={() => {
-          // TODO: Handle manage press
-        }}
-        onAddWalletPress={() => {
-          // TODO: Handle add wallet press
         }}
         onDeleteWallet={handleDeleteWallet}
       />

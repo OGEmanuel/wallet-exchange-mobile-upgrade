@@ -1,4 +1,4 @@
-import { startVerification } from "@/assets/images";
+import images from "@/assets/images";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -56,7 +56,7 @@ export default function VerifyYourIdentity({
           Verify Your Identity
         </CustomText>
         <Image
-          source={startVerification}
+          source={images.startVerification}
           style={{
             width: 200,
             height: 200,

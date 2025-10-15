@@ -61,8 +61,12 @@ const marketSend = require("./marketSend.png");
 const activityLog = require("./activity-log.png");
 const login = require("./login.png");
 const sumsub = require("./sumsub.png");
+const checkbox = require("./checkbox.png");
 const sumsubLighting = require("./lightening-light.png");
 const sumsubLightingDark = require("./lightening.png");
+const arrowRight = require("./arrow-right.png");
+const scan = require("./scan.png");
+const chevronDown = require("./chevronDown.png");
 
 export default {
   apple,
@@ -127,4 +131,8 @@ export default {
   sumsub,
   sumsubLighting,
   sumsubLightingDark,
+  checkbox,
+  arrowRight,
+  scan,
+  chevronDown,
 };

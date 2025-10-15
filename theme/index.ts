@@ -19,6 +19,9 @@ const COLOR_PALLET = {
   borderColor: "#4C4C54",
   inActiveBtnColor: "#5A5D64",
   success: "#35B592",
+  successColor: "#35B592",
+  warningColor: "#FF9800",
+  warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
   placeholderTextColor: "#A7A7AF",
@@ -37,6 +40,9 @@ const COLOR_PALLET = {
   cardGradientEnd: "#764ba2",
   cardTextColor: "#000000",
   cardIconBg: "rgba(0,0,0,0.2)",
+  surfaceContainer: "#1F232D",
+  cardBorder: "#39393F",
+  tabBarLemonColor: "#232B0F",
 };
 
 const DARK_COLOR_PALLET = {
@@ -58,6 +64,9 @@ const DARK_COLOR_PALLET = {
   borderColor: "#4C4C54",
   inActiveBtnColor: "#5A5D64",
   success: "#35B592",
+  successColor: "#35B592",
+  warningColor: "#FF9800",
+  warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
   placeholderTextColor: "#A7A7AF",
@@ -76,6 +85,8 @@ const DARK_COLOR_PALLET = {
   cardGradientEnd: "#764ba2",
   cardTextColor: "#000000",
   cardIconBg: "rgba(0,0,0,0.2)",
+  surfaceContainer: "#1F232D",
+  cardBorder: "#39393F",
 };
 
 const theme = createTheme({

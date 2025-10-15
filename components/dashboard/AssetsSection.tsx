@@ -220,7 +220,7 @@ const AssetsSection = ({
     );
   }
 
-  if (!portfolio || portfolio.enabledAssets.length === 0) {
+  if (!portfolio || !portfolio.enabledAssets || portfolio.enabledAssets.length === 0) {
     return (
       <Box width={"100%"} flex={1} style={{ marginBottom: 60 }}>
         <Box
@@ -322,12 +322,12 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
       if (sdk && sdk.tokens) {
         // Use SDK to toggle token status
         if (enabled) {
-          await sdk.tokens.enableToken({
+          await zapSDKService.enableToken({
             userWalletGroupId: props.mainUserWalletGroup._id,
             supportedCurrencyId: assetId,
           });
         } else {
-          await sdk.tokens.disableToken({
+          await zapSDKService.disableToken({
             userWalletGroupId: props.mainUserWalletGroup._id,
             supportedCurrencyId: assetId,
           });

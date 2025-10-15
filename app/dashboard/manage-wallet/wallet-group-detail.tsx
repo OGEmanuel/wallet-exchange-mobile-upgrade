@@ -16,14 +16,22 @@ import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { ArrowLeft, ChevronRight, CloudOff, Plus } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput } from "react-native";
 
 interface WalletGroupDetailProps {}
 
 const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   const theme = useTheme<Theme>();
-  const { userWalletGroups, getSDK, refreshPortfolio, refreshUserWalletGroups, isCreatingWallet: contextIsCreatingWallet, setIsCreatingWallet } = useWallet();
+  const {
+    userWalletGroups,
+    currentWalletUser,
+    getSDK,
+    refreshPortfolio,
+    refreshUserWalletGroups,
+    isCreatingWallet: contextIsCreatingWallet,
+    setIsCreatingWallet,
+  } = useWallet();
   const { walletGroupId } = useLocalSearchParams<{ walletGroupId: string }>();
 
   // State
@@ -63,6 +71,30 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       (userWalletGroup) => userWalletGroup.walletGroupId._id === walletGroupId
     ) || [];
 
+  // Check if wallet group is backed up
+  const checkBackupStatus = useCallback(async () => {
+    if (!userWalletGroup) return;
+
+    try {
+      setIsCheckingBackup(true);
+      const backups = await listWalletGroupBackups();
+      const isBackedUp = backups.some(
+        (backup) => backup.id === userWalletGroup.walletGroupId._id
+      );
+      setIsBackedUp(isBackedUp);
+    } catch (error) {
+      console.error("Error checking backup status:", error);
+      setIsBackedUp(false);
+    } finally {
+      setIsCheckingBackup(false);
+    }
+  }, [userWalletGroup]);
+
+  useEffect(() => {
+    checkBackupStatus();
+  }, [userWalletGroup, checkBackupStatus]);
+
+  // Early return after all hooks are called
   if (!userWalletGroup) {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
@@ -97,9 +129,12 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       }
 
       // Update wallet group name via SDK
-      await sdk.wallets.updateWalletGroup(userWalletGroup?.walletGroupId?._id, {
-        name: editedName,
-      });
+      await zapSDKService.updateWalletGroup(
+        userWalletGroup?.walletGroupId?._id,
+        {
+          name: editedName,
+        }
+      );
 
       // Update the local wallet group name immediately
       if (userWalletGroup) {
@@ -136,30 +171,39 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
         throw new Error("SDK not available");
       }
 
-      await sdk.wallets.deleteWalletGroup(userWalletGroup.walletGroupId._id);
+      await zapSDKService.deleteWalletGroup(userWalletGroup.walletGroupId._id);
 
       // Clear stored credentials for all user wallet groups in this wallet group
       try {
         const walletGroupId = userWalletGroup.walletGroupId._id;
-        
+
         // Get all user wallet groups for this wallet group
-        const allUserWalletGroups = userWalletGroups?.filter(
-          (group) => group.walletGroupId._id === walletGroupId
-        ) || [];
-        
-        console.log(`🧹 Clearing credentials for ${allUserWalletGroups.length} user wallet groups`);
-        
+        const allUserWalletGroups =
+          userWalletGroups?.filter(
+            (group) => group.walletGroupId._id === walletGroupId
+          ) || [];
+
+        console.log(
+          `🧹 Clearing credentials for ${allUserWalletGroups.length} user wallet groups`
+        );
+
         // Clear credentials for each user wallet group
         for (const userWalletGroupToDelete of allUserWalletGroups) {
-          await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(userWalletGroupToDelete._id);
-          
-          await PrivateKeysStorage.clearPrivateKeys(userWalletGroupToDelete._id);
+          await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(
+            userWalletGroupToDelete._id
+          );
+
+          await PrivateKeysStorage.clearPrivateKeys(
+            userWalletGroupToDelete._id
+          );
           await AddressesStorage.clearAddresses(userWalletGroupToDelete._id);
         }
-        
-        console.log('✅ Cleared stored credentials for all wallets in deleted wallet group');
+
+        console.log(
+          "✅ Cleared stored credentials for all wallets in deleted wallet group"
+        );
       } catch (error) {
-        console.error('❌ Failed to clear stored credentials:', error);
+        console.error("❌ Failed to clear stored credentials:", error);
         // Don't throw here, as the wallet group is already deleted on the server
       }
 
@@ -173,29 +217,53 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
         // Wait another 1 second before showing success modal
         setTimeout(() => {
           setShowSuccessModal(true);
-          
-          // After showing success modal, navigate to next wallet group or setup
-          setTimeout(() => {
+
+          // After showing success modal, refresh wallet groups and navigate
+          setTimeout(async () => {
             setShowSuccessModal(false);
-            
-            // Find remaining user wallet groups
-            const remainingUserWalletGroups = userWalletGroups?.filter(
-              (group) => group.walletGroupId._id !== userWalletGroup.walletGroupId._id
-            ) || [];
-            
-            if (remainingUserWalletGroups.length > 0) {
-              // Navigate to the first remaining wallet group
-              const nextWalletGroup = remainingUserWalletGroups[0];
-              router.push(`/dashboard/manage-wallet/wallet-group-detail?walletGroupId=${nextWalletGroup.walletGroupId._id}`);
-            } else {
-              router.push('/select-track');
-            }
+
+            // Refresh wallet groups first to get updated list
+            await refreshUserWalletGroups();
+            await refreshPortfolio();
+
+            // Wait a bit for state to update, then navigate
+            setTimeout(async () => {
+              try {
+                // Get fresh wallet groups directly from SDK to ensure we have the latest data
+                if (!currentWalletUser) {
+                  router.replace("/dashboard/home/wallet-home/home");
+                  return;
+                }
+                const freshWalletGroups =
+                  await zapSDKService.getUserWalletGroups(currentWalletUser);
+                const walletGroupsArray = Array.isArray(freshWalletGroups)
+                  ? freshWalletGroups
+                  : freshWalletGroups?.userWalletGroups || [];
+
+                // Filter out the deleted wallet group
+                const remainingWalletGroups = walletGroupsArray.filter(
+                  (group) =>
+                    group.walletGroupId._id !==
+                    userWalletGroup.walletGroupId._id
+                );
+
+                if (remainingWalletGroups.length > 0) {
+                  // Navigate to the first remaining wallet group
+                  const nextWalletGroup = remainingWalletGroups[0];
+                  router.replace(
+                    `/dashboard/manage-wallet/wallet-group-detail?walletGroupId=${nextWalletGroup.walletGroupId._id}`
+                  );
+                } else {
+                  router.replace("/select-track");
+                }
+              } catch (navError) {
+                console.error("Navigation error:", navError);
+                router.replace("/dashboard/home/wallet-home/home");
+              }
+            }, 500); // Wait for state to update
           }, 2000); // Show success modal for 2 seconds
         }, 1000);
       }, 1000);
-
-      await refreshUserWalletGroups();
-      await refreshPortfolio();
     } catch (error) {
       console.error("❌ Failed to delete wallet group:", error);
       setShowPinModal(false);
@@ -209,36 +277,15 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   };
 
   const handleWalletPress = (userWalletGroup: any) => {
-    router.push(`/dashboard/manage-wallet/wallet-detail?walletId=${userWalletGroup?.walletId?._id}`);
+    router.push(
+      `/dashboard/manage-wallet/wallet-detail?walletId=${userWalletGroup?.walletId?._id}`
+    );
   };
 
   const handleRecoveryPhrase = () => {
     // TODO: Navigate to recovery phrase screen
     Alert.alert("Recovery Phrase", "Navigate to recovery phrase screen");
   };
-
-  // Check if wallet group is backed up
-  const checkBackupStatus = async () => {
-    if (!userWalletGroup) return;
-
-    try {
-      setIsCheckingBackup(true);
-      const backups = await listWalletGroupBackups();
-      const isBackedUp = backups.some(
-        (backup) => backup.id === userWalletGroup.walletGroupId._id
-      );
-      setIsBackedUp(isBackedUp);
-    } catch (error) {
-      console.error("Error checking backup status:", error);
-      setIsBackedUp(false);
-    } finally {
-      setIsCheckingBackup(false);
-    }
-  };
-
-  useEffect(() => {
-    checkBackupStatus();
-  }, [userWalletGroup]);
 
   const handleBackupWallet = () => {
     if (isBackedUp) {
@@ -563,7 +610,9 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
             {walletsInGroup.map((userWalletGroup: any, index: number) => {
               const wallet = userWalletGroup.walletId;
               const walletName =
-                wallet?.name || `Wallet ${wallet?._id?.slice(-4) || "Unknown"}`;
+                userWalletGroup.name ||
+                wallet?.name ||
+                `Wallet ${wallet?._id?.slice(-4) || "Unknown"}`;
               const walletAddress = wallet?.address || "0x...";
               const walletBalance = wallet?.totalUsdValue
                 ? `$${wallet.totalUsdValue}`
@@ -584,7 +633,15 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
                     borderBottomColor="borderColor"
                   >
                     <Box marginRight="m" borderRadius={5} overflow="hidden">
-                      <Identicon value={wallet?.name || wallet?._id || wallet?._id || "0x0000000000000000000000000000000000000000"} size={32} />
+                      <Identicon
+                        value={
+                          userWalletGroup.name ||
+                          wallet?.name ||
+                          wallet?._id ||
+                          "0x0000000000000000000000000000000000000000"
+                        }
+                        size={32}
+                      />
                     </Box>
                     <Box flex={1}>
                       <CustomText
