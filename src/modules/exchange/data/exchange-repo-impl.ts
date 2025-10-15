@@ -1,5 +1,5 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
-import { ExchangeActivity } from '@zap/blockchain-sdk';
+import { ExchangeActivityModel } from '@zap/blockchain-sdk';
 import { UserModel } from "../../kyc/domain/entities/models/user-model";
 import { ExchangeRepo } from "../domain/exchange-repo";
 import { ExchangeRemoteDataSourceImpl } from "./remote/exchange-remote-datasource-impl";
@@ -18,7 +18,7 @@ export class ExchangeRepoImpl implements ExchangeRepo {
   //   }
   // }
 
-  async fetchExchangeActivities(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<ExchangeActivity[]>> {
+  async fetchExchangeActivities(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
     try {
       return await this.remoteDatasource.fetchExchangeActivities(payload);
     } catch (error) {

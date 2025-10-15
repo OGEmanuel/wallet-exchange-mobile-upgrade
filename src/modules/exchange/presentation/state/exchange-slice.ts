@@ -1,9 +1,9 @@
 import { GeneralResponseModel } from '@/src/core/api/http-types';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ExchangeActivity } from '@zap/blockchain-sdk';
+import { ExchangeActivityModel } from '@zap/blockchain-sdk';
 
 interface ExchangeState {
-  exchangeActivities: GeneralResponseModel<ExchangeActivity[]> | null;
+  exchangeActivities: GeneralResponseModel<ExchangeActivityModel[]> | null;
 }
 
 const initialState: ExchangeState = {
@@ -14,7 +14,7 @@ const exchangeSlice = createSlice({
   name: 'exchange',
   initialState,
   reducers: {
-    setExchangeActivities: (state, action: PayloadAction<GeneralResponseModel<ExchangeActivity[]>>) => {
+    setExchangeActivities: (state, action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>) => {
       state.exchangeActivities = action.payload;
     },
   },
