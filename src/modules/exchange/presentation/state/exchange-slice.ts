@@ -12,6 +12,7 @@ import { ExchangeActivityModel } from "@zap/blockchain-sdk";
 
 interface ExchangeState {
   exchangeActivities: GeneralResponseModel<ExchangeActivityModel[]> | null;
+<<<<<<< HEAD
 =======
 import { ExchangeActivity } from '@zap/blockchain-sdk';
 
@@ -24,6 +25,9 @@ import { ExchangeActivityModel } from '@zap/blockchain-sdk';
 interface ExchangeState {
   exchangeActivities: GeneralResponseModel<ExchangeActivityModel[]> | null;
 >>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
+=======
+  exchangeActivities: GeneralResponseModel<ExchangeActivityModel[]> | null;
+>>>>>>> 5886560 (chore: update package-lock and yarn.lock for dependency version changes)
 }
 
 const initialState: ExchangeState = {

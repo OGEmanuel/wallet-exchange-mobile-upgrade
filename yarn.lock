@@ -1453,6 +1453,37 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+<<<<<<< HEAD
+=======
+"@napi-rs/wasm-runtime@^0.2.11":
+  version "0.2.12"
+  resolved "https://registry.yarnpkg.com/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz#3e78a8b96e6c33a6c517e1894efbd5385a7cb6f2"
+  integrity sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==
+  dependencies:
+    "@noble/hashes" "1.8.0"
+
+"@noble/curves@~1.4.0", "@noble/curves@1.4.2":
+  version "1.4.2"
+  resolved "https://registry.npmjs.org/@noble/curves/-/curves-1.4.2.tgz"
+  integrity sha512-TavHr8qycMChk8UwMld0ZDRvatedkzWfH8IiaeGCfymOP5i0hSCozz9vHOL0nkwk7HRMlFnAiKpS2jrUmSybcw==
+  dependencies:
+    "@noble/hashes" "1.4.0"
+
+"@noble/curves@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.2.0.tgz#92d7e12e4e49b23105a2555c6984d41733d65c35"
+  integrity sha512-oYclrNgRaM9SsBUBVbb8M6DTV7ZHRTKugureoYEncY5c65HOmRzvSiTE3y5CYaPYJA/GVkrhXEoF0M3Ya9PMnw==
+  dependencies:
+    "@noble/hashes" "1.3.2"
+
+"@noble/curves@2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-2.0.1.tgz#64ba8bd5e8564a02942655602515646df1cdb3ad"
+  integrity sha512-vs1Az2OOTBiP4q0pwjW5aF0xp9n4MxVrmkFBxc6EKZc6ddYx5gaZiAsZoq0uRRXWbi3AT/sBqn05eRPtn1JCPw==
+  dependencies:
+    "@noble/hashes" "2.0.1"
+
+>>>>>>> 5886560 (chore: update package-lock and yarn.lock for dependency version changes)
 "@noble/curves@^1.4.2":
   version "1.9.7"
   resolved "https://registry.npmjs.org/@noble/curves/-/curves-1.9.7.tgz"
@@ -2599,6 +2630,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#75b3a0c2b2904f7499ee0677c1ec86a1a2c61794"
 =======
   resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#c654edcd1f113e8abcb7240f7fd0ce8e1b73d5e5"
@@ -2609,6 +2641,9 @@
 =======
   resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#d89c63280d6679d5c320b09610a6c57d57744347"
 >>>>>>> f1060a2 (refactor: update KYC data handling and integrate new SDK methods)
+=======
+  resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#541052001ea7f6c47088c766f515b59a4d10b3b5"
+>>>>>>> 5886560 (chore: update package-lock and yarn.lock for dependency version changes)
   dependencies:
     "@noble/ed25519" "^2.0.0"
     "@noble/hashes" "^1.3.0"
