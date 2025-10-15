@@ -1,10 +1,14 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+<<<<<<< HEAD
 import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
+=======
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
 import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
+<<<<<<< HEAD
 import { UpdateUsernameParams } from "../../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
@@ -17,6 +21,19 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     const result = await sdk.exchangeAuth.sendOtp(payload.body);
 
     const data = {
+=======
+import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
+import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
+import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-phone-number-otp-params";
+import { KycRemoteDatasource } from "./kyc-remote-datasource";
+
+  export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
+  async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+    const sdk = zapSDKService.getSDK();
+    const result = await sdk.exchangeAuth.sendOtp(payload.body?.email || "");
+
+    return {
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
       success: result.success,
       message: result.message,
       data: result.data,
@@ -24,10 +41,13 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       refreshToken: null,
       error: null,
     };
+<<<<<<< HEAD
 
     console.log("Response Data", data);
 
     return data;
+=======
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
   }
 
   async fetchUserById(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<UserModel>> {
@@ -39,8 +59,13 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<AuthVerificationModel>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.validateOtp({
+<<<<<<< HEAD
       email: payload.body?.email || null,
       otp: payload.body?.otp || null,
+=======
+      email: payload.body?.email || "",
+      otp: payload.body?.otp || "",
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
     });
 
     return {
@@ -55,6 +80,7 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
 
   async addUsername(payload: GeneralRequestModel<AddUsernameParams, unknown, UserModel>): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
+<<<<<<< HEAD
     const result = await sdk.users.completeOnboarding(
       payload.extra?._id || null,
       {
@@ -63,11 +89,17 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
         referralCode: payload.body?.referralCode || null,
       }
     );
+=======
+    const result = await sdk.users.completeOnboarding({
+      username: payload.body?.username || "",
+    });
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
     return result;
   }
 
   async authPhoneNumber(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
+<<<<<<< HEAD
     const result = await sdk.exchangeAuth.updatePhoneNumber({
       phone: payload?.body?.phone || null,
       countryCode: payload?.body?.countryCode || null,
@@ -82,10 +114,15 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       refreshToken: null,
       error: null,
     };
+=======
+    const result = await sdk.sendAuthPhoneNumberOtp(payload.body?.phoneNumber || "");
+    return result;
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
   }
 
   async verifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
+<<<<<<< HEAD
     const result = await sdk.exchangeAuth.verifyPhoneNumberOtp({
       phone: payload.body?.identifier || null,
       otp: payload.body?.otp || null,
@@ -95,11 +132,19 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       success: result.success,
       message: result.message,
       data: null,
+=======
+    const result = await sdk.validateExchangeOtp(payload.body?.phoneNumber || "", payload.body?.otp || "");
+    return {
+      success: result.success,
+      message: result.message,
+      data: result.data,
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
       token: null,
       refreshToken: null,
       error: null,
     };
   }
+<<<<<<< HEAD
 
   async resendPhoneNumberOtp(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
@@ -136,4 +181,6 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     const result = await sdk.users.updateProfile(user._id || null, payload.body);
     return result;
   }
+=======
+>>>>>>> 3e75e08 (chore: update package-lock and yarn.lock for dependency version changes)
 }
