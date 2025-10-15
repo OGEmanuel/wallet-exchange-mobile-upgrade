@@ -1,4 +1,3 @@
-import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AppRootState } from "@/state";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
@@ -14,7 +13,7 @@ interface SettingsState {
   biometricEnabled: boolean;
   activeChain: null | ChainModel;
   activeBank: BankModel | null;
-  activeCurrency: CurrencyModel | null;
+  activeCurrency: string | null;
   settings: SettingsModel | null;
 }
 
@@ -45,7 +44,7 @@ const settingsSlice = createSlice({
     setActiveBank: (state, action: PayloadAction<BankModel>) => {
       state.activeBank = action.payload;
     },
-    setActiveCurrency: (state, action: PayloadAction<CurrencyModel>) => {
+    setActiveCurrency: (state, action: PayloadAction<string>) => {
       state.activeCurrency = action.payload;
     },
     setSettings: (state, action: PayloadAction<SettingsModel>) => {
