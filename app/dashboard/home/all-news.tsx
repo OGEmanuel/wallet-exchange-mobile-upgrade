@@ -86,7 +86,7 @@ export default function AllNews() {
                 <Box
                   key={news.id || index}
                   width="100%"
-                  bg="secondaryBackgroundColor"
+                  bg="modalBackgroundColor"
                   borderRadius={16}
                   marginBottom="s"
                   padding="m"

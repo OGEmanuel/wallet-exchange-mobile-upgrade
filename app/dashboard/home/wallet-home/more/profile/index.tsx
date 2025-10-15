@@ -21,7 +21,6 @@ import { User } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
 const ItemCard = ({
@@ -126,8 +125,17 @@ const ProfilePage = () => {
   return (
     <PageWrapper>
       <SettingsHeader title="Profile" onBackPress={() => router.back()} />
-      <Box flex={1} mt="m">
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20 }}>
+      <Box
+        flex={1}
+        mt="m"
+        paddingHorizontal="m"
+        flexDirection="column"
+        justifyContent="space-between"
+      >
+        <Box>
+          {/* <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 20 }}
+        > */}
           <LinearGradient
             colors={["#6045FF", "#1B1251"]}
             style={{
@@ -206,9 +214,29 @@ const ProfilePage = () => {
               <ItemCard key={index.toString()} {...item} />
             ))}
           </Box>
-        </ScrollView>
+          {/* </ScrollView> */}
+        </Box>
+        <Box
+          paddingHorizontal="m"
+          paddingVertical="m"
+          backgroundColor="mainBackgroundColor"
+          style={{ marginBottom: 100 }}
+        >
+          <CustomButton
+            width={"100%"}
+            borderRadius={50}
+            bgColor={theme.colors.secondaryBackgroundColor}
+            text="Delete Account"
+            color={theme.colors.error}
+            onPress={() =>
+              router.push(
+                "/dashboard/home/wallet-home/more/profile/delete-account"
+              )
+            }
+          />
+        </Box>
       </Box>
-      <Box paddingHorizontal="m">
+      {/* <Box paddingHorizontal="m">
         <CustomButton
           width={"100%"}
           borderRadius={50}
@@ -217,7 +245,7 @@ const ProfilePage = () => {
           color={theme.colors.error}
           onPress={() => {}}
         />
-      </Box>
+      </Box> */}
     </PageWrapper>
   );
 };

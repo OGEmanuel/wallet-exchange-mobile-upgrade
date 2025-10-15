@@ -297,7 +297,7 @@ const Explore = () => {
         existingData={!currentData}
       >
         <Box
-          bg="secondaryBackgroundColor"
+          bg="modalBackgroundColor"
           flex={1}
           borderRadius={8}
           marginTop="s"
