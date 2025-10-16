@@ -53,6 +53,20 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access camera for scanning QR codes"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
@@ -61,6 +75,9 @@
               "android.defaultConfig.missingDimensionStrategy": "react-native-camera, general"
             },
             "enableMinifyInReleaseBuilds": false
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
           }
         }
       ]
