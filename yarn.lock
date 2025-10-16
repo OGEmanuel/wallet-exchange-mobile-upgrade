@@ -2230,17 +2230,17 @@
   dependencies:
     tslib "^2.8.0"
 
-"@tanstack/query-core@5.90.4":
-  version "5.90.4"
-  resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-5.90.4.tgz#1950ad0de6c2d7b0f4eb4715b63499a1a21e1c16"
-  integrity sha512-+IbzYym9wonJss2+ZXrQqdGhPozHV8BzgZRRHxkLtL2Oq+/wAuwkLMKXk6NbAbbj+Ipgd/kMjUenjGWfwKYDwA==
+"@tanstack/query-core@5.90.3":
+  version "5.90.3"
+  resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-5.90.3.tgz#461422437d30aad0a7618122c5e7568095d79cfb"
+  integrity sha512-HtPOnCwmx4dd35PfXU8jjkhwYrsHfuqgC8RCJIwWglmhIUIlzPP0ZcEkDAc+UtAWCiLm7T8rxeEfHZlz3hYMCA==
 
 "@tanstack/react-query@^5.87.4":
-  version "5.90.4"
-  resolved "https://registry.yarnpkg.com/@tanstack/react-query/-/react-query-5.90.4.tgz#3c3bfab717211d6e95461de03ddf37b01b20dd38"
-  integrity sha512-0XU3puEd6J/EFVc/myHKDyp5s0NpEP4xa8k1t4rXPxg/rDIM9EdSDfNdukwgPxxnAjzaMunF1Bhx4I4MaJdWVA==
+  version "5.90.3"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-query/-/react-query-5.90.3.tgz#670ed97948c5d4e3c075049f8a01e84d51e0bdc4"
+  integrity sha512-i/LRL6DtuhG6bjGzavIMIVuKKPWx2AnEBIsBfuMm3YoHne0a20nWmsatOCBcVSaT0/8/5YFjNkebHAPLVUSi0Q==
   dependencies:
-    "@tanstack/query-core" "5.90.4"
+    "@tanstack/query-core" "5.90.3"
 
 "@tybys/wasm-util@^0.10.0":
   version "0.10.1"
@@ -4976,7 +4976,7 @@ expo-web-browser@~15.0.6:
   resolved "https://registry.yarnpkg.com/expo-web-browser/-/expo-web-browser-15.0.8.tgz#9425ad225255a49b9163006db9ed9578f399585d"
   integrity sha512-gn+Y2ABQr6/EvFN/XSjTuzwsSPLU1vNVVV0wNe4xXkcSnYGdHxt9kHxs9uLfoCyPByoaGF4VxzAhHIMI7yDcSg==
 
-expo@^54.0.13:
+expo@~54.0.1:
   version "54.0.13"
   resolved "https://registry.yarnpkg.com/expo/-/expo-54.0.13.tgz#e81897f3517487e4423d21eff7507d9d0c40e2f2"
   integrity sha512-F1puKXzw8ESnsbvaKdXtcIiyYLQ2kUHqP8LuhgtJS1wm6w55VhtOPg8yl/0i8kPbTA0YfD+KYdXjSfhPXgUPxw==

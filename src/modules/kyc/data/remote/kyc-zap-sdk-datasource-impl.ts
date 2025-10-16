@@ -1,6 +1,14 @@
-import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
+import {
+  GeneralRequestModel,
+  GeneralResponseModel,
+} from "@/src/core/api/http-types";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
+import {
+  AuthPhoneNumberParams,
+  CreditDocumentDataParam,
+  SubmitVerificationParams,
+  VerifyPhoneNumberOtpParams,
+} from "@zap/blockchain-sdk";
 import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
@@ -10,13 +18,13 @@ import { VerifyEmailParams } from "../../domain/entities/params/verify-email-par
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
 export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
-  async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
-    console.log("KycZapSdkDataSourceImpl", payload);
-
+  async authEmail(
+    payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.exchangeAuth.sendOtp(payload.body);
+    const result = await sdk.exchangeAuth.sendOtp(payload.body?.email || "");
 
-    const data = {
+    return {
       success: result.success,
       message: result.message,
       data: result.data,
@@ -24,19 +32,19 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       refreshToken: null,
       error: null,
     };
-
-    console.log("Response Data", data);
-
-    return data;
   }
 
-  async fetchUserById(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<UserModel>> {
+  async fetchUserById(
+    payload: GeneralRequestModel<UserModel, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.users.getProfile(payload.body?._id || "");
     return result.data;
   }
 
-  async verifyEmail(payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>): Promise<GeneralResponseModel<AuthVerificationModel>> {
+  async verifyEmail(
+    payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<AuthVerificationModel>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.validateOtp({
       email: payload.body?.email || null,
@@ -53,7 +61,9 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     };
   }
 
-  async addUsername(payload: GeneralRequestModel<AddUsernameParams, unknown, UserModel>): Promise<GeneralResponseModel<unknown>> {
+  async addUsername(
+    payload: GeneralRequestModel<AddUsernameParams, unknown, UserModel>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.users.completeOnboarding(
       payload.extra?._id || null,
@@ -66,7 +76,9 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     return result;
   }
 
-  async authPhoneNumber(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async authPhoneNumber(
+    payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.updatePhoneNumber({
       phone: payload?.body?.phone || null,
@@ -84,7 +96,9 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     };
   }
 
-  async verifyPhoneNumberOtp(payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async verifyPhoneNumberOtp(
+    payload: GeneralRequestModel<VerifyPhoneNumberOtpParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.verifyPhoneNumberOtp({
       phone: payload.body?.identifier || null,
@@ -101,7 +115,9 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     };
   }
 
-  async resendPhoneNumberOtp(payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async resendPhoneNumberOtp(
+    payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.updatePhoneNumber({
       phone: payload?.body?.phone || null,
@@ -119,21 +135,31 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     };
   }
 
-  async uploadCreditDocument(payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async uploadCreditDocument(
+    payload: GeneralRequestModel<CreditDocumentDataParam, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.verifications.submitCreditDocument(payload.body);
     return result;
   }
 
-  async uploadIdentityDocument(payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+  async uploadIdentityDocument(
+    payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.verifications.submitIdentityDocument(payload.body);
     return result;
   }
 
-  async updateUserDetails(payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>, user: UserModel): Promise<GeneralResponseModel<unknown>> {
+  async updateUserDetails(
+    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
+    user: UserModel
+  ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.users.updateProfile(user._id || null, payload.body);
+    const result = await sdk.users.updateProfile(
+      user._id || null,
+      payload.body
+    );
     return result;
   }
 }
