@@ -16,7 +16,7 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.exchangeAuth.sendOtp(payload.body);
 
-    return {
+    const data = {
       success: result.success,
       message: result.message,
       data: result.data,
@@ -24,6 +24,10 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       refreshToken: null,
       error: null,
     };
+
+    console.log("Response Data", data);
+
+    return data;
   }
 
   async fetchUserById(payload: GeneralRequestModel<UserModel, unknown, unknown>): Promise<GeneralResponseModel<UserModel>> {
