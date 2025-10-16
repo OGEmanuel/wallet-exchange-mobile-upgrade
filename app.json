@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.newzapwalletexchange"
+      "bundleIdentifier": "com.anonymous.newzapwalletexchange",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -56,7 +59,8 @@
             "enableProguardInReleaseBuilds": false,
             "extraGradleProperties": {
               "android.defaultConfig.missingDimensionStrategy": "react-native-camera, general"
-            }
+            },
+            "enableMinifyInReleaseBuilds": false
           }
         }
       ]
