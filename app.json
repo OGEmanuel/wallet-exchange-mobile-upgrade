@@ -53,7 +53,10 @@
         "expo-build-properties",
         {
           "android": {
-            "enableProguardInReleaseBuilds": false
+            "enableProguardInReleaseBuilds": false,
+            "extraGradleProperties": {
+              "android.defaultConfig.missingDimensionStrategy": "react-native-camera, general"
+            }
           }
         }
       ]
