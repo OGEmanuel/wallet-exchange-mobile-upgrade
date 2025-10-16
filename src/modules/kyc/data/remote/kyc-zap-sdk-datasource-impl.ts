@@ -11,8 +11,10 @@ import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
 export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   async authEmail(payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>): Promise<GeneralResponseModel<unknown>> {
+    console.log("KycZapSdkDataSourceImpl", payload);
+
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.exchangeAuth.sendOtp(payload.body?.email || "");
+    const result = await sdk.exchangeAuth.sendOtp(payload.body);
 
     return {
       success: result.success,
