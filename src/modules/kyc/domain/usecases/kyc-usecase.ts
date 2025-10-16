@@ -2,15 +2,13 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
+import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
 import { KycRepoImpl } from "../../data/kyc-repo-impl";
 import { UserModel } from "../entities/models/user-model";
 import { AddUsernameParams } from "../entities/params/add-username-params";
 import { AuthEmailParams } from "../entities/params/auth-email-params";
-import { AuthPhoneNumberParams } from "../entities/params/auth-phone-number-params";
-import { CreditDocumentDataParam } from "../entities/params/credit-document-data-param";
 import { UpdateUsernameParams } from "../entities/params/update-username-params";
 import { VerifyEmailParams } from "../entities/params/verify-email-params";
-import { VerifyPhoneNumberOtpParams } from "../entities/params/verify-phone-number-otp-params";
 
 export class KycUsecases {
   private readonly repo = new KycRepoImpl();
@@ -52,7 +50,7 @@ export class KycUsecases {
   }
 
   async executeUploadIdentityDocument(
-    payload: GeneralRequestModel<FormData, unknown, unknown>
+    payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     return this.repo.uploadIdentityDocument(payload);
   }
@@ -62,5 +60,11 @@ export class KycUsecases {
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>> {
     return this.repo.updateUserDetails(payload, user);
+  }
+
+  async executeFetchUserById(
+    payload: GeneralRequestModel<UserModel, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
+    return this.repo.fetchUserById(payload);
   }
 }
