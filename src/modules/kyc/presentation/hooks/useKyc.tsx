@@ -2,14 +2,13 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { StorageKeys, TokenData } from "@/src/core/api/models";
+import { StorageKeys } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
+import { SubmitVerificationParams } from "@zap/blockchain-sdk";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
-import { SubmitVerificationParams } from "../../domain/entities/models/submit-verification-params";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -155,7 +154,8 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
+    ) => {
+    // ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,
@@ -163,36 +163,36 @@ const useKyc = () => {
         extra: null,
       });
 
-      const authVerificationData = response.data;
+      // const authVerificationData = response.data;
 
-      if (authVerificationData) {
-        try {
-          // const responseData = response.data as any;
-          const tokenData: TokenData = {
-            token: responseData.token || null,
-            refreshToken: responseData.refreshToken || null,
-            expiresAt:
-              responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
-          };
+      // if (authVerificationData) {
+      //   try {
+      //     // const responseData = response.data as any;
+      //     // const tokenData: TokenData = {
+      //     //   // token: responseData.token || null,
+      //     //   // refreshToken: responseData.refreshToken || null,
+      //     //   // expiresAt:
+      //     //   //   responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
+      //     // };
 
-          // Only save if we have at least a token
-          if (tokenData.token) {
-            await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-            console.log("Tokens stored successfully after email verification", {
-              hasToken: !!tokenData.token,
-              hasRefreshToken: !!tokenData.refreshToken,
-              expiresAt: tokenData.expiresAt,
-            });
-          } else {
-            console.warn("No token found in response data");
-          }
-        } catch (error) {
-          console.error(
-            "Failed to store tokens after email verification:",
-            error
-          );
-        }
-      }
+      //     // Only save if we have at least a token
+      //     // if (tokenData.token) {
+      //     //   // await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+      //     //   // console.log("Tokens stored successfully after email verification", {
+      //     //   //   hasToken: !!tokenData.token,
+      //     //   //   hasRefreshToken: !!tokenData.refreshToken,
+      //     //   //   expiresAt: tokenData.expiresAt,
+      //     //   // });
+      //     // } else {
+      //     //   console.warn("No token found in response data");
+      //     // }
+      //   } catch (error) {
+      //     console.error(
+      //       "Failed to store tokens after email verification:",
+      //       error
+      //     );
+      //   }
+      // }
 
       return response;
     },

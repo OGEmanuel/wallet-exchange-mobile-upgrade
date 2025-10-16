@@ -68,12 +68,13 @@ const SwitchTab: React.FC<SwitchTabProps> = ({
     <Box width="100%" paddingHorizontal="m">
       <Box
         width="100%"
-        height={50}
+        height={46}
         bg="secondaryBackgroundColor"
         borderRadius={48}
         alignItems="center"
         flexDirection="row"
-        padding="s"
+        // padding="s"
+        style={{ padding: 5 }}
         position="relative"
       >
         {/* Animated active tab background */}

@@ -149,7 +149,7 @@ const WalletSelectorBottomSheet = ({
     onDeleteWallet?.(wallet);
   };
 
-  const handlePinSuccess = async (pin: string) => {
+  const handlePinSuccess = async (_: string) => {
     try {
       // Get SDK instance
       const sdk = getSDK();

@@ -87,7 +87,8 @@ const MarketTableItem: React.FC<MarketTableItemProps> = ({
           </CustomText>
           <Box
             flexDirection="row"
-            gap="s"
+            // gap="s"
+            style={{ gap: 3 }}
             alignItems="center"
             width={60}
             justifyContent="flex-end"
