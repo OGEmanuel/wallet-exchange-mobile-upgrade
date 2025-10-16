@@ -11,8 +11,9 @@ import React, { RefObject, forwardRef, useCallback } from "react";
 import { useSelector } from "react-redux";
 import Box from "../../general/Box";
 
-const WhatIsNetworkFeeBottomsheet = forwardRef<BottomSheet, {}>(
-  (props, ref) => {
+const WhatIsNetworkFeeBottomsheet = forwardRef<BottomSheet, { networkName?: string }>(
+  (props: { networkName?: string }, ref) => {
+    const { networkName } = props;
     const stage = useSelector(selectStage);
     const theme = useTheme<Theme>();
     const renderBackdrop = useCallback(
@@ -30,7 +31,7 @@ const WhatIsNetworkFeeBottomsheet = forwardRef<BottomSheet, {}>(
       <BottomSheet
         ref={ref}
         index={-1}
-        snapPoints={["30%"]}
+        snapPoints={["35%"]}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
         style={{
@@ -43,12 +44,7 @@ const WhatIsNetworkFeeBottomsheet = forwardRef<BottomSheet, {}>(
             justifyContent="center"
             alignItems="center"
           >
-            <Box
-              height={4}
-              bg="secondaryBackgroundColor"
-              width={50}
-              borderRadius={2}
-            />
+            <Box height={4} bg="white" width={50} borderRadius={2} />
           </Box>
         )}
       >
@@ -68,16 +64,14 @@ const WhatIsNetworkFeeBottomsheet = forwardRef<BottomSheet, {}>(
                 What is Network Fee ?
               </CustomText>
               <CustomText fontSize={14} mt="m">
-                This is “gas fee” used by the "Network" lockchain to validate
-                your transaction securely.
+                This is “gas fee” used by the {networkName} blockchain to
+                validate your transaction securely.
               </CustomText>
-
               <CustomText fontSize={14} mt="m">
                 This fee is dynamic and varies depending on the network demand
                 and congestion. (How busy it is)
               </CustomText>
             </Box>
-            <Box height={30} />
             <CustomButton
               text="Got it"
               onPress={() =>

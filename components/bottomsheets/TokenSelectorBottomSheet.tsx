@@ -51,7 +51,6 @@ const TokenSelectorBottomSheet = forwardRef<BottomSheet, TokenSelectorBottomShee
     }, [mode, onTokenSelect, dispatch, ref]);
 
     const handleModalClose = useCallback(() => {
-      console.log("🎯 TOKEN SELECTOR: Bottom sheet closed");
       // Reset stage when modal closes
       dispatch(setStage("token"));
       // Call the onClose prop if provided

@@ -178,7 +178,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
           fontSize={16}
           color="headerTextColor"
           textAlign="center"
-          marginBottom="l"
+          marginVertical="m"
         >
           Scan QR code to receive {selectedToken.symbol}
         </CustomText>
@@ -232,7 +232,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
           </Box>
 
           <Pressable onPress={handleCopyAddress} style={{ marginLeft: 12 }}>
-            <Copy size={20} color={theme.colors.primaryColor} />
+            <Copy size={20} color={theme.colors.secondaryColor} />
           </Pressable>
         </Box>
       </Box>

@@ -17,17 +17,24 @@ export interface SendTransactionRequest {
   fromAddress: string;
   toAddress: string;
   amount: string | number;
-  chainSymbol: string;
   privateKey: string;
+  chain: string; // Updated to use 'chain' instead of 'chainSymbol'
+  // Optional parameters for different blockchain types
+  tokenAddress?: string; // For ERC20/TRC20 tokens
+  tokenMintAddress?: string; // For SPL tokens
+  rpcUrl?: string; // Custom RPC endpoint
+  utxos?: { // For Bitcoin transactions
+    txid: string;
+    vout: number;
+    value: number;
+  }[];
+  // Legacy parameters for backward compatibility
   gasPrice?: string | number;
   gasLimit?: string | number;
   maxFeePerGas?: string | number; // EIP-1559
   maxPriorityFeePerGas?: string | number; // EIP-1559
-  tokenAddress?: string; // For ERC-20 tokens
-  tokenMintAddress?: string; // For SPL tokens (Solana)
-  tokenContractAddress?: string; // For TRC-20 tokens (Tron)
-  tokenDecimals?: number; // Token decimals for all token types
-  memo?: string; // For Solana and Tron memo support
+  tokenDecimals?: number;
+  memo?: string;
   nonce?: number;
 }
 
@@ -60,14 +67,14 @@ class ZapSDKService {
   private sdk: ZapSDK | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<boolean> | null = null;
-  
+
   // Circuit breaker for authentication failures
   private authFailureCount = 0;
   private maxAuthFailures = 2; // Reduced from 3 to 2 for faster response
   private authFailureWindow = 5 * 60 * 1000; // 5 minutes
   private lastAuthFailure = 0;
   private isAuthCircuitOpen = false;
-  
+
   // Retry loop detection
   private retryLoopDetection = {
     consecutiveAuthErrors: 0,
@@ -106,10 +113,10 @@ class ZapSDKService {
    */
   public async forceStop(): Promise<void> {
     console.log('🛑 Force stopping SDK operations...');
-    
+
     // Reset circuit breaker
     this.resetAuthCircuitBreakerInternal();
-    
+
     // Try to cleanup SDK if possible
     try {
       if (this.sdk) {
@@ -118,12 +125,12 @@ class ZapSDKService {
     } catch (error) {
       console.warn('⚠️ Error during force cleanup:', error);
     }
-    
+
     // Reset all state
     this.sdk = null;
     this.isInitialized = false;
     this.initializationPromise = null;
-    
+
     console.log('✅ SDK force stopped and circuit breaker reset');
   }
 
@@ -132,11 +139,11 @@ class ZapSDKService {
    */
   public emergencyStop(): void {
     console.log('🚨 EMERGENCY STOP - Disabling SDK completely');
-    
+
     // Open circuit breaker immediately
     this.isAuthCircuitOpen = true;
     this.authFailureCount = this.maxAuthFailures;
-    
+
     // Try to disconnect WebSocket if possible
     try {
       if (this.sdk && typeof this.sdk.disconnect === 'function') {
@@ -145,7 +152,7 @@ class ZapSDKService {
     } catch (error) {
       console.warn('⚠️ Error disconnecting SDK:', error);
     }
-    
+
     console.log('🚨 SDK emergency stopped - all operations blocked');
   }
 
@@ -154,24 +161,24 @@ class ZapSDKService {
    */
   public disableSDKRetries(): void {
     console.log('🛑 Disabling SDK internal retry mechanisms...');
-    
+
     try {
       if (this.sdk) {
         // Try to disable internal retry logic if the SDK exposes such methods
         if (typeof this.sdk.setRetryEnabled === 'function') {
           this.sdk.setRetryEnabled(false);
         }
-        
+
         // Try to disable auto-refresh if available
         if (typeof this.sdk.setAutoRefresh === 'function') {
           this.sdk.setAutoRefresh(false);
         }
-        
+
         // Try to clear any pending retry timers
         if (typeof this.sdk.clearRetryTimers === 'function') {
           this.sdk.clearRetryTimers();
         }
-        
+
         console.log('✅ SDK retry mechanisms disabled');
       }
     } catch (error) {
@@ -208,13 +215,13 @@ class ZapSDKService {
     if (!this.sdk) {
       throw new Error('SDK not initialized. Call initialize() first.');
     }
-    
+
     // Block SDK access if circuit breaker is open
     if (this.shouldBlockSDKOperation()) {
       console.warn('🚨 SDK access blocked - circuit breaker is open');
       throw new Error('SDK access blocked due to authentication circuit breaker. Please try again later.');
     }
-    
+
     return this.sdk;
   }
 
@@ -223,18 +230,18 @@ class ZapSDKService {
    */
   public destroySDK(): void {
     console.log('💥 Destroying SDK instance to stop all operations...');
-    
+
     try {
       if (this.sdk) {
         // Try to cleanup and destroy the SDK
         if (typeof this.sdk.cleanup === 'function') {
           this.sdk.cleanup();
         }
-        
+
         if (typeof this.sdk.destroy === 'function') {
           this.sdk.destroy();
         }
-        
+
         if (typeof this.sdk.disconnect === 'function') {
           this.sdk.disconnect();
         }
@@ -246,7 +253,7 @@ class ZapSDKService {
       this.sdk = null;
       this.isInitialized = false;
       this.initializationPromise = null;
-      
+
       console.log('💥 SDK instance destroyed');
     }
   }
@@ -256,13 +263,13 @@ class ZapSDKService {
    */
   private isAuthCircuitBreakerOpen(): boolean {
     const now = Date.now();
-    
+
     // Reset failure count if outside the window
     if (now - this.lastAuthFailure > this.authFailureWindow) {
       this.authFailureCount = 0;
       this.isAuthCircuitOpen = false;
     }
-    
+
     return this.isAuthCircuitOpen;
   }
 
@@ -272,19 +279,19 @@ class ZapSDKService {
   private recordAuthFailure(): void {
     this.authFailureCount++;
     this.lastAuthFailure = Date.now();
-    
+
     console.warn(`🔒 Auth failure ${this.authFailureCount}/${this.maxAuthFailures}`);
-    
+
     // Check for retry loop pattern
     this.detectRetryLoop();
-    
+
     if (this.authFailureCount >= this.maxAuthFailures) {
       this.isAuthCircuitOpen = true;
       console.warn('🚨 Authentication circuit breaker opened due to repeated failures');
-      
+
       // Immediately destroy SDK to stop all internal retries
       this.destroySDK();
-      
+
       // Then attempt automatic re-login
       this.attemptAutoRelogin();
     }
@@ -296,18 +303,18 @@ class ZapSDKService {
   private detectRetryLoop(): void {
     const now = Date.now();
     const { consecutiveAuthErrors, lastAuthErrorTime, maxConsecutiveErrors, errorWindow } = this.retryLoopDetection;
-    
+
     // Reset counter if enough time has passed
     if (now - lastAuthErrorTime > errorWindow) {
       this.retryLoopDetection.consecutiveAuthErrors = 1;
     } else {
       this.retryLoopDetection.consecutiveAuthErrors++;
     }
-    
+
     this.retryLoopDetection.lastAuthErrorTime = now;
-    
+
     console.warn(`🔄 Retry loop detection: ${this.retryLoopDetection.consecutiveAuthErrors}/${maxConsecutiveErrors} consecutive errors`);
-    
+
     // If we detect a retry loop, emergency stop
     if (this.retryLoopDetection.consecutiveAuthErrors >= maxConsecutiveErrors) {
       console.error('🚨 RETRY LOOP DETECTED - Emergency stopping SDK!');
@@ -320,38 +327,38 @@ class ZapSDKService {
    */
   private interceptSDKRetries(): void {
     if (!this.sdk) return;
-    
+
     try {
       // Try to access and disable internal retry mechanisms
       const sdk = this.sdk as any;
-      
+
       // Disable HTTP interceptors if possible
       if (sdk.httpClient && sdk.httpClient.interceptors) {
         sdk.httpClient.interceptors.request.clear();
         sdk.httpClient.interceptors.response.clear();
         console.log('🛑 Cleared HTTP interceptors');
       }
-      
+
       // Disable WebSocket reconnection if possible
       if (sdk.wsClient && typeof sdk.wsClient.disconnect === 'function') {
         sdk.wsClient.disconnect();
         console.log('🛑 Disconnected WebSocket');
       }
-      
+
       // Disable any retry timers
       if (sdk.retryTimer) {
         clearTimeout(sdk.retryTimer);
         sdk.retryTimer = null;
         console.log('🛑 Cleared retry timer');
       }
-      
+
       // Disable any refresh timers
       if (sdk.refreshTimer) {
         clearTimeout(sdk.refreshTimer);
         sdk.refreshTimer = null;
         console.log('🛑 Cleared refresh timer');
       }
-      
+
     } catch (error) {
       console.warn('⚠️ Could not intercept SDK retries:', error);
     }
@@ -371,7 +378,7 @@ class ZapSDKService {
    */
   private isAuthError(error: any): boolean {
     if (!error) return false;
-    
+
     const authErrorPatterns = [
       'Validation failed',
       'Authentication failed',
@@ -381,11 +388,11 @@ class ZapSDKService {
       '401',
       '403'
     ];
-    
+
     const errorMessage = error.message || error.toString() || '';
     const errorCode = error.code || error.status || '';
-    
-    return authErrorPatterns.some(pattern => 
+
+    return authErrorPatterns.some(pattern =>
       errorMessage.toLowerCase().includes(pattern.toLowerCase()) ||
       errorCode.toString().includes(pattern)
     );
@@ -404,25 +411,45 @@ class ZapSDKService {
         console.warn('🚨 Circuit breaker is OPEN - blocking SDK call:', context);
         throw new Error('Authentication circuit breaker is open. Please try again later.');
       }
-      
+
       console.log(`🔄 Executing SDK call: ${context}`);
       return await operation();
-    } catch (error) {
+    } catch (error: any) {
       console.log(`❌ SDK call failed: ${context}`, error.message);
-      
+
       // Check if it's an auth error and record failure
       if (this.isAuthError(error)) {
         this.recordAuthFailure();
         console.warn(`🔒 Authentication error in ${context}:`, error.message);
         console.warn(`🔒 Circuit breaker status:`, this.getCircuitBreakerStatus());
-        
+
         // If this is the second failure, immediately trigger circuit breaker
         if (this.authFailureCount >= this.maxAuthFailures) {
           console.warn('🚨 Triggering immediate circuit breaker due to repeated auth failures');
           this.triggerCircuitBreaker();
         }
       }
-      
+
+      const networkError = NetworkErrorHandler.handleSDKError(error, context);
+      throw networkError;
+    }
+  }
+
+  /**
+   * Execute SDK call with network error handling but NO authentication circuit breaker
+   * Used for blockchain operations that don't require authentication
+   */
+  public async executeWithNetworkHandlingNoAuth<T>(
+    operation: () => Promise<T>,
+    context: string = 'SDK operation'
+  ): Promise<T> {
+    try {
+      console.log(`🔄 Executing SDK call (no auth check): ${context}`);
+      return await operation();
+    } catch (error: any) {
+      console.log(`❌ SDK call failed: ${context}`, error.message);
+
+      // Handle the error with network error handler
       const networkError = NetworkErrorHandler.handleSDKError(error, context);
       throw networkError;
     }
@@ -511,22 +538,34 @@ class ZapSDKService {
 
   // Blockchain Operations
   public async deriveMultiChainAddresses(seedPhrase: string, walletDepth: number) {
-    return this.executeWithNetworkHandling(
+    return this.executeWithNetworkHandlingNoAuth(
       () => this.getSDK().blockchain.deriveMultiChainAddresses(seedPhrase, walletDepth),
       'deriveMultiChainAddresses'
     );
   }
 
   public async deriveAddress(seedPhrase: string, chainSymbol: string, walletDepth: number = 0) {
-    return this.executeWithNetworkHandling(
+    return this.executeWithNetworkHandlingNoAuth(
       () => this.getSDK().blockchain.deriveAddress(seedPhrase, chainSymbol, walletDepth),
       'deriveAddress'
     );
   }
 
   public async sendTransaction(params: SendTransactionRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().blockchain.sendTransaction(params),
+    return this.executeWithNetworkHandlingNoAuth(
+      () => this.getSDK().sendTransaction(
+        params.fromAddress,
+        params.toAddress,
+        Number(params.amount),
+        params.privateKey,
+        params.chain,
+        {
+          tokenAddress: params.tokenAddress,
+          tokenMintAddress: params.tokenMintAddress,
+          rpcUrl: params.rpcUrl,
+          utxos: params.utxos,
+        }
+      ),
       'sendTransaction'
     );
   }
@@ -537,7 +576,7 @@ class ZapSDKService {
       () => this.getSDK().walletAuth.login(params),
       'login'
     );
-    
+
     // Reset circuit breaker on successful login
     this.resetAuthCircuitBreakerInternal();
     return result;
@@ -738,7 +777,7 @@ class ZapSDKService {
   } {
     const now = Date.now();
     const timeUntilReset = Math.max(0, this.authFailureWindow - (now - this.lastAuthFailure));
-    
+
     return {
       isOpen: this.isAuthCircuitOpen,
       failureCount: this.authFailureCount,
@@ -752,13 +791,13 @@ class ZapSDKService {
   public testCircuitBreaker(): void {
     console.log('🧪 Testing circuit breaker...');
     console.log('Current status:', this.getCircuitBreakerStatus());
-    
+
     // Simulate auth failures
     for (let i = 0; i < 5; i++) {
       this.recordAuthFailure();
       console.log(`Simulated failure ${i + 1}:`, this.getCircuitBreakerStatus());
     }
-    
+
     console.log('Final status:', this.getCircuitBreakerStatus());
   }
 
@@ -801,39 +840,16 @@ class ZapSDKService {
    */
   public forceStopSDK(): void {
     console.log('🛑 Force stopping SDK and triggering circuit breaker...');
-    
+
     // Immediately open circuit breaker
     this.isAuthCircuitOpen = true;
     this.authFailureCount = this.maxAuthFailures;
     this.lastAuthFailure = Date.now();
-    
+
     // Destroy SDK to stop all operations
     this.destroySDK();
-    
-    console.log('🛑 SDK force stopped and circuit breaker opened');
-  }
 
-  /**
-   * Emergency stop - immediately destroy SDK and block all operations
-   */
-  public emergencyStop(): void {
-    console.log('🚨 EMERGENCY STOP - Destroying SDK immediately...');
-    
-    // Force open circuit breaker
-    this.isAuthCircuitOpen = true;
-    this.authFailureCount = this.maxAuthFailures;
-    this.lastAuthFailure = Date.now();
-    
-    // Intercept and block SDK internal retries first
-    this.interceptSDKRetries();
-    
-    // Try to disable any internal retry mechanisms
-    this.disableSDKRetries();
-    
-    // Immediately destroy SDK
-    this.destroySDK();
-    
-    console.log('🚨 EMERGENCY STOP COMPLETE - All SDK operations halted');
+    console.log('🛑 SDK force stopped and circuit breaker opened');
   }
 
   /**
@@ -841,15 +857,15 @@ class ZapSDKService {
    */
   public triggerCircuitBreaker(): void {
     console.log('🚨 Manually triggering circuit breaker...');
-    
+
     // Force open circuit breaker
     this.isAuthCircuitOpen = true;
     this.authFailureCount = this.maxAuthFailures;
     this.lastAuthFailure = Date.now();
-    
+
     // Attempt automatic re-login before destroying SDK
     this.attemptAutoRelogin();
-    
+
     console.log('🚨 Circuit breaker manually triggered - all SDK operations stopped');
   }
 
@@ -858,16 +874,16 @@ class ZapSDKService {
    */
   private async attemptAutoRelogin(): Promise<void> {
     console.log('🔄 Attempting automatic re-login...');
-    
+
     try {
       // Import the wallet context to access the existing login function
       const walletContext = await import('../wallet/wallet-context');
-      
+
       // Call the existing attemptDeviceLogin function
       // Note: This is a bit tricky since it's a React context function
       // We'll use a simpler approach by calling the SDK login directly
-      
-      
+
+
       // Get device fingerprint from secure storage (same as wallet context)
       let deviceFingerprint = await SecureStore.getItemAsync("device_fingerprint");
       if (!deviceFingerprint) {
@@ -880,24 +896,24 @@ class ZapSDKService {
           osVersion: Device.osVersion || "Unknown Version",
         });
       }
-      
+
       // Get device token (same as wallet context)
-      const deviceToken = Device.osInternalBuildId || 
-                         Device.modelId || 
-                         `unknown-${Date.now()}`;
-      
+      const deviceToken = Device.osInternalBuildId ||
+        Device.modelId ||
+        `unknown-${Date.now()}`;
+
       // Get push token (same as wallet context)
       let pushToken = "";
       if (Device.isDevice) {
         try {
           const { status: existingStatus } = await Notifications.getPermissionsAsync();
           let finalStatus = existingStatus;
-          
+
           if (existingStatus !== "granted") {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
           }
-          
+
           if (finalStatus === "granted") {
             pushToken = (await Notifications.getExpoPushTokenAsync()).data;
             console.log('📱 Push token obtained for auto re-login:', pushToken);
@@ -906,14 +922,14 @@ class ZapSDKService {
           console.warn('Failed to get push token for auto re-login:', error);
         }
       }
-      
+
       // Use the existing SDK login method (same as wallet context)
       const loginResult = await this.login({
         deviceToken,
         deviceFingerprint,
         pushToken,
       });
-      
+
       if (loginResult.success) {
         console.log('✅ Automatic re-login successful!');
         // Reset circuit breaker on successful login
@@ -925,7 +941,7 @@ class ZapSDKService {
     } catch (error) {
       console.error('❌ Automatic re-login error:', error);
     }
-    
+
     // If auto re-login fails, destroy SDK to stop all operations
     console.log('💥 Auto re-login failed, destroying SDK...');
     this.destroySDK();

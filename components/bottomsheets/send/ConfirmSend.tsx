@@ -220,10 +220,11 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
                   fontSize={22}
                   style={{ marginVertical: 4 }}
                 >
-                  {formatNumberWithCommas(amount)}{" "}
-                  {selectedToken.symbol}
+                  {formatNumberWithCommas(amount)} {selectedToken.symbol}
                 </CustomText>
-                <CustomText>{PortfolioService.formatCurrency(usdValue)}</CustomText>
+                <CustomText>
+                  {PortfolioService.formatCurrency(usdValue)}
+                </CustomText>
               </Box>
               <Box
                 width={30}
@@ -305,35 +306,33 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
           width={"100%"}
           flexDirection="row"
           justifyContent="space-between"
+          alignItems="center"
           mt="l"
+          gap="m"
         >
           <CustomButton
-            width={"49%"}
+            width="48%"
+            height={56}
             borderRadius={50}
             text="Cancel"
             bgColor={theme.colors.borderColor}
+            color={theme.colors.headerTextColor}
             onPress={onClose || (() => {})}
           />
           <CustomButton
-            width={"49%"}
+            width="48%"
+            height={56}
             borderRadius={50}
-            text={isProcessing ? "Processing..." : "Send"}
+            text="Send"
             disabled={isProcessing}
+            isLoading={isProcessing}
             trailingIcon={
-              isProcessing ? (
-                <Box ml="s">
-                  <CustomText variant="body" fontSize={12} color="white">
-                    ⏳
-                  </CustomText>
-                </Box>
-              ) : (
-                <Box ml="s">
-                  <ThemedFaceIDIcon
-                    darkModeColor={theme.colors.bodyTextColor}
-                    lightModeColor={theme.colors.bodyTextColor}
-                  />
-                </Box>
-              )
+              <Box ml="s">
+                <ThemedFaceIDIcon
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
+                />
+              </Box>
             }
             onPress={handleSendPress}
           />

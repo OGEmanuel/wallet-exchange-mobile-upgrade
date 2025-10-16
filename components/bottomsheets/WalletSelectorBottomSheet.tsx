@@ -48,7 +48,13 @@ const WalletSelectorBottomSheet = ({
 }: WalletSelectorBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
-  const { userWalletGroups, portfolio, getSDK, refreshPortfolio, refreshUserWalletGroups } = useWallet();
+  const {
+    userWalletGroups,
+    portfolio,
+    getSDK,
+    refreshPortfolio,
+    refreshUserWalletGroups,
+  } = useWallet();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
@@ -64,7 +70,10 @@ const WalletSelectorBottomSheet = ({
   // Process and group wallet groups from context
   const walletGroupsMap = new Map();
 
-  (userWalletGroups && Array.isArray(userWalletGroups) ? userWalletGroups : []).forEach((userWalletGroup) => {
+  (userWalletGroups && Array.isArray(userWalletGroups)
+    ? userWalletGroups
+    : []
+  ).forEach((userWalletGroup) => {
     // Get the actual wallet group ID and name
     const walletGroupId = userWalletGroup.walletGroupId?._id;
     const walletGroupName =
@@ -74,7 +83,9 @@ const WalletSelectorBottomSheet = ({
     // Get wallet info
     const walletInfo = userWalletGroup.walletId;
     const walletName =
-      userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
+      userWalletGroup?.name ||
+      walletInfo?.name ||
+      `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
     const totalValue = walletInfo?.totalUsdValue
       ? `$${walletInfo.totalUsdValue}`
       : "$0.00";
@@ -158,8 +169,14 @@ const WalletSelectorBottomSheet = ({
       }
 
       // Debug the wallet structure
-      console.log("🔍 walletToDelete structure:", JSON.stringify(walletToDelete, null, 2));
-      console.log("🔍 walletToDelete.walletGroupId:", walletToDelete.walletGroupId);
+      console.log(
+        "🔍 walletToDelete structure:",
+        JSON.stringify(walletToDelete, null, 2)
+      );
+      console.log(
+        "🔍 walletToDelete.walletGroupId:",
+        walletToDelete.walletGroupId
+      );
       console.log("🔍 walletToDelete keys:", Object.keys(walletToDelete));
 
       // Call SDK to delete wallet group
@@ -245,255 +262,181 @@ const WalletSelectorBottomSheet = ({
   }
 
   return (
-    <>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
-      >
-        <Box flex={1} backgroundColor="modalBackgroundColor">
-          <Pressable onPress={onClose}>
-            <Box
-              width={60}
-              alignSelf="center"
-              height={4}
-              backgroundColor="white"
-              borderRadius={2}
-              marginTop="s"
-            />
-          </Pressable>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <Box flex={1} backgroundColor="modalBackgroundColor">
+        <Pressable onPress={onClose}>
+          <Box
+            width={60}
+            alignSelf="center"
+            height={4}
+            backgroundColor="white"
+            borderRadius={2}
+            marginTop="s"
+          />
+        </Pressable>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingVertical: 25,
-              paddingBottom: 100,
-            }}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 25,
+          }}
+        >
+          {/* Portfolio Value */}
+          <Box
+            backgroundColor="modalBackgroundColor"
+            borderRadius={12}
+            padding="l"
+            marginBottom="l"
+            borderWidth={1}
+            borderColor="borderColor"
           >
-            {/* Portfolio Value */}
-            <Box
-              backgroundColor="modalBackgroundColor"
-              borderRadius={12}
-              padding="l"
-              marginBottom="l"
-              borderWidth={1}
-              borderColor="borderColor"
+            <CustomText
+              variant="body"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="s"
+              textAlign="center"
             >
-              <CustomText
-                variant="body"
-                fontSize={14}
-                color="disabledTextColor"
-                marginBottom="s"
-                textAlign="center"
-              >
-                Est. Portfolio Value
-              </CustomText>
-              <CustomText
-                variant="header"
-                fontSize={28}
-                color="headerTextColor"
-                fontWeight="bold"
-                textAlign="center"
-              >
-                {portfolioValue}
-              </CustomText>
-            </Box>
+              Est. Portfolio Value
+            </CustomText>
+            <CustomText
+              variant="header"
+              fontSize={32}
+              color="headerTextColor"
+              fontWeight="bold"
+              textAlign="center"
+            >
+              {portfolioValue}
+            </CustomText>
+          </Box>
 
-            {/* Tabs */}
-            <Box
-              flexDirection="row"
-              alignItems="center"
-              marginBottom="m"
-              paddingHorizontal="s"
-            >
-              <Box flexDirection="row" flex={1} justifyContent="flex-start">
-                <Pressable
-                  onPress={() => setActiveTab("wallets")}
-                  style={{ marginRight: 20 }}
-                >
-                  <CustomText
-                    variant="bodyBold"
-                    fontSize={16}
-                    color={
-                      activeTab === "wallets"
-                        ? "headerTextColor"
-                        : "disabledTextColor"
-                    }
-                  >
-                    My wallets
-                  </CustomText>
-                </Pressable>
-                <Pressable onPress={() => setActiveTab("watchlist")}>
-                  <CustomText
-                    variant="bodyBold"
-                    fontSize={16}
-                    color={
-                      activeTab === "watchlist"
-                        ? "headerTextColor"
-                        : "disabledTextColor"
-                    }
-                  >
-                    Watchlist
-                  </CustomText>
-                </Pressable>
-              </Box>
-              <Pressable onPress={handleManagePress}>
-                <Box
-                  backgroundColor={
-                    isManageMode
-                      ? "secondaryBackgroundColor"
-                      : "modalBackgroundColor"
+          {/* Tabs */}
+          <Box
+            flexDirection="row"
+            alignItems="center"
+            marginBottom="m"
+            paddingHorizontal="s"
+          >
+            <Box flexDirection="row" flex={1} justifyContent="flex-start">
+              <Pressable
+                onPress={() => setActiveTab("wallets")}
+                style={{ marginRight: 20 }}
+              >
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={16}
+                  color={
+                    activeTab === "wallets"
+                      ? "headerTextColor"
+                      : "disabledTextColor"
                   }
-                  paddingHorizontal="s"
-                  paddingVertical="s"
-                  borderWidth={1}
-                  borderColor="secondaryBackgroundColor"
-                  borderRadius={20}
-                  minWidth={60}
-                  alignItems="center"
                 >
-                  <CustomText
-                    variant="body"
-                    fontSize={12}
-                    color={isManageMode ? "white" : "headerTextColor"}
-                  >
-                    {isManageMode ? "Done" : "Manage"}
-                  </CustomText>
-                </Box>
+                  My wallets
+                </CustomText>
+              </Pressable>
+              <Pressable onPress={() => setActiveTab("watchlist")}>
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={16}
+                  color={
+                    activeTab === "watchlist"
+                      ? "headerTextColor"
+                      : "disabledTextColor"
+                  }
+                >
+                  Watchlist
+                </CustomText>
               </Pressable>
             </Box>
-
-            {/* Show/Hide Groups Toggle */}
-            <Pressable
-              onPress={() => setShowGroups(!showGroups)}
-              style={{ marginBottom: 20, alignSelf: "flex-start" }}
-            >
+            <Pressable onPress={handleManagePress}>
               <Box
-                backgroundColor="secondaryBackgroundColor"
+                backgroundColor={
+                  isManageMode
+                    ? "secondaryBackgroundColor"
+                    : "modalBackgroundColor"
+                }
                 paddingHorizontal="s"
                 paddingVertical="s"
+                borderWidth={1}
+                borderColor="secondaryBackgroundColor"
                 borderRadius={20}
+                minWidth={60}
+                alignItems="center"
               >
                 <CustomText
                   variant="body"
                   fontSize={12}
-                  color="headerTextColor"
+                  color={isManageMode ? "white" : "headerTextColor"}
                 >
-                  {showGroups ? "Hide Groups" : "Show Groups"}
+                  {isManageMode ? "Done" : "Manage"}
                 </CustomText>
               </Box>
             </Pressable>
+          </Box>
 
-            {/* Wallet Groups or Flat List */}
-            {activeTab === "wallets" && (
-              <>
-                {processedWalletGroups.length === 0 ? (
-                  <Box alignItems="center" paddingVertical="xl">
-                    <CustomText
-                      variant="body"
-                      fontSize={16}
-                      color="disabledTextColor"
+          {/* Show/Hide Groups Toggle */}
+          <Pressable
+            onPress={() => setShowGroups(!showGroups)}
+            style={{ marginBottom: 20, alignSelf: "flex-start" }}
+          >
+            <Box
+              backgroundColor="secondaryBackgroundColor"
+              paddingHorizontal="s"
+              paddingVertical="s"
+              borderRadius={20}
+            >
+              <CustomText variant="body" fontSize={12} color="headerTextColor">
+                {showGroups ? "Hide Groups" : "Show Groups"}
+              </CustomText>
+            </Box>
+          </Pressable>
+
+          {/* Wallet Groups or Flat List */}
+          {activeTab === "wallets" && (
+            <>
+              {processedWalletGroups.length === 0 ? (
+                <Box alignItems="center" paddingVertical="xl">
+                  <CustomText
+                    variant="body"
+                    fontSize={16}
+                    color="disabledTextColor"
+                  >
+                    No wallet groups found
+                  </CustomText>
+                </Box>
+              ) : showGroups ? (
+                // Show grouped wallets
+                processedWalletGroups.map((group) => (
+                  <Box key={group.id} marginBottom="l">
+                    <Box
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      marginBottom="m"
                     >
-                      No wallet groups found
-                    </CustomText>
-                  </Box>
-                ) : showGroups ? (
-                  // Show grouped wallets
-                  processedWalletGroups.map((group) => (
-                    <Box key={group.id} marginBottom="l">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="m"
+                      <CustomText
+                        variant="bodyBold"
+                        fontSize={16}
+                        color="headerTextColor"
                       >
-                        <CustomText
-                          variant="bodyBold"
-                          fontSize={16}
-                          color="headerTextColor"
-                        >
-                          {group.name}
-                        </CustomText>
-                        <CustomText
-                          variant="body"
-                          fontSize={14}
-                          color="disabledTextColor"
-                        >
-                          {group.totalValue}
-                        </CustomText>
-                      </Box>
-                      {group.wallets.map((wallet: any) => (
-                        <Pressable
-                          key={wallet.id}
-                          onPress={() => handleWalletSelect(wallet)}
-                          style={({ pressed }) => ({
-                            opacity: pressed ? 0.5 : 1,
-                          })}
-                        >
-                          <Box
-                            flexDirection="row"
-                            alignItems="center"
-                            paddingVertical="m"
-                            paddingHorizontal="m"
-                            backgroundColor="modalBackgroundColor"
-                            borderRadius={12}
-                            marginBottom="s"
-                            borderWidth={1}
-                            borderColor="borderColor"
-                          >
-                            <Box marginRight="m">
-                              <Identicon value={wallet?.name || wallet._id || "0x0000000000000000000000000000000000000000"} size={40} />
-                            </Box>
-                            <Box flex={1}>
-                              <CustomText
-                                variant="bodyBold"
-                                fontSize={16}
-                                color="headerTextColor"
-                              >
-                                {wallet.name}
-                              </CustomText>
-                              <CustomText
-                                variant="body"
-                                fontSize={14}
-                                color="disabledTextColor"
-                              >
-                                {wallet.balance}
-                              </CustomText>
-                            </Box>
-                            {isManageMode ? (
-                              <Pressable
-                                onPress={(event) =>
-                                  handleDeleteWallet(wallet, event)
-                                }
-                                style={({ pressed }) => ({
-                                  padding: 8,
-                                  opacity: pressed ? 0.5 : 1,
-                                })}
-                              >
-                                <ThemedDeleteIcon />
-                              </Pressable>
-                            ) : (
-                              <>
-                                {selectedWalletGroupId ===
-                                  wallet.userWalletGroupId && (
-                                  <Box marginRight="s">
-                                    <ThemedCheckIcon />
-                                  </Box>
-                                )}
-                              </>
-                            )}
-                          </Box>
-                        </Pressable>
-                      ))}
+                        {group.name}
+                      </CustomText>
+                      <CustomText
+                        variant="body"
+                        fontSize={14}
+                        color="disabledTextColor"
+                      >
+                        {group.totalValue}
+                      </CustomText>
                     </Box>
-                  ))
-                ) : (
-                  // Show flat list
-                  allWallets.map((wallet: any) => {
-                    return (
+                    {group.wallets.map((wallet: any) => (
                       <Pressable
                         key={wallet.id}
                         onPress={() => handleWalletSelect(wallet)}
@@ -513,7 +456,14 @@ const WalletSelectorBottomSheet = ({
                           borderColor="borderColor"
                         >
                           <Box marginRight="m">
-                            <Identicon value={wallet?.name || wallet._id || "0x0000000000000000000000000000000000000000"} size={40} />
+                            <Identicon
+                              value={
+                                wallet?.name ||
+                                wallet._id ||
+                                "0x0000000000000000000000000000000000000000"
+                              }
+                              size={40}
+                            />
                           </Box>
                           <Box flex={1}>
                             <CustomText
@@ -555,73 +505,146 @@ const WalletSelectorBottomSheet = ({
                           )}
                         </Box>
                       </Pressable>
-                    );
-                  })
-                )}
-              </>
-            )}
+                    ))}
+                  </Box>
+                ))
+              ) : (
+                // Show flat list
+                allWallets.map((wallet: any) => {
+                  return (
+                    <Pressable
+                      key={wallet.id}
+                      onPress={() => handleWalletSelect(wallet)}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.5 : 1,
+                      })}
+                    >
+                      <Box
+                        flexDirection="row"
+                        alignItems="center"
+                        paddingVertical="m"
+                        paddingHorizontal="m"
+                        backgroundColor="modalBackgroundColor"
+                        borderRadius={12}
+                        marginBottom="s"
+                        borderWidth={1}
+                        borderColor="borderColor"
+                      >
+                        <Box marginRight="m">
+                          <Identicon
+                            value={
+                              wallet?.name ||
+                              wallet._id ||
+                              "0x0000000000000000000000000000000000000000"
+                            }
+                            size={40}
+                          />
+                        </Box>
+                        <Box flex={1}>
+                          <CustomText
+                            variant="bodyBold"
+                            fontSize={16}
+                            color="headerTextColor"
+                          >
+                            {wallet.name}
+                          </CustomText>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="disabledTextColor"
+                          >
+                            {wallet.balance}
+                          </CustomText>
+                        </Box>
+                        {isManageMode ? (
+                          <Pressable
+                            onPress={(event) =>
+                              handleDeleteWallet(wallet, event)
+                            }
+                            style={({ pressed }) => ({
+                              padding: 8,
+                              opacity: pressed ? 0.5 : 1,
+                            })}
+                          >
+                            <ThemedDeleteIcon />
+                          </Pressable>
+                        ) : (
+                          <>
+                            {selectedWalletGroupId ===
+                              wallet.userWalletGroupId && (
+                              <Box marginRight="s">
+                                <ThemedCheckIcon />
+                              </Box>
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    </Pressable>
+                  );
+                })
+              )}
+            </>
+          )}
 
-            {/* Watchlist Tab */}
-            {activeTab === "watchlist" && (
-              <Box alignItems="center" paddingVertical="xl">
-                <CustomText
-                  variant="body"
-                  fontSize={16}
-                  color="disabledTextColor"
-                >
-                  No watchlist items yet
-                </CustomText>
-              </Box>
-            )}
-          </ScrollView>
+          {/* Watchlist Tab */}
+          {activeTab === "watchlist" && (
+            <Box alignItems="center" paddingVertical="xl">
+              <CustomText
+                variant="body"
+                fontSize={16}
+                color="disabledTextColor"
+              >
+                No watchlist items yet
+              </CustomText>
+            </Box>
+          )}
+        </ScrollView>
 
-          {/* Add New Wallet Button */}
-          <Box
-            paddingHorizontal="m"
-            paddingVertical="m"
-            pb="xl"
-            borderTopColor="borderColor"
-          >
-            <CustomButton
-              bgColor={theme.colors.primaryColor}
-              text="Add New Wallet"
-              leadingIcon={<ThemedAddIcon />}
-              onPress={handleAddWalletPress}
-              width="100%"
-              borderRadius={50}
-            />
-          </Box>
+        {/* Add New Wallet Button */}
+        <Box
+          paddingHorizontal="m"
+          paddingVertical="m"
+          pb="xl"
+          borderTopColor="borderColor"
+        >
+          <CustomButton
+            bgColor={theme.colors.primaryColor}
+            text="Add New Wallet"
+            leadingIcon={<ThemedAddIcon />}
+            onPress={handleAddWalletPress}
+            width="100%"
+            borderRadius={50}
+          />
         </Box>
+      </Box>
 
-        {/* Remove Wallet Modal - Outside main modal */}
-        <RemoveWalletModal
-          visible={localShowDeleteModal}
-          onClose={() => {
-            console.log("🗑️ Cancel delete clicked");
-            setLocalShowDeleteModal(false);
-            handleCancelDelete();
-          }}
-          onConfirm={() => {
-            console.log("🗑️ Confirm delete clicked - showing PIN modal");
-            setShowPinModal(true);
-          }}
-          walletName={walletToDelete?.name || "wallet group"}
-          showPinModal={showPinModal}
-          setShowPinModal={setShowPinModal}
-          handlePinSuccess={handlePinSuccess}
-        />
-        {/* Success Modal */}
-        <SuccessModal
-          visible={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          title="Wallet Deleted"
-          message="Wallet group has been successfully deleted from your account."
-          buttonText="Continue"
-          onButtonPress={() => setShowSuccessModal(false)}
-        />
-
-      </Modal>
-    </>
+      {/* Remove Wallet Modal - Outside main modal */}
+      <RemoveWalletModal
+        visible={localShowDeleteModal}
+        onClose={() => {
+          console.log("🗑️ Cancel delete clicked");
+          setLocalShowDeleteModal(false);
+          handleCancelDelete();
+        }}
+        onConfirm={() => {
+          console.log("🗑️ Confirm delete clicked - showing PIN modal");
+          setShowPinModal(true);
+        }}
+        walletName={walletToDelete?.name || "wallet group"}
+        showPinModal={showPinModal}
+        setShowPinModal={setShowPinModal}
+        handlePinSuccess={handlePinSuccess}
+      />
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Wallet Deleted"
+        message="Wallet group has been successfully deleted from your account."
+        buttonText="Continue"
+        onButtonPress={() => setShowSuccessModal(false)}
+      />
+    </Modal>
   );
 };
 

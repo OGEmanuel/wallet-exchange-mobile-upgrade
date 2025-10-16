@@ -1,18 +1,11 @@
 import ActionButtons from "@/components/dashboard/ActionButtons";
 import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
 import PageWrapper from "@/components/general/PageWrapper";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Animated,
-  BackHandler,
-  Pressable,
-  RefreshControl,
-} from "react-native";
+import { Animated, BackHandler, Pressable, RefreshControl } from "react-native";
 // import { DrawerNavigationProp } from "@react-navigation/drawer";
 import {
   ThemedScanIcon,
@@ -20,53 +13,50 @@ import {
 } from "@/assets/svg/wallet-icons-components";
 import { DebitCardComponent } from "@/assets/svg/wallet-icons-components/DebitCardIcon";
 import TokenSelectorBottomSheet from "@/components/bottomsheets/TokenSelectorBottomSheet";
-import WalletSelectorBottomSheet from "@/components/bottomsheets/WalletSelectorBottomSheet";
 import AssetsSection from "@/components/dashboard/AssetsSection";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import StickyHeader from "@/components/dashboard/StickyHeader";
-import { AppBar } from "@/components/general";
-import Identicon from "@/components/general/Identicon";
-import AppBottomSheet from "@/components/Modals/AppBottomSheet";
+import WalletSelectorHeader from "@/components/dashboard/WalletSelectorHeader";
+import { AppBar, CustomButton } from "@/components/general";
 import { PortfolioService } from "@/services/portfolio.service";
-import zapSDKService from "@/src/core/sdk/zap-sdk.service";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import { setAllSupportedTokens, setPortfolioError, setPortfolioLoading, setProcessedPortfolio, setRawPortfolio } from "@/state/reducers/portfolio.reducer";
+import {
+  setAllSupportedTokens,
+  setPortfolioError,
+  setPortfolioLoading,
+  setProcessedPortfolio,
+  setRawPortfolio,
+} from "@/state/reducers/portfolio.reducer";
 import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { ChevronDown } from "lucide-react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import Svg, { Path, SvgProps } from "react-native-svg";
 import { useDispatch, useSelector } from "react-redux";
 
 const Home = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
-  const [showWalletSelector, setShowWalletSelector] = useState(false);
-  const [walletToDelete, setWalletToDelete] = useState<any>(null);
-  
+
   // Redux state
   const dispatch = useDispatch();
   const processedPortfolio = useSelector(selectProcessedPortfolio);
-  
+
   const {
     retryPendingWallets,
     mainUserWalletGroup,
     portfolio,
     refreshPortfolio,
-    switchWallet,
     getSDK,
     isLoading,
-    isWalletAuthenticated,
     currentWalletUser,
-    error: walletError,
   } = useWallet();
 
   // Handle pull-to-refresh
@@ -85,11 +75,6 @@ const Home = () => {
       setIsRefreshing(false);
     }
   }, [refreshPortfolio, portfolio]);
-
-  // Handle wallet selector button press
-  const handleWalletSelectorPress = () => {
-    setShowWalletSelector(true);
-  };
 
   // Process portfolio data when it changes and store in Redux
   useEffect(() => {
@@ -126,9 +111,11 @@ const Home = () => {
     React.useCallback(() => {
       if (mainUserWalletGroup && !isLoading && !hasFetchedPortfolio.current) {
         hasFetchedPortfolio.current = true;
+        // Set loading state when starting to fetch
+        dispatch(setPortfolioLoading(true));
         refreshPortfolio();
       }
-    }, [mainUserWalletGroup, isLoading, refreshPortfolio])
+    }, [mainUserWalletGroup, isLoading, refreshPortfolio, dispatch])
   );
 
   // Reset fetch flag when portfolio changes
@@ -166,12 +153,11 @@ const Home = () => {
       />
     </Svg>
   );
-  // const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   // Retry pending wallets when user enters wallet home
   useEffect(() => {
     retryPendingWallets();
-  }, []); // Remove retryPendingWallets from dependencies to prevent multiple calls
+  }, [retryPendingWallets]);
 
   // Check if current wallet needs account derivation
   useEffect(() => {
@@ -201,15 +187,7 @@ const Home = () => {
                   mainUserWalletGroup._id
                 );
               if (credentials?.credential) {
-                console.log("🔄 Deriving multi-chain addresses...");
-                const addresses = await zapSDKService.deriveMultiChainAddresses(
-                  credentials.credential.toString(),
-                  0 // derivation index
-                );
-                console.log("✅ Derived addresses:", addresses);
-
                 // Try to add accounts to existing wallet
-                console.log("🔄 Adding accounts to existing wallet...");
                 await zapSDKService.addAccountsToExistingWallet({
                   userWalletGroupId: mainUserWalletGroup._id,
                   seedPhrase: credentials.credential.toString(),
@@ -274,17 +252,6 @@ const Home = () => {
     return () => backHandler.remove();
   }, []);
 
-  const handleDeleteWallet = (wallet: any) => {
-    console.log("🗑️ Delete wallet from home:", wallet);
-    console.log("🗑️ Setting showDeleteModal to true");
-    setWalletToDelete(wallet);
-    console.log("🗑️ Delete modal state updated");
-  };
-
-  const handleCancelDelete = () => {
-    setWalletToDelete(null);
-  };
-
   return (
     <PageWrapper>
       <StickyHeader
@@ -294,7 +261,7 @@ const Home = () => {
         portfolioChangePercentage={0} // We don't have change data from the API
       />
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, marginBottom: 50 }}
         showsVerticalScrollIndicator={false}
         decelerationRate={10000}
         onScroll={(event) => {
@@ -314,57 +281,37 @@ const Home = () => {
       >
         <AppBar
           title={
-            <Pressable
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                opacity: pressed ? 0.5 : 1,
-              })}
-              onPress={handleWalletSelectorPress}
-            >
-              <Box
-                width={24}
-                height={24}
-                borderRadius={4}
-                marginRight="s"
-                overflow="hidden"
-                flexDirection="row"
-              >
-                <Identicon
-                  value={mainUserWalletGroup?.name || "Wallet"}
-                  size={24}
-                />
-              </Box>
-              <CustomText variant="body" fontSize={16} color="white">
-                {mainUserWalletGroup?.name || "Wallet"}
-              </CustomText>
-              <ChevronDown size={16} color="white" style={{ marginLeft: 4 }} />
-            </Pressable>
+            <WalletSelectorHeader
+              currentUserWalletGroup={mainUserWalletGroup}
+            />
           }
           leading={
-            <Pressable
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.5 : 1,
-              })}
+            <CustomButton
+              leadingIcon={
+                <ThemedSettingsOutlineIcon
+                  darkModeColor={theme.colors.white}
+                  lightModeColor={theme.colors.white}
+                  width={24}
+                  height={24}
+                />
+              }
               onPress={() => router.push("/dashboard/manage-wallet")}
-            >
-              <ThemedSettingsOutlineIcon
-                darkModeColor={theme.colors.white}
-                lightModeColor={theme.colors.white}
-                width={24}
-                height={24}
-              />
-            </Pressable>
+              bgColor="transparent"
+            />
           }
           trailing={
-            <Pressable>
-              <ThemedScanIcon
-                darkModeColor={theme.colors.white}
-                lightModeColor={theme.colors.white}
-                width={24}
-                height={24}
-              />
-            </Pressable>
+            <CustomButton
+              leadingIcon={
+                <ThemedScanIcon
+                  darkModeColor={theme.colors.white}
+                  lightModeColor={theme.colors.white}
+                  width={24}
+                  height={24}
+                />
+              }
+              onPress={() => {}}
+              bgColor="transparent"
+            />
           }
         />
         <LinearGradient
@@ -378,14 +325,15 @@ const Home = () => {
             overflow: "hidden",
           }}
         >
-          <Box height={15} />
+          <Box height={10} />
           <BalanceCard
             portfolioValue={processedPortfolio?.totalUsdValue || 0}
             portfolioChange={0} // We don't have change data from the API
             portfolioChangePercentage={0} // We don't have change data from the API
             walletName={mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
+            isLoading={isLoading}
           />
-          <Box mt="xl">
+          <Box mt="l">
             <ActionButtons
               onReceive={() => recieveTokenRef.current?.snapToIndex(1)}
               onSend={() => {
@@ -393,7 +341,7 @@ const Home = () => {
               }}
               onTrade={() => {}}
               onSwap={() => {
-                router.push("/dashboard/home/wallet-home/exchange");
+                router.push("/dashboard/home/wallet-home/swap");
               }}
               size={50}
               iconSize={20}
@@ -489,27 +437,6 @@ const Home = () => {
         </LinearGradient>
 
         <Box flex={0.4} paddingHorizontal="m">
-          {/* Debug info - remove this later */}
-          {/* {__DEV__ && (
-            <Box mb="m" p="s" bg="secondaryBackgroundColor" borderRadius={8}>
-              <CustomText color="white" fontSize={12}>
-                Debug: Portfolio {portfolio ? "exists" : "null"}, Processed{" "}
-                {processedPortfolio ? "exists" : "null"}, Loading{" "}
-                {isLoading ? "yes" : "no"}
-              </CustomText>
-              <CustomButton
-                onPress={() => {
-                  console.log("🔍 Manual portfolio refresh triggered");
-                  refreshPortfolio();
-                }}
-                text="Refresh Portfolio"
-                width={120}
-                height={30}
-                fontSize={10}
-              />
-            </Box>
-          )} */}
-
           <AssetsSection
             mainUserWalletGroup={mainUserWalletGroup}
             onRefreshPortfolio={refreshPortfolio}
@@ -532,12 +459,6 @@ const Home = () => {
           />
         </Box>
       </ScrollView>
-
-      <AppBottomSheet isVisible={isOpen} onClose={() => setIsOpen(false)}>
-        <Box>
-          <CustomText>Recieve Tokens</CustomText>
-        </Box>
-      </AppBottomSheet>
       <TokenSelectorBottomSheet
         key="send-token-selector"
         ref={sendTokenRef}
@@ -553,31 +474,6 @@ const Home = () => {
         }}
       />
       <TokenSelectorBottomSheet ref={recieveTokenRef} mode="receive" />
-
-      <WalletSelectorBottomSheet
-        visible={showWalletSelector}
-        onClose={() => setShowWalletSelector(false)}
-        selectedWalletGroupId={mainUserWalletGroup?._id}
-        handleCancelDelete={handleCancelDelete}
-        walletToDelete={walletToDelete}
-        onWalletSelect={async (selectedUserWalletGroup: any) => {
-          // Don't close if selecting the same wallet
-          if (selectedUserWalletGroup._id === mainUserWalletGroup?._id) {
-            setShowWalletSelector(false);
-            return;
-          }
-
-          try {
-            // Switch to the selected wallet
-            await switchWallet(selectedUserWalletGroup._id);
-            setShowWalletSelector(false);
-          } catch (error) {
-            console.error("Failed to switch wallet:", error);
-            Alert.alert("Error", "Failed to switch wallet. Please try again.");
-          }
-        }}
-        onDeleteWallet={handleDeleteWallet}
-      />
     </PageWrapper>
   );
 };

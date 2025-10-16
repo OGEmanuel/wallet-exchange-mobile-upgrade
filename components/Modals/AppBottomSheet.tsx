@@ -13,6 +13,9 @@ interface AppBottomSheetProps {
   minHeight?: number;
   maxHeight?: number;
   dismissable?: boolean;
+  bgColor?: string;
+  showTopBar?: boolean;
+  padding?: number;
 }
 
 const AppBottomSheet = ({
@@ -21,7 +24,10 @@ const AppBottomSheet = ({
   children,
   minHeight,
   maxHeight,
+  bgColor,
+  showTopBar = true,
   dismissable = true,
+  padding = 20,
 }: AppBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
@@ -44,15 +50,15 @@ const AppBottomSheet = ({
         <GestureDetector gesture={Gesture.Pan()}>
           <Animated.View
             style={{
-              backgroundColor: theme.colors.mainBackgroundColor,
+              backgroundColor: bgColor || theme.colors.mainBackgroundColor,
               borderTopLeftRadius: 32,
               borderTopRightRadius: 32,
-              padding: 20,
+              padding: padding,
               minHeight: minHeight,
               maxHeight: maxHeight,
             }}
           >
-            <Box
+            {showTopBar && <Box
               style={{
                 width: 60,
                 height: 4,
@@ -61,7 +67,7 @@ const AppBottomSheet = ({
                 marginBottom: dismissable ? 20 : 0,
                 alignSelf: "center",
               }}
-            ></Box>
+            ></Box>}
 
             {!dismissable && (
               <Box zIndex={4} width="100%" justifyContent="center" my="m">

@@ -1,5 +1,6 @@
 import SearchIcon from "@/assets/svg/wallet-icons-components/SearchIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
+import TokenCardSkeleton from "@/components/dashboard/TokenCardSkeleton";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
@@ -59,6 +60,7 @@ interface ManageTokensModalProps {
   onToggleToken: (assetId: string, enabled: boolean) => Promise<void>;
   onImportToken?: () => void;
   mainUserWalletGroup: any;
+  isLoading?: boolean;
 }
 
 const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
@@ -68,6 +70,7 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
   onToggleToken,
   onImportToken,
   mainUserWalletGroup,
+  isLoading = false,
 }) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -334,7 +337,13 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
             flex={1}
           >
             <ScrollView showsVerticalScrollIndicator={false}>
-              {filteredTokens.map((token, index) => (
+              {isLoading ? (
+                // Skeleton loaders for token cards
+                Array.from({ length: 5 }).map((_, index) => (
+                  <TokenCardSkeleton key={index} />
+                ))
+              ) : (
+                filteredTokens.map((token, index) => (
                 <Box
                   key={token.id}
                   flexDirection="row"
@@ -407,7 +416,8 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                     />
                   </Pressable>
                 </Box>
-              ))}
+                ))
+              )}
             </ScrollView>
           </Box>
         </Box>

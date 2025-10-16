@@ -5,9 +5,9 @@ import {
   ThemedSwap1Icon,
 } from "@/assets/svg/wallet-icons-components";
 import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import React from "react";
-import { Pressable } from "react-native";
 
 interface ActionButtonsProps {
   onReceive?: () => void;
@@ -35,16 +35,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
   textColor = "white",
   showLabels = true,
 }) => {
-  const buttonStyle = {
-    width: size,
-    height: size,
-    borderRadius: size / 2,
-    backgroundColor,
-    justifyContent: "center" as const,
-    alignItems: "center" as const,
-    marginBottom: showLabels ? 6 : 0,
-  };
-
   return (
     <Box
       width="100%"
@@ -53,88 +43,116 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
       paddingHorizontal="m"
     >
       <Box alignItems="center" flex={1}>
-        <Pressable
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.5 : 1,
-            ...buttonStyle,
-          })}
-          onPress={onReceive}
-        >
-          <ThemedQrCodeIcon
-            width={iconSize}
-            height={iconSize}
-            darkModeColor={textColor}
-            lightModeColor={textColor}
-          />
-        </Pressable>
+        <CustomButton
+          width={size}
+          height={size}
+          borderRadius={size / 2}
+          bgColor={backgroundColor}
+          text=""
+          onPress={onReceive || (() => {})}
+          leadingIcon={
+            <ThemedQrCodeIcon
+              width={iconSize}
+              height={iconSize}
+              darkModeColor={textColor}
+              lightModeColor={textColor}
+            />
+          }
+          shouldVibrate={true}
+        />
         {showLabels && (
-          <CustomText style={{ color: textColor }} fontSize={textSize}>
+          <CustomText
+            style={{ color: textColor }}
+            fontSize={textSize}
+            marginTop="s"
+          >
             Receive
           </CustomText>
         )}
       </Box>
 
       <Box alignItems="center" flex={1}>
-        <Pressable
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.5 : 1,
-            ...buttonStyle,
-          })}
-          onPress={onSend}
-        >
-          <ThemedSendIcon
-            width={iconSize}
-            height={iconSize}
-            darkModeColor={textColor}
-            lightModeColor={textColor}
-          />
-        </Pressable>
+        <CustomButton
+          width={size}
+          height={size}
+          borderRadius={size / 2}
+          bgColor={backgroundColor}
+          text=""
+          onPress={onSend || (() => {})}
+          leadingIcon={
+            <ThemedSendIcon
+              width={iconSize}
+              height={iconSize}
+              darkModeColor={textColor}
+              lightModeColor={textColor}
+            />
+          }
+          shouldVibrate={true}
+        />
         {showLabels && (
-          <CustomText style={{ color: textColor }} fontSize={textSize}>
+          <CustomText
+            style={{ color: textColor }}
+            fontSize={textSize}
+            marginTop="s"
+          >
             Send
           </CustomText>
         )}
       </Box>
 
       <Box alignItems="center" flex={1}>
-        <Pressable
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.5 : 1,
-            ...buttonStyle,
-          })}
-          onPress={onTrade}
-        >
-          <ThemedAccountFillIcon
-            width={iconSize}
-            height={iconSize}
-            darkModeColor={textColor}
-            lightModeColor={textColor}
-          />
-        </Pressable>
+        <CustomButton
+          width={size}
+          height={size}
+          borderRadius={size / 2}
+          bgColor={backgroundColor}
+          text=""
+          onPress={onTrade || (() => {})}
+          leadingIcon={
+            <ThemedAccountFillIcon
+              width={iconSize}
+              height={iconSize}
+              darkModeColor={textColor}
+              lightModeColor={textColor}
+            />
+          }
+          shouldVibrate={true}
+        />
         {showLabels && (
-          <CustomText style={{ color: textColor }} fontSize={textSize}>
+          <CustomText
+            style={{ color: textColor }}
+            fontSize={textSize}
+            marginTop="s"
+          >
             Trade
           </CustomText>
         )}
       </Box>
 
       <Box alignItems="center" flex={1}>
-        <Pressable
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.5 : 1,
-            ...buttonStyle,
-          })}
-          onPress={onSwap}
-        >
-          <ThemedSwap1Icon
-            width={iconSize}
-            height={iconSize}
-            darkModeColor={textColor}
-            lightModeColor={textColor}
-          />
-        </Pressable>
+        <CustomButton
+          width={size}
+          height={size}
+          borderRadius={size / 2}
+          bgColor={backgroundColor}
+          text=""
+          onPress={onSwap || (() => {})}
+          leadingIcon={
+            <ThemedSwap1Icon
+              width={iconSize}
+              height={iconSize}
+              darkModeColor={textColor}
+              lightModeColor={textColor}
+            />
+          }
+          shouldVibrate={true}
+        />
         {showLabels && (
-          <CustomText style={{ color: textColor }} fontSize={textSize}>
+          <CustomText
+            style={{ color: textColor }}
+            fontSize={textSize}
+            marginTop="s"
+          >
             Swap
           </CustomText>
         )}

@@ -20,14 +20,20 @@ import {
   ThemedQrCodeIcon,
   ThemedSwapIcon,
 } from "@/assets/svg/wallet-icons-components";
-import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
+import ThemedGlassIcon from "@/assets/svg/wallet-icons-components/ThemedGlassIcon";
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
+import TransactionDetailsBottomSheet from "@/components/bottomsheets/TransactionDetailsBottomSheet";
 import ActionButtons from "@/components/dashboard/ActionButtons";
+import BalanceCard from "@/components/dashboard/BalanceCard";
+import TransactionCardSkeleton from "@/components/dashboard/TransactionCardSkeleton";
 import Box from "@/components/general/Box";
+import CryptoIcon from "@/components/general/CrptoIcon";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import PageWrapper from "@/components/general/PageWrapper";
 import ZapLoader from "@/components/general/ZapLoader";
+import TokenHistoryCard from "@/components/wallet/TokenHistoryCard";
+import { isSameDay } from "@/configs/helpers";
 import { PortfolioService } from "@/services/portfolio.service";
 import { useChains } from "@/src/core/chains/chains-context";
 import AddressesStorage from "@/src/core/storage/addresses-storage";
@@ -48,56 +54,40 @@ import {
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { ArrowLeft2, ArrowUp3 } from "iconsax-react-nativejs";
+import { BlockchainTransaction } from "@zap/blockchain-sdk";
+import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SvgUri } from "react-native-svg";
-
-// CryptoIcon component for token images
-const CryptoIcon = ({
-  image,
-  size = 32,
-  symbol,
-}: {
-  image?: string;
-  size?: number;
-  symbol?: string;
-}) => {
-  const [imageError, setImageError] = useState(false);
-
-  return (
-    <Box
-      width={size}
-      height={size}
-      borderRadius={size / 2}
-      overflow="hidden"
-      justifyContent="center"
-      alignItems="center"
-      borderWidth={0}
-      style={{ backgroundColor: "transparent" }}
-    >
-      {image && !imageError ? (
-        <SvgUri
-          uri={image}
-          width={size - 4}
-          height={size - 4}
-          onError={() => {
-            console.log("Failed to load token image:", image);
-            setImageError(true);
-          }}
-        />
-      ) : symbol ? (
-        <CustomText fontSize={size * 0.4} color="white" fontWeight="bold">
-          {symbol.charAt(0)}
-        </CustomText>
-      ) : (
-        <ZapLogo />
-      )}
-    </Box>
-  );
-};
 
 const TokenDetails = () => {
   const { tokenId: rawTokenId } = useLocalSearchParams();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.98,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.98,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleTransactionPress = (transaction: BlockchainTransaction) => {
+    console.log("🎯 Transaction pressed:", transaction);
+    setSelectedTransaction(transaction);
+  };
 
   // Handle different tokenId formats
   let tokenId: string;
@@ -117,7 +107,7 @@ const TokenDetails = () => {
   tokenId = String(tokenId);
   const router = useRouter();
   const theme = useTheme<Theme>();
-  const { portfolio, mainUserWalletGroup } = useWallet();
+  const { portfolio, mainUserWalletGroup, getTransactionHistory } = useWallet();
   const { getChainById, getChainBySymbol } = useChains();
   // Remove useMarket hook - we'll use SDK directly
   const dispatch = useDispatch();
@@ -150,6 +140,7 @@ const TokenDetails = () => {
 
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [isTokenDetailsLoading, setIsTokenDetailsLoading] = useState(false);
+  const [isTokenHistoryLoading, setIsTokenHistoryLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"asset" | "history">("asset");
   const [selectedTimeframe, setSelectedTimeframe] = useState<
     "24h" | "W" | "M" | "6M" | "1Y"
@@ -212,6 +203,47 @@ const TokenDetails = () => {
   const [tokenDetails, setTokenDetails] = useState<any>(null);
   const [historicalRates, setHistoricalRates] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tokenHistory, setTokenHistory] = useState<any>([]);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<BlockchainTransaction | null>(null);
+  const transactionDetailsRef = useRef<BottomSheet>(null);
+
+  const fetchTokenHistoryCallback = useCallback(async () => {
+    if (!finalSelectedToken || !walletAddress) {
+      console.log("Missing required data:", {
+        hasToken: !!finalSelectedToken,
+        hasWalletAddress: !!walletAddress,
+        token: finalSelectedToken,
+      });
+      return;
+    }
+
+    setIsTokenHistoryLoading(true);
+    try {
+      if (!getTransactionHistory) {
+        throw new Error("Transaction history method not available");
+      }
+
+      // Get transaction history for this specific account
+      if (!finalSelectedToken.accountId) {
+        console.warn("No accountId found for token:", finalSelectedToken);
+        setTokenHistory([]);
+        return;
+      }
+
+      const transactions = await getTransactionHistory(
+        finalSelectedToken.accountId
+      );
+
+      console.log("Received transactions:", transactions);
+      setTokenHistory(transactions || []);
+    } catch (error) {
+      console.error("❌ Failed to fetch token history:", error);
+      setTokenHistory([]);
+    } finally {
+      setIsTokenHistoryLoading(false);
+    }
+  }, [finalSelectedToken, walletAddress, getTransactionHistory]);
 
   // Get token details from market state
 
@@ -258,17 +290,32 @@ const TokenDetails = () => {
     fetchTokenDetailsCallback();
   }, [fetchTokenDetailsCallback]);
 
+  // Fetch transaction history when wallet address and accountId are available
+  useEffect(() => {
+    if (walletAddress && finalSelectedToken && finalSelectedToken.accountId) {
+      fetchTokenHistoryCallback();
+    }
+  }, [
+    fetchTokenHistoryCallback,
+    walletAddress,
+    finalSelectedToken,
+    finalSelectedToken?.accountId,
+  ]);
+
   // Handle pull-to-refresh
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await fetchTokenDetailsCallback();
+      await Promise.all([
+        fetchTokenDetailsCallback(),
+        fetchTokenHistoryCallback(),
+      ]);
     } catch (error) {
       console.error("❌ Failed to refresh token details:", error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchTokenDetailsCallback]);
+  }, [fetchTokenDetailsCallback, fetchTokenHistoryCallback]);
 
   // Process portfolio data when it changes and store in Redux
   useEffect(() => {
@@ -316,8 +363,6 @@ const TokenDetails = () => {
       }
     }
   }, [allTokens, portfolio, dispatch]);
-
-  // Emergency fallback: Create a dummy token if none found
 
   // Get wallet address when selected token changes
   useEffect(() => {
@@ -389,7 +434,7 @@ const TokenDetails = () => {
   };
 
   const handleAction = async (
-    action: "receive" | "send" | "trade" | "swap"
+    action: "receive" | "send" | "trade" | "swap" | "buy"
   ) => {
     switch (action) {
       case "receive":
@@ -403,8 +448,11 @@ const TokenDetails = () => {
         // Navigate to trade flow
         break;
       case "swap":
-        router.replace(`/dashboard/home/wallet-home/exchange`);
+        router.replace(`/dashboard/home/wallet-home/swap`);
         // Navigate to swap flow
+        break;
+      case "buy":
+        // router.push(`/dashboard/home/wallet-home/buy`);
         break;
     }
   };
@@ -480,14 +528,13 @@ const TokenDetails = () => {
         paddingBottom="m"
         paddingTop="m"
       >
-        <Pressable
+        <CustomButton
+          bgColor="transparent"
           onPress={handleBack}
-          style={({ pressed }) => ({
-            opacity: pressed ? 0.5 : 1,
-          })}
-        >
-          <ArrowLeft2 size={24} color="white" />
-        </Pressable>
+          width={40}
+          height={40}
+          leadingIcon={<ArrowLeft2 size={24} color="white" />}
+        />
 
         <Box flexDirection="row" alignItems="center">
           <Box marginRight="s">
@@ -590,8 +637,8 @@ const TokenDetails = () => {
               }}
             >
               <CustomText
-                variant="bodyBold"
-                fontSize={16}
+                variant="body"
+                fontSize={14}
                 color={
                   activeTab === "asset"
                     ? "headerTextColor"
@@ -616,8 +663,8 @@ const TokenDetails = () => {
               }}
             >
               <CustomText
-                variant="bodyBold"
-                fontSize={16}
+                variant="body"
+                fontSize={14}
                 color={
                   activeTab === "history"
                     ? "headerTextColor"
@@ -685,64 +732,11 @@ const TokenDetails = () => {
           }}
         >
           {/* Balance Section - Matching Home Page BalanceCard */}
-          <Box
-            width="100%"
-            alignItems="center"
-            justifyContent="center"
-            position="relative"
-            paddingHorizontal="xl"
-            paddingBottom="l"
-          >
-            {/* Center content */}
-            <Box alignItems="center" justifyContent="center" flex={1}>
-              <CustomText
-                fontSize={13}
-                variant="body"
-                color="white"
-                opacity={0.8}
-              >
-                Your Balance
-              </CustomText>
-
-              <CustomText
-                fontSize={30}
-                variant="header"
-                marginVertical="s"
-                color="white"
-              >
-                {formatCurrency(userBalanceValue)}
-              </CustomText>
-
-              <Box
-                width={185}
-                flexDirection="row"
-                alignItems="center"
-                justifyContent="center"
-                height={36}
-                borderRadius={24}
-                paddingHorizontal="s"
-                bg="secondaryBackgroundColor"
-              >
-                <ArrowUp3 size={17} color="#35B592" variant="Bold" />
-                <CustomText
-                  fontSize={13}
-                  style={{ marginHorizontal: 3 }}
-                  color="white"
-                >
-                  {formatCurrency(change24hValue)}
-                  {change24hValue > 0 ? "+" : ""}
-                </CustomText>
-
-                <CustomText fontSize={13} color="white">
-                  {" "}
-                  <CustomText fontSize={13} style={{ color: "#35B592" }}>
-                    {change24h.toFixed(2)}%
-                  </CustomText>{" "}
-                  in 24H
-                </CustomText>
-              </Box>
-            </Box>
-          </Box>
+          <BalanceCard
+            portfolioValue={userBalanceValue || 0}
+            portfolioChange={0} // We don't have change data from the API
+            portfolioChangePercentage={0} // We don't have change data from the API
+          />
 
           {/* Action Buttons - Using Reusable Component */}
           <Box mt="xl" mb="l">
@@ -781,8 +775,8 @@ const TokenDetails = () => {
             }}
           >
             <CustomText
-              variant="bodyBold"
-              fontSize={16}
+              variant="body"
+              fontSize={14}
               color={
                 activeTab === "asset" ? "headerTextColor" : "disabledTextColor"
               }
@@ -801,8 +795,8 @@ const TokenDetails = () => {
             }}
           >
             <CustomText
-              variant="bodyBold"
-              fontSize={16}
+              variant="body"
+              fontSize={14}
               color={
                 activeTab === "history"
                   ? "headerTextColor"
@@ -1199,143 +1193,154 @@ const TokenDetails = () => {
               }}
             >
               {/* Detailed Stats */}
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  Rank
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+              {tokenDetails?.tokenMetrics?.rank ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  #{tokenDetails?.tokenMetrics?.rank || "N/A"}
-                </CustomText>
-              </Box>
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  24hr Volume
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Rank
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    #{tokenDetails?.tokenMetrics?.rank || "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
+              {tokenDetails?.tokenMetrics?.volume ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  {tokenDetails?.tokenMetrics?.volume
-                    ? formatCurrency(tokenDetails.tokenMetrics.volume)
-                    : "N/A"}
-                </CustomText>
-              </Box>
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  Market Cap
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    24hr Volume
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {tokenDetails?.tokenMetrics?.volume
+                      ? formatCurrency(tokenDetails.tokenMetrics.volume)
+                      : "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
+              {tokenDetails?.tokenMetrics?.marketCap ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  {tokenDetails?.tokenMetrics?.marketCap
-                    ? formatCurrency(tokenDetails.tokenMetrics.marketCap)
-                    : "N/A"}
-                </CustomText>
-              </Box>
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Market Cap
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {formatCurrency(tokenDetails.tokenMetrics.marketCap)}
+                  </CustomText>
+                </Box>
+              ) : null}
+              {tokenDetails?.tokenMetrics?.totalSupply ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Total Supply
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {tokenDetails?.tokenMetrics?.totalSupply
+                      ? formatCurrency(tokenDetails.tokenMetrics.totalSupply)
+                      : "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
 
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  Total Supply
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+              {tokenDetails?.tokenMetrics?.circulatingSupply ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  {tokenDetails?.tokenMetrics?.totalSupply
-                    ? formatCurrency(tokenDetails.tokenMetrics.totalSupply)
-                    : "N/A"}
-                </CustomText>
-              </Box>
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Circulating Supply
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {tokenDetails?.tokenMetrics?.circulatingSupply
+                      ? formatCurrency(
+                          tokenDetails.tokenMetrics.circulatingSupply
+                        )
+                      : "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
 
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  Circulating Supply
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+              {tokenDetails?.tokenMetrics?.ath ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  {tokenDetails?.tokenMetrics?.circulatingSupply
-                    ? formatCurrency(
-                        tokenDetails.tokenMetrics.circulatingSupply
-                      )
-                    : "N/A"}
-                </CustomText>
-              </Box>
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    All Time High
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {tokenDetails?.tokenMetrics?.ath
+                      ? formatCurrency(tokenDetails.tokenMetrics.ath)
+                      : "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
 
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  All Time High
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
+              {tokenDetails?.tokenMetrics?.atl ? (
+                <Box
+                  paddingVertical="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                 >
-                  {tokenDetails?.tokenMetrics?.ath
-                    ? formatCurrency(tokenDetails.tokenMetrics.ath)
-                    : "N/A"}
-                </CustomText>
-              </Box>
-
-              <Box
-                paddingVertical="m"
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <CustomText color="placeholderTextColor" fontSize={14}>
-                  All Time Low
-                </CustomText>
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={16}
-                  variant="body"
-                >
-                  {tokenDetails?.tokenMetrics?.atl
-                    ? formatCurrency(tokenDetails.tokenMetrics.atl)
-                    : "N/A"}
-                </CustomText>
-              </Box>
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    All Time Low
+                  </CustomText>
+                  <CustomText
+                    color="headerTextColor"
+                    fontSize={16}
+                    variant="body"
+                  >
+                    {tokenDetails?.tokenMetrics?.atl
+                      ? formatCurrency(tokenDetails.tokenMetrics.atl)
+                      : "N/A"}
+                  </CustomText>
+                </Box>
+              ) : null}
             </Box>
             {/* Enhanced Top Stories */}
             <Box
@@ -1565,32 +1570,93 @@ const TokenDetails = () => {
             )}
           </Box>
         ) : (
-          <Box paddingHorizontal="m" minHeight={200}>
-            {/* Empty State for Transaction History */}
-            {transactionHistory.length > 0 ? (
-              <>{/* Transaction List */}</>
-            ) : (
-              <Box alignItems="center" justifyContent="center" flex={1}>
-                <CustomText
-                  variant="bodyBold"
-                  fontSize={18}
-                  color="headerTextColor"
-                  marginBottom="s"
-                  textAlign="center"
-                >
-                  No Transactions Yet
-                </CustomText>
-                <CustomText
-                  color="placeholderTextColor"
-                  textAlign="center"
-                  fontSize={14}
-                  lineHeight={20}
-                >
-                  Your transaction history will appear here once you start using
-                  this token
-                </CustomText>
-              </Box>
-            )}
+          <Box paddingHorizontal="m">
+            {/* Transaction History Section */}
+            <Box>
+              {isTokenHistoryLoading ? (
+                <Box mt="l">
+                  {/* Skeleton loaders for transaction cards */}
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <TransactionCardSkeleton key={index} />
+                  ))}
+                </Box>
+              ) : tokenHistory.length > 0 ? (
+                <Box mb="xl">
+                  {tokenHistory
+                    .sort(
+                      (a: BlockchainTransaction, b: BlockchainTransaction) =>
+                        b.timestamp - a.timestamp
+                    )
+                    .map(
+                      (transaction: BlockchainTransaction, index: number) => (
+                        <>
+                          {!isSameDay(
+                            new Date(transaction.timestamp),
+                            new Date(tokenHistory[index - 1]?.timestamp)
+                          ) ? (
+                            <CustomText
+                              color="placeholderTextColor"
+                              fontSize={14}
+                              marginBottom="m"
+                            >
+                              {new Date(
+                                transaction.timestamp
+                              ).toLocaleDateString("en-US", {
+                                month: "long",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
+                            </CustomText>
+                          ) : null}
+                          <TokenHistoryCard
+                            transaction={transaction}
+                            finalSelectedToken={finalSelectedToken}
+                            index={index}
+                            onPress={handleTransactionPress}
+                          />
+                        </>
+                      )
+                    )}
+                </Box>
+              ) : (
+                <Box alignItems="center" justifyContent="center">
+                  {/* Empty State Icon - ThemedGlassIcon */}
+                  <Box marginBottom="l">
+                    <ThemedGlassIcon />
+                  </Box>
+
+                  <CustomText
+                    variant="bodyBold"
+                    fontSize={20}
+                    color="headerTextColor"
+                    marginBottom="s"
+                    textAlign="center"
+                  >
+                    No History
+                  </CustomText>
+                  <CustomText
+                    color="placeholderTextColor"
+                    textAlign="center"
+                    fontSize={16}
+                    lineHeight={24}
+                    marginBottom="l"
+                  >
+                    You are yet to perform any transaction on{" "}
+                    {finalSelectedToken?.symbol}
+                  </CustomText>
+
+                  {/* Buy Token Button */}
+                  <CustomButton
+                    text={`Buy ${finalSelectedToken?.symbol}`}
+                    onPress={() => handleAction("buy")}
+                    width={120}
+                    borderRadius={25}
+                    bgColor={theme.colors.primaryColor}
+                    fontSize={16}
+                  />
+                </Box>
+              )}
+            </Box>
           </Box>
         )}
       </ScrollView>
@@ -1734,6 +1800,15 @@ const TokenDetails = () => {
           logoUrl={finalSelectedToken.image}
         />
       )}
+
+      {/* Transaction Details Bottom Sheet */}
+      <TransactionDetailsBottomSheet
+        ref={transactionDetailsRef}
+        transaction={selectedTransaction}
+        selectedToken={finalSelectedToken}
+        visible={!!selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </PageWrapper>
   );
 };

@@ -154,6 +154,7 @@ export interface ProcessedAsset {
   // Additional fields for easy access
   supportedCurrencyId?: any; // Full supportedCurrency object
   currencyId?: string; // For markets API
+  accountId?: string; // Account ID for transaction history
 }
 
 export interface ProcessedPortfolio {

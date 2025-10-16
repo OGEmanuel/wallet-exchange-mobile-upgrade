@@ -172,7 +172,6 @@ export class PortfolioService {
 
       if (currencyId) {
         tokenMap.set(currencyId, token);
-        console.log(`✅ Added token to map: ${currencyId}`);
       }
     });
 
@@ -194,7 +193,7 @@ export class PortfolioService {
           : account.supportedCurrencyId?._id;
 
         console.log('🔍 Account supportedCurrencyId (filter):', {
-          accountId: account.accountId,
+          accountId: account._id, // Use _id as accountId
           supportedCurrencyId: account.supportedCurrencyId,
           extractedSupportedCurrencyId: supportedCurrencyId
         });
@@ -215,7 +214,7 @@ export class PortfolioService {
           : account.supportedCurrencyId?.currencyId;
 
         console.log('🔍 Account IDs (map):', {
-          accountId: account.accountId,
+          accountId: account._id, // Use _id as accountId
           supportedCurrencyId: supportedCurrencyId,
           currencyId: currencyId
         });
@@ -225,16 +224,6 @@ export class PortfolioService {
         if (!tokenInfo) {
           return null;
         }
-
-        // Debug image paths
-        console.log('🔍 Image debugging for account:', {
-          accountId: account.accountId,
-          supportedCurrencyId: supportedCurrencyId,
-          tokenInfoImage: tokenInfo?.supportedCurrencyId?.image,
-          accountImage: account.supportedCurrencyId?.image,
-          tokenInfoKeys: tokenInfo ? Object.keys(tokenInfo) : null,
-          supportedCurrencyKeys: tokenInfo?.supportedCurrencyId ? Object.keys(tokenInfo.supportedCurrencyId) : null,
-        });
 
         // Extract symbol and name from token info
         const { symbol, name } = this.extractSymbolAndNameFromTokenInfo(tokenInfo);
@@ -249,6 +238,7 @@ export class PortfolioService {
         console.log('🚨🚨🚨 Navigation will use supportedCurrencyId, token details will extract currencyId!');
         return {
           id: supportedCurrencyId,
+          accountId: account._id, // Include account ID for transaction history (use _id)
           symbol,
           name,
           balance: account.balance,

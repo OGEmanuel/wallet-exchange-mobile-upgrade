@@ -139,33 +139,6 @@ const Layout = () => {
       />
 
       <Tabs.Screen
-        name="exchange"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabBarIcon
-              focused={focused}
-              label="Swap"
-              icon={
-                <ThemedSwap1Icon
-                  darkModeColor={
-                    focused
-                      ? theme.colors.tabBarActiveColor
-                      : theme.colors.inActiveBtnColor
-                  }
-                  lightModeColor={
-                    focused
-                      ? theme.colors.tabBarActiveColor
-                      : theme.colors.inActiveBtnColor
-                  }
-                />
-              }
-            />
-          ),
-          tabBarShowLabel: false,
-        }}
-      />
-
-      <Tabs.Screen
         name="swap"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -177,12 +150,12 @@ const Layout = () => {
                   darkModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                   lightModeColor={
                     focused
                       ? theme.colors.tabBarActiveColor
-                      : theme.colors.bodyTextColor
+                      : theme.colors.inActiveBtnColor
                   }
                 />
               }

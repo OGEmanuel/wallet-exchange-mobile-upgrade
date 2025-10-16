@@ -1,23 +1,31 @@
 import { formatCurrency } from "@/src/core/utils/format-utils";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { ArrowUp3 } from "iconsax-react-nativejs";
+import { Triangle } from "lucide-react-native";
 import React from "react";
+import { Pressable } from "react-native";
+import { useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
+import SkeletonLoader from "../general/SkeletonLoader";
 
 const BalanceCard = ({
   portfolioValue = 0,
   portfolioChange = 0,
   portfolioChangePercentage = 0,
-  walletName = "Wallet",
+  isLoading = false,
 }: {
   portfolioValue?: number;
   portfolioChange?: number;
   portfolioChangePercentage?: number;
   walletName?: string;
+  isLoading?: boolean;
 }) => {
   const theme = useTheme<Theme>();
+  const { isPortfolioLoading } = useSelector(
+    (state: AppRootState) => state.portfolio
+  );
 
   return (
     <Box
@@ -32,43 +40,57 @@ const BalanceCard = ({
           Your portfolio value
         </CustomText>
 
-        <CustomText
-          fontSize={30}
-          variant="header"
-          marginVertical="s"
-          color="white"
-        >
-          {formatCurrency(portfolioValue)}
-        </CustomText>
-
-        <Box
-          width={185}
-          flexDirection="row"
-          alignItems="center"
-          justifyContent="center"
-          height={36}
-          borderRadius={24}
-          paddingHorizontal="s"
-          bg="secondaryBackgroundColor"
-        >
-          <ArrowUp3 size={17} color="#35B592" variant="Bold" />
+        <SkeletonLoader isLoading={isLoading || isPortfolioLoading}>
           <CustomText
-            fontSize={13}
-            style={{ marginHorizontal: 3 }}
+            fontSize={35}
+            variant="header"
+            marginVertical="m"
             color="white"
           >
-            {formatCurrency(portfolioChange)}
-            {portfolioChange > 0 ? "+" : ""}
+            {formatCurrency(portfolioValue)}
           </CustomText>
+        </SkeletonLoader>
 
-          <CustomText fontSize={13} color="white">
-            {" "}
-            <CustomText fontSize={13} style={{ color: "#35B592" }}>
-              {portfolioChangePercentage.toFixed(2)}%
-            </CustomText>{" "}
-            in 24H
-          </CustomText>
-        </Box>
+        <Pressable
+          style={({ pressed }) => ({
+            opacity: pressed ? 0.5 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
+        >
+          <Box
+            width={185}
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="center"
+            height={36}
+            borderRadius={24}
+            paddingHorizontal="s"
+            bg="secondaryBackgroundColor"
+          >
+            <Triangle
+              size={11}
+              fill={theme.colors.success}
+              color={theme.colors.success}
+            />
+            <CustomText
+              marginHorizontal="s"
+              fontSize={13}
+              style={{ marginHorizontal: 3 }}
+              color="white"
+            >
+              {formatCurrency(portfolioChange)}
+              {portfolioChange > 0 ? "+" : ""}
+            </CustomText>
+
+            <CustomText fontSize={13} color="placeholderTextColor">
+              {" "}
+              <CustomText fontSize={13} style={{ color: theme.colors.success }}>
+                {portfolioChangePercentage.toFixed(2)}%
+              </CustomText>{" "}
+              24H
+            </CustomText>
+          </Box>
+        </Pressable>
       </Box>
     </Box>
   );

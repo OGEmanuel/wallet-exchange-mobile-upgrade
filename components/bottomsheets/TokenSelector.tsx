@@ -1,12 +1,10 @@
 import SearchIcon from "@/assets/svg/wallet-icons-components/SearchIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
+import TokenCardSkeleton from "@/components/dashboard/TokenCardSkeleton";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
-import ZapLoader from "@/components/general/ZapLoader";
 import ImportTokenModal from "@/components/Modals/ImportTokenModal";
-import {
-  ProcessedAsset
-} from "@/interfaces/portfolio.interface";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
@@ -29,8 +27,8 @@ import SelectChainBottomSheet from "./SelectChainBottomSheet";
 const CryptoIcon = React.memo(({ image }: { image?: string }) => {
   return (
     <Box
-      width={35}
-      height={35}
+      width={30}
+      height={30}
       borderRadius={17.5}
       marginRight="m"
       overflow="hidden"
@@ -41,8 +39,8 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
       {image ? (
         <SvgUri
           uri={image}
-          width={35}
-          height={35}
+          width={30}
+          height={30}
           onError={() => {
             console.log("Failed to load token image:", image);
           }}
@@ -65,20 +63,27 @@ interface TokenSelectorProps {
   onTokenSelect: (token: ProcessedAsset) => void;
 }
 
-const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) => {
+const TokenSelector: React.FC<TokenSelectorProps> = ({
+  mode,
+  onTokenSelect,
+}) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
   const { mainUserWalletGroup, refreshPortfolio } = useWallet();
-  
+
   // Redux state
   const allTokens = useSelector(selectAllSupportedTokens);
-  const { isPortfolioLoading } = useSelector((state: AppRootState) => state.portfolio);
+  const { isPortfolioLoading } = useSelector(
+    (state: AppRootState) => state.portfolio
+  );
   const { walletChains } = useChains();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(null);
-  
+  const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(
+    null
+  );
+
   // For receive mode, get the current stage
   const stage = useSelector(selectStage);
   const dispatch = useDispatch();
@@ -142,19 +147,19 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
   }) => {
     try {
       console.log("🔄 Importing token:", tokenData);
-      
+
       // Use the SDK service to add the token
       await zapSDKService.addToken({
-        userWalletGroupId: mainUserWalletGroup._id,
+        userWalletGroupId: mainUserWalletGroup?._id || "",
         tokenAddress: tokenData.contractAddress,
         chainId: tokenData.chain,
       });
 
       console.log("✅ Token imported successfully");
-      
+
       // Refresh the portfolio to show the new token
       await refreshPortfolio();
-      
+
       // Close the modal
       setShowImportModal(false);
     } catch (error) {
@@ -172,12 +177,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
 
   // For receive mode, show QR code when stage is "qrcode"
   if (mode === "receive" && stage === "qrcode" && selectedToken) {
-    return (
-      <ReceiveQRCode
-        selectedToken={selectedToken} 
-        onBack={handleBack} 
-      />
-    );
+    return <ReceiveQRCode selectedToken={selectedToken} onBack={handleBack} />;
   }
 
   return (
@@ -333,12 +333,11 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
           showsVerticalScrollIndicator={false}
         >
           {isPortfolioLoading ? (
-            <Box
-              alignItems="center"
-              justifyContent="center"
-              paddingVertical="xl"
-            >
-              <ZapLoader size={60} showText={true} text="Loading tokens..." />
+            <Box>
+              {/* Skeleton loaders for token cards */}
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TokenCardSkeleton key={index} />
+              ))}
             </Box>
           ) : filteredTokens.length === 0 ? (
             <Box
@@ -376,9 +375,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
                     >
                       {token.symbol}
                     </CustomText>
-                    {token.chainSymbol && (
+                    {token.chainName && (
                       <Box
-                        backgroundColor="secondaryBackgroundColor"
+                        backgroundColor="modalBackgroundColor"
                         borderRadius={8}
                         paddingHorizontal="s"
                         paddingVertical="s"
@@ -389,7 +388,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
                           fontSize={10}
                           color="disabledTextColor"
                         >
-                          {token.chainSymbol}
+                          {token.chainName}
                         </CustomText>
                       </Box>
                     )}
@@ -397,7 +396,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
                   <CustomText
                     variant="body"
                     fontSize={12}
-                    color="disabledTextColor"
+                    color="placeholderTextColor"
                   >
                     {token.name}
                   </CustomText>
@@ -415,6 +414,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
                     variant="body"
                     fontSize={12}
                     color="disabledTextColor"
+                    mt="s"
                   >
                     {formatCurrency(token.totalUsdValue)}
                   </CustomText>
@@ -423,7 +423,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({ mode, onTokenSelect }) =>
                 <Box marginLeft="s">
                   <ArrowRight2
                     size={16}
-                    color={theme.colors.disabledTextColor}
+                    color={theme.colors.white}
                   />
                 </Box>
               </Pressable>

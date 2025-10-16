@@ -229,8 +229,8 @@ const ManageWalletScreen = () => {
           }}
         >
           <CustomText
-            variant="bodyBold"
-            fontSize={16}
+            variant="body"
+            fontSize={14}
             color={
               activeTab === "wallets" ? "headerTextColor" : "disabledTextColor"
             }
@@ -249,8 +249,8 @@ const ManageWalletScreen = () => {
           }}
         >
           <CustomText
-            variant="bodyBold"
-            fontSize={16}
+            variant="body"
+            fontSize={14}
             color={
               activeTab === "watchlist"
                 ? "headerTextColor"

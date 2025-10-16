@@ -1,29 +1,32 @@
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
+import ThemedEmptyWalletIcon from "@/assets/svg/wallet-icons-components/ThemedEmptyWalletIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
-import {
-  ProcessedAsset
-} from "@/interfaces/portfolio.interface";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { AppRootState } from "@/state";
-import { selectAllSupportedTokens, selectEnabledPortfolioAssets } from "@/state/selectors/portfolio.selectors";
+import {
+  selectAllSupportedTokens,
+  selectEnabledPortfolioAssets,
+} from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { Pressable, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgUri } from "react-native-svg";
 import { useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
-import ZapLoader from "../general/ZapLoader";
 import ManageTokensModal from "../Modals/ManageTokensModal";
+import AssetCardSkeleton from "./AssetCardSkeleton";
 import PortfolioErrorState from "./PortfolioErrorState";
 
 const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
   const [imageError, setImageError] = React.useState(false);
-  
+
   return (
     <View
       style={{
@@ -62,6 +65,7 @@ const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
 };
 
 const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const formattedPrice = PortfolioService.formatCurrency(asset.price);
   const formattedTotalValue = PortfolioService.formatCurrency(
     asset.totalUsdValue
@@ -74,84 +78,113 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
 
   const handleTokenPress = () => {
     // Pass supportedCurrencyId._id for navigation, token details will extract currencyId
-    const supportedCurrencyId = asset.supportedCurrencyId?._id || asset.supportedCurrencyId;
+    const supportedCurrencyId =
+      asset.supportedCurrencyId?._id || asset.supportedCurrencyId;
     router.push(`/dashboard/home/token-details/${supportedCurrencyId}`);
   };
 
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <Pressable
-      style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-      onPress={handleTokenPress}
-    >
-      <Box
-        width="100%"
-        height={60}
-        borderRadius={12}
-        style={{ backgroundColor: "#1F232D" }}
-        mb="s"
-        flexDirection="row"
-        justifyContent="space-between"
-        alignItems="center"
-        paddingHorizontal="m"
-        paddingVertical="m"
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        onPress={handleTokenPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
       >
-        <Box flexDirection="row" alignItems="center" flex={1}>
-          <CryptoIcon image={asset.image} symbol={asset.symbol} />
-          <Box flex={1}>
-            <Box flexDirection="row" alignItems="center" mb="s">
-              <CustomText
-                variant="bodyBold"
-                fontSize={14}
-                color="headerTextColor"
-                mr="s"
-              >
-                {asset.symbol}
-              </CustomText>
-              <Box
-                backgroundColor="secondaryBackgroundColor"
-                borderRadius={8}
-                paddingHorizontal="s"
-                style={{ paddingVertical: 4 }}
-              >
-                <CustomText variant="light" fontSize={10} color="whiteBodyText">
-                  {asset.chainName}
+        <Box
+          width="100%"
+          height={60}
+          borderRadius={12}
+          style={{ backgroundColor: "#1F232D" }}
+          mb="s"
+          flexDirection="row"
+          justifyContent="space-between"
+          alignItems="center"
+          paddingHorizontal="m"
+          paddingVertical="m"
+        >
+          <Box flexDirection="row" alignItems="center" flex={1}>
+            <CryptoIcon image={asset.image} symbol={asset.symbol} />
+            <Box flex={1}>
+              <Box flexDirection="row" alignItems="center" mb="s">
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={14}
+                  color="headerTextColor"
+                  mr="s"
+                >
+                  {asset.symbol}
+                </CustomText>
+                <Box
+                  backgroundColor="secondaryBackgroundColor"
+                  borderRadius={8}
+                  paddingHorizontal="s"
+                  style={{ paddingVertical: 4 }}
+                >
+                  <CustomText
+                    variant="light"
+                    fontSize={10}
+                    color="whiteBodyText"
+                  >
+                    {asset.chainName}
+                  </CustomText>
+                </Box>
+              </Box>
+              <Box flexDirection="row" alignItems="center">
+                <CustomText
+                  variant="light"
+                  fontSize={12}
+                  color="disabledTextColor"
+                  mr="s"
+                >
+                  {formattedPrice}
+                </CustomText>
+                <CustomText
+                  variant="light"
+                  fontSize={12}
+                  color={asset.changeType === "positive" ? "success" : "error"}
+                >
+                  {formattedChange}
                 </CustomText>
               </Box>
             </Box>
-            <Box flexDirection="row" alignItems="center">
-              <CustomText
-                variant="light"
-                fontSize={12}
-                color="disabledTextColor"
-                mr="s"
-              >
-                {formattedPrice}
-              </CustomText>
-              <CustomText
-                variant="light"
-                fontSize={12}
-                color={asset.changeType === "positive" ? "success" : "error"}
-              >
-                {formattedChange}
-              </CustomText>
-            </Box>
+          </Box>
+          <Box alignItems="flex-end">
+            <CustomText
+              variant="bodyBold"
+              fontSize={14}
+              color="headerTextColor"
+              mb="s"
+            >
+              {formattedTotalValue}
+            </CustomText>
+            <CustomText variant="light" fontSize={12} color="disabledTextColor">
+              {formattedBalance} {asset.symbol}
+            </CustomText>
           </Box>
         </Box>
-        <Box alignItems="flex-end">
-          <CustomText
-            variant="bodyBold"
-            fontSize={14}
-            color="headerTextColor"
-            mb="s"
-          >
-            {formattedTotalValue}
-          </CustomText>
-          <CustomText variant="light" fontSize={12} color="disabledTextColor">
-            {formattedBalance} {asset.symbol}
-          </CustomText>
-        </Box>
-      </Box>
-    </Pressable>
+      </Pressable>
+    </Animated.View>
   );
 };
 
@@ -171,17 +204,13 @@ const AssetsSection = ({
   onRefreshPortfolio = () => {},
 }: AssetsSectionProps) => {
   const theme = useTheme<Theme>();
-  
+
   // Redux state
   const enabledAssets = useSelector(selectEnabledPortfolioAssets);
-  const { isPortfolioLoading, portfolioError } = useSelector((state: AppRootState) => state.portfolio);
-
-  // Debug logging
-  console.log("🔍 AssetsSection Redux state:", {
-    enabledAssets: enabledAssets?.length || 0,
-    isLoading: isPortfolioLoading,
-    error: portfolioError,
-  });
+  const { isPortfolioLoading, portfolioError } = useSelector(
+    (state: AppRootState) => state.portfolio
+  );
+  const insets = useSafeAreaInsets();
 
   const handleManagePress = () => {
     onManagePress();
@@ -202,9 +231,10 @@ const AssetsSection = ({
             Assets
           </CustomText>
         </Box>
-        <Box flex={1} justifyContent="center" alignItems="center" py="xl">
-          <ZapLoader size={100} showText={false} />
-        </Box>
+        {/* Skeleton loaders for asset cards */}
+        {Array.from({ length: 5 }).map((_, index) => (
+          <AssetCardSkeleton key={index} />
+        ))}
       </Box>
     );
   }
@@ -235,7 +265,7 @@ const AssetsSection = ({
 
   if (!enabledAssets || enabledAssets.length === 0) {
     return (
-      <Box width={"100%"} flex={1} style={{ marginBottom: 60 }}>
+      <Box width={"100%"} flex={1} mb="2xl">
         <Box
           width="100%"
           height={50}
@@ -268,14 +298,31 @@ const AssetsSection = ({
             borderColor={theme.colors.borderColor}
           />
         </Box>
-        <Box flex={1} justifyContent="center" alignItems="center" py="xl">
+        <Box alignItems="center" justifyContent="center">
+          {/* Empty State Icon - ThemedGlassIcon */}
+          <Box marginBottom="l">
+            <ThemedEmptyWalletIcon />
+          </Box>
           <CustomText
-            variant="body"
-            color="disabledTextColor"
+            color="placeholderTextColor"
             textAlign="center"
+            fontSize={14}
+            marginBottom="m"
           >
-            No assets found
+            No assets yet. Received or purchased assets will show here
           </CustomText>
+
+          {/* Buy Token Button */}
+          <CustomButton
+            text="Buy crypto"
+            onPress={() => {}}
+            width={180}
+            variant="body"
+            borderRadius={25}
+            bgColor={theme.colors.primaryColor}
+            fontSize={16}
+          />
+          <Box height={insets.bottom + 30} />
         </Box>
       </Box>
     );
@@ -323,8 +370,11 @@ const AssetsSection = ({
 };
 
 const AssetsSectionWithModal = (props: AssetsSectionProps) => {
+  const { isPortfolioLoading } = useSelector(
+    (state: AppRootState) => state.portfolio
+  );
   const [showManageModal, setShowManageModal] = useState(false);
-  
+
   // Redux state for modal
   const allTokens = useSelector(selectAllSupportedTokens);
 
@@ -378,6 +428,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
         onClose={() => setShowManageModal(false)}
         allTokens={allTokens || []}
         onToggleToken={handleToggleToken}
+        isLoading={isPortfolioLoading || false}
         onImportToken={handleImportToken}
       />
     </>
