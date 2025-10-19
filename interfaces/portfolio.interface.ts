@@ -144,7 +144,8 @@ export interface ProcessedAsset {
   changeType: 'positive' | 'negative';
   image: string;
   isStable: boolean;
-  status: 'ENABLED' | 'DISABLED';
+  status: 'ENABLED' | 'DISABLED' | 'HIDDEN';
+  source: 'DEFAULT' | 'MANUAL' | 'SUGGESTED';
   chainId: string;
   chainName: string;
   chainSymbol: string;

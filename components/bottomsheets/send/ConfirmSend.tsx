@@ -20,6 +20,12 @@ import { SvgUri } from "react-native-svg";
 import Box from "../../general/Box";
 import Identicon from "../../general/Identicon";
 
+enum FeeSpeed {
+  Standard = "Standard",
+  Fast = "Fast",
+  Instant = "Instant",
+}
+
 interface ConfirmSendProps {
   send: () => void;
   selectedToken: ProcessedAsset;
@@ -27,11 +33,11 @@ interface ConfirmSendProps {
   amount: string;
   usdValue: number;
   networkFee?: {
-    fee: string;
-    feeInUSD: string;
-    speed: string;
-    gasPrice?: string;
-    gasLimit?: string;
+    fee: number;
+    feeInUSD: number;
+    speed: FeeSpeed;
+    gasPrice?: number;
+    gasLimit?: number;
     feeRate?: number;
   } | null;
   onClose?: () => void;

@@ -14,7 +14,7 @@ import {
   ScrollView,
   StatusBar,
 } from "react-native";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 
 import {
   ThemedQrCodeIcon,
@@ -35,18 +35,9 @@ import ZapLoader from "@/components/general/ZapLoader";
 import TokenHistoryCard from "@/components/wallet/TokenHistoryCard";
 import { isSameDay } from "@/configs/helpers";
 import { PortfolioService } from "@/services/portfolio.service";
-import { useChains } from "@/src/core/chains/chains-context";
-import AddressesStorage from "@/src/core/storage/addresses-storage";
 import { formatCurrency, formatDate } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
-import {
-  setAllSupportedTokens,
-  setPortfolioError,
-  setPortfolioLoading,
-  setProcessedPortfolio,
-  setRawPortfolio,
-} from "@/state/reducers/portfolio.reducer";
 import {
   selectAllSupportedTokens,
   selectProcessedPortfolio,
@@ -107,10 +98,7 @@ const TokenDetails = () => {
   tokenId = String(tokenId);
   const router = useRouter();
   const theme = useTheme<Theme>();
-  const { portfolio, mainUserWalletGroup, getTransactionHistory } = useWallet();
-  const { getChainById, getChainBySymbol } = useChains();
-  // Remove useMarket hook - we'll use SDK directly
-  const dispatch = useDispatch();
+  const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } = useWallet();
 
   // Redux state
   const processedPortfolio = useSelector(selectProcessedPortfolio);
@@ -120,23 +108,57 @@ const TokenDetails = () => {
 
   // Fallback: manually find token if selector doesn't work
   const allTokens = useSelector(selectAllSupportedTokens);
+  const portfolioAssets = processedPortfolio?.assets || [];
+  
   const fallbackToken = allTokens?.find((token) => {
     // Try multiple matching strategies
     const matchesId = token.id === tokenId;
     const matchesSupportedId = token.supportedCurrencyId?._id === tokenId;
-    const matchesSupportedIdString =
-      token.supportedCurrencyId?._id?.toString() === tokenId;
+    const matchesSupportedIdString = token.supportedCurrencyId?._id?.toString() === tokenId;
     const matchesIdString = token.id?.toString() === tokenId;
+    
+    // NEW: Check if supportedCurrencyId is a string that matches
+    const matchesSupportedIdDirect = token.supportedCurrencyId === tokenId;
+    
+    // NEW: Check if supportedCurrencyId is an object with _id that matches
+    const matchesSupportedIdObject = typeof token.supportedCurrencyId === 'object' && 
+      token.supportedCurrencyId?._id === tokenId;
 
     return (
       matchesId ||
       matchesSupportedId ||
       matchesSupportedIdString ||
-      matchesIdString
+      matchesIdString ||
+      matchesSupportedIdDirect ||
+      matchesSupportedIdObject
     );
   });
 
-  const finalSelectedToken = selectedToken || fallbackToken;
+  // Also try to find in portfolio assets
+  const portfolioToken = portfolioAssets?.find((asset) => {
+    const matchesId = asset.id === tokenId;
+    const matchesSupportedId = asset.supportedCurrencyId?._id === tokenId;
+    const matchesSupportedIdString = asset.supportedCurrencyId?._id?.toString() === tokenId;
+    const matchesIdString = asset.id?.toString() === tokenId;
+    
+    // NEW: Check if supportedCurrencyId is a string that matches
+    const matchesSupportedIdDirect = asset.supportedCurrencyId === tokenId;
+    
+    // NEW: Check if supportedCurrencyId is an object with _id that matches
+    const matchesSupportedIdObject = typeof asset.supportedCurrencyId === 'object' && 
+      asset.supportedCurrencyId?._id === tokenId;
+
+    return (
+      matchesId ||
+      matchesSupportedId ||
+      matchesSupportedIdString ||
+      matchesIdString ||
+      matchesSupportedIdDirect ||
+      matchesSupportedIdObject
+    );
+  });
+
+  const finalSelectedToken = selectedToken || fallbackToken || portfolioToken;
 
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [isTokenDetailsLoading, setIsTokenDetailsLoading] = useState(false);
@@ -317,52 +339,16 @@ const TokenDetails = () => {
     }
   }, [fetchTokenDetailsCallback, fetchTokenHistoryCallback]);
 
-  // Process portfolio data when it changes and store in Redux
-  useEffect(() => {
-    if (portfolio) {
-      const processPortfolio = async () => {
-        try {
-          setIsPortfolioLoading(true);
-          dispatch(setPortfolioLoading(true));
-          const processed = await PortfolioService.processPortfolioData(
-            portfolio
-          );
-          // Store in Redux
-          dispatch(setRawPortfolio(portfolio));
-          dispatch(setProcessedPortfolio(processed));
-          // Also store all tokens for send/receive and manage token lists
-          dispatch(setAllSupportedTokens(processed.assets || []));
-        } catch (error) {
-          console.error("❌ Failed to process portfolio data:", error);
-          dispatch(setPortfolioError("Failed to process portfolio data"));
-        } finally {
-          setIsPortfolioLoading(false);
-          dispatch(setPortfolioLoading(false));
-        }
-      };
-
-      processPortfolio();
-    }
-  }, [portfolio, tokenId, dispatch]);
+  // Portfolio processing is now handled centrally in home.tsx
+  // This component just uses the processed data from Redux
 
   // Force portfolio processing if no tokens are available
+  // This is now handled centrally - just trigger a refresh if needed
   useEffect(() => {
     if (!allTokens || allTokens.length === 0) {
-      if (portfolio) {
-        const processPortfolio = async () => {
-          try {
-            const processed = await PortfolioService.processPortfolioData(
-              portfolio
-            );
-            dispatch(setAllSupportedTokens(processed.assets || []));
-          } catch (error) {
-            console.error("❌ Failed to force process portfolio:", error);
-          }
-        };
-        processPortfolio();
-      }
+      console.log("⚠️ No tokens available, portfolio processing should be handled centrally");
     }
-  }, [allTokens, portfolio, dispatch]);
+  }, [allTokens]);
 
   // Get wallet address when selected token changes
   useEffect(() => {
@@ -379,49 +365,18 @@ const TokenDetails = () => {
     setIsFavorite(!isFavorite);
   };
 
-  // Helper function to get the numeric chainId from the chain string
-  const getNumericChainId = (chainIdString: string): number | null => {
-    // First try to find by chain ID (if it's already a numeric string)
-    const numericChainId = parseInt(chainIdString, 10);
-    if (!isNaN(numericChainId)) {
-      return numericChainId;
-    }
-
-    // Try to find by chain symbol
-    const chainBySymbol = getChainBySymbol(chainIdString);
-    if (chainBySymbol) {
-      return chainBySymbol.chainId;
-    }
-
-    // Try to find by chain ID (if it's a MongoDB ObjectId)
-    const chainById = getChainById(chainIdString);
-    if (chainById) {
-      return chainById.chainId;
-    }
-
-    console.warn(`Could not find chain for: ${chainIdString}`);
-    return null;
-  };
 
   // Get wallet address for the selected token's chain
   const getWalletAddress = async () => {
     if (!finalSelectedToken || !mainUserWalletGroup?._id) return;
 
     try {
-      const numericChainId = getNumericChainId(finalSelectedToken.chainId);
-      if (!numericChainId) {
-        setWalletAddress("Chain not supported");
-        return null;
-      }
+      // Use centralized getAddress function
+      const address = await getAddress(finalSelectedToken.chainSymbol, mainUserWalletGroup._id);
 
-      const storedAddress = await AddressesStorage.getAddressForChain(
-        mainUserWalletGroup._id,
-        numericChainId
-      );
-
-      if (storedAddress?.address) {
-        setWalletAddress(storedAddress.address);
-        return storedAddress.address;
+      if (address) {
+        setWalletAddress(address);
+        return address;
       } else {
         setWalletAddress("Address not available for this chain");
         return null;
@@ -485,6 +440,12 @@ const TokenDetails = () => {
         <Box flex={1} justifyContent="center" alignItems="center" padding="m">
           <CustomText color="bodyTextColor" textAlign="center" marginBottom="m">
             Token not found
+          </CustomText>
+          <CustomText color="disabledTextColor" textAlign="center" marginBottom="m" fontSize={12}>
+            Token ID: {tokenId}
+          </CustomText>
+          <CustomText color="disabledTextColor" textAlign="center" marginBottom="m" fontSize={12}>
+            Available tokens: {allTokens?.length || 0}
           </CustomText>
           <CustomButton text="Go Back" onPress={handleBack} width={120} />
         </Box>

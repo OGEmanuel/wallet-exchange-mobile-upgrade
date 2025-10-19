@@ -7,10 +7,7 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
-import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import AddressesStorage from "@/src/core/storage/addresses-storage";
-import PrivateKeysStorage from "@/src/core/storage/private-keys-storage";
-import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
+import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -48,13 +45,9 @@ const WalletSelectorBottomSheet = ({
 }: WalletSelectorBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
-  const {
-    userWalletGroups,
-    portfolio,
-    getSDK,
-    refreshPortfolio,
-    refreshUserWalletGroups,
-  } = useWallet();
+  const { userWalletGroups, portfolio, removeWalletGroup } = useWallet();
+  const { getEnhancedWalletGroups, getTotalPortfolioValue, isLoading: isBalancesLoading } =
+    useAggregatedBalances();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
@@ -64,71 +57,77 @@ const WalletSelectorBottomSheet = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [localShowDeleteModal, setLocalShowDeleteModal] = useState(false);
 
-  // Get portfolio value from the main wallet group
-  const portfolioValue = portfolio?.totalValue || "$0.00";
+  // Get total portfolio value from aggregated balances (all wallet groups)
+  const totalPortfolioValue = getTotalPortfolioValue();
+  const portfolioValue = `$${totalPortfolioValue.toFixed(2)}`;
 
-  // Process and group wallet groups from context
-  const walletGroupsMap = new Map();
+  // Use cached aggregated balances instead of manual calculation
+  const enhancedWalletGroups = getEnhancedWalletGroups();
 
-  (userWalletGroups && Array.isArray(userWalletGroups)
-    ? userWalletGroups
-    : []
-  ).forEach((userWalletGroup) => {
-    // Get the actual wallet group ID and name
-    const walletGroupId = userWalletGroup.walletGroupId?._id;
-    const walletGroupName =
-      userWalletGroup.walletGroupId?.name ||
-      `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
+  // Process wallet groups with aggregated balances
+  const processedWalletGroups = enhancedWalletGroups.reduce(
+    (groupsMap: Map<string, any>, userWalletGroup: any) => {
+      const walletGroupId = userWalletGroup.walletGroupId?._id;
+      const walletGroupName =
+        userWalletGroup.walletGroupId?.name ||
+        `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
 
-    // Get wallet info
-    const walletInfo = userWalletGroup.walletId;
-    const walletName =
-      userWalletGroup?.name ||
-      walletInfo?.name ||
-      `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
-    const totalValue = walletInfo?.totalUsdValue
-      ? `$${walletInfo.totalUsdValue}`
-      : "$0.00";
+      const walletInfo = userWalletGroup.walletId;
+      const walletName =
+        userWalletGroup?.name ||
+        walletInfo?.name ||
+        `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
 
-    // If this wallet group doesn't exist in our map, create it
-    if (!walletGroupsMap.has(walletGroupId)) {
-      walletGroupsMap.set(walletGroupId, {
-        id: walletGroupId,
-        name: walletGroupName,
-        totalValue: "$0.00", // Will be calculated from all wallets
-        wallets: [],
+      // Use aggregated balance instead of manual calculation
+      const totalValue = userWalletGroup.aggregatedBalance || 0;
+      const formattedValue = `$${totalValue.toFixed(2)}`;
+
+      // If this wallet group doesn't exist in our map, create it
+      if (!groupsMap.has(walletGroupId)) {
+        groupsMap.set(walletGroupId, {
+          id: walletGroupId,
+          name: walletGroupName,
+          totalValue: "$0.00", // Will be calculated from all wallets
+          wallets: [],
+        });
+      }
+
+      // Add this wallet to the group
+      const group = groupsMap.get(walletGroupId);
+      group.wallets.push({
+        id: walletInfo?._id || userWalletGroup._id,
+        name: walletName,
+        address: walletInfo?.hashedSeedPhraseOrPrivateKey || "No address",
+        balance: formattedValue,
+        groupId: walletGroupId,
+        userWalletGroupId: userWalletGroup._id,
       });
-    }
 
-    // Add this wallet to the group
-    const group = walletGroupsMap.get(walletGroupId);
-    group.wallets.push({
-      id: walletInfo?._id || userWalletGroup._id,
-      name: walletName,
-      address: walletInfo?.hashedSeedPhraseOrPrivateKey || "No address",
-      balance: totalValue,
-      groupId: walletGroupId,
-      userWalletGroupId: userWalletGroup._id, // Keep reference to original user wallet group
-    });
-  });
-
-  // Convert map to array and calculate total values
-  const processedWalletGroups = Array.from(walletGroupsMap.values()).map(
-    (group) => {
-      // Calculate total value for the group
-      const totalValue = group.wallets.reduce((sum: number, wallet: any) => {
-        const value = parseFloat(wallet.balance.replace("$", "")) || 0;
-        return sum + value;
-      }, 0);
-
-      return {
-        ...group,
-        totalValue: `$${totalValue.toFixed(2)}`,
-      };
-    }
+      return groupsMap;
+    },
+    new Map()
   );
 
-  const allWallets = processedWalletGroups.flatMap((group) => group.wallets);
+  // Convert map to array and calculate total values using aggregated balances
+  const finalProcessedWalletGroups = Array.from(
+    processedWalletGroups.values()
+  ).map((group) => {
+    const groupData = group as any;
+    // Calculate total value for the group using aggregated balances
+    const totalValue = (groupData.wallets as any[]).reduce((sum: number, wallet: any) => {
+      const value = parseFloat(wallet.balance.replace("$", "")) || 0;
+      return sum + value;
+    }, 0);
+
+    return {
+      ...groupData,
+      totalValue: `$${totalValue.toFixed(2)}`,
+    };
+  });
+
+  const allWallets = finalProcessedWalletGroups.flatMap(
+    (group) => group.wallets
+  );
 
   const handleWalletSelect = (wallet: any) => {
     // Find the user wallet group for this wallet
@@ -162,82 +161,15 @@ const WalletSelectorBottomSheet = ({
 
   const handlePinSuccess = async (pin: string) => {
     try {
-      // Get SDK instance
-      const sdk = getSDK();
-      if (!sdk) {
-        throw new Error("SDK not available");
-      }
-
-      // Debug the wallet structure
-      console.log(
-        "🔍 walletToDelete structure:",
-        JSON.stringify(walletToDelete, null, 2)
+      await removeWalletGroup(
+        walletToDelete.groupId || "",
+        walletToDelete.userWalletGroupId || ""
       );
-      console.log(
-        "🔍 walletToDelete.walletGroupId:",
-        walletToDelete.walletGroupId
-      );
-      console.log("🔍 walletToDelete keys:", Object.keys(walletToDelete));
-
-      // Call SDK to delete wallet group
-      console.log(
-        "🗑️ Calling SDK to delete wallet group:",
-        walletToDelete.groupId
-      );
-      await zapSDKService.deleteWalletGroup(walletToDelete.groupId);
-
-      console.log("✅ Wallet group deleted successfully");
-
-      // Clear stored credentials for all user wallet groups in this wallet group
-      try {
-        const walletGroupId = walletToDelete.groupId;
-
-        // Get all user wallet groups for this wallet group
-        const allUserWalletGroups =
-          userWalletGroups?.filter(
-            (group) => group.walletGroupId._id === walletGroupId
-          ) || [];
-
-        console.log(
-          `🧹 Clearing credentials for ${allUserWalletGroups.length} user wallet groups`
-        );
-
-        // Clear credentials for each user wallet group
-        for (const userWalletGroupToDelete of allUserWalletGroups) {
-          await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(
-            userWalletGroupToDelete._id
-          );
-
-          await PrivateKeysStorage.clearPrivateKeys(
-            userWalletGroupToDelete._id
-          );
-          await AddressesStorage.clearAddresses(userWalletGroupToDelete._id);
-        }
-
-        console.log(
-          "✅ Cleared stored credentials for all wallets in deleted wallet group"
-        );
-      } catch (error) {
-        console.error("❌ Failed to clear stored credentials:", error);
-        // Don't throw here, as the wallet group is already deleted on the server
-      }
 
       // Close both modals
       console.log("🗑️ Closing PIN modal");
       await setShowPinModal(false);
-
-      // Refresh wallet groups and portfolio
-      await refreshUserWalletGroups();
-      await refreshPortfolio();
-
-      console.log("🗑️ Closing local delete modal");
-
-      console.log("🗑️ Closing parent delete modal");
       await handleCancelDelete(); // This will close the parent's delete modal and reset state
-
-      // Refresh wallet groups and portfolio
-      await refreshUserWalletGroups();
-      await refreshPortfolio();
 
       await setTimeout(() => {
         setLocalShowDeleteModal(false); // Close the local delete modal
@@ -401,7 +333,7 @@ const WalletSelectorBottomSheet = ({
           {/* Wallet Groups or Flat List */}
           {activeTab === "wallets" && (
             <>
-              {processedWalletGroups.length === 0 ? (
+              {finalProcessedWalletGroups.length === 0 ? (
                 <Box alignItems="center" paddingVertical="xl">
                   <CustomText
                     variant="body"
@@ -413,7 +345,7 @@ const WalletSelectorBottomSheet = ({
                 </Box>
               ) : showGroups ? (
                 // Show grouped wallets
-                processedWalletGroups.map((group) => (
+                finalProcessedWalletGroups.map((group) => (
                   <Box key={group.id} marginBottom="l">
                     <Box
                       flexDirection="row"

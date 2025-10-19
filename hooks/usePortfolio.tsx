@@ -1,5 +1,4 @@
 import { ProcessedPortfolio } from "@/interfaces/portfolio.interface";
-import { PortfolioService } from "@/services/portfolio.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useEffect, useState } from "react";
 
@@ -17,27 +16,8 @@ export const usePortfolio = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getProcessedPortfolio();
-  }, [portfolio]);
-
-  const getProcessedPortfolio = async () => {
-    if (portfolio) {
-      try {
-        setIsProcessing(true);
-        setError(null);
-        const processed = await PortfolioService.processPortfolioData(
-          portfolio
-        );
-        setProcessedPortfolio(processed);
-      } catch (err) {
-        console.error("Failed to process portfolio data:", err);
-        setError("Failed to process portfolio data");
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-  };
+  // Portfolio processing is now handled centrally
+  // This hook should use Redux state instead of processing locally
 
   // Check authentication status
   useEffect(() => {
@@ -78,6 +58,5 @@ export const usePortfolio = () => {
     totalValue: processedPortfolio?.totalUsdValue || 0,
     enabledAssets: processedPortfolio?.enabledAssets || [],
     disabledAssets: processedPortfolio?.disabledAssets || [],
-    getProcessedPortfolio,
   };
 };

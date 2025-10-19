@@ -57,7 +57,6 @@ class WalletCredentialsStorage {
         JSON.stringify(existingCredentials)
       );
 
-      console.log('✅ Wallet credentials stored securely:', walletStorageId);
       return walletStorageId;
     } catch (error) {
       console.error('Failed to store wallet credentials:', error);
@@ -106,7 +105,6 @@ class WalletCredentialsStorage {
   static async getCredentialsByUserWalletGroupId(userWalletGroupId: string): Promise<WalletCredential | null> {
     try {
       const allCredentials = await this.getAllCredentials();
-      console.log('🔍 All credentials:', allCredentials);
       return Object.values(allCredentials).find(
         (wallet: WalletCredential) => wallet.userWalletGroupId === userWalletGroupId
       ) || null;

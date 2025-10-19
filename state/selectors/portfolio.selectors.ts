@@ -8,10 +8,11 @@ export const selectProcessedPortfolio = (state: AppRootState) => state.portfolio
 export const selectPortfolioLoading = (state: AppRootState) => state.portfolio.isPortfolioLoading;
 export const selectPortfolioError = (state: AppRootState) => state.portfolio.portfolioError;
 
-// Token list selectors
+// Token list selectors - using processed token list with balances and chain info
 export const selectRawTokenList = (state: AppRootState) => state.portfolio.rawTokenList;
+export const selectProcessedTokenList = (state: AppRootState) => state.portfolio.processedTokenList;
 export const selectAllSupportedTokens = createSelector(
-  [(state: AppRootState) => state.portfolio.allSupportedTokens],
+  [(state: AppRootState) => state.portfolio.processedTokenList],
   (tokens) => tokens || []
 );
 export const selectTokenListLoading = (state: AppRootState) => state.portfolio.isTokenListLoading;
@@ -91,8 +92,9 @@ export const selectTokensBySearch = createSelector(
     if (!searchTerm) return tokenList;
     const term = searchTerm.toLowerCase();
     return tokenList.filter(token => 
-      token.name.toLowerCase().includes(term) ||
-      token.symbol.toLowerCase().includes(term)
+      token.name?.toLowerCase().includes(term) ||
+      token.symbol?.toLowerCase().includes(term) ||
+      token.currencyId?.symbol?.toLowerCase().includes(term)
     );
   }
 );

@@ -1,5 +1,6 @@
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
+import { PortfolioService } from "@/services/portfolio.service";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { CircleQuestionMarkIcon } from "lucide-react-native";
@@ -9,11 +10,11 @@ import CryptoIcon from "../general/CrptoIcon";
 
 interface NetworkFeeCardProps {
   networkFee?: {
-    fee: string;
-    feeInUSD: string;
-    speed: string;
-    gasPrice?: string;
-    gasLimit?: string;
+    fee: number;
+    feeInUSD: number;
+    speed: "Standard" | "Fast" | "Instant";
+    gasPrice?: number;
+    gasLimit?: number;
     feeRate?: number;
   } | null;
   selectedToken?: ProcessedAsset;
@@ -60,19 +61,24 @@ const NetworkFeeCard = ({
       </Box>
       <Box flex={1} alignItems="flex-end" justifyContent="space-between">
         <Box flexDirection="row" alignItems="center">
-          <CustomText variant="body" fontSize={12} color="secondaryColor" mr="s">
-            {networkFee?.feeInUSD || "$0.00"}
+          <CustomText
+            variant="body"
+            fontSize={12}
+            color="secondaryColor"
+            mr="s"
+          >
+            {PortfolioService.formatCurrency(networkFee?.feeInUSD || 0)}
           </CustomText>
           <CryptoIcon image={selectedToken?.image} size={12} />
         </Box>
         <CustomText variant="body" fontSize={12}>
           {(() => {
-            if (!selectedToken || !networkFee || !amount) return "$0.00";
+            if (!selectedToken || !networkFee || !amount) return PortfolioService.formatCurrency(0);
             const amountValue = parseFloat(amount);
             const usdValue = amountValue * (selectedToken.price || 0);
-            const feeValue = parseFloat(networkFee.feeInUSD.replace("$", ""));
+            const feeValue = networkFee.feeInUSD;
             const total = usdValue + feeValue;
-            return `$${total.toFixed(2)}`;
+            return PortfolioService.formatCurrency(total);
           })()}
         </CustomText>
       </Box>

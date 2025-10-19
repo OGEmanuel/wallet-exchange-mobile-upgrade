@@ -44,7 +44,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
   mainUserWalletGroup,
 }) => {
   const theme = useTheme<Theme>();
-  
+
   const [selectedChain, setSelectedChain] = useState(allChains?.[0] || null);
   const [selectedChainImage, setSelectedChainImage] = useState(
     allChains?.[0]?.nativeCurrencyId?.logo || ""
@@ -56,7 +56,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
   const [contractAddressError, setContractAddressError] = useState("");
   const [isLoadingTokenDetails, setIsLoadingTokenDetails] = useState(false);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
-  
+
   // Safety check for empty chains array
   if (!allChains || allChains.length === 0) {
     return null;
@@ -98,7 +98,10 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       if (tokenDetails && tokenDetails.data) {
         setTokenSymbol(tokenDetails.data.symbol || "");
         setTokenDecimals(tokenDetails.data.decimals || "");
-        const extractedTokenAddress = tokenDetails.data.tokenAddress || tokenDetails.data.address || contractAddress;
+        const extractedTokenAddress =
+          tokenDetails.data.tokenAddress ||
+          tokenDetails.data.address ||
+          contractAddress;
         setTokenAddress(extractedTokenAddress);
         console.log("Token details fetched:", tokenDetails.data);
         console.log("Extracted tokenAddress:", extractedTokenAddress);
@@ -151,7 +154,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
     try {
       setIsLoadingTokenDetails(true);
       const sdk = zapSDKService.getSDK();
-      
+
       if (!sdk || !sdk.tokens) {
         throw new Error("SDK not available");
       }
@@ -161,7 +164,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
         Alert.alert("Error", "Please select a chain");
         return;
       }
-      
+
       const importResult = await zapSDKService.addToken({
         chainId: selectedChain._id.toString(),
         tokenAddress: tokenAddress || contractAddress.trim(),
@@ -169,32 +172,28 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       });
 
       console.log("Token import result:", importResult);
-      
+
       if (importResult && importResult.data) {
         // Show success message and close modal
-        Alert.alert(
-          "Success", 
-          "Token imported successfully!",
-          [
-            {
-              text: "OK",
-              onPress: () => {
-                // Close the modal
-                onClose();
-                // Call the callback if provided
-                if (onImportToken) {
-                  onImportToken({
-                    chain: selectedChain?.name || "",
-                    contractAddress: contractAddress.trim(),
-                    symbol: tokenSymbol.trim(),
-                    decimals: tokenDecimals.trim(),
-                    tokenAddress: tokenAddress || contractAddress.trim(),
-                  });
-                }
+        Alert.alert("Success", "Token imported successfully!", [
+          {
+            text: "OK",
+            onPress: () => {
+              // Close the modal
+              onClose();
+              // Call the callback if provided
+              if (onImportToken) {
+                onImportToken({
+                  chain: selectedChain?.name || "",
+                  contractAddress: contractAddress.trim(),
+                  symbol: tokenSymbol.trim(),
+                  decimals: tokenDecimals.trim(),
+                  tokenAddress: tokenAddress || contractAddress.trim(),
+                });
               }
-            }
-          ]
-        );
+            },
+          },
+        ]);
       }
     } catch (error) {
       console.error("Failed to import token:", error);
@@ -468,18 +467,18 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
                 </Box>
               </Box>
 
-               {/* Continue Button */}
-               <CustomButton
-                 onPress={handleContinue}
-                 text={isLoadingTokenDetails ? "Importing..." : "Continue"}
-                 width="100%"
-                 height={56}
-                 fontSize={16}
-                 bgColor={theme.colors.primaryColor}
-                 color="white"
-                 borderRadius={30}
-                 disabled={isLoadingTokenDetails}
-               />
+              {/* Continue Button */}
+              <CustomButton
+                onPress={handleContinue}
+                text={isLoadingTokenDetails ? "Importing..." : "Continue"}
+                width="100%"
+                height={56}
+                fontSize={16}
+                bgColor={theme.colors.primaryColor}
+                color="white"
+                borderRadius={30}
+                disabled={isLoadingTokenDetails}
+              />
 
               {/* Bottom Home Indicator */}
               <Box
@@ -494,18 +493,17 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
           </Box>
         </KeyboardAvoidingView>
 
-         {/* Chain Selection Bottom Sheet */}
-         <SelectChainBottomSheet
-           ref={chainBottomSheetRef}
-           onChainSelect={(chainSymbol) => {
-             handleChainSelect(chainSymbol);
-             chainBottomSheetRef.current?.close();
-           }}
-         />
-
-       </View>
-     </Modal>
-   );
- };
+        {/* Chain Selection Bottom Sheet */}
+        <SelectChainBottomSheet
+          ref={chainBottomSheetRef}
+          onChainSelect={(chainSymbol) => {
+            handleChainSelect(chainSymbol);
+            chainBottomSheetRef.current?.close();
+          }}
+        />
+      </View>
+    </Modal>
+  );
+};
 
 export default ImportTokenModal;

@@ -5,38 +5,13 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
 import WalletCredentialsStorage from '../storage/wallet-credentials-storage';
-import NetworkErrorHandler from '../utils/network-error-handler';
+import { NetworkErrorHandler } from '../utils/network-error-handler';
 import { createSDKInstance, getSDKConfig } from './zap-sdk.config';
-
-export interface SendTransactionRequest {
-  fromAddress: string;
-  toAddress: string;
-  amount: string | number;
-  privateKey: string;
-  chain: string; // Updated to use 'chain' instead of 'chainSymbol'
-  // Optional parameters for different blockchain types
-  tokenAddress?: string; // For ERC20/TRC20 tokens
-  tokenMintAddress?: string; // For SPL tokens
-  rpcUrl?: string; // Custom RPC endpoint
-  utxos?: { // For Bitcoin transactions
-    txid: string;
-    vout: number;
-    value: number;
-  }[];
-  // Legacy parameters for backward compatibility
-  gasPrice?: string | number;
-  gasLimit?: string | number;
-  maxFeePerGas?: string | number; // EIP-1559
-  maxPriorityFeePerGas?: string | number; // EIP-1559
-  tokenDecimals?: number;
-  memo?: string;
-  nonce?: number;
-}
 
 export interface AddAccountsToExistingWalletRequest {
   userWalletGroupId?: string;
@@ -59,7 +34,7 @@ export interface CreateWalletGroupMultipurposeParams {
   seedPhrase?: string;
   privateKey?: string;
   watchAddress?: string;
-  walletType?: WALLET_GROUP_TYPE
+  walletType?: WALLET_GROUP_TYPE;
 }
 
 class ZapSDKService {
@@ -67,7 +42,7 @@ class ZapSDKService {
   private sdk: ZapSDK | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<boolean> | null = null;
-
+  private isAddingAccounts = false;
   // Circuit breaker for authentication failures
   private authFailureCount = 0;
   private maxAuthFailures = 2; // Reduced from 3 to 2 for faster response
@@ -83,7 +58,9 @@ class ZapSDKService {
     errorWindow: 5000, // Reduced from 10 to 5 seconds
   };
 
-  private constructor() { }
+  private constructor() {
+    this.isAddingAccounts = false;
+  }
 
   public static getInstance(): ZapSDKService {
     if (!ZapSDKService.instance) {
@@ -146,9 +123,9 @@ class ZapSDKService {
 
     // Try to disconnect WebSocket if possible
     try {
-      if (this.sdk && typeof this.sdk.disconnect === 'function') {
-        this.sdk.disconnect();
-      }
+      // if (this.sdk && typeof this.sdk.disconnect === 'function') {
+      //   this.sdk.disconnect();
+      // }
     } catch (error) {
       console.warn('⚠️ Error disconnecting SDK:', error);
     }
@@ -165,19 +142,19 @@ class ZapSDKService {
     try {
       if (this.sdk) {
         // Try to disable internal retry logic if the SDK exposes such methods
-        if (typeof this.sdk.setRetryEnabled === 'function') {
-          this.sdk.setRetryEnabled(false);
-        }
+        // if (typeof this.sdk.setRetryEnabled === 'function') {
+        //   this.sdk.setRetryEnabled(false);
+        // }
 
         // Try to disable auto-refresh if available
-        if (typeof this.sdk.setAutoRefresh === 'function') {
-          this.sdk.setAutoRefresh(false);
-        }
+        // if (typeof this.sdk.setAutoRefresh === 'function') {
+        //   this.sdk.setAutoRefresh(false);
+        // }
 
         // Try to clear any pending retry timers
-        if (typeof this.sdk.clearRetryTimers === 'function') {
-          this.sdk.clearRetryTimers();
-        }
+        // if (typeof this.sdk.clearRetryTimers === 'function') {
+        //   this.sdk.clearRetryTimers();
+        // }
 
         console.log('✅ SDK retry mechanisms disabled');
       }
@@ -238,13 +215,13 @@ class ZapSDKService {
           this.sdk.cleanup();
         }
 
-        if (typeof this.sdk.destroy === 'function') {
-          this.sdk.destroy();
-        }
+        // if (typeof this.sdk.destroy === 'function') {
+        //   this.sdk.destroy();
+        // }
 
-        if (typeof this.sdk.disconnect === 'function') {
-          this.sdk.disconnect();
-        }
+        // if (typeof this.sdk.disconnect === 'function') {
+        //   this.sdk.disconnect();
+        // }
       }
     } catch (error) {
       console.warn('⚠️ Error destroying SDK:', error);
@@ -302,7 +279,7 @@ class ZapSDKService {
    */
   private detectRetryLoop(): void {
     const now = Date.now();
-    const { consecutiveAuthErrors, lastAuthErrorTime, maxConsecutiveErrors, errorWindow } = this.retryLoopDetection;
+    const { /* consecutiveAuthErrors, */ lastAuthErrorTime, maxConsecutiveErrors, errorWindow } = this.retryLoopDetection;
 
     // Reset counter if enough time has passed
     if (now - lastAuthErrorTime > errorWindow) {
@@ -417,6 +394,20 @@ class ZapSDKService {
     } catch (error: any) {
       console.log(`❌ SDK call failed: ${context}`, error.message);
 
+      // Handle token refresh race condition
+      if (error.message?.includes('Token refresh already in progress')) {
+        console.warn(`⏳ Token refresh in progress for ${context}, waiting...`);
+        // Wait a bit and retry once
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          return await operation();
+        } catch (retryError: any) {
+          console.error(`❌ Retry failed for ${context}:`, retryError.message);
+          const networkError = NetworkErrorHandler.handleSDKError(retryError, context);
+          throw networkError;
+        }
+      }
+
       // Check if it's an auth error and record failure
       if (this.isAuthError(error)) {
         this.recordAuthFailure();
@@ -501,10 +492,13 @@ class ZapSDKService {
   }
 
   public async addAccountsToExistingWallet(params: AddAccountsToExistingWalletRequest) {
+    this.isAddingAccounts = true;
     return this.executeWithNetworkHandling(
       () => this.getSDK().wallets.addAccountsToExistingWallet(params),
       'addAccountsToExistingWallet'
-    );
+    ).finally(() => {
+      this.isAddingAccounts = false;
+    });
   }
 
   // Token Operations
@@ -516,10 +510,18 @@ class ZapSDKService {
   }
 
   public async disableToken(params: DisableTokenRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().tokens.disableToken(params),
-      'disableToken'
-    );
+    try {
+      console.log("🚫 Attempting to disable token:", params);
+      const result = await this.executeWithNetworkHandling(
+        () => this.getSDK().tokens.disableToken(params),
+        'disableToken'
+      );
+      console.log("✅ Token disabled successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to disable token:", error);
+      throw error;
+    }
   }
 
   public async getTokenDetails(params: TokenDetailsRequest) {
@@ -558,15 +560,32 @@ class ZapSDKService {
         params.toAddress,
         Number(params.amount),
         params.privateKey,
-        params.chain,
+        params.chainSymbol,
         {
           tokenAddress: params.tokenAddress,
           tokenMintAddress: params.tokenMintAddress,
-          rpcUrl: params.rpcUrl,
-          utxos: params.utxos,
         }
       ),
       'sendTransaction'
+    );
+  }
+
+  public async estimateTransactionCost(
+    toAddress: string,
+    amount: number,
+    fromAddress: string,
+    chainSymbol: string,
+    options?: any
+  ) {
+    return this.executeWithNetworkHandlingNoAuth(
+      () => this.getSDK().blockchain.estimateTransactionCost(
+        toAddress,
+        amount,
+        fromAddress,
+        chainSymbol,
+        options
+      ),
+      'estimateTransactionCost'
     );
   }
 
@@ -877,7 +896,7 @@ class ZapSDKService {
 
     try {
       // Import the wallet context to access the existing login function
-      const walletContext = await import('../wallet/wallet-context');
+      // const walletContext = await import('../wallet/wallet-context'); // Removed unused import
 
       // Call the existing attemptDeviceLogin function
       // Note: This is a bit tricky since it's a React context function
@@ -1128,7 +1147,8 @@ class ZapSDKService {
 
   /**
    * Complete wallet creation flow with proper credential storage
-   * Handles addWalletToWalletGroup + addAccountsToExistingWallet + credential storage
+   * Creates a wallet in an existing wallet group (similar to createWalletGroup pattern)
+   * Only creates the wallet, account creation is handled by retryPendingWallets in useEffect
    */
   public async createWalletInGroup(params: {
     walletGroupId: string;
@@ -1147,13 +1167,13 @@ class ZapSDKService {
     }
 
     try {
-      console.log('🚀 Starting complete wallet creation flow:', {
+      console.log('🚀 Creating wallet in existing group:', {
         walletGroupId: params.walletGroupId,
         name: params.name,
         hasSeedPhrase: !!params.seedPhrase
       });
 
-      // Step 1: Add wallet to wallet group
+      // Add wallet to wallet group
       const addWalletResponse = await this.sdk.wallets.addWalletToWalletGroup({
         walletGroupId: params.walletGroupId,
         name: params.name,
@@ -1172,35 +1192,15 @@ class ZapSDKService {
 
       if (walletStorageId) {
         await WalletCredentialsStorage.markWalletAsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
-        console.log('✅ Wallet marked as created in credentials storage');
+        console.log('✅ Wallet marked as created, account creation will be handled by retryPendingWallets');
       }
 
       if (!addWalletResponse.userWalletGroupId) {
         throw new Error('Failed to get userWalletGroupId from addWalletToWalletGroup');
       }
 
-      // Step 2: Add accounts to existing wallet
-      const addAccountsResponse = await this.sdk.wallets.addAccountsToExistingWallet({
-        userWalletGroupId: addWalletResponse.userWalletGroupId,
-        seedPhrase: params.seedPhrase,
-      });
-
-      console.log('✅ Accounts added to wallet:', addAccountsResponse);
-
-      if (walletStorageId) {
-        await WalletCredentialsStorage.markWalletAsAccountsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
-        console.log('✅ Wallet and accounts marked as created in credentials storage');
-
-        // Verify the status was updated correctly
-        const updatedCredential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(addWalletResponse.userWalletGroupId);
-        console.log('🔍 Verification - credential status:', {
-          isCreated: updatedCredential?.isCreated,
-          areAccountsCreated: updatedCredential?.areAccountsCreated,
-          userWalletGroupId: updatedCredential?.userWalletGroupId,
-          walletStorageId: walletStorageId
-        });
-
-      }
+      // Account creation will be handled by retryPendingWallets in useEffect
+      console.log('✅ Wallet created, account creation will be handled by retryPendingWallets');
 
       return {
         success: true,
@@ -1210,11 +1210,23 @@ class ZapSDKService {
       };
 
     } catch (error) {
-      console.error('❌ Complete wallet creation flow failed:', error);
+      console.error('❌ Wallet creation in group failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create wallet'
+        error: error instanceof Error ? error.message : 'Failed to create wallet in group'
       };
+    }
+  }
+
+  public async derivePrivateKey(privateKey: string, chainSymbol: string): Promise<{ address: string; privateKey: string }> {
+    try {
+      if (!this.sdk) {
+        throw new Error('SDK not initialized');
+      }
+      return await WalletUtils.importAccountFromPrivateKey(privateKey, chainSymbol);
+    } catch (error) {
+      console.error('❌ Failed to derive private key:', error);
+      return { address: "", privateKey: "" };
     }
   }
 }

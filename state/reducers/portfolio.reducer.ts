@@ -8,7 +8,8 @@ interface PortfolioState {
   
   // Processed data
   processedPortfolio: ProcessedPortfolio | null;
-  allSupportedTokens: ProcessedAsset[] | null;
+  processedTokenList: ProcessedAsset[] | null; // Processed token list with balances
+  allSupportedTokens: ProcessedAsset[] | null; // Keep for backward compatibility
   
   // Loading states
   isPortfolioLoading: boolean;
@@ -23,6 +24,7 @@ const initialState: PortfolioState = {
   rawPortfolio: null,
   rawTokenList: null,
   processedPortfolio: null,
+  processedTokenList: null,
   allSupportedTokens: null,
   isPortfolioLoading: false,
   isTokenListLoading: false,
@@ -45,6 +47,9 @@ const portfolioSlice = createSlice({
     // Processed data setters
     setProcessedPortfolio: (state, action: PayloadAction<ProcessedPortfolio | null>) => {
       state.processedPortfolio = action.payload;
+    },
+    setProcessedTokenList: (state, action: PayloadAction<ProcessedAsset[] | null>) => {
+      state.processedTokenList = action.payload;
     },
     setAllSupportedTokens: (state, action: PayloadAction<ProcessedAsset[] | null>) => {
       state.allSupportedTokens = action.payload;
@@ -84,6 +89,7 @@ export const {
   setRawPortfolio,
   setRawTokenList,
   setProcessedPortfolio,
+  setProcessedTokenList,
   setAllSupportedTokens,
   setPortfolioLoading,
   setTokenListLoading,

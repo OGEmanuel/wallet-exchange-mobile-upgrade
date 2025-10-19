@@ -1,63 +1,30 @@
-import { PortfolioService } from '@/services/portfolio.service';
-import {
-  setAllSupportedTokens,
-  setTokenListError,
-  setTokenListLoading
-} from '@/state/reducers/portfolio.reducer';
+// DEPRECATED: This hook is no longer needed
+// Token list now comes directly from portfolio API via userTokenList
+// Use Redux selectors instead: selectAllSupportedTokens, selectTokensBySearch, etc.
+
 import {
   selectAllSupportedTokens,
   selectTokenListError,
-  selectTokenListLoading
-} from '@/state/selectors/portfolio.selectors';
-import { useCallback, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+  selectTokenListLoading,
+} from "@/state/selectors/portfolio.selectors";
+import { useSelector } from "react-redux";
 
 export const useTokenList = () => {
-  const dispatch = useDispatch();
-  
-  // Redux state
+  // Redux state - tokens come from portfolio API
   const allSupportedTokens = useSelector(selectAllSupportedTokens);
   const isLoading = useSelector(selectTokenListLoading);
   const error = useSelector(selectTokenListError);
-
-  // Fetch token list from SDK
-  const fetchTokenList = useCallback(async () => {
-    try {
-      dispatch(setTokenListLoading(true));
-      dispatch(setTokenListError(null));
-      
-      console.log("🔄 Fetching token list...");
-      const tokenList = await PortfolioService.fetchTokenList();
-      
-      console.log("✅ Token list fetched successfully:", {
-        totalTokens: tokenList.length,
-        sampleToken: tokenList[0],
-      });
-      
-      // Store in Redux
-      dispatch(setAllSupportedTokens(tokenList));
-      
-    } catch (error: any) {
-      console.error("❌ Failed to fetch token list:", error);
-      dispatch(setTokenListError(error.message || "Failed to fetch token list"));
-    } finally {
-      dispatch(setTokenListLoading(false));
-    }
-  }, [dispatch]);
-
-  // Auto-fetch on mount if not already loaded
-  useEffect(() => {
-    if (!allSupportedTokens?.length && !isLoading && !error) {
-      fetchTokenList();
-    }
-  }, [allSupportedTokens?.length, isLoading, error, fetchTokenList]);
 
   return {
     allSupportedTokens,
     isLoading,
     error,
-    fetchTokenList,
-    refetch: fetchTokenList,
+    fetchTokenList: () => {
+      console.warn("fetchTokenList is deprecated - tokens come from portfolio API");
+    },
+    refetch: () => {
+      console.warn("refetch is deprecated - refresh portfolio to get latest tokens");
+    },
   };
 };
 

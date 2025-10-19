@@ -386,6 +386,23 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
     try {
       const sdk = zapSDKService.getSDK();
       if (sdk && sdk.tokens) {
+        // Validate parameters before making the call
+        if (!props.mainUserWalletGroup?._id) {
+          console.error("No main user wallet group ID available");
+          return;
+        }
+        
+        if (!assetId) {
+          console.error("No asset ID provided for token toggle");
+          return;
+        }
+
+        console.log("Toggling token:", {
+          assetId,
+          enabled,
+          userWalletGroupId: props.mainUserWalletGroup._id
+        });
+
         // Use SDK to toggle token status
         if (enabled) {
           await zapSDKService.enableToken({
@@ -410,6 +427,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
       }
     } catch (error) {
       console.error("Failed to toggle token:", error);
+      // You might want to show a user-friendly error message here
     }
   };
 

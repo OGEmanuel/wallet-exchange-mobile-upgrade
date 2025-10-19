@@ -14,6 +14,10 @@ export interface WalletContextType {
   isLoading: boolean;
   error: string | null;
 
+  // Account Derivation
+  isAccountDeriving: boolean;
+  setIsAccountDeriving: (deriving: boolean) => void;
+
   // Authentication
   walletLogin: (
     deviceToken: string,
@@ -25,14 +29,23 @@ export interface WalletContextType {
   exchangeValidateOtp: (email: string, otp: string) => Promise<boolean>;
 
   // Wallet Operations
-  createWallet: (walletName: string) => Promise<any | null>;
-  importWallet: (seedPhrase: string, walletName: string) => Promise<any | null>;
-  importPrivateKey: (
-    privateKey: string,
-    walletName: string,
-    chain: string
-  ) => Promise<any | null>;
-  watchAddress: (address: string, walletName: string) => Promise<any | null>;
+  createWalletGroup: ({
+    name,
+    seedPhrase,
+    privateKey,
+    watchAddress,
+    walletType = WALLET_GROUP_TYPE.GENERATED,
+    walletClass = WALLET_GROUP_CLASS.SEEDPHRASE,
+    searchChain,
+  }: {
+    name: string;
+    seedPhrase?: string;
+    privateKey?: string;
+    watchAddress?: string;
+    walletType?: WALLET_GROUP_TYPE;
+    walletClass?: WALLET_GROUP_CLASS;
+    searchChain?: string;
+  }) => Promise<any | null>;
 
   // Portfolio
   refreshPortfolio: () => Promise<void>;
@@ -61,8 +74,26 @@ export interface WalletContextType {
   isCreatingWallet: boolean;
   setIsCreatingWallet: (creating: boolean) => void;
 
+  // Loading States
+  isInitializing: boolean;
+  isAuthenticating: boolean;
+  isRefreshingPortfolio: boolean;
+  isSendingTransaction: boolean;
+  isBackgroundWalletGroupsRefresh: boolean;
+  isBackgroundPortfolioRefresh: boolean;
+  isRetryingPendingWallets: boolean;
+
   // Wallet Switching
   switchWallet: (userWalletGroupId: string) => Promise<void>;
+  removeWalletGroup: (walletGroupId: string, userWalletGroupId: string) => Promise<boolean>;
+
+  // Address and Private Key Management
+  getAddresses: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
+  getPrivateKeys: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
+  getAddress: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
+  getPrivateKey: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
+  getSeedPhrase: (userWalletGroupId?: string) => Promise<string | null>;
+  getSeedPhrases: () => Promise<any[] | null>;
 }
 
 export type IUserWalletGroup = {

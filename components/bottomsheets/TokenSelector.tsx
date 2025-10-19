@@ -135,6 +135,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     if (mode === "receive") {
       setSelectedToken(token);
     }
+
     onTokenSelect(token);
   };
 
@@ -352,7 +353,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           ) : (
             filteredTokens.map((token: ProcessedAsset, index: number) => (
               <Pressable
-                key={`${token.symbol}-${token.chainSymbol}-${index}`}
+                key={`${token.symbol}-${token.chainId}-${index}`}
                 onPress={() => handleTokenPress(token)}
                 style={({ pressed }) => ({
                   opacity: pressed ? 0.7 : 1,
@@ -421,10 +422,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                 </Box>
 
                 <Box marginLeft="s">
-                  <ArrowRight2
-                    size={16}
-                    color={theme.colors.white}
-                  />
+                  <ArrowRight2 size={16} color={theme.colors.white} />
                 </Box>
               </Pressable>
             ))
@@ -435,7 +433,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       {/* Chain Selection Bottom Sheet */}
       <SelectChainBottomSheet
         ref={chainBottomSheetRef}
-        onChainSelect={setSelectedChain}
+        onChainSelect={(chainSymbol) => {
+          setSelectedChain(chainSymbol);
+          chainBottomSheetRef.current?.close();
+        }}
       />
 
       {/* Import Token Modal - Self-contained */}

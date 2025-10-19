@@ -18,20 +18,22 @@ import BalanceCard from "@/components/dashboard/BalanceCard";
 import StickyHeader from "@/components/dashboard/StickyHeader";
 import WalletSelectorHeader from "@/components/dashboard/WalletSelectorHeader";
 import { AppBar, CustomButton } from "@/components/general";
+import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { PortfolioService } from "@/services/portfolio.service";
-import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
+import { useChains } from "@/src/core/chains/chains-context";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import {
   setAllSupportedTokens,
   setPortfolioError,
   setPortfolioLoading,
   setProcessedPortfolio,
+  setProcessedTokenList,
   setRawPortfolio,
+  setRawTokenList,
 } from "@/state/reducers/portfolio.reducer";
 import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import { ScrollView } from "react-native-gesture-handler";
 import Svg, { Path, SvgProps } from "react-native-svg";
@@ -40,7 +42,8 @@ import { useDispatch, useSelector } from "react-redux";
 const Home = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { walletChains } = useChains();
+  const { supportedCurrencies } = useSupportedCurrencies();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
@@ -54,43 +57,90 @@ const Home = () => {
     mainUserWalletGroup,
     portfolio,
     refreshPortfolio,
-    getSDK,
-    isLoading,
-    currentWalletUser,
+    isInitializing,
+    isAuthenticating,
+    isRefreshingPortfolio,
+    isCreatingWallet
   } = useWallet();
+
+  const { getCurrentWalletBalance, getCurrentWalletEnabledBalance } = useAggregatedBalances();
+
+  // Initialize wallet and portfolio on mount only
+  useEffect(() => {
+    const initializeWallet = async () => {
+      if (
+        mainUserWalletGroup &&
+        !isInitializing &&
+        !isAuthenticating &&
+        !isCreatingWallet
+      ) {
+        console.log("🚀 Initializing wallet and portfolio");
+        await retryPendingWallets();
+        await refreshPortfolio();
+      }
+    };
+
+    initializeWallet();
+  }, [mainUserWalletGroup]);
+
+  // Prevent back navigation to setup screen
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Prevent going back to setup - just return true to consume the event
+        return true;
+      }
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     try {
       setIsRefreshing(true);
       await refreshPortfolio();
-
-      // Force re-processing of portfolio data
-      if (portfolio) {
-        setRefreshTrigger((prev) => prev + 1);
-      }
+      // Portfolio processing will happen automatically when portfolio data changes
     } catch (error) {
       console.error("Failed to refresh portfolio:", error);
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshPortfolio, portfolio]);
+  }, [refreshPortfolio]);
 
-  // Process portfolio data when it changes and store in Redux
+  // Process portfolio data when it changes and store in Redux with caching
   useEffect(() => {
-    if (portfolio) {
+    if (portfolio?.mainWalletGroupPortfolio) {
       const processPortfolio = async () => {
         try {
           dispatch(setPortfolioLoading(true));
           dispatch(setPortfolioError(null));
-          const processed = await PortfolioService.processPortfolioData(
-            portfolio
+          dispatch(setRawTokenList(portfolio.userTokenList || []));
+
+          // Process with safe service to prevent multiple simultaneous processing
+          const processed = PortfolioService.processPortfolioData(portfolio);
+
+          if (!processed) {
+            console.warn("⚠️ Portfolio processing was skipped or failed");
+            dispatch(setPortfolioLoading(false));
+            return;
+          }
+
+          // Process token list with balances and chain info
+          const processedTokens = PortfolioService.processTokenList(
+            portfolio,
+            walletChains,
+            supportedCurrencies
           );
+
+          console.log("🔍 Sample processed token:", processedTokens?.[0]);
+
           // Store in Redux
           dispatch(setRawPortfolio(portfolio));
           dispatch(setProcessedPortfolio(processed));
-          // Also store all tokens for send/receive and manage token lists
-          dispatch(setAllSupportedTokens(processed.assets || []));
+          dispatch(setProcessedTokenList(processedTokens));
+          dispatch(setAllSupportedTokens(processedTokens)); // For backward compatibility
         } catch (error) {
           console.error("Failed to process portfolio data:", error);
           dispatch(setPortfolioError("Failed to process portfolio data"));
@@ -101,29 +151,9 @@ const Home = () => {
 
       processPortfolio();
     }
-  }, [portfolio, refreshTrigger, dispatch]);
-
-  // Track if portfolio has been fetched to prevent infinite loops
-  const hasFetchedPortfolio = useRef(false);
-
-  // Load portfolio data on focus
-  useFocusEffect(
-    React.useCallback(() => {
-      if (mainUserWalletGroup && !isLoading && !hasFetchedPortfolio.current) {
-        hasFetchedPortfolio.current = true;
-        // Set loading state when starting to fetch
-        dispatch(setPortfolioLoading(true));
-        refreshPortfolio();
-      }
-    }, [mainUserWalletGroup, isLoading, refreshPortfolio, dispatch])
-  );
-
-  // Reset fetch flag when portfolio changes
-  useEffect(() => {
-    if (portfolio) {
-      hasFetchedPortfolio.current = false;
-    }
   }, [portfolio]);
+
+  // Portfolio loading is now handled in the initialization useEffect above
 
   // Animation values for staggered card stack entrance
   const cardStackAnimations = useRef([
@@ -154,109 +184,33 @@ const Home = () => {
     </Svg>
   );
 
-  // Retry pending wallets when user enters wallet home
+  // Animate card stack on mount
   useEffect(() => {
-    retryPendingWallets();
-  }, [retryPendingWallets]);
-
-  // Check if current wallet needs account derivation
-  useEffect(() => {
-    const checkAndDeriveAccounts = async () => {
-      if (mainUserWalletGroup && portfolio) {
-        const accounts =
-          portfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts ||
-          [];
-        console.log("🔍 Current wallet accounts:", accounts.length);
-
-        if (accounts.length === 0) {
-          console.log(
-            "⚠️ No accounts found for current wallet, attempting to derive accounts..."
-          );
-          try {
-            // Try to derive accounts for the current wallet
-            const sdk = getSDK();
-            if (sdk && currentWalletUser) {
-              console.log(
-                "🔄 Attempting to derive accounts for wallet:",
-                mainUserWalletGroup._id
-              );
-
-              // Get the seed phrase for this wallet
-              const credentials =
-                await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
-                  mainUserWalletGroup._id
-                );
-              if (credentials?.credential) {
-                // Try to add accounts to existing wallet
-                await zapSDKService.addAccountsToExistingWallet({
-                  userWalletGroupId: mainUserWalletGroup._id,
-                  seedPhrase: credentials.credential.toString(),
-                });
-                console.log("✅ Accounts added successfully");
-
-                // Refresh portfolio
-                await refreshPortfolio();
-              } else {
-                console.log(
-                  "❌ No credentials found for wallet:",
-                  mainUserWalletGroup._id
-                );
-              }
-            }
-          } catch (error) {
-            console.error("❌ Failed to derive accounts:", error);
-          }
-        }
-      }
+    const animateCardStack = () => {
+      cardStackAnimations.forEach((animation, index) => {
+        Animated.timing(animation, {
+          toValue: 1,
+          duration: 600,
+          delay: index * 200, // Stagger each card by 200ms
+          useNativeDriver: true,
+        }).start();
+      });
     };
 
-    checkAndDeriveAccounts();
-  }, [
-    mainUserWalletGroup,
-    portfolio,
-    getSDK,
-    currentWalletUser,
-    refreshPortfolio,
-  ]);
-
-  // Animate card stack sliding in one after another - only when screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      const animateCardStack = () => {
-        cardStackAnimations.forEach((animation, index) => {
-          Animated.timing(animation, {
-            toValue: 1,
-            duration: 600,
-            delay: index * 200, // Stagger each card by 200ms
-            useNativeDriver: true,
-          }).start();
-        });
-      };
-
-      // Start animation after a short delay
-      const timer = setTimeout(animateCardStack, 500);
-      return () => clearTimeout(timer);
-    }, [cardStackAnimations])
-  );
-
-  // Prevent back navigation to setup screen
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => {
-        // Prevent going back to setup - just return true to consume the event
-        return true;
-      }
-    );
-
-    return () => backHandler.remove();
+    // Start animation after a short delay
+    const timer = setTimeout(animateCardStack, 500);
+    return () => clearTimeout(timer);
   }, []);
+
+  console.log(processedPortfolio?.totalUsdValue);
 
   return (
     <PageWrapper>
       <StickyHeader
         isVisible={showStickyHeader}
-        portfolioValue={processedPortfolio?.totalUsdValue || 0}
+        portfolioValue={
+          getCurrentWalletEnabledBalance() || processedPortfolio?.totalUsdValue || 0
+        }
         portfolioChange={0} // We don't have change data from the API
         portfolioChangePercentage={0} // We don't have change data from the API
       />
@@ -327,11 +281,15 @@ const Home = () => {
         >
           <Box height={10} />
           <BalanceCard
-            portfolioValue={processedPortfolio?.totalUsdValue || 0}
+            portfolioValue={
+              getCurrentWalletEnabledBalance() ||
+              processedPortfolio?.totalUsdValue ||
+              0
+            }
             portfolioChange={0} // We don't have change data from the API
             portfolioChangePercentage={0} // We don't have change data from the API
             walletName={mainUserWalletGroup?.walletGroupId?.name || "Wallet"}
-            isLoading={isLoading}
+            isLoading={isRefreshingPortfolio || isInitializing}
           />
           <Box mt="l">
             <ActionButtons
@@ -464,16 +422,11 @@ const Home = () => {
         ref={sendTokenRef}
         mode="send"
         onTokenSelect={(token) => {
-          console.log("🏠 HOME: Token selected:", {
-            id: token.id,
-            symbol: token.symbol,
-            name: token.name,
-          });
           // Navigate to send-token screen with the selected token
           router.push(`/dashboard/home/send-token?tokenId=${token.id}`);
         }}
       />
-      <TokenSelectorBottomSheet ref={recieveTokenRef} mode="receive" />
+      <TokenSelectorBottomSheet key="receive-token-selector" ref={recieveTokenRef} mode="receive" />
     </PageWrapper>
   );
 };

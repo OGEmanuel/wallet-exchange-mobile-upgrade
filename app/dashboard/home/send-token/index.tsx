@@ -17,19 +17,22 @@ import {
 import Box from "@/components/general/Box";
 import ErrorModal, { ErrorModalProps } from "@/components/general/ErrorModal";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
-import {
-  ProcessedAsset,
-  ProcessedPortfolio,
-} from "@/interfaces/portfolio.interface";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
+import { useChains } from "@/src/core/chains/chains-context";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import {
+  selectProcessedPortfolio,
+  selectTokenBySupportedCurrencyId,
+} from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { createErrorModalProps } from "@/utils/error-handler";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { SendTransactionRequest } from "@zap/blockchain-sdk";
+import { ethers } from "ethers";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -50,6 +53,7 @@ import {
 import { ChevronRight } from "react-native-feather";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SvgUri } from "react-native-svg";
+import { useSelector } from "react-redux";
 
 // Unified transaction parameter interface (for reference)
 // interface UnifiedTransactionParams {
@@ -68,67 +72,6 @@ import { SvgUri } from "react-native-svg";
 //   }[];
 //   tokenDecimals?: number;
 // }
-
-// Map chain symbols to unified chain identifiers
-const mapToUnifiedChain = (chainSymbol: string, token: ProcessedAsset): string => {
-  console.log("🔍 Mapping to unified chain:", {
-    chainSymbol,
-    tokenSymbol: token.symbol,
-    chainName: token.chainName,
-  });
-
-  // Check if it's a native token (no token address)
-  const isNativeToken =
-    !token.tokenAddress ||
-    token.tokenAddress === "" ||
-    token.tokenAddress === "0x0000000000000000000000000000000000000000";
-
-  // Map to unified chain identifiers
-  const chainMap: { [key: string]: string } = {
-    // Bitcoin
-    BTC: "bitcoin",
-    BITCOIN: "bitcoin",
-    
-    // Ethereum
-    ETH: "ethereum",
-    ETHEREUM: "ethereum",
-    
-    // Solana
-    SOL: "solana",
-    SOLANA: "solana",
-    
-    // Tron
-    TRX: "tron",
-    TRON: "tron",
-    
-    // EVM chains - all map to ethereum for unified method
-    MATIC: "ethereum", // Polygon
-    POLYGON: "ethereum",
-    ARB: "ethereum", // Arbitrum
-    ARBITRUM: "ethereum",
-    OP: "ethereum", // Optimism
-    OPTIMISM: "ethereum",
-    BASE: "ethereum", // Base
-    AVAX: "ethereum", // Avalanche
-    AVALANCHE: "ethereum",
-    BNB: "ethereum", // BSC
-    BSC: "ethereum",
-    FTM: "ethereum", // Fantom
-    FANTOM: "ethereum",
-    ONE: "ethereum", // Harmony
-    HARMONY: "ethereum",
-  };
-
-  const unifiedChain = chainMap[chainSymbol.toUpperCase()] || "ethereum";
-  
-  console.log("🔍 Unified chain mapping result:", {
-    originalChainSymbol: chainSymbol,
-    unifiedChain,
-    isNativeToken,
-  });
-
-  return unifiedChain;
-};
 
 // Prepare unified transaction parameters
 const prepareUnifiedTransactionParams = (
@@ -161,7 +104,8 @@ const prepareUnifiedTransactionParams = (
         params.tokenAddress = token.tokenAddress;
       }
       // RPC URL for Ethereum (optional, SDK will use default if not provided)
-      params.rpcUrl = "https://eth-mainnet.g.alchemy.com/v2/VnmQ0ryoowBx4cpgS3BtEqu_6USkQlik";
+      params.rpcUrl =
+        "https://eth-mainnet.g.alchemy.com/v2/VnmQ0ryoowBx4cpgS3BtEqu_6USkQlik";
       break;
 
     case "bitcoin":
@@ -189,7 +133,10 @@ const prepareUnifiedTransactionParams = (
       break;
 
     default:
-      console.warn("⚠️ Unknown unified chain, using default parameters:", unifiedChain);
+      console.warn(
+        "⚠️ Unknown unified chain, using default parameters:",
+        unifiedChain
+      );
       break;
   }
 
@@ -204,95 +151,44 @@ const prepareUnifiedTransactionParams = (
   return params;
 };
 
-// Calculate network fees based on unified chain
-const calculateNetworkFee = async (
-  selectedToken: ProcessedAsset | null,
-  unifiedChain: string,
-  amount: string
-): Promise<{
-  fee: string;
-  feeInUSD: string;
-  speed: string;
-  gasPrice?: string;
-  gasLimit?: string;
-  feeRate?: number;
-}> => {
-  console.log("🔍 Calculating network fee:", {
-    unifiedChain,
-    amount,
-  });
-
-  if (!selectedToken) {
-    return {
-      fee: "0",
-      feeInUSD: "$0.00",
-      speed: "Standard",
-    };
-  }
-
-  // Check if it's a native token
-  const isNativeToken =
-    !selectedToken.tokenAddress ||
-    selectedToken.tokenAddress === "" ||
-    selectedToken.tokenAddress === "0x0000000000000000000000000000000000000000";
-
-  // Mock fee calculation - in real implementation, this would call the SDK
-  const mockFees = {
-    // Ethereum/EVM fees
-    ethereum: {
-      native: { fee: "0.001", usd: "$2.50", gasPrice: "20", gasLimit: "21000" },
-      token: { fee: "0.003", usd: "$7.50", gasPrice: "20", gasLimit: "100000" },
-    },
-    // Bitcoin fees
-    bitcoin: { native: { fee: "0.0001", usd: "$3.20", feeRate: 10 } },
-    // Solana fees
-    solana: {
-      native: { fee: "0.000005", usd: "$0.01" },
-      token: { fee: "0.000005", usd: "$0.01" },
-    },
-    // Tron fees
-    tron: {
-      native: { fee: "1", usd: "$0.10" },
-      token: { fee: "1", usd: "$0.10" },
-    },
-  };
-
-  const chainFees = mockFees[unifiedChain as keyof typeof mockFees];
-  if (!chainFees) {
-    // Default fallback
-    return {
-      fee: "0.001",
-      feeInUSD: "$2.50",
-      speed: "Standard",
-    };
-  }
-
-  // Determine if it's a token transaction
-  const isTokenTransaction = !isNativeToken;
-  const feeData =
-    isTokenTransaction && "token" in chainFees
-      ? chainFees.token
-      : chainFees.native;
-
-  return {
-    fee: feeData.fee,
-    feeInUSD: feeData.usd,
-    speed: "Fast",
-    gasPrice: "gasPrice" in feeData ? (feeData.gasPrice as string) : undefined,
-    gasLimit: "gasLimit" in feeData ? (feeData.gasLimit as string) : undefined,
-    feeRate: "feeRate" in feeData ? (feeData.feeRate as number) : undefined,
-  };
-};
+enum FeeSpeed {
+  Standard = "Standard",
+  Fast = "Fast",
+  Instant = "Instant",
+}
 
 const SendToken = () => {
-  const { tokenId } = useLocalSearchParams();
+  const { tokenId: rawTokenId } = useLocalSearchParams();
+  const { getChainBySymbol } = useChains();
+
+  // Handle different tokenId formats (same as other pages)
+  let tokenId: string;
+  if (Array.isArray(rawTokenId)) {
+    tokenId = rawTokenId[0];
+  } else if (typeof rawTokenId === "object" && rawTokenId !== null) {
+    tokenId =
+      (rawTokenId as any)?._id ||
+      (rawTokenId as any)?.id ||
+      JSON.stringify(rawTokenId);
+  } else {
+    tokenId = rawTokenId || "";
+  }
+
+  // Ensure tokenId is a string
+  tokenId = String(tokenId);
   const [amount, setAmount] = useState<string>("");
   const [recipientAddress, setRecipientAddress] = useState<string>("");
   const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(
     null
   );
-  const [processedPortfolio, setProcessedPortfolio] =
-    useState<ProcessedPortfolio | null>(null);
+  const [isManuallySelected, setIsManuallySelected] = useState(false);
+  // Use processed portfolio from Redux instead of local state
+  const processedPortfolio = useSelector(selectProcessedPortfolio);
+
+  // Also try to get token using Redux selector
+  const reduxToken = useSelector((state: any) =>
+    selectTokenBySupportedCurrencyId(state, tokenId)
+  );
   const [showRecentTransfers, setShowRecentTransfers] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -305,19 +201,28 @@ const SendToken = () => {
   const [recentContacts, setRecentContacts] = useState<any[]>([]);
   const [inputMode, setInputMode] = useState<"value" | "dollar">("value");
   const [networkFee, setNetworkFee] = useState<{
-    fee: string;
-    feeInUSD: string;
-    speed: string;
-    gasPrice?: string;
-    gasLimit?: string;
+    fee: number;
+    feeInUSD: number;
+    speed: FeeSpeed;
+    gasPrice?: number;
+    gasLimit?: number;
     feeRate?: number;
-  } | null>(null);
+  } | null>({
+    fee: 0,
+    feeInUSD: 0,
+    speed: FeeSpeed.Standard,
+    gasPrice: 0,
+    gasLimit: 0,
+    feeRate: 0,
+  });
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const [balanceValidationError, setBalanceValidationError] = useState<
     string | null
   >(null);
   const [isValidatingBalance, setIsValidatingBalance] = useState(false);
-  
+
+  const { getNumericChainId } = useChains();
+
   // Error modal state
   const [errorModal, setErrorModal] = useState<{
     visible: boolean;
@@ -326,7 +231,7 @@ const SendToken = () => {
     visible: false,
     props: {},
   });
-  
+
   const dropdownAnimation = useRef(new Animated.Value(0)).current;
   const dropdownOpacity = useRef(new Animated.Value(0)).current;
   const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -346,7 +251,8 @@ const SendToken = () => {
   const { networkFeeRef, confirmSendRef, saveAddressRef } =
     useBottomSheetRefs();
   const sendTokenRef = useRef<BottomSheet>(null);
-  const { mainUserWalletGroup, portfolio } = useWallet();
+  const { mainUserWalletGroup, portfolio, getPrivateKey, getAddress } =
+    useWallet();
   const [permission, requestPermission] = useCameraPermissions();
 
   // Mock recent transfers data - matching the exact design from images
@@ -380,7 +286,7 @@ const SendToken = () => {
   const handlePasteAddress = async () => {
     try {
       const clipboardText = await Clipboard.getStringAsync();
-      setRecipientAddress(clipboardText);
+      handleAddressChange(clipboardText);
     } catch (error) {
       console.error("Failed to get clipboard content:", error);
     }
@@ -496,19 +402,17 @@ const SendToken = () => {
 
         console.log("🔍 SDK validation result:", validationResult);
 
-        // Handle SDK response - it returns { isValid: boolean, error?: string }
-        if (!validationResult.isValid) {
-          const errorMessage =
-            validationResult.error ||
-            "Invalid address format for this blockchain";
-          setAddressValidationError(errorMessage);
-          console.log("❌ Address validation failed:", errorMessage);
-          return false;
+        if (validationResult.isValid) {
+          console.log("✅ Address validation passed");
+          setAddressValidationError(null);
+          return true;
         }
-
-        console.log("✅ Address validation passed");
-        setAddressValidationError(null);
-        return true;
+        const errorMessage =
+          validationResult.error ||
+          "Invalid address format for this blockchain";
+        setAddressValidationError(errorMessage);
+        console.log("❌ Address validation failed:", errorMessage);
+        return false;
       } catch (error) {
         console.error("Address validation error:", error);
         setAddressValidationError("Unable to validate address");
@@ -567,7 +471,7 @@ const SendToken = () => {
 
       if (isNativeToken && networkFee) {
         // For native tokens, add gas fee to the amount
-        const feeValue = parseFloat(networkFee.fee || "0");
+        const feeValue = networkFee.fee;
         totalRequired = amountValue + feeValue;
       }
 
@@ -604,20 +508,32 @@ const SendToken = () => {
         onClose: hideErrorModal,
         onRetry: handleRetryTransaction,
         onSupport: handleContactSupport,
-        primaryAction: errorProps.primaryAction ? {
-          ...errorProps.primaryAction,
-          onPress: () => {
-            hideErrorModal();
-            handleErrorAction(errorProps.primaryAction!.text.toLowerCase().replace(/\s+/g, "_"));
-          }
-        } : undefined,
-        secondaryAction: errorProps.secondaryAction ? {
-          ...errorProps.secondaryAction,
-          onPress: () => {
-            hideErrorModal();
-            handleErrorAction(errorProps.secondaryAction!.text.toLowerCase().replace(/\s+/g, "_"));
-          }
-        } : undefined,
+        primaryAction: errorProps.primaryAction
+          ? {
+              ...errorProps.primaryAction,
+              onPress: () => {
+                hideErrorModal();
+                handleErrorAction(
+                  errorProps
+                    .primaryAction!.text.toLowerCase()
+                    .replace(/\s+/g, "_")
+                );
+              },
+            }
+          : undefined,
+        secondaryAction: errorProps.secondaryAction
+          ? {
+              ...errorProps.secondaryAction,
+              onPress: () => {
+                hideErrorModal();
+                handleErrorAction(
+                  errorProps
+                    .secondaryAction!.text.toLowerCase()
+                    .replace(/\s+/g, "_")
+                );
+              },
+            }
+          : undefined,
       },
     });
   };
@@ -694,30 +610,6 @@ const SendToken = () => {
     confirmSendRef.current?.snapToIndex(0);
   };
 
-  // Debug function to emergency stop SDK
-  const emergencyStopSDK = () => {
-    console.log("🚨 Emergency stopping SDK...");
-    zapSDKService.emergencyStop();
-    Alert.alert(
-      "Emergency Stop",
-      "SDK emergency stopped. Check console for results."
-    );
-  };
-
-  // Debug function to check retry loop status
-  const checkRetryLoopStatus = () => {
-    const status = zapSDKService.getDetailedStatus();
-    console.log("📊 Retry Loop Status:", status);
-    Alert.alert(
-      "Retry Loop Status",
-      `Circuit Breaker: ${
-        status.circuitBreaker.isOpen ? "OPEN" : "CLOSED"
-      }\nFailure Count: ${status.circuitBreaker.failureCount}\nSDK Status: ${
-        status.hasSDK ? "ACTIVE" : "DESTROYED"
-      }\nRetrying: ${status.isRetrying ? "YES" : "NO"}`
-    );
-  };
-
   const handleConfirmSend = async () => {
     console.log("🚀 handleConfirmSend called");
 
@@ -726,15 +618,12 @@ const SendToken = () => {
 
     if (!validation.isValid) {
       console.log("❌ Validation failed:", validation.errors);
-      showErrorModal(
-        new Error(validation.errors.join(", ")),
-        { 
-          errorCode: "VALIDATION_ERROR",
-          amount,
-          tokenSymbol: selectedToken?.symbol,
-          recipientAddress,
-        }
-      );
+      showErrorModal(new Error(validation.errors.join(", ")), {
+        errorCode: "VALIDATION_ERROR",
+        amount,
+        tokenSymbol: selectedToken?.symbol,
+        recipientAddress,
+      });
       return;
     }
 
@@ -745,14 +634,16 @@ const SendToken = () => {
 
       // Get the wallet's private key
       console.log("🔍 Getting private key...");
-      const privateKey = await getPrivateKey();
+      const privateKey = await getPrivateKey(
+        selectedToken?.chainSymbol || "ETH"
+      );
       console.log("🔍 Private key retrieved:", !!privateKey);
 
       if (!privateKey) {
         console.log("❌ Private key not found");
         showErrorModal(
           new Error("Private key not found. Please unlock your wallet."),
-          { 
+          {
             errorCode: "WALLET_ERROR",
             tokenSymbol: selectedToken?.symbol,
           }
@@ -761,16 +652,6 @@ const SendToken = () => {
       }
 
       console.log("✅ Private key found, proceeding with transaction");
-
-      // Debug selectedToken properties
-      console.log("🔍 SelectedToken debug:", {
-        symbol: selectedToken?.symbol,
-        chainSymbol: selectedToken?.chainSymbol,
-        chainName: selectedToken?.chainName,
-        chainId: selectedToken?.chainId,
-        tokenAddress: selectedToken?.tokenAddress,
-        decimals: selectedToken?.decimals,
-      });
 
       // Debug the full selectedToken object
       console.log(
@@ -786,161 +667,69 @@ const SendToken = () => {
         console.log(
           "🔍 ChainSymbol is empty/unknown, trying to determine from other properties"
         );
-
-        // Try to determine from chainName
-        if (selectedToken?.chainName) {
-          const chainNameMap: { [key: string]: string } = {
-            Ethereum: "ETH",
-            Bitcoin: "BTC",
-            Solana: "SOL",
-            Tron: "TRX",
-            // Map EVM chains to ETH for now (SDK might only support ETH for EVM)
-            Polygon: "ETH", // MATIC -> ETH
-            Arbitrum: "ETH", // ARB -> ETH
-            Optimism: "ETH", // OP -> ETH
-            Base: "ETH", // BASE -> ETH
-            Avalanche: "ETH", // AVAX -> ETH
-            BSC: "ETH", // BNB -> ETH
-            Fantom: "ETH", // FTM -> ETH
-            Harmony: "ETH", // ONE -> ETH
-            // Add more chains as needed
-          };
-
-          chainSymbol = chainNameMap[selectedToken.chainName] || "ETH";
-          console.log("🔍 Determined chainSymbol from chainName:", chainSymbol);
-        } else {
-          // Final fallback based on token symbol
-          const symbolChainMap: { [key: string]: string } = {
-            BTC: "BTC",
-            ETH: "ETH",
-            SOL: "SOL",
-            TRX: "TRX",
-            // Map EVM chains to ETH for now (SDK might only support ETH for EVM)
-            MATIC: "ETH", // Polygon -> ETH
-            AVAX: "ETH", // Avalanche -> ETH
-            BNB: "ETH", // BSC -> ETH
-            FTM: "ETH", // Fantom -> ETH
-            ONE: "ETH", // Harmony -> ETH
-            USDT: "ETH", // USDT is usually on ETH by default
-            USDC: "ETH", // USDC is usually on ETH by default
-            DAI: "ETH", // DAI is usually on ETH by default
-            WETH: "ETH", // Wrapped ETH
-            WBTC: "ETH", // Wrapped BTC on ETH
-          };
-
-          chainSymbol = symbolChainMap[selectedToken?.symbol || ""] || "ETH";
-          console.log(
-            "🔍 Determined chainSymbol from token symbol:",
-            chainSymbol
-          );
-        }
+        throw new Error("Chain symbol is empty/unknown");
       }
 
       console.log("🔍 Final chainSymbol determined:", chainSymbol);
 
-      // Ensure we always have a valid chain symbol
-      if (!chainSymbol || chainSymbol === "" || chainSymbol === "UNKNOWN") {
-        console.log("⚠️ ChainSymbol is still invalid, forcing ETH fallback");
-        chainSymbol = "ETH";
-      }
-
       // Ensure uppercase format as SDK expects uppercase chain symbols
       chainSymbol = chainSymbol.toUpperCase();
-      console.log(
-        "🔍 Final chainSymbol after validation and uppercase conversion:",
-        chainSymbol
-      );
 
-      // Map to unified chain identifier
-      const unifiedChain = mapToUnifiedChain(chainSymbol, selectedToken!);
-      console.log("🔍 Unified chain determined:", unifiedChain);
+      const chain = getChainBySymbol(chainSymbol);
 
       // Prepare base transaction parameters
-      const baseParams = {
-        fromAddress: mainUserWalletGroup?.walletGroupId?.address || "",
+      let baseParams: SendTransactionRequest = {
+        fromAddress: (await getAddress(chainSymbol)) || "",
         toAddress: recipientAddress,
         amount: parseFloat(amount),
-        privateKey: privateKey,
+        privateKey,
         tokenDecimals: selectedToken!.decimals,
+        chainSymbol: chainSymbol,
       };
 
-      // Prepare unified transaction parameters
-      console.log("🔍 Before prepareUnifiedTransactionParams:", {
-        baseParams,
-        selectedToken: selectedToken?.symbol,
-        unifiedChain,
-      });
+      if (chain?.isEVM) {
+        baseParams = {
+          ...baseParams,
+          tokenAddress: selectedToken!.tokenAddress || undefined,
+        };
+      } else if (chain?.symbol === "SOL") {
+        baseParams = {
+          ...baseParams,
+          tokenMintAddress: selectedToken!.tokenAddress || undefined,
+        };
+      } else if (chain?.symbol === "BTC") {
+        baseParams = {
+          ...baseParams,
+        };
+      } else if (chain?.symbol === "TRX") {
+        baseParams = {
+          ...baseParams,
+          tokenAddress: selectedToken!.tokenAddress || undefined,
+        };
+      }
 
-      const transactionParams = prepareUnifiedTransactionParams(
-        baseParams,
-        selectedToken!,
-        unifiedChain
-      );
-
-      console.log("🔍 After prepareUnifiedTransactionParams:", {
-        chain: transactionParams.chain,
-        fromAddress: transactionParams.fromAddress,
-        toAddress: transactionParams.toAddress,
-        amount: transactionParams.amount,
-      });
-
-      console.log("🚀 Sending transaction with params:", {
-        fromAddress: transactionParams.fromAddress,
-        toAddress: transactionParams.toAddress,
-        amount: transactionParams.amount,
-        chain: transactionParams.chain,
-        tokenAddress: transactionParams.tokenAddress,
-        tokenMintAddress: transactionParams.tokenMintAddress,
-      });
-
-      // Debug: Log all transaction parameters
-      console.log(
-        "🔍 Full transaction parameters being sent to SDK:",
-        JSON.stringify(transactionParams, null, 2)
-      );
-
-      // Final validation before sending
-      console.log("🔍 Final chain validation:", {
-        chain: transactionParams.chain,
-        isEmpty: !transactionParams.chain,
-        isBlank: transactionParams.chain === "",
-        length: transactionParams.chain?.length,
-      });
-
-      if (
-        !transactionParams.chain ||
-        transactionParams.chain === ""
-      ) {
-        console.error("❌ Invalid chain, aborting transaction");
-        showErrorModal(
-          new Error("Invalid chain configuration. Please try again."),
-          { 
-            errorCode: "VALIDATION_ERROR",
-            chain: transactionParams.chain,
-            tokenSymbol: selectedToken?.symbol,
-          }
-        );
-        return;
+      if (!baseParams.chainSymbol || baseParams.chainSymbol === "") {
+        throw new Error("Invalid chain configuration. Please try again.");
       }
 
       // Send the transaction using the SDK
       console.log("🚀 Calling SDK sendTransaction...");
       let result: any;
       try {
-        result = await zapSDKService.sendTransaction(transactionParams);
+        result = await zapSDKService.sendTransaction(baseParams);
         console.log("✅ Transaction sent successfully:", result);
-        
+
         // Navigate to success screen
         router.push({
-          pathname: '/dashboard/home/send-token/success',
+          pathname: "/dashboard/home/send-token/success",
           params: {
             txHash: result,
             amount: amount,
-            tokenSymbol: selectedToken?.symbol || 'ETH',
+            tokenSymbol: selectedToken?.symbol || "ETH",
             recipientAddress: recipientAddress,
-            networkFee: networkFee?.fee || '0',
-            networkName: selectedToken?.chainName || 'Ethereum'
-          }
+            networkFee: networkFee?.fee || "0",
+            networkName: selectedToken?.chainName || "Ethereum",
+          },
         });
         return;
       } catch (error: any) {
@@ -948,13 +737,13 @@ const SendToken = () => {
         console.error("❌ Error details:", {
           message: error?.message,
           code: error?.code,
-          chain: transactionParams.chain,
+          chain: baseParams.chainSymbol,
           fullError: JSON.stringify(error, null, 2),
         });
 
         // Show error modal with context
         showErrorModal(error, {
-          chain: transactionParams.chain,
+          chain: baseParams.chainSymbol,
           amount,
           tokenSymbol: selectedToken?.symbol,
           recipientAddress,
@@ -962,10 +751,9 @@ const SendToken = () => {
         });
         return;
       }
-
     } catch (error: any) {
       console.error("❌ Transaction failed:", error);
-      
+
       // Show error modal with context
       showErrorModal(error, {
         amount,
@@ -978,157 +766,8 @@ const SendToken = () => {
     }
   };
 
-  // Get private key from stored seed phrase using Zap SDK
-  const getPrivateKey = async (): Promise<string | null> => {
-    try {
-      if (!mainUserWalletGroup?._id) {
-        console.error("No main user wallet group found");
-        return null;
-      }
-
-      // Get the stored credentials for this wallet group
-      const credentials =
-        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
-          mainUserWalletGroup._id
-        );
-
-      if (!credentials) {
-        console.error(
-          "No credentials found for wallet group:",
-          mainUserWalletGroup._id
-        );
-        return null;
-      }
-
-      console.log("🔍 Found credentials:", {
-        id: credentials.id,
-        class: credentials.class,
-        hasCredential: !!credentials.credential,
-        isCreated: credentials.isCreated,
-        userWalletGroupId: credentials.userWalletGroupId,
-        derivationIndex: credentials.derivationIndex,
-      });
-
-      // Check if the wallet is properly created
-      if (!credentials.isCreated) {
-        console.error(
-          "Wallet not created in SDK yet. Please ensure your wallet is fully set up."
-        );
-        Alert.alert(
-          "Wallet Not Ready",
-          "Your wallet is not fully set up yet. Please ensure you have completed the wallet creation process."
-        );
-        return null;
-      }
-
-      // For seed phrase wallets, we need to derive the private key
-      if (credentials.class === "SEEDPHRASE" && credentials.credential) {
-        try {
-          const chainSymbol = selectedToken?.chainSymbol || "ETH";
-          const walletId = mainUserWalletGroup._id;
-
-          // Map chain symbols to the keys used in the derived result (same as manage-wallet)
-          const chainSymbolMap = {
-            ETH: "eth",
-            BTC: "btc",
-            SOL: "sol",
-            TRX: "trx",
-            MATIC: "eth", // Polygon uses ETH derivation
-            ARB: "eth", // Arbitrum uses ETH derivation
-            OP: "eth", // Optimism uses ETH derivation
-            BASE: "eth", // Base uses ETH derivation
-            AVAX: "eth", // Avalanche uses ETH derivation
-            BNB: "eth", // BSC uses ETH derivation
-            FTM: "eth", // Fantom uses ETH derivation
-            ONE: "eth", // Harmony uses ETH derivation
-          };
-
-          const mappedSymbol =
-            chainSymbolMap[chainSymbol as keyof typeof chainSymbolMap];
-          console.log("🔍 Debug - mappedSymbol:", mappedSymbol);
-
-          if (!mappedSymbol) {
-            console.log("🔍 Debug - no mapped symbol for:", chainSymbol);
-            return null;
-          }
-
-          // Check global cache first using mapped symbol
-          if (globalDerivedKeysCache.current[walletId]?.[mappedSymbol]) {
-            console.log(
-              "✅ Using globally cached private key for",
-              chainSymbol
-            );
-            return globalDerivedKeysCache.current[walletId][mappedSymbol];
-          }
-
-          console.log(
-            "🔍 Deriving private key for specific chain only:",
-            mappedSymbol
-          );
-
-          // Use Zap SDK to derive address for specific chain only
-          const derivedResult = await zapSDKService.deriveAddress(
-            credentials.credential,
-            mappedSymbol, // specific chain symbol
-            0 // wallet depth (use 0 for main account)
-          );
-
-          console.log(
-            "🔍 Derived result for",
-            mappedSymbol,
-            ":",
-            derivedResult
-          );
-
-          // Get the private key for this specific chain
-          const privateKey = derivedResult.privateKey;
-          console.log(
-            "🔍 Retrieved private key for chain:",
-            mappedSymbol,
-            !!privateKey
-          );
-
-          if (!privateKey) {
-            console.error(`Private key not found for chain: ${mappedSymbol}`);
-            return null;
-          }
-
-          // Cache the specific private key for future use
-          if (!globalDerivedKeysCache.current[walletId]) {
-            globalDerivedKeysCache.current[walletId] = {};
-          }
-          globalDerivedKeysCache.current[walletId][mappedSymbol] = privateKey;
-          console.log(`✅ Cached private key for ${mappedSymbol} only`);
-
-          return privateKey;
-        } catch (error) {
-          console.error(
-            "Failed to derive private key from seed phrase:",
-            error
-          );
-          return null;
-        }
-      }
-
-      // For private key wallets, return the credential directly
-      if (credentials.class === "PRIVATE_KEY" && credentials.credential) {
-        console.log("✅ Using stored private key");
-        return credentials.credential;
-      }
-
-      console.error(
-        "Unsupported wallet class or missing credential:",
-        credentials.class
-      );
-      return null;
-    } catch (error) {
-      console.error("Failed to retrieve private key:", error);
-      return null;
-    }
-  };
-
   const handleSelectRecentTransfer = (transfer: any) => {
-    setRecipientAddress(transfer.address);
+    handleAddressChange(transfer.address);
     setShowRecentTransfers(false);
     dismissKeyboard();
   };
@@ -1192,47 +831,10 @@ const SendToken = () => {
     }
   }, []);
 
-  // Calculate network fees when token is selected (for max button)
-  useEffect(() => {
-    const calculateInitialFees = async () => {
-      if (!selectedToken) {
-        setNetworkFee(null);
-        return;
-      }
-
-      try {
-        setIsCalculatingFee(true);
-
-        // Determine transaction type
-        const chainSymbol = selectedToken.chainSymbol || "ETH";
-        // Calculate fees with a small amount (0.001) to get base fee
-        const unifiedChain = mapToUnifiedChain(chainSymbol, selectedToken);
-        const feeData = await calculateNetworkFee(
-          selectedToken,
-          unifiedChain,
-          "0.001"
-        );
-        setNetworkFee(feeData);
-
-        console.log(
-          "✅ Initial network fee calculated for max button:",
-          feeData
-        );
-      } catch (error) {
-        console.error("❌ Failed to calculate initial network fee:", error);
-        setNetworkFee(null);
-      } finally {
-        setIsCalculatingFee(false);
-      }
-    };
-
-    calculateInitialFees();
-  }, [selectedToken]);
-
   // Calculate network fees when amount changes (for real-time updates)
   useEffect(() => {
     const calculateFees = async () => {
-      if (!selectedToken || !amount || parseFloat(amount) <= 0) {
+      if (!selectedToken) {
         // Don't clear network fee here, keep the initial one for max button
         return;
       }
@@ -1242,13 +844,70 @@ const SendToken = () => {
 
         // Determine transaction type
         const chainSymbol = selectedToken.chainSymbol || "ETH";
+        const address =
+          (await getAddress(chainSymbol, mainUserWalletGroup?._id)) || "";
+
+        console.log("🔍 Address:", address);
         // Calculate fees
-        const unifiedChain = mapToUnifiedChain(chainSymbol, selectedToken);
-        const feeData = await calculateNetworkFee(
-          selectedToken,
-          unifiedChain,
-          amount
+        const gasEstimate = await zapSDKService.estimateTransactionCost(
+          address,
+          parseFloat(amount) || 0.00001,
+          address,
+          chainSymbol,
+          {
+            tokenContractAddress: selectedToken?.tokenAddress || "",
+            tokenAddress: selectedToken?.tokenAddress || "",
+            tokenMintAddress: selectedToken?.tokenAddress || "",
+            memo: "",
+            feeRate: null,
+          }
         );
+
+        console.log("🔍 Gas estimate:", gasEstimate);
+
+        const chainToUse = getChainBySymbol(chainSymbol);
+        let feeData = {
+          fee: 0,
+          feeInUSD: 0,
+          speed: FeeSpeed.Standard,
+          gasPrice: 0,
+          gasLimit: 0,
+          feeRate: 0,
+        };
+
+        const price = await processedPortfolio?.assets.find(
+          (asset: ProcessedAsset) => {
+            return (
+              asset.symbol.toUpperCase() ===
+                chainToUse?.nativeCurrencySymbol.toUpperCase() &&
+              asset.chainSymbol.toUpperCase() ===
+                chainToUse?.symbol.toUpperCase()
+            );
+          }
+        )?.price;
+
+        if (chainToUse?.isEVM) {
+          feeData.fee = parseFloat(
+            ethers.formatEther(
+              BigInt(gasEstimate.gasPrice * gasEstimate.gasLimit)
+            )
+          );
+
+          feeData.feeInUSD = feeData.fee * (price || 0);
+          feeData.gasPrice = gasEstimate.gasPrice;
+          feeData.gasLimit = gasEstimate.gasLimit;
+        } else if (chainToUse?.symbol === "SOL") {
+          feeData.fee = gasEstimate.estimatedCost;
+          feeData.feeInUSD = feeData.fee * (price || 0);
+        } else if (chainToUse?.symbol === "BTC") {
+          feeData.fee = feeData.fee * (price || 0);
+          console.log(price, "price");
+          feeData.feeInUSD = feeData.fee * (price || 0);
+        } else if (chainToUse?.symbol === "TRX") {
+          feeData.fee = gasEstimate.estimatedCost;
+          feeData.feeInUSD = feeData.fee * (price || 0);
+        }
+
         setNetworkFee(feeData);
 
         console.log("✅ Network fee calculated for amount:", feeData);
@@ -1261,9 +920,8 @@ const SendToken = () => {
     };
 
     // Debounce fee calculation
-    const timeoutId = setTimeout(calculateFees, 500);
-    return () => clearTimeout(timeoutId);
-  }, [selectedToken, amount]);
+    calculateFees();
+  }, [selectedToken, mainUserWalletGroup?._id]);
 
   // Validate balance when amount, token, or network fee changes
   useEffect(() => {
@@ -1296,12 +954,12 @@ const SendToken = () => {
   // Address validation on change with better debouncing
   const handleAddressChange = useCallback(
     async (text: string) => {
-      setRecipientAddress(text);
-
       // Clear any existing validation error immediately when user types
       if (addressValidationError) {
         setAddressValidationError(null);
       }
+
+      setRecipientAddress(text);
 
       // Clear existing timeout
       if (debounceTimeout.current) {
@@ -1363,90 +1021,112 @@ const SendToken = () => {
     }
   }, [showRecentTransfers, dropdownAnimation, dropdownOpacity]);
 
-  // Process portfolio data when it changes
-  useEffect(() => {
-    if (portfolio) {
-      const processPortfolio = async () => {
-        try {
-          console.log("🔍 SEND TOKEN: Processing portfolio data...");
-          const processed = await PortfolioService.processPortfolioData(
-            portfolio
-          );
-          setProcessedPortfolio(processed);
-          console.log(
-            "🔍 SEND TOKEN: Portfolio processed, enabledAssets:",
-            processed.enabledAssets.length
-          );
-        } catch (error) {
-          console.error("Failed to process portfolio data:", error);
-        }
-      };
-
-      processPortfolio();
-    }
-  }, [portfolio]);
+  // Portfolio processing is now handled centrally in home.tsx
+  // This component uses the processed data from Redux instead
 
   // Set token based on tokenId parameter or default token when portfolio loads
   useEffect(() => {
-    console.log("🔍 SEND TOKEN DEBUG:");
-    console.log("  - tokenId from URL:", tokenId);
-    console.log("  - processedPortfolio exists:", !!processedPortfolio);
-    console.log(
-      "  - processedPortfolio.enabledAssets length:",
-      processedPortfolio?.enabledAssets?.length || 0
-    );
-    console.log("  - current selectedToken:", selectedToken?.symbol || "none");
-
     // Wait for portfolio to be fully processed
     if (
       processedPortfolio?.enabledAssets &&
       processedPortfolio.enabledAssets.length > 0
     ) {
-      console.log(
-        "  - Available tokens:",
-        processedPortfolio.enabledAssets.map((t) => ({
-          id: t.id,
-          symbol: t.symbol,
-        }))
-      );
-
-      if (tokenId && !selectedToken) {
-        console.log("  - Looking for token with ID:", tokenId);
+      // Don't override manual token selection
+      if (isManuallySelected) {
+        return;
+      }
+      if (tokenId) {
         const token = processedPortfolio.enabledAssets.find(
-          (token: ProcessedAsset) => token.id === tokenId
+          (token: ProcessedAsset) => {
+            // Try multiple matching strategies (same as token details page)
+            const matchesId = token.id === tokenId;
+            const matchesSupportedId =
+              token.supportedCurrencyId?._id === tokenId;
+            const matchesSupportedIdString =
+              token.supportedCurrencyId?._id?.toString() === tokenId;
+            const matchesIdString = token.id?.toString() === tokenId;
+
+            // Check if supportedCurrencyId is a string that matches
+            const matchesSupportedIdDirect =
+              token.supportedCurrencyId === tokenId;
+
+            // Check if supportedCurrencyId is an object with _id that matches
+            const matchesSupportedIdObject =
+              typeof token.supportedCurrencyId === "object" &&
+              token.supportedCurrencyId?._id === tokenId;
+
+            // NEW: Check if tokenId matches the userPortfolio ID (which might be stored differently)
+            // This handles the case where tokenId is a userPortfolio ID that should match supportedCurrencyId
+            const matchesUserPortfolioId =
+              token.supportedCurrencyId === tokenId ||
+              (typeof token.supportedCurrencyId === "object" &&
+                token.supportedCurrencyId?._id === tokenId);
+
+            // Additional fallback: Check if tokenId matches any string field in the token
+            const matchesAnyStringField = Object.values(token).some(
+              (value) => typeof value === "string" && value === tokenId
+            );
+
+            const found =
+              matchesId ||
+              matchesSupportedId ||
+              matchesSupportedIdString ||
+              matchesIdString ||
+              matchesSupportedIdDirect ||
+              matchesSupportedIdObject ||
+              matchesUserPortfolioId ||
+              matchesAnyStringField;
+
+            if (found) {
+              // Match found
+            }
+
+            return found;
+          }
         );
         if (token) {
-          console.log("  ✅ Found token:", {
-            id: token.id,
-            symbol: token.symbol,
-            name: token.name,
-          });
           setSelectedToken(token);
         } else {
-          console.log("  ❌ Token not found with ID:", tokenId);
-          // Fallback to default token
-          const tokenWithBalance = processedPortfolio.enabledAssets.find(
-            (token: ProcessedAsset) => token.balance > 0
-          );
-          setSelectedToken(
-            tokenWithBalance || processedPortfolio.enabledAssets[0]
-          );
+          // Try using Redux selector as fallback
+          if (reduxToken) {
+            setSelectedToken(reduxToken);
+          } else {
+            // Fallback to default token - prefer ETH if available, otherwise first token with balance
+            const ethToken = processedPortfolio.enabledAssets.find(
+              (token: ProcessedAsset) =>
+                token.symbol === "ETH" && token.balance > 0
+            );
+            const tokenWithBalance = processedPortfolio.enabledAssets.find(
+              (token: ProcessedAsset) => token.balance > 0
+            );
+            const fallbackToken =
+              ethToken ||
+              tokenWithBalance ||
+              processedPortfolio.enabledAssets[0];
+            setSelectedToken(fallbackToken);
+          }
         }
-      } else if (!tokenId && !selectedToken) {
-        console.log("  - No tokenId parameter, using default token");
+      } else if (!selectedToken) {
+        // Prefer ETH if available, otherwise first token with balance
+        const ethToken = processedPortfolio.enabledAssets.find(
+          (token: ProcessedAsset) => token.symbol === "ETH" && token.balance > 0
+        );
         const tokenWithBalance = processedPortfolio.enabledAssets.find(
           (token: ProcessedAsset) => token.balance > 0
         );
-        setSelectedToken(
-          tokenWithBalance || processedPortfolio.enabledAssets[0]
-        );
+        const defaultToken =
+          ethToken || tokenWithBalance || processedPortfolio.enabledAssets[0];
+        setSelectedToken(defaultToken);
       }
-    } else {
-      console.log(
-        "  - Portfolio not ready or no enabled assets - waiting for portfolio to load..."
-      );
     }
-  }, [processedPortfolio, selectedToken, tokenId]);
+  }, [
+    processedPortfolio,
+    selectedToken,
+    tokenId,
+    rawTokenId,
+    reduxToken,
+    isManuallySelected,
+  ]);
 
   // Load recent contacts on mount
   useEffect(() => {
@@ -1477,7 +1157,7 @@ const SendToken = () => {
   };
 
   const onQRCodeScanned = ({ data }: { data: string }) => {
-    setRecipientAddress(data);
+    handleAddressChange(data);
     setShowQRScanner(false);
   };
 
@@ -1517,7 +1197,7 @@ const SendToken = () => {
 
       if (isNativeToken && networkFee) {
         // Reserve gas fee from the balance with a small buffer (5% of fee as safety margin)
-        const feeValue = parseFloat(networkFee.fee || "0");
+        const feeValue = networkFee.fee;
         const safetyBuffer = feeValue * 0.05; // 5% buffer
         const totalReserve = feeValue + safetyBuffer;
         const maxAmount = Math.max(0, tokenBalance - totalReserve);
@@ -1573,7 +1253,7 @@ const SendToken = () => {
 
         if (isNativeToken && networkFee) {
           // For native tokens, add gas fee to the amount
-          const feeValue = parseFloat(networkFee.fee || "0");
+          const feeValue = networkFee.fee;
           totalRequired = amountValue + feeValue;
         }
 
@@ -1610,18 +1290,6 @@ const SendToken = () => {
     isValidatingBalance ||
     !!addressValidationError ||
     !!balanceValidationError;
-
-  // Debug logging for Continue button state
-  console.log("🔍 Continue button state:", {
-    hasAmount: !!amount,
-    hasRecipientAddress: !!recipientAddress,
-    hasSelectedToken: !!selectedToken,
-    isValidatingAddress,
-    isValidatingBalance,
-    hasAddressValidationError: !!addressValidationError,
-    hasBalanceValidationError: !!balanceValidationError,
-    isContinueDisabled,
-  });
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
@@ -2178,12 +1846,16 @@ const SendToken = () => {
                   >
                     {isCalculatingFee
                       ? "Calculating..."
-                      : networkFee?.speed || "Standard"}
+                      : networkFee?.speed || FeeSpeed.Standard}
                     &nbsp;
                   </CustomText>
                   <CustomText variant="body" fontSize={14} color="white">
                     •{" "}
-                    {isCalculatingFee ? "..." : networkFee?.feeInUSD || "$0.00"}
+                    {isCalculatingFee
+                      ? "..."
+                      : PortfolioService.formatCurrency(
+                          networkFee?.feeInUSD || 0
+                        ) || "$0.00"}
                   </CustomText>
                   <Pressable
                     style={{
@@ -2245,9 +1917,7 @@ const SendToken = () => {
 
                     const amountValue = parseFloat(amount);
                     const usdValue = amountValue * (selectedToken.price || 0);
-                    const feeValue = networkFee
-                      ? parseFloat(networkFee.feeInUSD.replace("$", ""))
-                      : 0;
+                    const feeValue = networkFee ? networkFee.feeInUSD : 0;
                     const total = usdValue + feeValue;
 
                     return `$${total.toFixed(2)}`;
@@ -2291,12 +1961,8 @@ const SendToken = () => {
             ref={sendTokenRef}
             mode="send"
             onTokenSelect={(token) => {
-              console.log("🔄 SEND TOKEN: Token selected from send page:", {
-                id: token.id,
-                symbol: token.symbol,
-                name: token.name,
-              });
               setSelectedToken(token);
+              setIsManuallySelected(true);
             }}
           />
 
@@ -2403,7 +2069,7 @@ const SendToken = () => {
             ref={saveAddressRef}
             save={() => saveAddressRef.current?.close()}
           />
-          
+
           {/* Error Modal */}
           <ErrorModal
             visible={errorModal.visible}

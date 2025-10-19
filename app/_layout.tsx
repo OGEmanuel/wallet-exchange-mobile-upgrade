@@ -5,10 +5,13 @@ import "react-native-get-random-values";
 // import { PinGuard } from "@/components/auth/PinGuard";
 import { AppInitializer } from "@/components/AppInitializer";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
+import LoadingModal from "@/components/Modals/LoadingModal";
+import { InternetConnectionProvider } from "@/context/InternetConnectionContext";
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
-import { WalletProvider } from "@/src/core/wallet/wallet-context";
+import { SupportedCurrenciesProvider } from "@/src/core/supported-currencies/supported-currencies-context";
+import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
@@ -33,6 +36,33 @@ import { Provider } from "react-redux";
 
 // Set Buffer as global for Node.js compatibility
 global.Buffer = Buffer;
+
+// Component to handle app-wide loading modal
+const AppLoadingModal = () => {
+  const { 
+    isAccountDeriving, 
+    isRetryingPendingWallets, 
+    isInitializing, 
+    isAuthenticating, 
+    isCreatingWallet 
+  } = useWallet();
+
+  const getLoadingMessage = () => {
+    if (isRetryingPendingWallets) return "Loading Wallet";
+    if (isInitializing) return "Initializing...";
+    if (isAuthenticating) return "Authenticating...";
+    if (isCreatingWallet) return "Creating Wallet...";
+    return "Loading...";
+  };
+
+  return (
+    <LoadingModal
+      isVisible={isAccountDeriving}
+      message={getLoadingMessage()}
+      onClose={() => {}}
+    />
+  );
+};
 
 export default function RootLayout() {
   const queryClient = new QueryClient({
@@ -140,10 +170,12 @@ export default function RootLayout() {
             <AppInitializer>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
-                <NetworkProvider>
-                  <ChainsProvider>
-                    <WalletProvider>
-                      <BottomSheetProvider>
+                <InternetConnectionProvider>
+                  <NetworkProvider>
+                    <ChainsProvider>
+                      <SupportedCurrenciesProvider>
+                        <WalletProvider>
+                          <BottomSheetProvider>
                       <StatusBar
                         barStyle={
                           colorTheme === "dark"
@@ -159,10 +191,13 @@ export default function RootLayout() {
                         />
                       </Stack>
                       <BottomSheetManager />
-                      </BottomSheetProvider>
-                    </WalletProvider>
-                  </ChainsProvider>
-                </NetworkProvider>
+                      <AppLoadingModal />
+                          </BottomSheetProvider>
+                        </WalletProvider>
+                      </SupportedCurrenciesProvider>
+                    </ChainsProvider>
+                  </NetworkProvider>
+                </InternetConnectionProvider>
               </QueryClientProvider>
             </ThemeProvider>
             </AppInitializer>

@@ -2,7 +2,6 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import ZapLoader from "@/components/general/ZapLoader";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
-import AddressesStorage from "@/src/core/storage/addresses-storage";
 import { formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { setStage } from "@/state/reducers/recievePage.reducer";
@@ -27,7 +26,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
 }) => {
   const theme = useTheme<Theme>();
   const dispatch = useDispatch();
-  const { mainUserWalletGroup } = useWallet();
+  const { mainUserWalletGroup, getAddress } = useWallet();
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,14 +39,14 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
           return;
         }
 
-        // Get address for the specific chain from stored addresses
-        const storedAddress = await AddressesStorage.getAddressForChain(
-          mainUserWalletGroup._id,
-          Number(selectedToken.chainId)
+        // Get address for the specific chain using centralized function
+        const address = await getAddress(
+          selectedToken.chainSymbol,
+          mainUserWalletGroup._id
         );
 
-        if (storedAddress?.address) {
-          setWalletAddress(storedAddress.address);
+        if (address) {
+          setWalletAddress(address);
         } else {
           setWalletAddress("Address not available for this chain");
         }
@@ -63,7 +62,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
     };
 
     getWalletAddress();
-  }, [selectedToken, mainUserWalletGroup]);
+  }, [selectedToken, mainUserWalletGroup, getAddress]);
 
   const handleCopyAddress = async () => {
     try {
@@ -150,7 +149,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
               alignItems="center"
             >
               <CustomText color="white" fontSize={16} fontWeight="bold">
-                {selectedToken.symbol.charAt(0)}
+                {selectedToken.symbol?.charAt(0) || "?"}
               </CustomText>
             </Box>
           )}
