@@ -2,19 +2,18 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
+import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
 import { UserModel } from "../domain/entities/models/user-model";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
-import { AuthPhoneNumberParams } from "../domain/entities/params/auth-phone-number-params";
-import { CreditDocumentDataParam } from "../domain/entities/params/credit-document-data-param";
 import { UpdateUsernameParams } from "../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../domain/entities/params/verify-email-params";
-import { VerifyPhoneNumberOtpParams } from "../domain/entities/params/verify-phone-number-otp-params";
 import { KycRepo } from "../domain/kyc-repo";
-import { KycRemoteDatasourceImpl } from "./remote/kyc-remote-datasource-impl";
+import { KycZapSdkDataSourceImpl } from "./remote/kyc-zap-sdk-datasource-impl";
 
 export class KycRepoImpl implements KycRepo {
-  private readonly remoteDatasource = new KycRemoteDatasourceImpl();
+  private readonly remoteDatasource = new KycZapSdkDataSourceImpl();
+  // private readonly remoteDatasource = new KycRemoteDatasourceImpl();
 
   async authEmail(
     payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>
@@ -53,7 +52,7 @@ export class KycRepoImpl implements KycRepo {
   }
 
   async uploadIdentityDocument(
-    payload: GeneralRequestModel<FormData, unknown, unknown>
+    payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.uploadIdentityDocument(payload);
   }
@@ -63,5 +62,11 @@ export class KycRepoImpl implements KycRepo {
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.updateUserDetails(payload, user);
+  }
+
+  async fetchUserById(
+    payload: GeneralRequestModel<UserModel, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
+    return this.remoteDatasource.fetchUserById(payload);
   }
 }

@@ -159,7 +159,7 @@ const WalletSelectorBottomSheet = ({
     onDeleteWallet?.(wallet);
   };
 
-  const handlePinSuccess = async (pin: string) => {
+  const handlePinSuccess = async (_: string) => {
     try {
       await removeWalletGroup(
         walletToDelete.groupId || "",

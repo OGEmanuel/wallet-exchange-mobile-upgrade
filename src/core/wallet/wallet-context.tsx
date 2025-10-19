@@ -984,7 +984,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsAuthenticating(true);
       setError(null);
 
-      const result = await zapSDKService.login({
+      const sdk = zapSDKService.getSDK();
+      const result = await sdk.walletAuth.login({
         deviceToken,
         deviceFingerprint,
         pushToken,
@@ -1010,7 +1011,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const logoutFromExchange = async (): Promise<void> => {
     try {
-      await zapSDKService.logoutFromExchange();
+      const sdk = zapSDKService.getSDK();
+      await sdk.logoutFromExchange();
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -1021,7 +1023,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsAuthenticating(true);
       setError(null);
 
-      const result = await zapSDKService.sendExchangeOtp(email);
+      const sdk = zapSDKService.getSDK();
+      const result = await sdk.sendExchangeOtp(email);
 
       if (result) {
         Alert.alert("Success", "OTP sent to your email");
@@ -1047,7 +1050,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsAuthenticating(true);
       setError(null);
 
-      const result = await zapSDKService.validateExchangeOtp(email, otp);
+      const sdk = zapSDKService.getSDK();
+      const result = await sdk.validateExchangeOtp(email, otp);
 
       if (result) {
         setIsExchangeAuthenticated(true);
@@ -1971,13 +1975,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         sdk.portfolio &&
         typeof sdk.portfolio.getUserPortfolio === "function"
       ) {
-        return await zapSDKService.executeWithNetworkHandling(
-          () =>
-            sdk.portfolio.getUserPortfolio(currentWalletUser || "", {
-              mainUserWalletGroupId: userWalletGroupId || "",
-            }),
-          "getUserPortfolio"
-        );
+        return await sdk.portfolio.getUserPortfolio(currentWalletUser || "", {
+          mainUserWalletGroupId: userWalletGroupId || "",
+        });
       } else {
         console.warn("Portfolio method not available on SDK");
         return null;
@@ -2144,21 +2144,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
           switch (wallet.class) {
             case WALLET_GROUP_CLASS.SEEDPHRASE:
-              result = await zapSDKService.createWalletGroupMultipurpose({
+              result = await sdk.createWalletGroupMultipurpose({
                 name: wallet.name,
                 seedPhrase: wallet.credential,
                 walletType: WALLET_GROUP_TYPE.GENERATED,
               });
               break;
             case WALLET_GROUP_CLASS.PRIVATE_KEY:
-              result = await zapSDKService.createWalletGroupMultipurpose({
+              result = await sdk.createWalletGroupMultipurpose({
                 name: wallet.name,
                 privateKey: wallet.credential,
                 walletType: WALLET_GROUP_TYPE.IMPORT,
               });
               break;
             case WALLET_GROUP_CLASS.WATCH:
-              result = await zapSDKService.createWalletGroupMultipurpose({
+              result = await sdk.createWalletGroupMultipurpose({
                 name: wallet.name,
                 watchAddress: wallet.credential,
                 walletType: WALLET_GROUP_TYPE.WATCH,
@@ -2198,12 +2198,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       for (const account of accountsPendingWallets) {
-        console.log("🔄 Retrying accounts for wallet:", {
+        console.log('🔄 Retrying accounts for wallet:', {
           id: account.id,
           name: account.name,
           userWalletGroupId: account.userWalletGroupId,
           isCreated: account.isCreated,
-          areAccountsCreated: account.areAccountsCreated,
+          areAccountsCreated: account.areAccountsCreated
         });
 
         try {
@@ -2353,7 +2353,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // Find the selected user wallet group
-      const selectedGroup = groupsToUse.find(
+      const selectedGroup = userWalletGroups.find(
         (group) => group._id === userWalletGroupId
       );
 
@@ -2423,7 +2423,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     // Portfolio
     refreshPortfolio,
     getWalletPortfolio,
-
+    
     // Wallet Groups
     refreshUserWalletGroups,
 
@@ -2443,7 +2443,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     isRetryingPendingWallets,
     isCreatingWallet,
     setIsCreatingWallet,
-
+    
     // Wallet Switching
     switchWallet,
     removeWalletGroup,

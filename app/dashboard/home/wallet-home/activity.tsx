@@ -11,8 +11,11 @@ import AppBar from "@/components/general/AppBar";
 import Box from "@/components/general/Box";
 import PageWrapper from "@/components/general/PageWrapper";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
-import React from "react";
+import useExchange from "@/src/modules/exchange/presentation/hooks/useExchange";
+import { AppRootState } from "@/state";
+import { useEffect, useState } from "react";
 import { FlatList } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 
 const ITEMS: number[] = [1, 2, 3, 4, 5, 6, 7];
 
@@ -24,9 +27,26 @@ const Activity = () => {
     recieveActivityRef,
     approvedActivityRef,
   } = useBottomSheetRefs();
-  const [activeTab, setActiveTab] = React.useState<"EXCHANGE" | "WALLET">(
+  const [activeTab, setActiveTab] = useState<"EXCHANGE" | "WALLET">(
     "EXCHANGE"
   );
+
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+
+  const { fetchExchangeActivities } = useExchange();
+
+  useEffect(() => {
+    console.log('Fetching exchange activities');
+    
+    fetchExchangeActivities({
+      body: user,
+      params: null,
+      extra: {
+        page: 1,
+        limit: 10,
+      },
+    });
+  }, []);
 
   const handleFilterClick = () => {
     if (activityFilterRef.current) {

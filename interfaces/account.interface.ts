@@ -1,4 +1,3 @@
-import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 
 export interface Currency {
   code: string;
@@ -11,7 +10,7 @@ export interface BankAccount {
   id: string;
   accountHolderName: string;
   accountNumber: string;
-  currency: CurrencyModel;
+  currency: string;
   sortCode?: string;
   institutionNumber?: string;
   transitNumber?: string;

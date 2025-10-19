@@ -1,3 +1,4 @@
+import { exchangeReducer } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import { marketReducer } from "@/src/modules/market/presentation/state/market-slice";
 import { configureStore } from "@reduxjs/toolkit";
 import buyReducer from "../src/modules/buy/presentation/state/buy-slice";
@@ -26,6 +27,7 @@ export const store = configureStore({
     swap: swapReducer,
     buy: buyReducer,
     settings: settingsReducer,
+    exchange: exchangeReducer,
   },
 });
 

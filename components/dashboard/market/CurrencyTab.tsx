@@ -2,6 +2,8 @@ import React from "react";
 import { Pressable } from "react-native";
 
 import { Box, CustomText } from "@/components/general";
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
 
 interface CurrencyTabProps {
   selectedCurrency: "USD" | "NGN";
@@ -13,13 +15,15 @@ const CurrencyTab: React.FC<CurrencyTabProps> = ({
   selectedCurrency,
 }) => {
   const currencies = ["USD", "NGN"] as const;
-
+  const theme = useTheme<Theme>();
+  const isDark = theme.colors.headerTextColor === "#FBFBFB";
   return (
     <Box
       flexDirection="row"
-      bg="secondaryBackgroundColor"
+      bg="modalBackgroundColor"
       borderRadius={20}
-      padding="s"
+      // padding="s"
+      style={{ padding: 4 }}
     >
       {currencies.map((currency) => (
         <Pressable
@@ -31,7 +35,7 @@ const CurrencyTab: React.FC<CurrencyTabProps> = ({
             borderRadius: 20,
             backgroundColor:
               selectedCurrency === currency
-                ? "rgba(196, 230, 77, 0.2)"
+                ? "rgba(75, 87, 33, 0.2)"
                 : "transparent",
             borderWidth: selectedCurrency === currency ? 1 : 0,
             borderColor:
@@ -42,7 +46,17 @@ const CurrencyTab: React.FC<CurrencyTabProps> = ({
             borderless: true,
           }}
         >
-          <CustomText variant="body" fontSize={10} color="bodyTextColor">
+          <CustomText
+            variant="body"
+            fontSize={10}
+            color={
+              selectedCurrency === currency
+                ? isDark
+                  ? "secondaryColor"
+                  : "white"
+                : "bodyTextColor"
+            }
+          >
             {currency}
           </CustomText>
         </Pressable>

@@ -3,6 +3,7 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
+import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
 import {
   authenticateEmailOtpEndpoint,
   authenticatePhoneNumberOtpEndpoint,
@@ -15,17 +16,14 @@ import {
   usernameOnboardingEndpoint,
 } from "../../../../core/api/api_endpoints";
 import { AuthVerificationModel } from "../../domain/entities/models/auth-verifications-model";
-import { SubmitVerificationParams } from "../../domain/entities/models/submit-verification-params";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
-import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
-import { CreditDocumentDataParam } from "../../domain/entities/params/credit-document-data-param";
 import { ResendAuthPhoneNumberOtpParams } from "../../domain/entities/params/resend-auth-phone-number-otp-params";
 import { UpdateUsernameParams } from "../../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
-import { VerifyPhoneNumberOtpParams } from "../../domain/entities/params/verify-phone-number-otp-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
+
 
 export class KycRemoteDatasourceImpl implements KycRemoteDatasource {
   async authEmail(
