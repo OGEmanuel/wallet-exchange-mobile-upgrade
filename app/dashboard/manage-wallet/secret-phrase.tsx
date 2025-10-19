@@ -38,7 +38,7 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
         
         if (wallet) {
           // Get the seed phrase from secure storage
-          const credential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(wallet.walletGroupId._id);
+          const credential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(wallet._id);
           if (credential?.credential) {
             setSeedPhrase(credential.credential);
           } else {

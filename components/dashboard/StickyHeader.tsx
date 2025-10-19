@@ -1,4 +1,4 @@
-import { ArrowUp3 } from "iconsax-react-nativejs";
+import { Triangle } from "lucide-react-native";
 import React from "react";
 import { Animated, View } from "react-native";
 import Box from "../general/Box";
@@ -88,10 +88,10 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({
             paddingHorizontal="s"
             paddingVertical="s"
             borderRadius={20}
-            minWidth={120}
+            minWidth={100}
             justifyContent="center"
           >
-            <ArrowUp3 size={14} color="#35B592" variant="Bold" />
+            <Triangle size={12} color="#35B592" fill="#35B592" />
             <CustomText fontSize={12} color="success" marginLeft="s">
               +{portfolioChangePercentage.toFixed(2)}%
             </CustomText>

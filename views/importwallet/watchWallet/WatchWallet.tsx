@@ -1,18 +1,18 @@
-import { Pressable } from "react-native";
-import React, { useRef } from "react";
-import Box from "@/components/general/Box";
-import { ChevronDown, ChevronLeft } from "lucide-react-native";
-import { useTheme } from "@shopify/restyle";
-import { Theme } from "@/theme";
-import CustomText from "@/components/general/CustomText";
-import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import CustomButton from "@/components/general/CustomButton";
-import { setCurrentPage } from "@/state/reducers/currentPage.reducer";
-import { useDispatch } from "react-redux";
-import BottomSheet from "@gorhom/bottom-sheet";
-import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
 import { ThemedScanIcon } from "@/assets/svg/wallet-icons-components";
+import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
+import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+import { setCurrentPage } from "@/state/reducers/currentPage.reducer";
+import { Theme } from "@/theme";
+import BottomSheet from "@gorhom/bottom-sheet";
+import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
+import { ChevronDown, ChevronLeft } from "lucide-react-native";
+import React, { useRef } from "react";
+import { Pressable } from "react-native";
+import { useDispatch } from "react-redux";
 
 const WatchWallet = () => {
   const theme = useTheme<Theme>();

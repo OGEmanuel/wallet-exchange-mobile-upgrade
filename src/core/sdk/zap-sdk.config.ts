@@ -5,7 +5,6 @@
  */
 
 import { ZapSDK } from '@zap/blockchain-sdk';
-import Constants from 'expo-constants';
 
 export interface SDKConfig {
   baseURL: string;
@@ -18,7 +17,8 @@ export interface SDKConfig {
 
 export const getSDKConfig = (): SDKConfig => {
   const isDev = __DEV__;
-  let isLocal = Constants.expoConfig?.extra?.environment === 'local';
+  // let isLocal = Constants.expoConfig?.extra?.environment === 'local';
+  let isLocal = false;
 
   console.log(isDev, isLocal, "----------------isDev and isLocal----------------");
   

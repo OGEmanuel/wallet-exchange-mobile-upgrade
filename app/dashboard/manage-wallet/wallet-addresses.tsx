@@ -4,7 +4,9 @@ import Box from "@/components/general/Box";
 import ChainLogo from "@/components/general/ChainLogo";
 import { useChains } from "@/src/core/chains/chains-context";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
-import AddressesStorage from "@/src/core/storage/addresses-storage";
+import AddressesStorage, {
+  StoredAddress,
+} from "@/src/core/storage/addresses-storage";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
@@ -25,7 +27,13 @@ interface WalletAddressesProps {
 const WalletAddresses: React.FC<WalletAddressesProps> = () => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const { userWalletGroups, getSDK } = useWallet();
+  const {
+    userWalletGroups,
+    getSDK,
+    getAddresses,
+    getAddress,
+    setIsAccountDeriving,
+  } = useWallet();
   const {
     walletChains,
     isLoading: chainsLoading,
@@ -38,9 +46,11 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
   const { walletId } = useLocalSearchParams<{ walletId: string }>();
 
   // State for wallet addresses
-  const [walletAddresses, setWalletAddresses] = useState<any[]>([]);
+  const [walletAddresses, setWalletAddresses] = useState<StoredAddress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  const [selectedAddress, setSelectedAddress] = useState<StoredAddress | null>(
+    null
+  );
 
   // Bottom sheet refs
   const qrCodeBottomSheetRef = useRef<BottomSheet>(null);
@@ -65,7 +75,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
     }
   };
 
-  const handleShowQR = (addressData: any) => {
+  const handleShowQR = (addressData: StoredAddress) => {
     setSelectedAddress(addressData);
     qrCodeBottomSheetRef.current?.expand();
   };
@@ -113,10 +123,8 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
       try {
         setIsLoading(true);
 
-        // First, check if we have stored addresses
-        const storedAddresses = await AddressesStorage.getAddresses(
-          userWalletGroup._id
-        );
+        // First, check if we have stored addresses using centralized function
+        const storedAddresses = await getAddresses(userWalletGroup._id);
         if (storedAddresses && storedAddresses.length > 0) {
           console.log("✅ Using stored addresses:", storedAddresses.length);
           setWalletAddresses(storedAddresses);
@@ -124,7 +132,10 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           return;
         }
 
-        console.log("ℹ️ No stored addresses found, deriving them...", userWalletGroup._id);
+        console.log(
+          "ℹ️ No stored addresses found, deriving them...",
+          userWalletGroup._id
+        );
 
         // Get stored credentials to access seed phrase
         const storedCredentials =
@@ -151,17 +162,18 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
         // Derive all addresses once using the SDK
         console.log("🔍 Deriving all addresses once...");
         console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
+        setIsAccountDeriving(true);
         const derivedResult = await zapSDKService.deriveMultiChainAddresses(
           storedCredentials.credential, // seed phrase
           wallet.walletDepth || 0
         );
+        setIsAccountDeriving(false);
         console.log("🔍 Derived result:", derivedResult);
 
-        const addresses = [];
-        const processedChains = new Set();
-        const addressesToStore: any[] = [];
+        const addresses: StoredAddress[] = [];
+        const processedChains = new Set<string>();
+        const addressesToStore: StoredAddress[] = [];
 
-        console.log("🔍 Debug - walletChains:", walletChains);
         console.log(
           "🔍 Debug - derivedResult.addresses:",
           derivedResult.addresses
@@ -190,7 +202,6 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
 
           const mappedSymbol =
             chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
-          console.log("🔍 Debug - mappedSymbol:", mappedSymbol);
           if (!mappedSymbol) {
             console.log("🔍 Debug - no mapped symbol for:", chainData.symbol);
             continue;
@@ -198,7 +209,6 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
 
           // Get the derived address for this chain
           const derivedAddress = derivedResult.addresses?.[mappedSymbol];
-          console.log("🔍 Debug - derivedAddress:", derivedAddress);
           if (!derivedAddress) {
             console.log("🔍 Debug - no derived address for:", mappedSymbol);
             continue;
@@ -207,20 +217,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           // Mark this chain as processed
           processedChains.add(chainData.symbol);
 
-          const addressData = {
-            chain: chainData.name,
-            symbol: chainData.symbol,
-            address: derivedAddress,
-            chainId: chainData.chainId,
-            logoUrl: chainData.nativeCurrencyId?.logo,
-            isEVM: chainData.isEVM,
-          };
-
-          console.log("🔍 Debug - adding derived address:", addressData);
-          addresses.push(addressData);
-
-          // Store for secure storage
-          addressesToStore.push({
+          const addressData: StoredAddress = {
             chainId: chainData.chainId,
             chainSymbol: chainData.symbol,
             chainName: chainData.name,
@@ -228,7 +225,12 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
             logoUrl: chainData.nativeCurrencyId?.logo,
             isEVM: chainData.isEVM,
             timestamp: Date.now(),
-          });
+          };
+
+          addresses.push(addressData);
+
+          // Store for secure storage
+          addressesToStore.push(addressData);
         }
 
         console.log("🔍 Derived wallet addresses:", addresses);
@@ -241,10 +243,12 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           );
         }
 
+        console.log("🔍 addresses:", addresses);
         setWalletAddresses(addresses);
       } catch (error) {
         console.error("❌ Failed to derive wallet addresses:", error);
         setWalletAddresses([]);
+        setIsAccountDeriving(false);
       } finally {
         setIsLoading(false);
       }
@@ -325,8 +329,8 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
                 >
                   <Box flexDirection="row" alignItems="center" flex={1}>
                     <ChainLogo
-                      symbol={addressData.symbol}
-                      name={addressData.chain}
+                      symbol={addressData.chainSymbol}
+                      name={addressData.chainName}
                       logoUrl={addressData.logoUrl}
                       width={40}
                       height={40}
@@ -340,7 +344,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
                         color="headerTextColor"
                         marginBottom="s"
                       >
-                        {addressData.chain}
+                        {addressData.chainName}
                       </CustomText>
                       <CustomText
                         variant="body"
@@ -385,8 +389,8 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
       {selectedAddress && (
         <QRCodeBottomSheet
           bottomSheetRef={qrCodeBottomSheetRef as React.RefObject<BottomSheet>}
-          chain={selectedAddress.chain}
-          symbol={selectedAddress.symbol}
+          chain={selectedAddress.chainName}
+          symbol={selectedAddress.chainSymbol}
           address={selectedAddress.address}
           logoUrl={selectedAddress.logoUrl}
         />

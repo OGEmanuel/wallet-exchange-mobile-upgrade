@@ -1,5 +1,6 @@
 import SearchIcon from "@/assets/svg/wallet-icons-components/SearchIcon";
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
+import TokenCardSkeleton from "@/components/dashboard/TokenCardSkeleton";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
@@ -50,7 +51,7 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
   );
 });
 
-CryptoIcon.displayName = 'CryptoIcon';
+CryptoIcon.displayName = "CryptoIcon";
 
 interface ManageTokensModalProps {
   visible: boolean;
@@ -59,6 +60,7 @@ interface ManageTokensModalProps {
   onToggleToken: (assetId: string, enabled: boolean) => Promise<void>;
   onImportToken?: () => void;
   mainUserWalletGroup: any;
+  isLoading?: boolean;
 }
 
 const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
@@ -68,6 +70,7 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
   onToggleToken,
   onImportToken,
   mainUserWalletGroup,
+  isLoading = false,
 }) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,7 +80,9 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [importedTokenData, setImportedTokenData] = useState<any>(null);
   const [togglingTokens, setTogglingTokens] = useState<Set<string>>(new Set());
-  const [optimisticTokenStates, setOptimisticTokenStates] = useState<Map<string, string>>(new Map());
+  const [optimisticTokenStates, setOptimisticTokenStates] = useState<
+    Map<string, string>
+  >(new Map());
   const chainBottomSheetRef = useRef<BottomSheet>(null);
 
   // Clear optimistic states when modal closes
@@ -120,35 +125,37 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 
     // Filter by chain
     if (selectedChain && selectedChain !== "ALL") {
-      filtered = filtered.filter((token) => token.chainSymbol === selectedChain);
+      filtered = filtered.filter(
+        (token) => token.chainSymbol === selectedChain
+      );
     }
 
     return filtered;
   }, [allTokens, searchQuery, selectedChain]);
 
   const handleToggleToken = async (assetId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "ENABLED" ? "DISABLED" : "ENABLED";
-    
+    const newStatus = currentStatus === "ENABLED" ? "HIDDEN" : "ENABLED";
+
     // Add to toggling set for loading state
-    setTogglingTokens(prev => new Set(prev).add(assetId));
-    
+    setTogglingTokens((prev) => new Set(prev).add(assetId));
+
     // Optimistic update - immediately update the UI
-    setOptimisticTokenStates(prev => new Map(prev).set(assetId, newStatus));
-    
+    setOptimisticTokenStates((prev) => new Map(prev).set(assetId, newStatus));
+
     try {
       await onToggleToken(assetId, newStatus === "ENABLED");
       console.log(`Token ${newStatus.toLowerCase()} successfully:`, assetId);
     } catch (error) {
       console.error("Failed to toggle token:", error);
       // Revert optimistic update on error
-      setOptimisticTokenStates(prev => {
+      setOptimisticTokenStates((prev) => {
         const newMap = new Map(prev);
         newMap.delete(assetId);
         return newMap;
       });
     } finally {
       // Remove from toggling set
-      setTogglingTokens(prev => {
+      setTogglingTokens((prev) => {
         const newSet = new Set(prev);
         newSet.delete(assetId);
         return newSet;
@@ -183,15 +190,15 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
       <Box flex={1} backgroundColor="mainBackgroundColor">
         {/* Header */}
         <Pressable onPress={onClose}>
-            <Box
-              width={60}
-              alignSelf="center"
-              height={4}
-              backgroundColor="white"
-              borderRadius={2}
-              marginTop="s"
-            />
-          </Pressable>
+          <Box
+            width={60}
+            alignSelf="center"
+            height={4}
+            backgroundColor="white"
+            borderRadius={2}
+            marginTop="s"
+          />
+        </Pressable>
         <Box
           paddingTop="l"
           paddingBottom="m"
@@ -202,7 +209,6 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
           <CustomText variant="bodyBold" fontSize={18} color="headerTextColor">
             Edit Token List
           </CustomText>
-          
         </Box>
 
         {/* Search Bar */}
@@ -334,80 +340,105 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
             flex={1}
           >
             <ScrollView showsVerticalScrollIndicator={false}>
-              {filteredTokens.map((token, index) => (
-                <Box
-                  key={token.id}
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingVertical="m"
-                  zIndex={99}
-                >
-                  <Box flexDirection="row" alignItems="center" flex={1}>
-                    <CryptoIcon image={token.image} />
-                    <Box flex={1} marginLeft="s">
-                      <CustomText
-                        variant="bodyBold"
-                        fontSize={16}
-                        color="headerTextColor"
-                        mb="s"
-                      >
-                        {token.symbol}
-                      </CustomText>
-                      <Box flexDirection="row" alignItems="center">
-                        <CustomText
-                          variant="light"
-                          fontSize={13}
-                          color="disabledTextColor"
-                          mr="s"
-                        >
-                          {formatNumber(token.balance, 4)} {token.symbol}
-                        </CustomText>
-                        <CustomText
-                          variant="light"
-                          fontSize={13}
-                          color="headerTextColor"
-                        >
-                          {formatCurrency(token.totalUsdValue)}
-                        </CustomText>
+              {isLoading
+                ? // Skeleton loaders for token cards
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TokenCardSkeleton key={index} />
+                  ))
+                : filteredTokens.map((token, index) => (
+                    <Box
+                      key={token.id}
+                      flexDirection="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      paddingVertical="m"
+                      zIndex={99}
+                    >
+                      <Box flexDirection="row" alignItems="center" flex={1}>
+                        <CryptoIcon image={token.image} />
+                        <Box flex={1} marginLeft="s">
+                          <Box flexDirection="row" alignItems="center" mb="s">
+                            <CustomText
+                              variant="bodyBold"
+                              fontSize={16}
+                              color="headerTextColor"
+                              mr="s"
+                            >
+                              {token.symbol}
+                            </CustomText>
+                            <Box
+                              backgroundColor="modalBackgroundColor"
+                              paddingHorizontal="s"
+                              paddingVertical="s"
+                              borderRadius={8}
+                            >
+                              <CustomText
+                                variant="light"
+                                fontSize={10}
+                                color="disabledTextColor"
+                              >
+                                {token.chainName}
+                              </CustomText>
+                            </Box>
+                          </Box>
+                          <Box flexDirection="row" alignItems="center">
+                            <CustomText
+                              variant="light"
+                              fontSize={13}
+                              color="disabledTextColor"
+                              mr="s"
+                            >
+                              {formatNumber(token.balance, 4)} {token.symbol}
+                            </CustomText>
+                            <CustomText
+                              variant="light"
+                              fontSize={13}
+                              color="headerTextColor"
+                            >
+                              {formatCurrency(token.totalUsdValue)}
+                            </CustomText>
+                          </Box>
+                        </Box>
                       </Box>
-                    </Box>
-                  </Box>
 
-                  <Pressable
-                    onPress={() => {
-                      if (!togglingTokens.has(token.id)) {
-                        handleToggleToken(token.id, token.status);
-                      }
-                    }}
-                    style={({ pressed }) => ({ 
-                      opacity: pressed || togglingTokens.has(token.id) ? 0.5 : 1 
-                    })}
-                    disabled={togglingTokens.has(token.id)}
-                  >
-                    <Switch
-                      value={
-                        optimisticTokenStates.has(token.id) 
-                          ? optimisticTokenStates.get(token.id) === "ENABLED"
-                          : token.status === "ENABLED"
-                      }
-                      trackColor={{
-                        false: "disabledTextColor",
-                        true: "success",
-                      }}
-                      onValueChange={() => {
-                        if (!togglingTokens.has(token.id)) {
-                          const currentStatus = optimisticTokenStates.has(token.id) 
-                            ? optimisticTokenStates.get(token.id)!
-                            : token.status;
-                          handleToggleToken(token.id, currentStatus);
-                        }
-                      }}
-                      disabled={togglingTokens.has(token.id)}
-                    />
-                  </Pressable>
-                </Box>
-              ))}
+                      <Pressable
+                        onPress={() => {
+                          if (!togglingTokens.has(token.supportedCurrencyId)) {
+                            handleToggleToken(token.supportedCurrencyId, token.status);
+                          }
+                        }}
+                        style={({ pressed }) => ({
+                          opacity:
+                            pressed || togglingTokens.has(token.id) ? 0.5 : 1,
+                        })}
+                        disabled={togglingTokens.has(token.id)}
+                      >
+                        <Switch
+                          value={
+                            optimisticTokenStates.has(token.supportedCurrencyId)
+                              ? optimisticTokenStates.get(token.supportedCurrencyId) ===
+                                "ENABLED"
+                              : token.status === "ENABLED"
+                          }
+                          trackColor={{
+                            false: "disabledTextColor",
+                            true: "success",
+                          }}
+                          onValueChange={() => {
+                            if (!togglingTokens.has(token.supportedCurrencyId)) {
+                              const currentStatus = optimisticTokenStates.has(
+                                token.supportedCurrencyId
+                              )
+                                ? optimisticTokenStates.get(token.supportedCurrencyId)!
+                                : token.status;
+                              handleToggleToken(token.supportedCurrencyId, currentStatus);
+                            }
+                          }}
+                          disabled={togglingTokens.has(token.id)}
+                        />
+                      </Pressable>
+                    </Box>
+                  ))}
             </ScrollView>
           </Box>
         </Box>
@@ -422,14 +453,14 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
               textAlign="center"
             >
               You cannot find a token?{" "}
-                <CustomText
-                  variant="body"
-                  fontSize={15}
-                  color="secondaryColor"
-                  onPress={handleImportToken}
-                >
-                  Import token
-                </CustomText>
+              <CustomText
+                variant="body"
+                fontSize={15}
+                color="secondaryColor"
+                onPress={handleImportToken}
+              >
+                Import token
+              </CustomText>
             </CustomText>
           </Box>
         )}
@@ -461,7 +492,9 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
           onClose();
         }}
         title="Token Imported Successfully!"
-        message={`${importedTokenData?.symbol || 'Token'} has been added to your portfolio and is now available for trading.`}
+        message={`${
+          importedTokenData?.symbol || "Token"
+        } has been added to your portfolio and is now available for trading.`}
         buttonText="Continue"
         onButtonPress={() => {
           setShowSuccessModal(false);

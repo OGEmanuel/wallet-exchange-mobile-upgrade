@@ -1,8 +1,8 @@
-import { Theme } from "@/theme";
+import theme, { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import * as Haptics from "expo-haptics";
-import React, { JSX } from "react";
-import { DimensionValue, Pressable } from "react-native";
+import React, { JSX, useRef } from "react";
+import { Animated, DimensionValue, Pressable } from "react-native";
 import CustomText from "./CustomText";
 import ZapLoader from "./ZapLoader";
 
@@ -17,7 +17,7 @@ interface IProps {
   isLoading?: boolean;
   shouldVibrate?: boolean;
   icon?: JSX.Element;
-  text: string;
+  text?: string;
   bgColor?: string;
   color?: string;
   fontSize?: number;
@@ -39,22 +39,45 @@ export default function CustomButton({
   isLoading = false,
   shouldVibrate = false,
   icon,
-  text,
+  text = "",
   bgColor,
   color = "white",
   fontSize = 14,
   disabled = false,
   borderRadius = 10,
-  disabledColor = "lightgrey",
+  disabledColor = theme.colors.disabledTextColor,
   iconPosition = "LEFT",
-  variant = "bodySubheader",
+  variant = "body",
   leadingIcon,
   trailingIcon,
   onPress,
 }: IProps) {
-  const handlePress = () => {
-    console.log("hehehhe");
+  const theme = useTheme<Theme>();
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  const handlePressIn = () => {
+    if (isLoading || disabled) return;
+
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    if (isLoading || disabled) return;
+
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  };
+
+  const handlePress = () => {
     if (isLoading || disabled) {
       return;
     }
@@ -66,43 +89,54 @@ export default function CustomButton({
       onPress();
     }
   };
-  const theme = useTheme<Theme>();
+
   return (
-    <Pressable
-      style={({ pressed }) => ({
-        width,
-        height,
-        borderWidth,
-        borderColor,
-        backgroundColor:
-          disabled || isLoading
-            ? disabledColor
-            : bgColor || theme.colors.primaryColor,
-        borderRadius,
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        opacity: disabled ? 0.5 : pressed ? 0.3 : 1,
-      })}
-      onPress={handlePress}
-      android_ripple={{
-        color: "rgba(255, 255, 255, 0.3)",
-        borderless: false,
-        radius: 20,
-      }}
-    >
-      {isLoading && (
-        <ZapLoader size={24} showText={false} style={{ marginRight: 8 }} />
-      )}
-      {!isLoading && (
-        <>
-          {leadingIcon && leadingIcon}
-          <CustomText variant={variant} fontSize={fontSize} style={{ color }}>
-            {text}
-          </CustomText>
-          {trailingIcon && trailingIcon}
-        </>
-      )}
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], width, height }}>
+      <Pressable
+        style={({ pressed }) => ({
+          flex: 1,
+          borderWidth,
+          borderColor: borderColor || theme.colors.borderColor,
+          backgroundColor:
+            disabled || isLoading
+              ? disabledColor
+              : bgColor || theme.colors.primaryColor,
+          borderRadius,
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "center",
+          opacity: disabled ? 0.95 : pressed ? 0.8 : 1,
+        })}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        android_ripple={{
+          color: "rgba(255, 255, 255, 0.3)",
+          borderless: false,
+          radius: 20,
+        }}
+      >
+        {isLoading && (
+          <ZapLoader size={24} showText={false} style={{ marginRight: 8 }} />
+        )}
+        {!isLoading && (
+          <>
+            {leadingIcon && leadingIcon}
+            {text && (
+              <CustomText
+                variant={variant}
+                fontSize={fontSize}
+                style={{ color }}
+                ml={leadingIcon ? "s" : undefined}
+                mr={trailingIcon ? "s" : undefined}
+              >
+                {text}
+              </CustomText>
+            )}
+            {trailingIcon && trailingIcon}
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }

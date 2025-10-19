@@ -5,7 +5,12 @@
  * for wallet chains throughout the app.
  */
 
-import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useState
+} from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
 
 export interface Chain {
@@ -39,10 +44,12 @@ interface ChainsContextType {
 
   // Actions
   refreshChains: () => Promise<void>;
+  loadChainsNow: () => void;
   getChainBySymbol: (symbol: string) => Chain | undefined;
   getChainById: (id: string) => Chain | undefined;
   getEVMChains: () => Chain[];
   getNonEVMChains: () => Chain[];
+  getNumericChainId: (chainIdString: string) => number | null;
 }
 
 const ChainsContext = createContext<ChainsContextType | undefined>(undefined);
@@ -65,39 +72,63 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
 
       // Fetch wallet chains (chains that support wallet operations)
       const walletChainsData = await zapSDKService.getWalletChains();
+
       setWalletChains(walletChainsData);
       setChains(walletChainsData); // For now, we only need wallet chains
-      
+
       setLastFetched(new Date());
-      console.log('✅ Chains loaded successfully:', walletChainsData.length);
+      console.log("✅ Chains loaded successfully:", walletChainsData.length);
     } catch (err) {
-      console.error('❌ Failed to load chains:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load chains');
+      console.error("❌ Failed to load chains:", err);
+      setError(err instanceof Error ? err.message : "Failed to load chains");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Function to load chains immediately (for when user is authenticated)
+  const loadChainsNow = () => {
+    refreshChains();
+  };
+
   const getChainBySymbol = (symbol: string): Chain | undefined => {
-    return walletChains.find(chain => chain.symbol === symbol);
+    return walletChains.find((chain) => chain.symbol === symbol);
   };
 
   const getChainById = (id: string): Chain | undefined => {
-    return walletChains.find(chain => chain._id === id);
+    return walletChains.find((chain) => chain._id === id);
   };
 
   const getEVMChains = (): Chain[] => {
-    return walletChains.filter(chain => chain.isEVM);
+    return walletChains.filter((chain) => chain.isEVM);
   };
 
   const getNonEVMChains = (): Chain[] => {
-    return walletChains.filter(chain => !chain.isEVM);
+    return walletChains.filter((chain) => !chain.isEVM);
   };
 
-  // Load chains on mount
-  useEffect(() => {
-    refreshChains();
-  }, []);
+  const getNumericChainId = (chainIdString: string): number | null => {
+    // First try to find by chain ID (if it's already a numeric string)
+    const numericChainId = parseInt(chainIdString, 10);
+    if (!isNaN(numericChainId)) {
+      return numericChainId;
+    }
+
+    // Try to find by chain symbol
+    const chainBySymbol = getChainBySymbol(chainIdString);
+    if (chainBySymbol) {
+      return chainBySymbol.chainId;
+    }
+
+    // Try to find by chain ID (if it's a MongoDB ObjectId)
+    const chainById = getChainById(chainIdString);
+    if (chainById) {
+      return chainById.chainId;
+    }
+
+    console.warn(`Could not find chain for: ${chainIdString}`);
+    return null;
+  };
 
   const contextValue: ChainsContextType = {
     chains,
@@ -106,10 +137,12 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     error,
     lastFetched,
     refreshChains,
+    loadChainsNow,
     getChainBySymbol,
     getChainById,
     getEVMChains,
     getNonEVMChains,
+    getNumericChainId,
   };
 
   return (
@@ -122,7 +155,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
 export const useChains = (): ChainsContextType => {
   const context = useContext(ChainsContext);
   if (context === undefined) {
-    throw new Error('useChains must be used within a ChainsProvider');
+    throw new Error("useChains must be used within a ChainsProvider");
   }
   return context;
 };

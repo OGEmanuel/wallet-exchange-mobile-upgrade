@@ -2,6 +2,7 @@ import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
+import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { listWalletGroupBackups } from "@/src/core/utils/backup-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
@@ -9,28 +10,42 @@ import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { ChevronRight, CloudOff, X } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Pressable, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Pressable, RefreshControl, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ManageWalletScreen = () => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const { userWalletGroups } = useWallet();
+  const { userWalletGroups, refreshUserWalletGroups } = useWallet();
+  const { getEnhancedWalletGroups } = useAggregatedBalances();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
   const [backupStatuses, setBackupStatuses] = useState<Record<string, boolean>>(
     {}
   );
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Animation values
   const underlineAnimation = useRef(new Animated.Value(0)).current;
   const contentAnimation = useRef(new Animated.Value(0)).current;
   const fadeAnimation = useRef(new Animated.Value(1)).current;
 
+  // Handle pull to refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshUserWalletGroups();
+    } catch (error) {
+      console.error("Failed to refresh wallet groups:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Check backup status for all wallet groups
-  const checkBackupStatuses = async () => {
+  const checkBackupStatuses = useCallback(async () => {
     try {
       const backups = await listWalletGroupBackups();
       const statuses: Record<string, boolean> = {};
@@ -48,11 +63,11 @@ const ManageWalletScreen = () => {
     } catch (error) {
       console.error("Error checking backup statuses:", error);
     }
-  };
+  }, [userWalletGroups]);
 
   useEffect(() => {
     checkBackupStatuses();
-  }, [userWalletGroups]);
+  }, [userWalletGroups, checkBackupStatuses]);
 
   // Format currency values to show appropriate decimal places
   const formatCurrency = (value: number): string => {
@@ -64,9 +79,12 @@ const ManageWalletScreen = () => {
   };
 
   // Process and group wallet groups from context
+  // Use cached aggregated balances instead of manual calculation
+  const enhancedWalletGroups = getEnhancedWalletGroups();
+  
   const walletGroupsMap = new Map();
 
-  (userWalletGroups || []).forEach((userWalletGroup) => {
+  enhancedWalletGroups.forEach((userWalletGroup: any) => {
     // Get the actual wallet group ID and name
     const walletGroupId = userWalletGroup.walletGroupId?._id;
     const walletGroupName =
@@ -77,9 +95,10 @@ const ManageWalletScreen = () => {
     const walletInfo = userWalletGroup.walletId;
     const walletName =
       userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
-    const totalValue = walletInfo?.totalUsdValue
-      ? formatCurrency(walletInfo.totalUsdValue)
-      : "$0.00";
+    
+    // Use aggregated balance instead of manual calculation
+    const totalValue = userWalletGroup.aggregatedBalance || 0;
+    const formattedValue = formatCurrency(totalValue);
 
     // If this wallet group doesn't exist in our map, create it
     if (!walletGroupsMap.has(walletGroupId)) {
@@ -98,15 +117,15 @@ const ManageWalletScreen = () => {
       id: walletInfo?._id,
       name: walletName,
       address: walletInfo?.address || "0x...",
-      balance: totalValue,
+      balance: formattedValue,
       userWalletGroupId: userWalletGroup._id,
     });
   });
 
-  // Convert map to array and calculate total values
+  // Convert map to array and calculate total values using aggregated balances
   const processedWalletGroups = Array.from(walletGroupsMap.values()).map(
     (group) => {
-      // Calculate total value for the group
+      // Calculate total value for the group using aggregated balances
       const totalValue = group.wallets.reduce((sum: number, wallet: any) => {
         const value = parseFloat(wallet.balance.replace("$", "")) || 0;
         return sum + value;
@@ -229,8 +248,8 @@ const ManageWalletScreen = () => {
           }}
         >
           <CustomText
-            variant="bodyBold"
-            fontSize={16}
+            variant="body"
+            fontSize={14}
             color={
               activeTab === "wallets" ? "headerTextColor" : "disabledTextColor"
             }
@@ -249,8 +268,8 @@ const ManageWalletScreen = () => {
           }}
         >
           <CustomText
-            variant="bodyBold"
-            fontSize={16}
+            variant="body"
+            fontSize={14}
             color={
               activeTab === "watchlist"
                 ? "headerTextColor"
@@ -290,6 +309,13 @@ const ManageWalletScreen = () => {
           paddingVertical: 20,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primaryColor}
+          />
+        }
       >
         {/* Wallet Groups */}
         {activeTab === "wallets" && (

@@ -29,7 +29,12 @@ export const formatCurrency = (
   currency: string = 'USD',
   locale: string = 'en-US'
 ): string => {
-  return `$${amount.toFixed(2)}`;
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 /**

@@ -35,6 +35,14 @@ export const StorageKeys = {
   APP_THEME: "appTheme", // Application theme preference
   BIOMETRIC_ENABLED: "biometricEnabled", // Biometric authentication preference
   MAIN_WALLET_GROUP_ID: "mainWalletGroupId", // Currently selected main wallet group ID
+  USER_WALLET_GROUPS: "userWalletGroups", // Cached user wallet groups data
+  USER_WALLET_GROUPS_TIMESTAMP: "userWalletGroupsTimestamp", // Cache timestamp for wallet groups
+  PORTFOLIO_DATA: "portfolioData", // Cached portfolio data
+  PORTFOLIO_TIMESTAMP: "portfolioTimestamp", // Cache timestamp for portfolio
+  PROCESSED_PORTFOLIO: "processedPortfolio", // Cached processed portfolio data
+  PROCESSED_PORTFOLIO_TIMESTAMP: "processedPortfolioTimestamp", // Cache timestamp for processed portfolio
+  AGGREGATED_BALANCES: "aggregatedBalances", // Cached aggregated wallet and wallet group balances
+  AGGREGATED_BALANCES_TIMESTAMP: "aggregatedBalancesTimestamp", // Cache timestamp for aggregated balances
 } as const;
 
 /**

@@ -1,4 +1,6 @@
-import { Box, CustomText } from "@/components/general";
+import Icons from "@/assets/icons";
+import { TouchableIcon } from "@/components";
+import { Box, CustomButton, CustomText } from "@/components/general";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
 import { Theme } from "@/theme";
@@ -89,7 +91,7 @@ const OrderDetailsSheet = forwardRef<
           ]}
         >
           <TouchableIcon
-            source={icons.cancel}
+            source={Icons.cancel}
             onPress={() => bottomSheetRef.current?.close()}
             width={24}
           />
@@ -125,19 +127,19 @@ const OrderDetailsSheet = forwardRef<
               alignItems="center"
             >
               <CustomText variant="body" color="bodyTextColor" mb="s">
-                You're Sending
+                You&apos;re Sending
               </CustomText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Image
                   style={{ width: 20, height: 20, borderRadius: 10 }}
-                  source={orderDetails?.buyCurrency?.currencyId?.logo || ""}
+                  source={orderDetails?.baseCurrency?.currencyId?.logo || ""}
                 />
                 <CustomText variant="subheader" style={{ fontSize: 22 }}>
-                  {orderDetails?.buyCurrency?.currencyId?.symbol === "₦" &&
-                    orderDetails?.buyCurrency?.currencyId?.symbol}{" "}
-                  {Number(orderDetails?.buyAmount || "0")}
-                  {orderDetails?.buyCurrency?.currencyId?.symbol !== "₦" &&
-                    orderDetails?.buyCurrency?.currencyId?.symbol}
+                  {orderDetails?.baseCurrency?.currencyId?.symbol === "₦" &&
+                    orderDetails?.baseCurrency?.currencyId?.symbol}{" "}
+                  {Number(orderDetails?.baseAmount || "0")}
+                  {orderDetails?.baseCurrency?.currencyId?.symbol !== "₦" &&
+                    orderDetails?.baseCurrency?.currencyId?.symbol}
                 </CustomText>
               </View>
             </Box>

@@ -75,8 +75,9 @@ export const WalletNameStep: React.FC<WalletNameStepProps> = ({
       <AppBottomSheet
         isVisible={showTermsModal}
         onClose={() => setShowTermsModal(false)}
-        minHeight={400}
-        maxHeight={600}
+        bgColor="transparent"
+        showTopBar={false}
+        padding={0}
       >
         <TermsAndConditions
           onAccept={handleTermsAccept}

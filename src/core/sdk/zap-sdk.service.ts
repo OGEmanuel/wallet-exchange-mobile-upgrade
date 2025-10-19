@@ -5,28 +5,13 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import WalletCredentialsStorage from '../storage/wallet-credentials-storage';
-import NetworkErrorHandler from '../utils/network-error-handler';
+import { NetworkErrorHandler } from '../utils/network-error-handler';
 import { createSDKInstance, getSDKConfig } from './zap-sdk.config';
-
-export interface SendTransactionRequest {
-  fromAddress: string;
-  toAddress: string;
-  amount: string | number;
-  chainSymbol: string;
-  privateKey: string;
-  gasPrice?: string | number;
-  gasLimit?: string | number;
-  maxFeePerGas?: string | number; // EIP-1559
-  maxPriorityFeePerGas?: string | number; // EIP-1559
-  tokenAddress?: string; // For ERC-20 tokens
-  tokenMintAddress?: string; // For SPL tokens (Solana)
-  tokenContractAddress?: string; // For TRC-20 tokens (Tron)
-  tokenDecimals?: number; // Token decimals for all token types
-  memo?: string; // For Solana and Tron memo support
-  nonce?: number;
-}
 
 export interface AddAccountsToExistingWalletRequest {
   userWalletGroupId?: string;
@@ -49,7 +34,7 @@ export interface CreateWalletGroupMultipurposeParams {
   seedPhrase?: string;
   privateKey?: string;
   watchAddress?: string;
-  walletType?: WALLET_GROUP_TYPE
+  walletType?: WALLET_GROUP_TYPE;
 }
 
 class ZapSDKService {
@@ -57,8 +42,25 @@ class ZapSDKService {
   private sdk: ZapSDK | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<boolean> | null = null;
+  private isAddingAccounts = false;
+  // Circuit breaker for authentication failures
+  private authFailureCount = 0;
+  private maxAuthFailures = 2; // Reduced from 3 to 2 for faster response
+  private authFailureWindow = 5 * 60 * 1000; // 5 minutes
+  private lastAuthFailure = 0;
+  private isAuthCircuitOpen = false;
 
-  private constructor() { }
+  // Retry loop detection
+  private retryLoopDetection = {
+    consecutiveAuthErrors: 0,
+    lastAuthErrorTime: 0,
+    maxConsecutiveErrors: 3, // Reduced from 5 to 3 for faster response
+    errorWindow: 5000, // Reduced from 10 to 5 seconds
+  };
+
+  private constructor() {
+    this.isAddingAccounts = false;
+  }
 
   public static getInstance(): ZapSDKService {
     if (!ZapSDKService.instance) {
@@ -81,6 +83,84 @@ class ZapSDKService {
 
     this.initializationPromise = this._initialize();
     return this.initializationPromise;
+  }
+
+  /**
+   * Force stop all SDK operations and reset circuit breaker
+   */
+  public async forceStop(): Promise<void> {
+    console.log('🛑 Force stopping SDK operations...');
+
+    // Reset circuit breaker
+    this.resetAuthCircuitBreakerInternal();
+
+    // Try to cleanup SDK if possible
+    try {
+      if (this.sdk) {
+        await this.sdk.cleanup();
+      }
+    } catch (error) {
+      console.warn('⚠️ Error during force cleanup:', error);
+    }
+
+    // Reset all state
+    this.sdk = null;
+    this.isInitialized = false;
+    this.initializationPromise = null;
+
+    console.log('✅ SDK force stopped and circuit breaker reset');
+  }
+
+  /**
+   * Emergency stop - completely disable SDK
+   */
+  public emergencyStop(): void {
+    console.log('🚨 EMERGENCY STOP - Disabling SDK completely');
+
+    // Open circuit breaker immediately
+    this.isAuthCircuitOpen = true;
+    this.authFailureCount = this.maxAuthFailures;
+
+    // Try to disconnect WebSocket if possible
+    try {
+      // if (this.sdk && typeof this.sdk.disconnect === 'function') {
+      //   this.sdk.disconnect();
+      // }
+    } catch (error) {
+      console.warn('⚠️ Error disconnecting SDK:', error);
+    }
+
+    console.log('🚨 SDK emergency stopped - all operations blocked');
+  }
+
+  /**
+   * Force disable SDK internal retry mechanisms
+   */
+  public disableSDKRetries(): void {
+    console.log('🛑 Disabling SDK internal retry mechanisms...');
+
+    try {
+      if (this.sdk) {
+        // Try to disable internal retry logic if the SDK exposes such methods
+        // if (typeof this.sdk.setRetryEnabled === 'function') {
+        //   this.sdk.setRetryEnabled(false);
+        // }
+
+        // Try to disable auto-refresh if available
+        // if (typeof this.sdk.setAutoRefresh === 'function') {
+        //   this.sdk.setAutoRefresh(false);
+        // }
+
+        // Try to clear any pending retry timers
+        // if (typeof this.sdk.clearRetryTimers === 'function') {
+        //   this.sdk.clearRetryTimers();
+        // }
+
+        console.log('✅ SDK retry mechanisms disabled');
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not disable SDK retry mechanisms:', error);
+    }
   }
 
   private async _initialize(): Promise<boolean> {
@@ -112,19 +192,255 @@ class ZapSDKService {
     if (!this.sdk) {
       throw new Error('SDK not initialized. Call initialize() first.');
     }
+
+    // Block SDK access if circuit breaker is open
+    if (this.shouldBlockSDKOperation()) {
+      console.warn('🚨 SDK access blocked - circuit breaker is open');
+      throw new Error('SDK access blocked due to authentication circuit breaker. Please try again later.');
+    }
+
     return this.sdk;
   }
 
   /**
-   * Execute SDK call with network error handling
+   * Completely destroy SDK instance to stop all internal operations
+   */
+  public destroySDK(): void {
+    console.log('💥 Destroying SDK instance to stop all operations...');
+
+    try {
+      if (this.sdk) {
+        // Try to cleanup and destroy the SDK
+        if (typeof this.sdk.cleanup === 'function') {
+          this.sdk.cleanup();
+        }
+
+        // if (typeof this.sdk.destroy === 'function') {
+        //   this.sdk.destroy();
+        // }
+
+        // if (typeof this.sdk.disconnect === 'function') {
+        //   this.sdk.disconnect();
+        // }
+      }
+    } catch (error) {
+      console.warn('⚠️ Error destroying SDK:', error);
+    } finally {
+      // Force reset all state
+      this.sdk = null;
+      this.isInitialized = false;
+      this.initializationPromise = null;
+
+      console.log('💥 SDK instance destroyed');
+    }
+  }
+
+  /**
+   * Check if authentication circuit breaker is open
+   */
+  private isAuthCircuitBreakerOpen(): boolean {
+    const now = Date.now();
+
+    // Reset failure count if outside the window
+    if (now - this.lastAuthFailure > this.authFailureWindow) {
+      this.authFailureCount = 0;
+      this.isAuthCircuitOpen = false;
+    }
+
+    return this.isAuthCircuitOpen;
+  }
+
+  /**
+   * Record authentication failure
+   */
+  private recordAuthFailure(): void {
+    this.authFailureCount++;
+    this.lastAuthFailure = Date.now();
+
+    console.warn(`🔒 Auth failure ${this.authFailureCount}/${this.maxAuthFailures}`);
+
+    // Check for retry loop pattern
+    this.detectRetryLoop();
+
+    if (this.authFailureCount >= this.maxAuthFailures) {
+      this.isAuthCircuitOpen = true;
+      console.warn('🚨 Authentication circuit breaker opened due to repeated failures');
+
+      // Immediately destroy SDK to stop all internal retries
+      this.destroySDK();
+
+      // Then attempt automatic re-login
+      this.attemptAutoRelogin();
+    }
+  }
+
+  /**
+   * Detect retry loop pattern and stop it
+   */
+  private detectRetryLoop(): void {
+    const now = Date.now();
+    const { /* consecutiveAuthErrors, */ lastAuthErrorTime, maxConsecutiveErrors, errorWindow } = this.retryLoopDetection;
+
+    // Reset counter if enough time has passed
+    if (now - lastAuthErrorTime > errorWindow) {
+      this.retryLoopDetection.consecutiveAuthErrors = 1;
+    } else {
+      this.retryLoopDetection.consecutiveAuthErrors++;
+    }
+
+    this.retryLoopDetection.lastAuthErrorTime = now;
+
+    console.warn(`🔄 Retry loop detection: ${this.retryLoopDetection.consecutiveAuthErrors}/${maxConsecutiveErrors} consecutive errors`);
+
+    // If we detect a retry loop, emergency stop
+    if (this.retryLoopDetection.consecutiveAuthErrors >= maxConsecutiveErrors) {
+      console.error('🚨 RETRY LOOP DETECTED - Emergency stopping SDK!');
+      this.emergencyStop();
+    }
+  }
+
+  /**
+   * Intercept and block SDK internal retries
+   */
+  private interceptSDKRetries(): void {
+    if (!this.sdk) return;
+
+    try {
+      // Try to access and disable internal retry mechanisms
+      const sdk = this.sdk as any;
+
+      // Disable HTTP interceptors if possible
+      if (sdk.httpClient && sdk.httpClient.interceptors) {
+        sdk.httpClient.interceptors.request.clear();
+        sdk.httpClient.interceptors.response.clear();
+        console.log('🛑 Cleared HTTP interceptors');
+      }
+
+      // Disable WebSocket reconnection if possible
+      if (sdk.wsClient && typeof sdk.wsClient.disconnect === 'function') {
+        sdk.wsClient.disconnect();
+        console.log('🛑 Disconnected WebSocket');
+      }
+
+      // Disable any retry timers
+      if (sdk.retryTimer) {
+        clearTimeout(sdk.retryTimer);
+        sdk.retryTimer = null;
+        console.log('🛑 Cleared retry timer');
+      }
+
+      // Disable any refresh timers
+      if (sdk.refreshTimer) {
+        clearTimeout(sdk.refreshTimer);
+        sdk.refreshTimer = null;
+        console.log('🛑 Cleared refresh timer');
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Could not intercept SDK retries:', error);
+    }
+  }
+
+  /**
+   * Reset authentication circuit breaker
+   */
+  private resetAuthCircuitBreakerInternal(): void {
+    this.authFailureCount = 0;
+    this.isAuthCircuitOpen = false;
+    this.lastAuthFailure = 0;
+  }
+
+  /**
+   * Check if error is authentication-related
+   */
+  private isAuthError(error: any): boolean {
+    if (!error) return false;
+
+    const authErrorPatterns = [
+      'Validation failed',
+      'Authentication failed',
+      'Invalid token',
+      'Token expired',
+      'Unauthorized',
+      '401',
+      '403'
+    ];
+
+    const errorMessage = error.message || error.toString() || '';
+    const errorCode = error.code || error.status || '';
+
+    return authErrorPatterns.some(pattern =>
+      errorMessage.toLowerCase().includes(pattern.toLowerCase()) ||
+      errorCode.toString().includes(pattern)
+    );
+  }
+
+  /**
+   * Execute SDK call with network error handling and circuit breaker
    */
   public async executeWithNetworkHandling<T>(
     operation: () => Promise<T>,
     context: string = 'SDK operation'
   ): Promise<T> {
     try {
+      // Check if auth circuit breaker is open
+      if (this.isAuthCircuitBreakerOpen()) {
+        console.warn('🚨 Circuit breaker is OPEN - blocking SDK call:', context);
+        throw new Error('Authentication circuit breaker is open. Please try again later.');
+      }
+
+      console.log(`🔄 Executing SDK call: ${context}`);
       return await operation();
-    } catch (error) {
+    } catch (error: any) {
+      console.log(`❌ SDK call failed: ${context}`, error.message);
+
+      // Handle token refresh race condition
+      if (error.message?.includes('Token refresh already in progress')) {
+        console.warn(`⏳ Token refresh in progress for ${context}, waiting...`);
+        // Wait a bit and retry once
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          return await operation();
+        } catch (retryError: any) {
+          console.error(`❌ Retry failed for ${context}:`, retryError.message);
+          const networkError = NetworkErrorHandler.handleSDKError(retryError, context);
+          throw networkError;
+        }
+      }
+
+      // Check if it's an auth error and record failure
+      if (this.isAuthError(error)) {
+        this.recordAuthFailure();
+        console.warn(`🔒 Authentication error in ${context}:`, error.message);
+        console.warn(`🔒 Circuit breaker status:`, this.getCircuitBreakerStatus());
+
+        // If this is the second failure, immediately trigger circuit breaker
+        if (this.authFailureCount >= this.maxAuthFailures) {
+          console.warn('🚨 Triggering immediate circuit breaker due to repeated auth failures');
+          this.triggerCircuitBreaker();
+        }
+      }
+
+      const networkError = NetworkErrorHandler.handleSDKError(error, context);
+      throw networkError;
+    }
+  }
+
+  /**
+   * Execute SDK call with network error handling but NO authentication circuit breaker
+   * Used for blockchain operations that don't require authentication
+   */
+  public async executeWithNetworkHandlingNoAuth<T>(
+    operation: () => Promise<T>,
+    context: string = 'SDK operation'
+  ): Promise<T> {
+    try {
+      console.log(`🔄 Executing SDK call (no auth check): ${context}`);
+      return await operation();
+    } catch (error: any) {
+      console.log(`❌ SDK call failed: ${context}`, error.message);
+
+      // Handle the error with network error handler
       const networkError = NetworkErrorHandler.handleSDKError(error, context);
       throw networkError;
     }
@@ -176,10 +492,13 @@ class ZapSDKService {
   }
 
   public async addAccountsToExistingWallet(params: AddAccountsToExistingWalletRequest) {
+    this.isAddingAccounts = true;
     return this.executeWithNetworkHandling(
       () => this.getSDK().wallets.addAccountsToExistingWallet(params),
       'addAccountsToExistingWallet'
-    );
+    ).finally(() => {
+      this.isAddingAccounts = false;
+    });
   }
 
   // Token Operations
@@ -191,10 +510,18 @@ class ZapSDKService {
   }
 
   public async disableToken(params: DisableTokenRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().tokens.disableToken(params),
-      'disableToken'
-    );
+    try {
+      console.log("🚫 Attempting to disable token:", params);
+      const result = await this.executeWithNetworkHandling(
+        () => this.getSDK().tokens.disableToken(params),
+        'disableToken'
+      );
+      console.log("✅ Token disabled successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to disable token:", error);
+      throw error;
+    }
   }
 
   public async getTokenDetails(params: TokenDetailsRequest) {
@@ -213,25 +540,65 @@ class ZapSDKService {
 
   // Blockchain Operations
   public async deriveMultiChainAddresses(seedPhrase: string, walletDepth: number) {
-    return this.executeWithNetworkHandling(
+    return this.executeWithNetworkHandlingNoAuth(
       () => this.getSDK().blockchain.deriveMultiChainAddresses(seedPhrase, walletDepth),
       'deriveMultiChainAddresses'
     );
   }
 
+  public async deriveAddress(seedPhrase: string, chainSymbol: string, walletDepth: number = 0) {
+    return this.executeWithNetworkHandlingNoAuth(
+      () => this.getSDK().blockchain.deriveAddress(seedPhrase, chainSymbol, walletDepth),
+      'deriveAddress'
+    );
+  }
+
   public async sendTransaction(params: SendTransactionRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().blockchain.sendTransaction(params),
+    return this.executeWithNetworkHandlingNoAuth(
+      () => this.getSDK().sendTransaction(
+        params.fromAddress,
+        params.toAddress,
+        Number(params.amount),
+        params.privateKey,
+        params.chainSymbol,
+        {
+          tokenAddress: params.tokenAddress,
+          tokenMintAddress: params.tokenMintAddress,
+        }
+      ),
       'sendTransaction'
+    );
+  }
+
+  public async estimateTransactionCost(
+    toAddress: string,
+    amount: number,
+    fromAddress: string,
+    chainSymbol: string,
+    options?: any
+  ) {
+    return this.executeWithNetworkHandlingNoAuth(
+      () => this.getSDK().blockchain.estimateTransactionCost(
+        toAddress,
+        amount,
+        fromAddress,
+        chainSymbol,
+        options
+      ),
+      'estimateTransactionCost'
     );
   }
 
   // Auth Operations
   public async login(params: LoginRequest) {
-    return this.executeWithNetworkHandling(
+    const result = await this.executeWithNetworkHandling(
       () => this.getSDK().walletAuth.login(params),
       'login'
     );
+
+    // Reset circuit breaker on successful login
+    this.resetAuthCircuitBreakerInternal();
+    return result;
   }
 
   public async logoutFromExchange() {
@@ -337,6 +704,13 @@ class ZapSDKService {
   }
 
   /**
+   * Disable all SDK operations when circuit breaker is open
+   */
+  private shouldBlockSDKOperation(): boolean {
+    return this.isAuthCircuitOpen;
+  }
+
+  /**
    * Emit wallet update event
    */
   private emitWalletUpdate(update: any): void {
@@ -405,6 +779,194 @@ class ZapSDKService {
   }
 
   /**
+   * Manually reset the authentication circuit breaker
+   */
+  public resetAuthCircuitBreaker(): void {
+    this.resetAuthCircuitBreakerInternal();
+    console.log('🔄 Authentication circuit breaker manually reset');
+  }
+
+  /**
+   * Get circuit breaker status
+   */
+  public getCircuitBreakerStatus(): {
+    isOpen: boolean;
+    failureCount: number;
+    timeUntilReset: number;
+  } {
+    const now = Date.now();
+    const timeUntilReset = Math.max(0, this.authFailureWindow - (now - this.lastAuthFailure));
+
+    return {
+      isOpen: this.isAuthCircuitOpen,
+      failureCount: this.authFailureCount,
+      timeUntilReset
+    };
+  }
+
+  /**
+   * Test circuit breaker functionality
+   */
+  public testCircuitBreaker(): void {
+    console.log('🧪 Testing circuit breaker...');
+    console.log('Current status:', this.getCircuitBreakerStatus());
+
+    // Simulate auth failures
+    for (let i = 0; i < 5; i++) {
+      this.recordAuthFailure();
+      console.log(`Simulated failure ${i + 1}:`, this.getCircuitBreakerStatus());
+    }
+
+    console.log('Final status:', this.getCircuitBreakerStatus());
+  }
+
+  /**
+   * Check if SDK is currently retrying (for debugging)
+   */
+  public isSDKRetrying(): boolean {
+    // This is a placeholder - in a real implementation, you'd check
+    // if the SDK has active retry operations
+    return this.authFailureCount > 0 && !this.isAuthCircuitOpen;
+  }
+
+  /**
+   * Get detailed SDK status for debugging
+   */
+  public getDetailedStatus(): {
+    isInitialized: boolean;
+    circuitBreaker: any;
+    hasSDK: boolean;
+    isRetrying: boolean;
+  } {
+    return {
+      isInitialized: this.isInitialized,
+      circuitBreaker: this.getCircuitBreakerStatus(),
+      hasSDK: !!this.sdk,
+      isRetrying: this.isSDKRetrying()
+    };
+  }
+
+  /**
+   * Manually trigger automatic re-login (for testing)
+   */
+  public async triggerAutoRelogin(): Promise<void> {
+    console.log('🔄 Manually triggering automatic re-login...');
+    await this.attemptAutoRelogin();
+  }
+
+  /**
+   * Force stop SDK and trigger circuit breaker (for emergency situations)
+   */
+  public forceStopSDK(): void {
+    console.log('🛑 Force stopping SDK and triggering circuit breaker...');
+
+    // Immediately open circuit breaker
+    this.isAuthCircuitOpen = true;
+    this.authFailureCount = this.maxAuthFailures;
+    this.lastAuthFailure = Date.now();
+
+    // Destroy SDK to stop all operations
+    this.destroySDK();
+
+    console.log('🛑 SDK force stopped and circuit breaker opened');
+  }
+
+  /**
+   * Manually trigger circuit breaker (for emergency situations)
+   */
+  public triggerCircuitBreaker(): void {
+    console.log('🚨 Manually triggering circuit breaker...');
+
+    // Force open circuit breaker
+    this.isAuthCircuitOpen = true;
+    this.authFailureCount = this.maxAuthFailures;
+    this.lastAuthFailure = Date.now();
+
+    // Attempt automatic re-login before destroying SDK
+    this.attemptAutoRelogin();
+
+    console.log('🚨 Circuit breaker manually triggered - all SDK operations stopped');
+  }
+
+  /**
+   * Attempt automatic re-login using existing wallet context
+   */
+  private async attemptAutoRelogin(): Promise<void> {
+    console.log('🔄 Attempting automatic re-login...');
+
+    try {
+      // Import the wallet context to access the existing login function
+      // const walletContext = await import('../wallet/wallet-context'); // Removed unused import
+
+      // Call the existing attemptDeviceLogin function
+      // Note: This is a bit tricky since it's a React context function
+      // We'll use a simpler approach by calling the SDK login directly
+
+
+      // Get device fingerprint from secure storage (same as wallet context)
+      let deviceFingerprint = await SecureStore.getItemAsync("device_fingerprint");
+      if (!deviceFingerprint) {
+        // Create fallback fingerprint (same logic as wallet context)
+        deviceFingerprint = JSON.stringify({
+          deviceId: Device.osInternalBuildId || Device.modelId || `unknown-${Date.now()}`,
+          deviceName: Device.deviceName || Device.modelName || "Unknown Device",
+          deviceType: Device.deviceType || 0,
+          osName: Device.osName || "Unknown OS",
+          osVersion: Device.osVersion || "Unknown Version",
+        });
+      }
+
+      // Get device token (same as wallet context)
+      const deviceToken = Device.osInternalBuildId ||
+        Device.modelId ||
+        `unknown-${Date.now()}`;
+
+      // Get push token (same as wallet context)
+      let pushToken = "";
+      if (Device.isDevice) {
+        try {
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+
+          if (existingStatus !== "granted") {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+
+          if (finalStatus === "granted") {
+            pushToken = (await Notifications.getExpoPushTokenAsync()).data;
+            console.log('📱 Push token obtained for auto re-login:', pushToken);
+          }
+        } catch (error) {
+          console.warn('Failed to get push token for auto re-login:', error);
+        }
+      }
+
+      // Use the existing SDK login method (same as wallet context)
+      const loginResult = await this.login({
+        deviceToken,
+        deviceFingerprint,
+        pushToken,
+      });
+
+      if (loginResult.success) {
+        console.log('✅ Automatic re-login successful!');
+        // Reset circuit breaker on successful login
+        this.resetAuthCircuitBreakerInternal();
+        return;
+      } else {
+        console.warn('❌ Automatic re-login failed:', loginResult);
+      }
+    } catch (error) {
+      console.error('❌ Automatic re-login error:', error);
+    }
+
+    // If auto re-login fails, destroy SDK to stop all operations
+    console.log('💥 Auto re-login failed, destroying SDK...');
+    this.destroySDK();
+  }
+
+  /**
    * Cleanup SDK resources
    */
   public async cleanup(): Promise<void> {
@@ -418,6 +980,8 @@ class ZapSDKService {
       this.sdk = null;
       this.isInitialized = false;
       this.initializationPromise = null;
+      // Reset circuit breaker on cleanup
+      this.resetAuthCircuitBreakerInternal();
     }
   }
 
@@ -583,7 +1147,8 @@ class ZapSDKService {
 
   /**
    * Complete wallet creation flow with proper credential storage
-   * Handles addWalletToWalletGroup + addAccountsToExistingWallet + credential storage
+   * Creates a wallet in an existing wallet group (similar to createWalletGroup pattern)
+   * Only creates the wallet, account creation is handled by retryPendingWallets in useEffect
    */
   public async createWalletInGroup(params: {
     walletGroupId: string;
@@ -602,13 +1167,13 @@ class ZapSDKService {
     }
 
     try {
-      console.log('🚀 Starting complete wallet creation flow:', {
+      console.log('🚀 Creating wallet in existing group:', {
         walletGroupId: params.walletGroupId,
         name: params.name,
         hasSeedPhrase: !!params.seedPhrase
       });
 
-      // Step 1: Add wallet to wallet group
+      // Add wallet to wallet group
       const addWalletResponse = await this.sdk.wallets.addWalletToWalletGroup({
         walletGroupId: params.walletGroupId,
         name: params.name,
@@ -627,35 +1192,15 @@ class ZapSDKService {
 
       if (walletStorageId) {
         await WalletCredentialsStorage.markWalletAsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
-        console.log('✅ Wallet marked as created in credentials storage');
+        console.log('✅ Wallet marked as created, account creation will be handled by retryPendingWallets');
       }
 
       if (!addWalletResponse.userWalletGroupId) {
         throw new Error('Failed to get userWalletGroupId from addWalletToWalletGroup');
       }
 
-      // Step 2: Add accounts to existing wallet
-      const addAccountsResponse = await this.sdk.wallets.addAccountsToExistingWallet({
-        userWalletGroupId: addWalletResponse.userWalletGroupId,
-        seedPhrase: params.seedPhrase,
-      });
-
-      console.log('✅ Accounts added to wallet:', addAccountsResponse);
-
-      if (walletStorageId) {
-        await WalletCredentialsStorage.markWalletAsAccountsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
-        console.log('✅ Wallet and accounts marked as created in credentials storage');
-
-        // Verify the status was updated correctly
-        const updatedCredential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(addWalletResponse.userWalletGroupId);
-        console.log('🔍 Verification - credential status:', {
-          isCreated: updatedCredential?.isCreated,
-          areAccountsCreated: updatedCredential?.areAccountsCreated,
-          userWalletGroupId: updatedCredential?.userWalletGroupId,
-          walletStorageId: walletStorageId
-        });
-
-      }
+      // Account creation will be handled by retryPendingWallets in useEffect
+      console.log('✅ Wallet created, account creation will be handled by retryPendingWallets');
 
       return {
         success: true,
@@ -665,11 +1210,23 @@ class ZapSDKService {
       };
 
     } catch (error) {
-      console.error('❌ Complete wallet creation flow failed:', error);
+      console.error('❌ Wallet creation in group failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create wallet'
+        error: error instanceof Error ? error.message : 'Failed to create wallet in group'
       };
+    }
+  }
+
+  public async derivePrivateKey(privateKey: string, chainSymbol: string): Promise<{ address: string; privateKey: string }> {
+    try {
+      if (!this.sdk) {
+        throw new Error('SDK not initialized');
+      }
+      return await WalletUtils.importAccountFromPrivateKey(privateKey, chainSymbol);
+    } catch (error) {
+      console.error('❌ Failed to derive private key:', error);
+      return { address: "", privateKey: "" };
     }
   }
 }

@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { CustomText } from '../general';
 import Box from '../general/Box';
+import ZapLoader from '../general/ZapLoader';
 
 interface PortfolioWithSDKProps {
   onAssetPress?: (asset: any) => void;
@@ -70,7 +71,7 @@ export default function PortfolioWithSDK({ onAssetPress }: PortfolioWithSDKProps
   if (isLoading) {
     return (
       <Box flex={1} justifyContent="center" alignItems="center">
-        <CustomText variant="body">Loading portfolio...</CustomText>
+        <ZapLoader size={100} showText={true} text="Loading portfolio..." />
       </Box>
     );
   }

@@ -1,3 +1,4 @@
+import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
 import { showErrorToast } from "@/src/core/utils/toast-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { router } from "expo-router";
@@ -84,8 +85,7 @@ export const WALLET_FLOW_STEPS = {
 };
 
 export const useWalletFlow = (flowType: WalletFlowType) => {
-  const { createWallet, importWallet, importPrivateKey, watchAddress } =
-    useWallet();
+  const { createWalletGroup } = useWallet();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,7 +139,11 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
 
     setIsLoading(true);
     try {
-      const result = await createWallet(walletData.name);
+      const result = await createWalletGroup({
+        name: walletData.name,
+        walletType: WALLET_GROUP_TYPE.GENERATED,
+        walletClass: WALLET_GROUP_CLASS.SEEDPHRASE,
+      });
       if (result?.isCreated) {
         goToNextStep();
       } else {
@@ -151,7 +155,7 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
     } finally {
       setIsLoading(false);
     }
-  }, [walletData.name, createWallet, goToNextStep]);
+  }, [walletData.name, createWalletGroup, goToNextStep]);
 
   const handleImportSeedPhrase = useCallback(async () => {
     if (!walletData.seedPhrase || !walletData.name) {
@@ -161,7 +165,12 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
 
     setIsLoading(true);
     try {
-      const result = await importWallet(walletData.seedPhrase, walletData.name);
+      const result = await createWalletGroup({
+        name: walletData.name,
+        seedPhrase: walletData.seedPhrase,
+        walletType: WALLET_GROUP_TYPE.IMPORT,
+        walletClass: WALLET_GROUP_CLASS.SEEDPHRASE,
+      });
       if (result?.isCreated) {
         goToNextStep();
       } else {
@@ -173,7 +182,7 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
     } finally {
       setIsLoading(false);
     }
-  }, [walletData.seedPhrase, walletData.name, importWallet, goToNextStep]);
+  }, [walletData.seedPhrase, walletData.name, goToNextStep]);
 
   const handleImportPrivateKey = useCallback(async () => {
     if (!walletData.privateKey || !walletData.chain || !walletData.name) {
@@ -183,11 +192,13 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
 
     setIsLoading(true);
     try {
-      const result = await importPrivateKey(
-        walletData.privateKey,
-        walletData.name,
-        walletData.chain
-      );
+      const result = await createWalletGroup({
+        name: walletData.name,
+        privateKey: walletData.privateKey,
+        searchChain: walletData.chain,
+        walletType: WALLET_GROUP_TYPE.IMPORT,
+        walletClass: WALLET_GROUP_CLASS.PRIVATE_KEY,
+      });
       if (result?.isCreated) {
         goToNextStep();
       } else {
@@ -199,13 +210,7 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    walletData.privateKey,
-    walletData.chain,
-    walletData.name,
-    importPrivateKey,
-    goToNextStep,
-  ]);
+  }, [walletData.privateKey, walletData.chain, walletData.name, goToNextStep]);
 
   const handleWatchAddress = useCallback(async () => {
     if (!walletData.watchAddress || !walletData.chain || !walletData.name) {
@@ -215,10 +220,13 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
 
     setIsLoading(true);
     try {
-      const result = await watchAddress(
-        walletData.watchAddress,
-        walletData.name
-      );
+      const result = await createWalletGroup({
+        name: walletData.name,
+        watchAddress: walletData.watchAddress,
+        searchChain: walletData.chain,
+        walletType: WALLET_GROUP_TYPE.IMPORT,
+        walletClass: WALLET_GROUP_CLASS.WATCH,
+      });
       if (result?.isCreated) {
         goToNextStep();
       } else {
@@ -234,8 +242,8 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
     walletData.watchAddress,
     walletData.chain,
     walletData.name,
-    watchAddress,
     goToNextStep,
+    createWalletGroup,
   ]);
 
   const handleStepAction = useCallback(async () => {

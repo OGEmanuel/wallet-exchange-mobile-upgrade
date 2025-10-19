@@ -50,6 +50,7 @@ export { default as ThemedFaceIDIcon } from "./ThemedFaceIDIcon";
 export { default as ThemedFilterIcon } from "./ThemedFilterIcon";
 export { default as ThemedGiftFill3Icon } from "./ThemedGiftFill3Icon";
 export { default as ThemedGiftOutlineIcon } from "./ThemedGiftOutlineIcon";
+export { default as ThemedGlassIcon } from "./ThemedGlassIcon";
 export { default as ThemedGlobeFillIcon } from "./ThemedGlobeFillIcon";
 export { default as ThemedGlobeOutlineIcon } from "./ThemedGlobeOutlineIcon";
 export { default as ThemedGoogleIcon } from "./ThemedGoogleIcon";
@@ -127,5 +128,4 @@ export { default as ThemedWalletFilledIcon } from "./ThemedWalletFilledIcon";
 export { default as ThemedWalletIcon } from "./ThemedWalletIcon";
 export { default as ThemedWalletOutlineIcon } from "./ThemedWalletOutlineIcon";
 export { default as ThemedWarningIcon } from "./ThemedWarningIcon";
-
 

@@ -17,17 +17,18 @@ import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
- 
- 
- 
 interface PrivateKeysProps {}
 
 const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const { userWalletGroups, getSDK } = useWallet();
-  const { walletChains, isLoading: chainsLoading, error: chainsError } = useChains();
-  
+  const { userWalletGroups, getSDK, setIsAccountDeriving } = useWallet();
+  const {
+    walletChains,
+    isLoading: chainsLoading,
+    error: chainsError,
+  } = useChains();
+
   console.log("🔍 Debug - chainsLoading:", chainsLoading);
   console.log("🔍 Debug - chainsError:", chainsError);
   console.log("🔍 Debug - walletChains length:", walletChains?.length);
@@ -44,13 +45,16 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   // The walletId parameter is actually the userWalletGroup._id, not the individual wallet._id
   console.log("🔍 Debug - walletId from params:", walletId);
   console.log("🔍 Debug - userWalletGroups:", userWalletGroups?.length);
-  console.log("🔍 Debug - userWalletGroups data:", userWalletGroups?.map(g => ({ _id: g._id, walletId: g.walletId?._id })));
-  
+  console.log(
+    "🔍 Debug - userWalletGroups data:",
+    userWalletGroups?.map((g) => ({ _id: g._id, walletId: g.walletId?._id }))
+  );
+
   const userWalletGroup = userWalletGroups?.find(
     (group) => group?.walletId?._id === walletId
   );
   const wallet = userWalletGroup?.walletId;
-  
+
   console.log("🔍 Debug - userWalletGroup:", userWalletGroup);
   console.log("🔍 Debug - wallet:", wallet);
   console.log("🔍 Debug - walletChains:", walletChains?.length);
@@ -64,8 +68,8 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
         symbol: keyData.symbol,
         privateKey: keyData.privateKey,
         chainId: keyData.chainId,
-        logoUrl: keyData.logoUrl
-      }
+        logoUrl: keyData.logoUrl,
+      },
     });
   };
 
@@ -85,26 +89,32 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   // Trigger derivation after PIN success
   const triggerDerivation = async () => {
     console.log("🔍 Triggering derivation after PIN success...");
-    
-    if (!userWalletGroup || !wallet || !walletChains || walletChains.length === 0) {
+
+    if (
+      !userWalletGroup ||
+      !wallet ||
+      !walletChains ||
+      walletChains.length === 0
+    ) {
       console.log("❌ Missing required data for derivation");
       return;
     }
 
     try {
       setIsLoading(true);
-      
+
       // First, try to get stored private keys
       console.log("🔍 Checking for stored private keys...");
-      console.log("🔍 Using userWalletGroup._id:", userWalletGroup._id);
-      const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(userWalletGroup._id);
+      const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
+        userWalletGroup._id
+      );
       console.log("🔍 Stored private keys result:", storedPrivateKeys);
-      
+
       if (storedPrivateKeys && storedPrivateKeys.length > 0) {
         console.log("✅ Found stored private keys, using them");
-        
+
         // Convert stored private keys to display format
-        const keys = storedPrivateKeys.map(storedKey => ({
+        const keys = storedPrivateKeys.map((storedKey) => ({
           chain: storedKey.chainName,
           symbol: storedKey.chainSymbol,
           privateKey: storedKey.privateKey,
@@ -121,6 +131,7 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
         console.log("ℹ️ No stored private keys found, will derive them");
       }
 
+      setIsAccountDeriving(true);
       // Get stored credentials to access seed phrase
       console.log("🔍 Debug - userWalletGroup._id:", userWalletGroup._id);
       const storedCredentials =
@@ -147,46 +158,51 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
       // Derive all addresses once using the SDK
       console.log("🔍 Deriving all addresses once...");
       console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
-      const derivedResult = await zapSDKService.deriveMultiChainAddresses(
+
+      let derivedResult: any;
+      derivedResult = await zapSDKService.deriveMultiChainAddresses(
         storedCredentials.credential, // seed phrase
         wallet.walletDepth || 0
       );
+      setIsAccountDeriving(false);
       console.log("🔍 Derived result:", derivedResult);
 
       const keys = [];
       const processedChains = new Set();
       const privateKeysToStore: any[] = [];
 
-      console.log("🔍 Debug - walletChains:", walletChains);
-      console.log("🔍 Debug - derivedResult.privateKeys:", derivedResult.privateKeys);
-      
+      console.log(
+        "🔍 Debug - derivedResult.privateKeys:",
+        derivedResult.privateKeys
+      );
+
       // Process each chain from walletChains directly
       for (const chainData of walletChains) {
-        console.log("🔍 Debug - processing chain:", chainData.symbol, chainData.name);
         if (processedChains.has(chainData.symbol)) continue;
-        
+
         // Mark this chain as processed to avoid duplicates
         processedChains.add(chainData.symbol);
 
         // Map chain symbols to the keys used in the derived result
         const chainSymbolMap = {
-          'ETH': 'eth',
-          'BTC': 'btc', 
-          'SOL': 'sol',
-          'TRX': 'trx',
-          'MATIC': 'eth', // Polygon uses ETH derivation
-          'ARB': 'eth',   // Arbitrum uses ETH derivation
-          'OP': 'eth',    // Optimism uses ETH derivation
-          'BASE': 'eth'   // Base uses ETH derivation
+          ETH: "eth",
+          BTC: "btc",
+          SOL: "sol",
+          TRX: "trx",
+          MATIC: "eth", // Polygon uses ETH derivation
+          ARB: "eth", // Arbitrum uses ETH derivation
+          OP: "eth", // Optimism uses ETH derivation
+          BASE: "eth", // Base uses ETH derivation
         };
 
-        const mappedSymbol = chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
+        const mappedSymbol =
+          chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
         console.log("🔍 Debug - mappedSymbol:", mappedSymbol);
         if (!mappedSymbol) {
           console.log("🔍 Debug - no mapped symbol for:", chainData.symbol);
           continue;
         }
-        
+
         // Get the derived private key for this chain
         const privateKey = derivedResult.privateKeys?.[mappedSymbol];
         console.log("🔍 Debug - privateKey:", privateKey);
@@ -224,9 +240,15 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
       // Store private keys securely for future use
       if (privateKeysToStore.length > 0) {
         try {
-          console.log("🔍 Storing private keys for userWalletGroup._id:", userWalletGroup._id);
+          console.log(
+            "🔍 Storing private keys for userWalletGroup._id:",
+            userWalletGroup._id
+          );
           console.log("🔍 Private keys to store:", privateKeysToStore.length);
-          await PrivateKeysStorage.storePrivateKeys(userWalletGroup._id, privateKeysToStore);
+          await PrivateKeysStorage.storePrivateKeys(
+            userWalletGroup._id,
+            privateKeysToStore
+          );
           console.log("✅ Stored private keys securely");
         } catch (error) {
           console.error("❌ Failed to store private keys:", error);
@@ -239,59 +261,9 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
       setIsLoading(false);
     } catch (error) {
       console.error("❌ Failed to process private keys:", error);
+      setIsAccountDeriving(false);
       setPrivateKeys([]);
       setIsLoading(false);
-    }
-  };
-
-  // Test function to force derivation and storage
-  const testDerivation = async () => {
-    console.log("🧪 Testing derivation and storage...");
-    try {
-      const sdk = getSDK();
-      if (!sdk) {
-        console.log("❌ SDK not available for test");
-        return;
-      }
-
-      const storedCredentials = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
-        userWalletGroup._id
-      );
-      
-      if (!storedCredentials || !storedCredentials.credential) {
-        console.log("❌ No credentials for test");
-        return;
-      }
-
-      console.log("🧪 Deriving test private keys...");
-      const derivedResult = await zapSDKService.deriveMultiChainAddresses(
-        storedCredentials.credential,
-        wallet.walletDepth || 0
-      );
-      
-      console.log("🧪 Derived result:", derivedResult);
-      console.log("🧪 Private keys:", derivedResult.privateKeys);
-      
-      // Test storage
-      const testKeys = [{
-        chainId: 1,
-        chainSymbol: 'ETH',
-        chainName: 'Ethereum',
-        privateKey: derivedResult.privateKeys?.eth || 'test-key',
-        logoUrl: 'test-logo',
-        isEVM: true,
-        timestamp: Date.now(),
-      }];
-      
-      await PrivateKeysStorage.storePrivateKeys(userWalletGroup._id, testKeys);
-      console.log("🧪 Test storage successful");
-      
-      // Test retrieval
-      const retrieved = await PrivateKeysStorage.getPrivateKeys(userWalletGroup._id);
-      console.log("🧪 Retrieved keys:", retrieved);
-      
-    } catch (error) {
-      console.error("🧪 Test failed:", error);
     }
   };
 
@@ -385,24 +357,19 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
               </CustomText>
             </Box>
           ) : privateKeys.length === 0 ? (
-            <Box flex={1} justifyContent="center" alignItems="center" paddingVertical="xl">
-              <CustomText variant="body" color="disabledTextColor" marginBottom="m">
+            <Box
+              flex={1}
+              justifyContent="center"
+              alignItems="center"
+              paddingVertical="xl"
+            >
+              <CustomText
+                variant="body"
+                color="disabledTextColor"
+                marginBottom="m"
+              >
                 No private keys found
               </CustomText>
-              <Pressable
-                onPress={testDerivation}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                  backgroundColor: theme.colors.primaryColor,
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                })}
-              >
-                <CustomText variant="body" color="white">
-                  Test Derivation
-                </CustomText>
-              </Pressable>
             </Box>
           ) : (
             privateKeys.map((keyData, index) => (
@@ -454,7 +421,10 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
                       </Box>
                     </Box>
 
-                    <ChevronRight size={20} color={theme.colors.headerTextColor} />
+                    <ChevronRight
+                      size={20}
+                      color={theme.colors.headerTextColor}
+                    />
                   </Box>
                 </Box>
               </Pressable>
@@ -462,7 +432,6 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
           )}
         </Box>
       </ScrollView>
-
     </Box>
   );
 };
