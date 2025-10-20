@@ -1,3 +1,4 @@
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
@@ -35,6 +36,7 @@ export default function ZapperSiginBottomSheet({
   const { authEmail } = useKyc();
   const confettiRef = useRef<ConfettiMethods>(null);
   const [currentStep, setCurrentStep] = useState<ScreenStep>("login");
+  const { handleExchangeLogin } = useExchangeAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [isResending, setIsResending] = useState(false);
@@ -85,11 +87,14 @@ export default function ZapperSiginBottomSheet({
     if (email && !isResending) {
       setIsResending(true);
       try {
-        await authEmail({ email });
-        console.log("Resend email successful");
+        const response = await handleExchangeLogin(email);
+        if (response) {
+          console.log("Resend email successful");
+        } else {
+          console.error("Failed to send OTP. Please try again.");
+        }
       } catch (error) {
         console.error("Resend email error:", error);
-        // Error handling is already done by the API service with toast notifications
       } finally {
         setIsResending(false);
       }
