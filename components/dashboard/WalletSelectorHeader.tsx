@@ -1,94 +1,94 @@
-import WalletSelectorBottomSheet, { WalletSelectorBottomSheetRef } from "@/components/bottomsheets/WalletSelectorBottomSheet";
+import WalletSelectorBottomSheet from "@/components/bottomsheets/WalletSelectorBottomSheet";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
-import { Theme } from "@/theme";
-import { useTheme } from "@shopify/restyle";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { IUserWalletGroup } from "@/types/main";
 import { ChevronDown } from "lucide-react-native";
-import React, { useRef } from "react";
-import { Pressable } from "react-native";
-
-interface Wallet {
-  id: string;
-  name: string;
-  address: string;
-  balance: string;
-  icon: string;
-}
+import React, { useState } from "react";
+import { Alert, Pressable } from "react-native";
+import Identicon from "../general/Identicon";
 
 interface WalletSelectorHeaderProps {
-  currentWallet?: Wallet;
-  onWalletChange?: (wallet: Wallet) => void;
+  currentUserWalletGroup: IUserWalletGroup | null;
 }
 
 const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
-  currentWallet,
-  onWalletChange,
+  currentUserWalletGroup,
 }) => {
-  const theme = useTheme<Theme>();
-  const walletSelectorRef = useRef<WalletSelectorBottomSheetRef>(null);
+  const [showWalletSelector, setShowWalletSelector] = useState(false);
+  const [walletToDelete, setWalletToDelete] = useState<any>(null);
 
-  const handleWalletSelect = (wallet: Wallet) => {
-    onWalletChange?.(wallet);
-  };
+  const { switchWallet } = useWallet();
 
   const handlePress = () => {
-    walletSelectorRef.current?.open();
+    setShowWalletSelector(true);
+  };
+
+  const handleDeleteWallet = (wallet: any) => {
+    setWalletToDelete(wallet);
+  };
+
+  const handleCancelDelete = () => {
+    setWalletToDelete(null);
+  };
+
+  const handleSelectWallet = async (selectedUserWalletGroup: any) => {
+    // Don't close if selecting the same wallet
+    if (
+      selectedUserWalletGroup._id === currentUserWalletGroup?._id ||
+      !currentUserWalletGroup
+    ) {
+      setShowWalletSelector(false);
+      return;
+    }
+
+    try {
+      // Switch to the selected wallet
+      await switchWallet(selectedUserWalletGroup._id);
+      setShowWalletSelector(false);
+    } catch (error) {
+      console.error("Failed to switch wallet:", error);
+      Alert.alert("Error", "Failed to switch wallet. Please try again.");
+    }
   };
 
   return (
     <>
       <Pressable
-        onPress={handlePress}
         style={({ pressed }) => ({
-          opacity: pressed ? 0.7 : 1,
+          flexDirection: "row",
+          alignItems: "center",
+          opacity: pressed ? 0.5 : 1,
         })}
+        onPress={handlePress}
       >
         <Box
+          width={24}
+          height={24}
+          borderRadius={4}
+          marginRight="s"
+          overflow="hidden"
           flexDirection="row"
-          alignItems="center"
-          backgroundColor="secondaryBackgroundColor"
-          borderRadius={12}
-          paddingHorizontal="m"
-          paddingVertical="s"
         >
-          {/* Wallet Icon */}
-          <Box
-            width={32}
-            height={32}
-            borderRadius={16}
-            backgroundColor="borderColor"
-            marginRight="s"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <CustomText fontSize={14}>
-              {currentWallet?.icon || "💳"}
-            </CustomText>
-          </Box>
-
-          {/* Wallet Info */}
-          <Box flex={1}>
-            <CustomText variant="bodyBold" fontSize={16} color="headerTextColor">
-              {currentWallet?.name || "Select Wallet"}
-            </CustomText>
-            <CustomText variant="body" fontSize={12} color="disabledTextColor">
-              {currentWallet?.address || "Choose a wallet"}
-            </CustomText>
-          </Box>
-
-          {/* Arrow Down */}
-          <ChevronDown 
-            size={20} 
-            color={theme.colors.disabledTextColor} 
+          <Identicon
+            value={currentUserWalletGroup?.name || "Wallet"}
+            size={24}
           />
         </Box>
+        <CustomText variant="body" fontSize={16} color="white">
+          {currentUserWalletGroup?.name || "Wallet"}
+        </CustomText>
+        <ChevronDown size={16} color="white" style={{ marginLeft: 4 }} />
+        <WalletSelectorBottomSheet
+          visible={showWalletSelector}
+          onClose={() => setShowWalletSelector(false)}
+          selectedWalletGroupId={currentUserWalletGroup?._id}
+          handleCancelDelete={handleCancelDelete}
+          walletToDelete={walletToDelete}
+          onWalletSelect={handleSelectWallet}
+          onDeleteWallet={handleDeleteWallet}
+        />
       </Pressable>
-
-      {/* Wallet Selector Bottom Sheet */}
-      <WalletSelectorBottomSheet
-        ref={walletSelectorRef}
-        onWalletSelect={handleWalletSelect}
-      />
     </>
   );
 };

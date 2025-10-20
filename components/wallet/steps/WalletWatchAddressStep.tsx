@@ -403,7 +403,10 @@ export const WalletWatchAddressStep: React.FC<WalletWatchAddressStepProps> = ({
         {/* Chain Selection Bottom Sheet */}
         <SelectChainBottomSheet
           ref={chainBottomSheetRef}
-          onChainSelect={handleChainSelect}
+          onChainSelect={(chainSymbol) => {
+            setSelectedChain(chainSymbol);
+            chainBottomSheetRef.current?.close();
+          }}
         />
       </Box>
     </KeyboardAvoidingView>

@@ -1,4 +1,4 @@
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -16,7 +16,7 @@ export default function EnterUsername({
   onUsernameSuccess,
 }: EnterUsernameProps) {
   const theme = useTheme<Theme>();
-  const { addUsername } = useKyc();
+  const { completeOnboarding } = useWallet();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [username, setUsername] = useState("");
   const [referralCode, setReferralCode] = useState("");
@@ -32,12 +32,16 @@ export default function EnterUsername({
 
     console.log(`payload: ${username}, ${referralCode}, ${userSource}`);
     try {
-      await addUsername({
+      const response = await completeOnboarding({
         username: username.trim(),
         userSource: userSource,
         referralCode: referralCode.trim(),
       });
-      onUsernameSuccess?.(username.trim());
+      if (response?.success) {
+        onUsernameSuccess?.(username.trim());
+      } else {
+        setError(response.message);
+      }
     } catch (err) {
       console.error("Error adding username:", err);
       setError("Username is already taken or an error occurred");

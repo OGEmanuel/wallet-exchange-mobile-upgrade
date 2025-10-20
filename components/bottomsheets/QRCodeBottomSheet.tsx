@@ -127,7 +127,7 @@ const QRCodeBottomSheet: React.FC<QRCodeBottomSheetProps> = ({
           justifyContent="center"
           backgroundColor="white"
           borderRadius={16}
-          padding="xl"
+          padding="m"
           marginBottom="l"
         >
           <QRCode

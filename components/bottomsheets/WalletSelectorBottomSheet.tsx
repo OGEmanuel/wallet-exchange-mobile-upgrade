@@ -7,10 +7,7 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
-import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import AddressesStorage from "@/src/core/storage/addresses-storage";
-import PrivateKeysStorage from "@/src/core/storage/private-keys-storage";
-import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
+import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -48,7 +45,9 @@ const WalletSelectorBottomSheet = ({
 }: WalletSelectorBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
-  const { userWalletGroups, portfolio, getSDK, refreshPortfolio, refreshUserWalletGroups } = useWallet();
+  const { userWalletGroups, portfolio, removeWalletGroup } = useWallet();
+  const { getEnhancedWalletGroups, getTotalPortfolioValue, isLoading: isBalancesLoading } =
+    useAggregatedBalances();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
@@ -58,66 +57,77 @@ const WalletSelectorBottomSheet = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [localShowDeleteModal, setLocalShowDeleteModal] = useState(false);
 
-  // Get portfolio value from the main wallet group
-  const portfolioValue = portfolio?.totalValue || "$0.00";
+  // Get total portfolio value from aggregated balances (all wallet groups)
+  const totalPortfolioValue = getTotalPortfolioValue();
+  const portfolioValue = `$${totalPortfolioValue.toFixed(2)}`;
 
-  // Process and group wallet groups from context
-  const walletGroupsMap = new Map();
+  // Use cached aggregated balances instead of manual calculation
+  const enhancedWalletGroups = getEnhancedWalletGroups();
 
-  (userWalletGroups && Array.isArray(userWalletGroups) ? userWalletGroups : []).forEach((userWalletGroup) => {
-    // Get the actual wallet group ID and name
-    const walletGroupId = userWalletGroup.walletGroupId?._id;
-    const walletGroupName =
-      userWalletGroup.walletGroupId?.name ||
-      `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
+  // Process wallet groups with aggregated balances
+  const processedWalletGroups = enhancedWalletGroups.reduce(
+    (groupsMap: Map<string, any>, userWalletGroup: any) => {
+      const walletGroupId = userWalletGroup.walletGroupId?._id;
+      const walletGroupName =
+        userWalletGroup.walletGroupId?.name ||
+        `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
 
-    // Get wallet info
-    const walletInfo = userWalletGroup.walletId;
-    const walletName =
-      userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
-    const totalValue = walletInfo?.totalUsdValue
-      ? `$${walletInfo.totalUsdValue}`
-      : "$0.00";
+      const walletInfo = userWalletGroup.walletId;
+      const walletName =
+        userWalletGroup?.name ||
+        walletInfo?.name ||
+        `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
 
-    // If this wallet group doesn't exist in our map, create it
-    if (!walletGroupsMap.has(walletGroupId)) {
-      walletGroupsMap.set(walletGroupId, {
-        id: walletGroupId,
-        name: walletGroupName,
-        totalValue: "$0.00", // Will be calculated from all wallets
-        wallets: [],
+      // Use aggregated balance instead of manual calculation
+      const totalValue = userWalletGroup.aggregatedBalance || 0;
+      const formattedValue = `$${totalValue.toFixed(2)}`;
+
+      // If this wallet group doesn't exist in our map, create it
+      if (!groupsMap.has(walletGroupId)) {
+        groupsMap.set(walletGroupId, {
+          id: walletGroupId,
+          name: walletGroupName,
+          totalValue: "$0.00", // Will be calculated from all wallets
+          wallets: [],
+        });
+      }
+
+      // Add this wallet to the group
+      const group = groupsMap.get(walletGroupId);
+      group.wallets.push({
+        id: walletInfo?._id || userWalletGroup._id,
+        name: walletName,
+        address: walletInfo?.hashedSeedPhraseOrPrivateKey || "No address",
+        balance: formattedValue,
+        groupId: walletGroupId,
+        userWalletGroupId: userWalletGroup._id,
       });
-    }
 
-    // Add this wallet to the group
-    const group = walletGroupsMap.get(walletGroupId);
-    group.wallets.push({
-      id: walletInfo?._id || userWalletGroup._id,
-      name: walletName,
-      address: walletInfo?.hashedSeedPhraseOrPrivateKey || "No address",
-      balance: totalValue,
-      groupId: walletGroupId,
-      userWalletGroupId: userWalletGroup._id, // Keep reference to original user wallet group
-    });
-  });
-
-  // Convert map to array and calculate total values
-  const processedWalletGroups = Array.from(walletGroupsMap.values()).map(
-    (group) => {
-      // Calculate total value for the group
-      const totalValue = group.wallets.reduce((sum: number, wallet: any) => {
-        const value = parseFloat(wallet.balance.replace("$", "")) || 0;
-        return sum + value;
-      }, 0);
-
-      return {
-        ...group,
-        totalValue: `$${totalValue.toFixed(2)}`,
-      };
-    }
+      return groupsMap;
+    },
+    new Map()
   );
 
-  const allWallets = processedWalletGroups.flatMap((group) => group.wallets);
+  // Convert map to array and calculate total values using aggregated balances
+  const finalProcessedWalletGroups = Array.from(
+    processedWalletGroups.values()
+  ).map((group) => {
+    const groupData = group as any;
+    // Calculate total value for the group using aggregated balances
+    const totalValue = (groupData.wallets as any[]).reduce((sum: number, wallet: any) => {
+      const value = parseFloat(wallet.balance.replace("$", "")) || 0;
+      return sum + value;
+    }, 0);
+
+    return {
+      ...groupData,
+      totalValue: `$${totalValue.toFixed(2)}`,
+    };
+  });
+
+  const allWallets = finalProcessedWalletGroups.flatMap(
+    (group) => group.wallets
+  );
 
   const handleWalletSelect = (wallet: any) => {
     // Find the user wallet group for this wallet
@@ -151,76 +161,15 @@ const WalletSelectorBottomSheet = ({
 
   const handlePinSuccess = async (_: string) => {
     try {
-      // Get SDK instance
-      const sdk = getSDK();
-      if (!sdk) {
-        throw new Error("SDK not available");
-      }
-
-      // Debug the wallet structure
-      console.log("🔍 walletToDelete structure:", JSON.stringify(walletToDelete, null, 2));
-      console.log("🔍 walletToDelete.walletGroupId:", walletToDelete.walletGroupId);
-      console.log("🔍 walletToDelete keys:", Object.keys(walletToDelete));
-
-      // Call SDK to delete wallet group
-      console.log(
-        "🗑️ Calling SDK to delete wallet group:",
-        walletToDelete.groupId
+      await removeWalletGroup(
+        walletToDelete.groupId || "",
+        walletToDelete.userWalletGroupId || ""
       );
-      await zapSDKService.deleteWalletGroup(walletToDelete.groupId);
-
-      console.log("✅ Wallet group deleted successfully");
-
-      // Clear stored credentials for all user wallet groups in this wallet group
-      try {
-        const walletGroupId = walletToDelete.groupId;
-
-        // Get all user wallet groups for this wallet group
-        const allUserWalletGroups =
-          userWalletGroups?.filter(
-            (group) => group.walletGroupId._id === walletGroupId
-          ) || [];
-
-        console.log(
-          `🧹 Clearing credentials for ${allUserWalletGroups.length} user wallet groups`
-        );
-
-        // Clear credentials for each user wallet group
-        for (const userWalletGroupToDelete of allUserWalletGroups) {
-          await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(
-            userWalletGroupToDelete._id
-          );
-
-          await PrivateKeysStorage.clearPrivateKeys(
-            userWalletGroupToDelete._id
-          );
-          await AddressesStorage.clearAddresses(userWalletGroupToDelete._id);
-        }
-
-        console.log(
-          "✅ Cleared stored credentials for all wallets in deleted wallet group"
-        );
-      } catch (error) {
-        console.error("❌ Failed to clear stored credentials:", error);
-        // Don't throw here, as the wallet group is already deleted on the server
-      }
 
       // Close both modals
       console.log("🗑️ Closing PIN modal");
       await setShowPinModal(false);
-
-      // Refresh wallet groups and portfolio
-      await refreshUserWalletGroups();
-      await refreshPortfolio();
-
-      console.log("🗑️ Closing local delete modal");
-
-      console.log("🗑️ Closing parent delete modal");
       await handleCancelDelete(); // This will close the parent's delete modal and reset state
-
-      // Refresh wallet groups and portfolio
-      await refreshUserWalletGroups();
-      await refreshPortfolio();
 
       await setTimeout(() => {
         setLocalShowDeleteModal(false); // Close the local delete modal
@@ -245,255 +194,181 @@ const WalletSelectorBottomSheet = ({
   }
 
   return (
-    <>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
-      >
-        <Box flex={1} backgroundColor="modalBackgroundColor">
-          <Pressable onPress={onClose}>
-            <Box
-              width={60}
-              alignSelf="center"
-              height={4}
-              backgroundColor="white"
-              borderRadius={2}
-              marginTop="s"
-            />
-          </Pressable>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <Box flex={1} backgroundColor="modalBackgroundColor">
+        <Pressable onPress={onClose}>
+          <Box
+            width={60}
+            alignSelf="center"
+            height={4}
+            backgroundColor="white"
+            borderRadius={2}
+            marginTop="s"
+          />
+        </Pressable>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingHorizontal: 20,
-              paddingVertical: 25,
-              paddingBottom: 100,
-            }}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 25,
+          }}
+        >
+          {/* Portfolio Value */}
+          <Box
+            backgroundColor="modalBackgroundColor"
+            borderRadius={12}
+            padding="l"
+            marginBottom="l"
+            borderWidth={1}
+            borderColor="borderColor"
           >
-            {/* Portfolio Value */}
-            <Box
-              backgroundColor="modalBackgroundColor"
-              borderRadius={12}
-              padding="l"
-              marginBottom="l"
-              borderWidth={1}
-              borderColor="borderColor"
+            <CustomText
+              variant="body"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="s"
+              textAlign="center"
             >
-              <CustomText
-                variant="body"
-                fontSize={14}
-                color="disabledTextColor"
-                marginBottom="s"
-                textAlign="center"
-              >
-                Est. Portfolio Value
-              </CustomText>
-              <CustomText
-                variant="header"
-                fontSize={28}
-                color="headerTextColor"
-                fontWeight="bold"
-                textAlign="center"
-              >
-                {portfolioValue}
-              </CustomText>
-            </Box>
+              Est. Portfolio Value
+            </CustomText>
+            <CustomText
+              variant="header"
+              fontSize={32}
+              color="headerTextColor"
+              fontWeight="bold"
+              textAlign="center"
+            >
+              {portfolioValue}
+            </CustomText>
+          </Box>
 
-            {/* Tabs */}
-            <Box
-              flexDirection="row"
-              alignItems="center"
-              marginBottom="m"
-              paddingHorizontal="s"
-            >
-              <Box flexDirection="row" flex={1} justifyContent="flex-start">
-                <Pressable
-                  onPress={() => setActiveTab("wallets")}
-                  style={{ marginRight: 20 }}
-                >
-                  <CustomText
-                    variant="bodyBold"
-                    fontSize={16}
-                    color={
-                      activeTab === "wallets"
-                        ? "headerTextColor"
-                        : "disabledTextColor"
-                    }
-                  >
-                    My wallets
-                  </CustomText>
-                </Pressable>
-                <Pressable onPress={() => setActiveTab("watchlist")}>
-                  <CustomText
-                    variant="bodyBold"
-                    fontSize={16}
-                    color={
-                      activeTab === "watchlist"
-                        ? "headerTextColor"
-                        : "disabledTextColor"
-                    }
-                  >
-                    Watchlist
-                  </CustomText>
-                </Pressable>
-              </Box>
-              <Pressable onPress={handleManagePress}>
-                <Box
-                  backgroundColor={
-                    isManageMode
-                      ? "secondaryBackgroundColor"
-                      : "modalBackgroundColor"
+          {/* Tabs */}
+          <Box
+            flexDirection="row"
+            alignItems="center"
+            marginBottom="m"
+            paddingHorizontal="s"
+          >
+            <Box flexDirection="row" flex={1} justifyContent="flex-start">
+              <Pressable
+                onPress={() => setActiveTab("wallets")}
+                style={{ marginRight: 20 }}
+              >
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={16}
+                  color={
+                    activeTab === "wallets"
+                      ? "headerTextColor"
+                      : "disabledTextColor"
                   }
-                  paddingHorizontal="s"
-                  paddingVertical="s"
-                  borderWidth={1}
-                  borderColor="secondaryBackgroundColor"
-                  borderRadius={20}
-                  minWidth={60}
-                  alignItems="center"
                 >
-                  <CustomText
-                    variant="body"
-                    fontSize={12}
-                    color={isManageMode ? "white" : "headerTextColor"}
-                  >
-                    {isManageMode ? "Done" : "Manage"}
-                  </CustomText>
-                </Box>
+                  My wallets
+                </CustomText>
+              </Pressable>
+              <Pressable onPress={() => setActiveTab("watchlist")}>
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={16}
+                  color={
+                    activeTab === "watchlist"
+                      ? "headerTextColor"
+                      : "disabledTextColor"
+                  }
+                >
+                  Watchlist
+                </CustomText>
               </Pressable>
             </Box>
-
-            {/* Show/Hide Groups Toggle */}
-            <Pressable
-              onPress={() => setShowGroups(!showGroups)}
-              style={{ marginBottom: 20, alignSelf: "flex-start" }}
-            >
+            <Pressable onPress={handleManagePress}>
               <Box
-                backgroundColor="secondaryBackgroundColor"
+                backgroundColor={
+                  isManageMode
+                    ? "secondaryBackgroundColor"
+                    : "modalBackgroundColor"
+                }
                 paddingHorizontal="s"
                 paddingVertical="s"
+                borderWidth={1}
+                borderColor="secondaryBackgroundColor"
                 borderRadius={20}
+                minWidth={60}
+                alignItems="center"
               >
                 <CustomText
                   variant="body"
                   fontSize={12}
-                  color="headerTextColor"
+                  color={isManageMode ? "white" : "headerTextColor"}
                 >
-                  {showGroups ? "Hide Groups" : "Show Groups"}
+                  {isManageMode ? "Done" : "Manage"}
                 </CustomText>
               </Box>
             </Pressable>
+          </Box>
 
-            {/* Wallet Groups or Flat List */}
-            {activeTab === "wallets" && (
-              <>
-                {processedWalletGroups.length === 0 ? (
-                  <Box alignItems="center" paddingVertical="xl">
-                    <CustomText
-                      variant="body"
-                      fontSize={16}
-                      color="disabledTextColor"
+          {/* Show/Hide Groups Toggle */}
+          <Pressable
+            onPress={() => setShowGroups(!showGroups)}
+            style={{ marginBottom: 20, alignSelf: "flex-start" }}
+          >
+            <Box
+              backgroundColor="secondaryBackgroundColor"
+              paddingHorizontal="s"
+              paddingVertical="s"
+              borderRadius={20}
+            >
+              <CustomText variant="body" fontSize={12} color="headerTextColor">
+                {showGroups ? "Hide Groups" : "Show Groups"}
+              </CustomText>
+            </Box>
+          </Pressable>
+
+          {/* Wallet Groups or Flat List */}
+          {activeTab === "wallets" && (
+            <>
+              {finalProcessedWalletGroups.length === 0 ? (
+                <Box alignItems="center" paddingVertical="xl">
+                  <CustomText
+                    variant="body"
+                    fontSize={16}
+                    color="disabledTextColor"
+                  >
+                    No wallet groups found
+                  </CustomText>
+                </Box>
+              ) : showGroups ? (
+                // Show grouped wallets
+                finalProcessedWalletGroups.map((group) => (
+                  <Box key={group.id} marginBottom="l">
+                    <Box
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      marginBottom="m"
                     >
-                      No wallet groups found
-                    </CustomText>
-                  </Box>
-                ) : showGroups ? (
-                  // Show grouped wallets
-                  processedWalletGroups.map((group) => (
-                    <Box key={group.id} marginBottom="l">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="m"
+                      <CustomText
+                        variant="bodyBold"
+                        fontSize={16}
+                        color="headerTextColor"
                       >
-                        <CustomText
-                          variant="bodyBold"
-                          fontSize={16}
-                          color="headerTextColor"
-                        >
-                          {group.name}
-                        </CustomText>
-                        <CustomText
-                          variant="body"
-                          fontSize={14}
-                          color="disabledTextColor"
-                        >
-                          {group.totalValue}
-                        </CustomText>
-                      </Box>
-                      {group.wallets.map((wallet: any) => (
-                        <Pressable
-                          key={wallet.id}
-                          onPress={() => handleWalletSelect(wallet)}
-                          style={({ pressed }) => ({
-                            opacity: pressed ? 0.5 : 1,
-                          })}
-                        >
-                          <Box
-                            flexDirection="row"
-                            alignItems="center"
-                            paddingVertical="m"
-                            paddingHorizontal="m"
-                            backgroundColor="modalBackgroundColor"
-                            borderRadius={12}
-                            marginBottom="s"
-                            borderWidth={1}
-                            borderColor="borderColor"
-                          >
-                            <Box marginRight="m">
-                              <Identicon value={wallet?.name || wallet._id || "0x0000000000000000000000000000000000000000"} size={40} />
-                            </Box>
-                            <Box flex={1}>
-                              <CustomText
-                                variant="bodyBold"
-                                fontSize={16}
-                                color="headerTextColor"
-                              >
-                                {wallet.name}
-                              </CustomText>
-                              <CustomText
-                                variant="body"
-                                fontSize={14}
-                                color="disabledTextColor"
-                              >
-                                {wallet.balance}
-                              </CustomText>
-                            </Box>
-                            {isManageMode ? (
-                              <Pressable
-                                onPress={(event) =>
-                                  handleDeleteWallet(wallet, event)
-                                }
-                                style={({ pressed }) => ({
-                                  padding: 8,
-                                  opacity: pressed ? 0.5 : 1,
-                                })}
-                              >
-                                <ThemedDeleteIcon />
-                              </Pressable>
-                            ) : (
-                              <>
-                                {selectedWalletGroupId ===
-                                  wallet.userWalletGroupId && (
-                                  <Box marginRight="s">
-                                    <ThemedCheckIcon />
-                                  </Box>
-                                )}
-                              </>
-                            )}
-                          </Box>
-                        </Pressable>
-                      ))}
+                        {group.name}
+                      </CustomText>
+                      <CustomText
+                        variant="body"
+                        fontSize={14}
+                        color="disabledTextColor"
+                      >
+                        {group.totalValue}
+                      </CustomText>
                     </Box>
-                  ))
-                ) : (
-                  // Show flat list
-                  allWallets.map((wallet: any) => {
-                    return (
+                    {group.wallets.map((wallet: any) => (
                       <Pressable
                         key={wallet.id}
                         onPress={() => handleWalletSelect(wallet)}
@@ -513,7 +388,14 @@ const WalletSelectorBottomSheet = ({
                           borderColor="borderColor"
                         >
                           <Box marginRight="m">
-                            <Identicon value={wallet?.name || wallet._id || "0x0000000000000000000000000000000000000000"} size={40} />
+                            <Identicon
+                              value={
+                                wallet?.name ||
+                                wallet._id ||
+                                "0x0000000000000000000000000000000000000000"
+                              }
+                              size={40}
+                            />
                           </Box>
                           <Box flex={1}>
                             <CustomText
@@ -555,73 +437,146 @@ const WalletSelectorBottomSheet = ({
                           )}
                         </Box>
                       </Pressable>
-                    );
-                  })
-                )}
-              </>
-            )}
+                    ))}
+                  </Box>
+                ))
+              ) : (
+                // Show flat list
+                allWallets.map((wallet: any) => {
+                  return (
+                    <Pressable
+                      key={wallet.id}
+                      onPress={() => handleWalletSelect(wallet)}
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.5 : 1,
+                      })}
+                    >
+                      <Box
+                        flexDirection="row"
+                        alignItems="center"
+                        paddingVertical="m"
+                        paddingHorizontal="m"
+                        backgroundColor="modalBackgroundColor"
+                        borderRadius={12}
+                        marginBottom="s"
+                        borderWidth={1}
+                        borderColor="borderColor"
+                      >
+                        <Box marginRight="m">
+                          <Identicon
+                            value={
+                              wallet?.name ||
+                              wallet._id ||
+                              "0x0000000000000000000000000000000000000000"
+                            }
+                            size={40}
+                          />
+                        </Box>
+                        <Box flex={1}>
+                          <CustomText
+                            variant="bodyBold"
+                            fontSize={16}
+                            color="headerTextColor"
+                          >
+                            {wallet.name}
+                          </CustomText>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="disabledTextColor"
+                          >
+                            {wallet.balance}
+                          </CustomText>
+                        </Box>
+                        {isManageMode ? (
+                          <Pressable
+                            onPress={(event) =>
+                              handleDeleteWallet(wallet, event)
+                            }
+                            style={({ pressed }) => ({
+                              padding: 8,
+                              opacity: pressed ? 0.5 : 1,
+                            })}
+                          >
+                            <ThemedDeleteIcon />
+                          </Pressable>
+                        ) : (
+                          <>
+                            {selectedWalletGroupId ===
+                              wallet.userWalletGroupId && (
+                              <Box marginRight="s">
+                                <ThemedCheckIcon />
+                              </Box>
+                            )}
+                          </>
+                        )}
+                      </Box>
+                    </Pressable>
+                  );
+                })
+              )}
+            </>
+          )}
 
-            {/* Watchlist Tab */}
-            {activeTab === "watchlist" && (
-              <Box alignItems="center" paddingVertical="xl">
-                <CustomText
-                  variant="body"
-                  fontSize={16}
-                  color="disabledTextColor"
-                >
-                  No watchlist items yet
-                </CustomText>
-              </Box>
-            )}
-          </ScrollView>
+          {/* Watchlist Tab */}
+          {activeTab === "watchlist" && (
+            <Box alignItems="center" paddingVertical="xl">
+              <CustomText
+                variant="body"
+                fontSize={16}
+                color="disabledTextColor"
+              >
+                No watchlist items yet
+              </CustomText>
+            </Box>
+          )}
+        </ScrollView>
 
-          {/* Add New Wallet Button */}
-          <Box
-            paddingHorizontal="m"
-            paddingVertical="m"
-            pb="xl"
-            borderTopColor="borderColor"
-          >
-            <CustomButton
-              bgColor={theme.colors.primaryColor}
-              text="Add New Wallet"
-              leadingIcon={<ThemedAddIcon />}
-              onPress={handleAddWalletPress}
-              width="100%"
-              borderRadius={50}
-            />
-          </Box>
+        {/* Add New Wallet Button */}
+        <Box
+          paddingHorizontal="m"
+          paddingVertical="m"
+          pb="xl"
+          borderTopColor="borderColor"
+        >
+          <CustomButton
+            bgColor={theme.colors.primaryColor}
+            text="Add New Wallet"
+            leadingIcon={<ThemedAddIcon />}
+            onPress={handleAddWalletPress}
+            width="100%"
+            borderRadius={50}
+          />
         </Box>
+      </Box>
 
-        {/* Remove Wallet Modal - Outside main modal */}
-        <RemoveWalletModal
-          visible={localShowDeleteModal}
-          onClose={() => {
-            console.log("🗑️ Cancel delete clicked");
-            setLocalShowDeleteModal(false);
-            handleCancelDelete();
-          }}
-          onConfirm={() => {
-            console.log("🗑️ Confirm delete clicked - showing PIN modal");
-            setShowPinModal(true);
-          }}
-          walletName={walletToDelete?.name || "wallet group"}
-          showPinModal={showPinModal}
-          setShowPinModal={setShowPinModal}
-          handlePinSuccess={handlePinSuccess}
-        />
-        {/* Success Modal */}
-        <SuccessModal
-          visible={showSuccessModal}
-          onClose={() => setShowSuccessModal(false)}
-          title="Wallet Deleted"
-          message="Wallet group has been successfully deleted from your account."
-          buttonText="Continue"
-          onButtonPress={() => setShowSuccessModal(false)}
-        />
-
-      </Modal>
-    </>
+      {/* Remove Wallet Modal - Outside main modal */}
+      <RemoveWalletModal
+        visible={localShowDeleteModal}
+        onClose={() => {
+          console.log("🗑️ Cancel delete clicked");
+          setLocalShowDeleteModal(false);
+          handleCancelDelete();
+        }}
+        onConfirm={() => {
+          console.log("🗑️ Confirm delete clicked - showing PIN modal");
+          setShowPinModal(true);
+        }}
+        walletName={walletToDelete?.name || "wallet group"}
+        showPinModal={showPinModal}
+        setShowPinModal={setShowPinModal}
+        handlePinSuccess={handlePinSuccess}
+      />
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Wallet Deleted"
+        message="Wallet group has been successfully deleted from your account."
+        buttonText="Continue"
+        onButtonPress={() => setShowSuccessModal(false)}
+      />
+    </Modal>
   );
 };
 

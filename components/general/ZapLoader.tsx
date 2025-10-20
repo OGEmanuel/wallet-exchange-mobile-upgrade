@@ -18,17 +18,13 @@ const ZapLoader: React.FC<ZapLoaderProps> = ({
   showText = true,
 }) => {
   return (
-    <Box
-      alignItems="center"
-      justifyContent="center"
-      style={style}
-    >
+    <Box alignItems="center" justifyContent="center" style={style}>
       <Box
         width={size}
         height={size}
         alignItems="center"
         justifyContent="center"
-        marginBottom={showText ? "m" : 0}
+        marginBottom={showText ? "m" : undefined}
       >
         <LottieView
           source={require("../../assets/jsons/loader.json")}

@@ -11,7 +11,13 @@ interface IProps {
 
 const DashboardActionItem = ({ icon, title, action }: IProps) => {
   return (
-    <Pressable onPress={() => action()} style={{ alignItems: "center" }}>
+    <Pressable
+      onPress={() => action()}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        opacity: pressed ? 0.5 : 1,
+      })}
+    >
       <Box
         width={50}
         height={50}

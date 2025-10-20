@@ -144,13 +144,18 @@ export interface ProcessedAsset {
   changeType: 'positive' | 'negative';
   image: string;
   isStable: boolean;
-  status: 'ENABLED' | 'DISABLED';
+  status: 'ENABLED' | 'DISABLED' | 'HIDDEN';
+  source: 'DEFAULT' | 'MANUAL' | 'SUGGESTED';
   chainId: string;
   chainName: string;
   chainSymbol: string;
   chainImage: string;
   tokenAddress: string | null;
   decimals: number;
+  // Additional fields for easy access
+  supportedCurrencyId?: any; // Full supportedCurrency object
+  currencyId?: string; // For markets API
+  accountId?: string; // Account ID for transaction history
 }
 
 export interface ProcessedPortfolio {

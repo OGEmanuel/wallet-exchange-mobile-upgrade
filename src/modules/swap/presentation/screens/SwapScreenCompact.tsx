@@ -7,6 +7,7 @@ import {
     PageWrapper,
 } from "@/components/general";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import {
     useCreateOrder,
     useFetchCurrencies,
@@ -41,6 +42,7 @@ const SwapScreenCompact = () => {
     const theme = useTheme<Theme>();
     const navigation = useNavigation();
     const dispatch = useDispatch();
+    const { checkExchangeAuth, ExchangeLoginBottomSheet } = useExchangeAuth();
     const { showBottomSheet } = useAppBottomSheet();
     const { user } = useSelector((state: AppRootState) => state.kyc);
 
@@ -227,6 +229,30 @@ const SwapScreenCompact = () => {
             return;
         }
 
+        // Check if fiat currency is selected and require exchange authentication
+        const isFiatCurrency = !sellCurrency?.currencyId?.isCrypto || !receiveCurrency?.currencyId?.isCrypto;
+        
+        if (isFiatCurrency) {
+            checkExchangeAuth(async () => {
+                await proceedWithOrder();
+            });
+        } else {
+            await proceedWithOrder();
+        }
+    }, [
+        sellCurrency,
+        receiveCurrency,
+        cryptoAddress,
+        swapMetaData,
+        createOrder,
+        checkExchangeAuth,
+    ]);
+
+    const proceedWithOrder = async () => {
+        if (!sellCurrency || !receiveCurrency) {
+            return;
+        }
+
         // Parse amounts from swap metadata
         const sellAmount = parseFloat(
             swapMetaData.sellInputValue.replace(/,/g, "").replace(/\$/g, "")
@@ -260,13 +286,7 @@ const SwapScreenCompact = () => {
             setCreatedOrder(orderResult?.data);
             orderDetailsSheetRef.current?.open();
         }
-    }, [
-        sellCurrency,
-        receiveCurrency,
-        cryptoAddress,
-        swapMetaData,
-        createOrder,
-    ]);
+    };
 
     const shouldShowWithdrawalAddress =
         receiveCurrency?.currencyId?.isCrypto === true &&

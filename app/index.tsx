@@ -7,7 +7,7 @@ import {
   Dimensions,
   ImageBackground,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import ThemedText from "@/components/general/ThemedText";

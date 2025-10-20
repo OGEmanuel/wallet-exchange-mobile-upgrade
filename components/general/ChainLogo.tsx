@@ -40,14 +40,6 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
   const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  console.log("🔍 ChainLogo rendering:", {
-    symbol,
-    name,
-    logoUrl,
-    width,
-    height,
-  });
-
   const handleSvgError = (error: any) => {
     console.log("❌ SVG load error:", error);
     setImageError(true);

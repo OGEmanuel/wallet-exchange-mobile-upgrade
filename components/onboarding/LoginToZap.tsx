@@ -1,7 +1,8 @@
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
+import { debounce } from "lodash";
+import React, { useCallback, useState } from "react";
 import { View } from "react-native";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { CustomText } from "../general";
@@ -14,35 +15,59 @@ interface LoginToZapProps {
 export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
   const theme = useTheme<Theme>();
+  const { handleExchangeLogin } = useExchangeAuth();
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
-  const { authEmail } = useKyc();
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailError(""); // Clear error when user types
+    // Debounced validation
+    debouncedValidateEmail(value, (error: string) => {
+      setEmailError(error);
+    });
+  };
+
+  const debouncedValidateEmail = useCallback(
+    debounce((value: string, callback: (error: string) => void) => {
+      callback(
+        validateEmail(value) ? "" : "Please enter a valid email address"
+      );
+    }, 500),
+    []
+  );
 
   const handleLogin = async () => {
+    // Validate email before proceeding
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await authEmail({ email });
-      console.log(response.data);
-      onLoginSuccess?.(email);
+      setEmailError(""); // Clear any previous errors
+      const response = await handleExchangeLogin(email);
+      if (response) {
+        onLoginSuccess?.(email);
+      } else {
+        setEmailError("Failed to send OTP. Please try again.");
+      }
     } catch (error) {
       console.log(error);
+      setEmailError("Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);
     }
-    // setLoading(true);
-    // authEmail({ email })
-    //   .then((res) => {
-    //     console.log(res);
-    //     // navigate to email verification
-    //     onLoginSuccess?.(email);
-    //   })
-    //   .catch((err) => {
-    //     // If you need to do anything with error.
-    //     // But there's already a default toast mechanism for each API call
-    //   })
-    //   .finally(() => {
-    //     setLoading(false);
-    //   });
   };
 
   return (
@@ -61,12 +86,25 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
       </CustomText>
       <CustomInputWithoutForm
         value={email}
-        onChange={setEmail}
+        onChange={handleEmailChange}
         placeholder="Enter your email address"
         noBorder={true}
         keyboardType="email-address"
         color={theme.colors.bodyTextColor}
       />
+      {emailError ? (
+        <CustomText
+          variant="body"
+          color="error"
+          style={{
+            fontSize: 12,
+            marginTop: 8,
+            marginLeft: 4,
+          }}
+        >
+          {emailError}
+        </CustomText>
+      ) : null}
       <View style={{ marginTop: 24 }}>
         <CustomButton
           width={"100%"}
@@ -76,7 +114,7 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
           bgColor={theme.colors.primaryColor}
           color={theme.colors.white}
           onPress={handleLogin}
-          disabled={email.length < 1 || loading}
+          disabled={!email.trim() || !validateEmail(email) || loading}
           disabledColor={theme.colors.borderColor}
         />
       </View>
