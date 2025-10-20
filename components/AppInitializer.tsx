@@ -4,10 +4,18 @@ import { ActivityIndicator, Text, View } from "react-native";
 
 interface AppInitializerProps {
   children: React.ReactNode;
+  onInitializationComplete?: () => void;
 }
 
-export const AppInitializer: React.FC<AppInitializerProps> = ({ children }) => {
+export const AppInitializer: React.FC<AppInitializerProps> = ({ children, onInitializationComplete }) => {
   const { isInitialized, isLoading, error } = useAppInitialization();
+
+  // Notify parent when initialization is complete (success or error)
+  React.useEffect(() => {
+    if ((isInitialized || error) && !isLoading && onInitializationComplete) {
+      onInitializationComplete();
+    }
+  }, [isInitialized, isLoading, error, onInitializationComplete]);
 
   if (isLoading) {
     return (

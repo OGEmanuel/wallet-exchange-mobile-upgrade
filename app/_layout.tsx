@@ -22,13 +22,13 @@ import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAtom } from "jotai";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Appearance,
-  NativeEventSubscription,
-  StatusBar,
-  View,
-  useColorScheme,
+    Appearance,
+    NativeEventSubscription,
+    StatusBar,
+    View,
+    useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -74,7 +74,10 @@ export default function RootLayout() {
       },
     },
   });
+  
+  // Prevent auto-hide and track initialization state
   SplashScreen.preventAutoHideAsync();
+  const [isAppReady, setIsAppReady] = useState(false);
   const colorScheme = useColorScheme();
   const [colorTheme, setColorTheme] = useAtom(colorThemeAtom);
 
@@ -102,11 +105,29 @@ export default function RootLayout() {
     NewScience_Thin_Extended: require("../assets/fonts/New_Science_Thin_Extended.otf"),
   });
 
+  // Hide splash screen only when both fonts are loaded and app is ready
   useEffect(() => {
-    if (fontsLoaded || error) {
-      SplashScreen.hideAsync();
+    if ((fontsLoaded || error) && isAppReady) {
+      SplashScreen.hideAsync().catch((error) => {
+        console.warn('Failed to hide splash screen:', error);
+      });
     }
-  }, [fontsLoaded, error]);
+  }, [fontsLoaded, error, isAppReady]);
+
+  // Fallback timeout to hide splash screen after 10 seconds to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isAppReady) {
+        console.warn('App initialization timeout, hiding splash screen anyway');
+        SplashScreen.hideAsync().catch((error) => {
+          console.warn('Failed to hide splash screen on timeout:', error);
+        });
+        setIsAppReady(true);
+      }
+    }, 10000); // 10 seconds timeout
+
+    return () => clearTimeout(timeout);
+  }, [isAppReady]);
 
   React.useEffect(() => {
     let subscription: NativeEventSubscription;
@@ -162,12 +183,17 @@ export default function RootLayout() {
     return null;
   }
 
+  // Show loading screen while app is initializing
+  if (!isAppReady) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <AppInitializer>
+            <AppInitializer onInitializationComplete={() => setIsAppReady(true)}>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
                 <InternetConnectionProvider>
