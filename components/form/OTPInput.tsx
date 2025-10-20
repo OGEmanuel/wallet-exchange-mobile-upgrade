@@ -13,6 +13,7 @@ interface OTPInputProps {
   autoFocus?: boolean;
   disabled?: boolean;
   error?: boolean;
+  errorText?: string;
   resendTimer?: number;
   showResend?: boolean;
   resendText?: string;
@@ -29,6 +30,7 @@ export default function OTPInput({
   autoFocus = true,
   disabled = false,
   error = false,
+  errorText,
   resendTimer = 0,
   showResend = true,
   resendText = "Didn't receive a code?",
@@ -142,6 +144,7 @@ export default function OTPInput({
                   ? theme.colors.primaryColor
                   : theme.colors.borderColor,
                 backgroundColor: theme.colors.secondaryBackgroundColor,
+                borderWidth: 1,
               },
             ]}
             onPress={() => handlePress(index)}
@@ -174,6 +177,13 @@ export default function OTPInput({
           </Pressable>
         ))}
       </Box>
+      {errorText ? (
+        <Box mb="s">
+          <CustomText color="error" variant="body" textAlign="center">
+            {errorText}
+          </CustomText>
+        </Box>
+      ) : null}
 
       {/* Resend option */}
       {showResend && (

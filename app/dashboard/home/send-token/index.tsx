@@ -583,14 +583,6 @@ const SendToken = () => {
 
   const handleSendTransaction = async () => {
     console.log("🚀 handleSendTransaction called");
-    console.log("🔍 Current state:", {
-      hasSelectedToken: !!selectedToken,
-      hasAmount: !!amount,
-      hasRecipientAddress: !!recipientAddress,
-      isValidatingAddress,
-      hasAddressValidationError: !!addressValidationError,
-      isContinueDisabled,
-    });
 
     // Dismiss keyboard first
     Keyboard.dismiss();
@@ -714,7 +706,7 @@ const SendToken = () => {
 
       // Send the transaction using the SDK
       console.log("🚀 Calling SDK sendTransaction...");
-      let result: any;
+      let result: string | null = null;
       try {
         result = await zapSDKService.sendTransaction(baseParams);
         console.log("✅ Transaction sent successfully:", result);

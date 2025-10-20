@@ -5,7 +5,7 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
@@ -640,6 +640,40 @@ class ZapSDKService {
     return this.executeWithNetworkHandling(
       () => this.getSDK().getExchangeUserId(),
       'getExchangeUserId'
+    );
+  }
+
+  public async getExchangeUser(): Promise<UserModel | null> {
+    return this.executeWithNetworkHandling(async () => {
+      const sdk = this.getSDK();
+      const user = await sdk.exchangeAuth.getUser();
+      if (user && (user.id || user._id)) return user;
+      // Fallback: try users.getProfile when exchangeAuth.getUser returns null
+      try {
+        const exchangeUserId = await this.getExchangeUserId();
+        if (!exchangeUserId) return null;
+        const profile = await sdk.users.getProfile(exchangeUserId, { bypassCache: true });
+        return profile || null;
+      } catch {
+        return null;
+      }
+    }, 'getExchangeUser');
+  }
+
+  /**
+   * Users - Complete Onboarding
+   */
+  public async completeOnboarding(
+    userId: string | null,
+    data: {
+      username?: string | null;
+      userSource?: string | null;
+      referralCode?: string | null;
+    }
+  ) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().users.completeOnboarding(userId, data),
+      'users.completeOnboarding'
     );
   }
 

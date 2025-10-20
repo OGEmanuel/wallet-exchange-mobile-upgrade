@@ -1,3 +1,5 @@
+import { UserModel } from "@zap/blockchain-sdk";
+
 export interface WalletContextType {
   // State
   isInitialized: boolean;
@@ -6,6 +8,7 @@ export interface WalletContextType {
   currentSeedPhrase: string | null;
   isExchangeAuthenticated: boolean;
   currentExchangeUser: string | null;
+  exchangeUserData: UserModel | null;
   userWalletGroups: IUserWalletGroup[];
   isUserWalletGroups: boolean;
   mainUserWalletGroup: IUserWalletGroup | null;
@@ -27,6 +30,13 @@ export interface WalletContextType {
   logoutFromExchange: () => Promise<void>;
   exchangeLogin: (email: string) => Promise<boolean>;
   exchangeValidateOtp: (email: string, otp: string) => Promise<boolean>;
+  getExchangeUser: () => Promise<any | null>;
+  completeOnboarding: (
+    data: { username?: string | null; userSource?: string | null; referralCode?: string | null }
+  ) => Promise<{
+    success: boolean;
+    message: string;
+  }>;
 
   // Wallet Operations
   createWalletGroup: ({
@@ -54,12 +64,6 @@ export interface WalletContextType {
   // Wallet Groups
   refreshUserWalletGroups: () => Promise<void>;
 
-  // Transactions
-  sendTransaction: (
-    toAddress: string,
-    amount: number,
-    currency: string
-  ) => Promise<string | null>;
   getTransactionHistory: (accountId?: string) => Promise<any[]>;
 
   // Real-time Updates

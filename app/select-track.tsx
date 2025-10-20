@@ -4,6 +4,7 @@ import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -61,7 +62,9 @@ const Card = ({
       mb="l"
       bg="surfaceContainer"
     >
-      <Box justifyContent="center">{image}</Box>
+      <Box justifyContent="center" width={75}>
+        {image}
+      </Box>
       <Box ml="m" justifyContent="center">
         <ThemedText
           style={{ marginBottom: 4 }}
@@ -97,11 +100,14 @@ const SelectTrack = () => {
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
 
-  // Get user state from Redux store
+  // Get exchange authentication state from wallet context
+  const { isExchangeAuthenticated } = useWallet();
+
+  // Get user state from Redux store for KYC
   const { user } = useSelector((state: AppRootState) => state.kyc);
 
-  // Check if user is logged in (has a user object and is not a guest)
-  const isUserLoggedIn = user && !user.isGuest;
+  // Check if user is exchange authenticated
+  const isUserLoggedIn = isExchangeAuthenticated;
 
   const theme = useTheme<Theme>();
 
@@ -112,6 +118,33 @@ const SelectTrack = () => {
     btnText: string;
     onPress: () => void;
   }[] = [
+    {
+      title: "Zapper",
+      body: isUserLoggedIn
+        ? "Continue to your dashboard"
+        : "Sign in or  create your Zap account",
+      btnText: isUserLoggedIn ? "Continue" : "Get Started",
+      image: (
+        <Image
+          source={require("@/assets/images/onb3.png")}
+          style={{ width: 58, height: 74 }}
+          contentFit="contain"
+        />
+      ),
+      onPress: () => {
+        if (isUserLoggedIn) {
+          // Navigate to dashboard for exchange authenticated users
+          router.push("/dashboard/home/wallet-home/home");
+        } else {
+          // Show exchange login bottom sheet for non-authenticated users
+          setIsZapperBottomSheetVisible(true);
+          // Use setTimeout to ensure the component is rendered before opening
+          setTimeout(() => {
+            zapperBottomSheetRef.current?.snapToIndex(0);
+          }, 100);
+        }
+      },
+    },
     {
       title: "Noob",
       body: "Start your crypto journey here",
@@ -136,34 +169,7 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => router.push("/dashboard/home/wallet-home/home"),
-    },
-    {
-      title: "Zapper",
-      body: isUserLoggedIn
-        ? "Continue to your dashboard"
-        : "Sign in or  create your Zap account",
-      btnText: isUserLoggedIn ? "Continue" : "Get Started",
-      image: (
-        <Image
-          source={require("@/assets/images/onb3.png")}
-          style={{ width: 58, height: 74 }}
-          contentFit="contain"
-        />
-      ),
-      onPress: () => {
-        if (isUserLoggedIn) {
-          // Navigate to dashboard for logged in users
-          router.push("/dashboard/home/wallet-home/home");
-        } else {
-          // Show bottom sheet for non-logged in users
-          setIsZapperBottomSheetVisible(true);
-          // Use setTimeout to ensure the component is rendered before opening
-          setTimeout(() => {
-            zapperBottomSheetRef.current?.snapToIndex(0);
-          }, 100);
-        }
-      },
+      onPress: () => router.push("/dashboard/home/wallet-home/swap"),
     },
   ];
   return (
@@ -188,14 +194,15 @@ const SelectTrack = () => {
           ref={zapperBottomSheetRef}
           onContinue={() => {
             zapperBottomSheetRef.current?.close();
-            phoneVerificationBottomSheetRef.current?.snapToIndex(0);
+            setIsZapperBottomSheetVisible(false);
+            // Navigate to dashboard after successful exchange authentication
+            router.push("/dashboard/home/wallet-home/swap");
           }}
           onClose={() => {
             setIsZapperBottomSheetVisible(false);
           }}
         />
       )}
-      {/* <PhoneVerificationBottomSheet ref={phoneVerificationBottomSheetRef} /> */}
     </Wrapper>
   );
 };

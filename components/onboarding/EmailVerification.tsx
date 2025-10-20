@@ -1,5 +1,5 @@
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
@@ -19,7 +19,7 @@ interface EmailVerificationProps {
 }
 
 export default function EmailVerification({
-  email = "kazeemshak@gmail.com",
+  email = "",
   onVerify,
   onResend,
   isLoading = false,
@@ -29,9 +29,11 @@ export default function EmailVerification({
   const [resendTimer, setResendTimer] = useState(0);
   const [isCodeComplete, setIsCodeComplete] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const theme = useTheme<Theme>();
-  const { verifyEmail, updateUser } = useKyc();
   const { hideAllBottomSheets } = useAppBottomSheet();
+  const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
+    useExchangeAuth();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -45,14 +47,19 @@ export default function EmailVerification({
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
+    setError(null);
     setIsCodeComplete(newCode.length === 6);
   };
 
   const handleCodeComplete = (completeCode: string) => {
     setIsCodeComplete(true);
-    console.log("Code complete:", completeCode);
-    // Don't call onVerify here - wait for manual verification
   };
+
+  useEffect(() => {
+    if (isCodeComplete) {
+      handleVerify();
+    }
+  }, [isCodeComplete]);
 
   const handleResend = () => {
     if (resendTimer === 0) {
@@ -65,37 +72,35 @@ export default function EmailVerification({
     if (isCodeComplete && !isLoading && !isVerifying) {
       setIsVerifying(true);
       try {
-        const response = await verifyEmail({
-          email,
-          otp: code,
-        });
+        const response = await handleExchangeValidateOtp(email, code);
         console.log("Email verification response:", response);
 
         // Check if verification was successful
-        if (response.success) {
+        if (response) {
           // Check if user data has username
-          const authVerificationData = response.data;
-          const userData = authVerificationData?.user;
+          let exchangeUser = exchangeUserData;
 
-          updateUser({
-            ...userData,
-            emailVerified: true,
-          });
+          if (!exchangeUser?.username) {
+            exchangeUser = await getExchangeUser();
+          }
 
-          if (userData?.username) {
+          if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
             console.log(
               "User has username, closing bottom sheet and navigating to app"
             );
             hideAllBottomSheets();
-            router.push("/dashboard/home/wallet-home/home");
+            router.push("/dashboard/home/wallet-home/swap");
           } else {
             // User doesn't have username, continue with normal flow
             onVerify?.(code);
           }
+        } else {
+          setError("Invalid OTP. Please try again.");
         }
       } catch (error) {
         console.error("Email verification error:", error);
+        setError(error as string);
         // Error handling is already done by the API service with toast notifications
       } finally {
         setIsVerifying(false);
@@ -105,61 +110,62 @@ export default function EmailVerification({
 
   return (
     <>
-    <Pressable onPress={() => Keyboard.dismiss()} style={{flex: 1}}>
-
-      <Box alignItems="center" marginBottom="s" marginTop="xl">
-        <CustomText
-          variant="header"
-          fontSize={24}
-          color="headerTextColor"
-          textAlign="center"
-          marginBottom="m"
+      <Pressable onPress={() => Keyboard.dismiss()} style={{ flex: 1 }}>
+        <Box alignItems="center" marginBottom="s" marginTop="xl">
+          <CustomText
+            variant="header"
+            fontSize={24}
+            color="headerTextColor"
+            textAlign="center"
+            marginBottom="m"
           >
-          Email Verification
-        </CustomText>
-      </Box>
+            Email Verification
+          </CustomText>
+        </Box>
 
-      <Box marginTop="l">
-        <OTPInput
-          length={6}
-          onCodeChange={handleCodeChange}
-          onCodeComplete={handleCodeComplete}
-          onResend={handleResend}
-          autoFocus={true}
-          disabled={isLoading}
-          resendTimer={resendTimer}
-          instructionText="Please enter the 6-digit OTP sent to"
-          phoneNumber={email}
-        />
-      </Box>
-
-      <Box
-        style={{
-          position: "absolute",
-          bottom: 150,
-          width: SCREEN_WIDTH * 0.9,
-          alignSelf: "center",
-        }}
-      >
-        <CustomButton
-          text={isVerifying ? "Verifying..." : "Verify"}
-          onPress={handleVerify}
-          disabled={!isCodeComplete || isLoading || isVerifying}
-          isLoading={isLoading || isVerifying}
-          width="100%"
-          height={56}
-          borderRadius={56}
-          bgColor={
-            isCodeComplete && !isVerifying
-            ? theme.colors.primaryColor
-            : theme.colors.inActiveBtnColor
-          }
-          color="white"
-          fontSize={16}
-          variant="bodySubheader"
+        <Box marginTop="l">
+          <OTPInput
+            length={6}
+            onCodeChange={handleCodeChange}
+            onCodeComplete={handleCodeComplete}
+            onResend={handleResend}
+            autoFocus={true}
+            disabled={isLoading}
+            resendTimer={resendTimer}
+            instructionText="Please enter the 6-digit OTP sent to"
+            phoneNumber={email}
+            error={error !== null}
+            errorText={error || ""}
           />
-      </Box>
-          </Pressable>
+        </Box>
+
+        <Box
+          style={{
+            position: "absolute",
+            bottom: 150,
+            width: SCREEN_WIDTH * 0.9,
+            alignSelf: "center",
+          }}
+        >
+          <CustomButton
+            text={isVerifying ? "Verifying..." : "Verify"}
+            onPress={handleVerify}
+            disabled={!isCodeComplete || isLoading || isVerifying}
+            isLoading={isLoading || isVerifying}
+            width="100%"
+            height={56}
+            borderRadius={56}
+            bgColor={
+              isCodeComplete && !isVerifying
+                ? theme.colors.primaryColor
+                : theme.colors.inActiveBtnColor
+            }
+            color="white"
+            fontSize={16}
+            variant="bodySubheader"
+          />
+        </Box>
+      </Pressable>
     </>
   );
 }

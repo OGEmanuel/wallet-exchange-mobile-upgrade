@@ -1,15 +1,16 @@
 import TokenSelectionBottomSheet from "@/components/bottomsheets/TokenSelectionBottomSheet";
 import ActivityTabar from "@/components/dashboard/ActivityTabar";
 import {
-    Box,
-    CustomButton,
-    CustomText,
-    PageWrapper,
+  Box,
+  CustomButton,
+  CustomText,
+  PageWrapper,
 } from "@/components/general";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import {
-    useCreateOrder,
-    useFetchCurrencies,
+  useCreateOrder,
+  useFetchCurrencies,
 } from "@/src/modules/swap";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
@@ -17,10 +18,10 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@shopify/restyle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import { useSwapLogic } from "../hooks/useSwapLogic";
@@ -38,6 +39,7 @@ const SwapScreenNew = () => {
   const theme = useTheme<Theme>();
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const { checkExchangeAuth, ExchangeLoginBottomSheet } = useExchangeAuth();
   const { showBottomSheet } = useAppBottomSheet();
   const { user } = useSelector((state: AppRootState) => state.kyc);
 
@@ -176,6 +178,30 @@ const SwapScreenNew = () => {
       return;
     }
 
+    // Check if fiat currency is selected and require exchange authentication
+    const isFiatCurrency = !sellCurrency?.currencyId?.isCrypto || !receiveCurrency?.currencyId?.isCrypto;
+    
+    if (isFiatCurrency) {
+      checkExchangeAuth(async () => {
+        await proceedWithOrder();
+      });
+    } else {
+      await proceedWithOrder();
+    }
+  }, [
+    sellCurrency,
+    receiveCurrency,
+    cryptoAddress,
+    swapMetaData,
+    createOrder,
+    checkExchangeAuth,
+  ]);
+
+  const proceedWithOrder = async () => {
+    if (!sellCurrency || !receiveCurrency) {
+      return;
+    }
+
     // Parse amounts from swap metadata
     const sellAmount = parseFloat(
       swapMetaData.sellInputValue.replace(/,/g, "").replace(/\$/g, "")
@@ -209,13 +235,7 @@ const SwapScreenNew = () => {
       setCreatedOrder(orderResult?.data);
       orderDetailsSheetRef.current?.open();
     }
-  }, [
-    sellCurrency,
-    receiveCurrency,
-    cryptoAddress,
-    swapMetaData,
-    createOrder,
-  ]);
+  };
 
   const shouldShowWithdrawalAddress =
     receiveCurrency?.currencyId?.isCrypto === true &&
@@ -314,6 +334,9 @@ const SwapScreenNew = () => {
         }}
         title="Order Created"
       />
+
+      {/* Exchange Login Bottom Sheet */}
+      <ExchangeLoginBottomSheet />
     </PageWrapper>
   );
 };
