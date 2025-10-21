@@ -98,7 +98,8 @@ const TokenDetails = () => {
   tokenId = String(tokenId);
   const router = useRouter();
   const theme = useTheme<Theme>();
-  const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } = useWallet();
+  const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } =
+    useWallet();
 
   // Redux state
   const processedPortfolio = useSelector(selectProcessedPortfolio);
@@ -109,19 +110,21 @@ const TokenDetails = () => {
   // Fallback: manually find token if selector doesn't work
   const allTokens = useSelector(selectAllSupportedTokens);
   const portfolioAssets = processedPortfolio?.assets || [];
-  
+
   const fallbackToken = allTokens?.find((token) => {
     // Try multiple matching strategies
     const matchesId = token.id === tokenId;
     const matchesSupportedId = token.supportedCurrencyId?._id === tokenId;
-    const matchesSupportedIdString = token.supportedCurrencyId?._id?.toString() === tokenId;
+    const matchesSupportedIdString =
+      token.supportedCurrencyId?._id?.toString() === tokenId;
     const matchesIdString = token.id?.toString() === tokenId;
-    
+
     // NEW: Check if supportedCurrencyId is a string that matches
     const matchesSupportedIdDirect = token.supportedCurrencyId === tokenId;
-    
+
     // NEW: Check if supportedCurrencyId is an object with _id that matches
-    const matchesSupportedIdObject = typeof token.supportedCurrencyId === 'object' && 
+    const matchesSupportedIdObject =
+      typeof token.supportedCurrencyId === "object" &&
       token.supportedCurrencyId?._id === tokenId;
 
     return (
@@ -138,14 +141,16 @@ const TokenDetails = () => {
   const portfolioToken = portfolioAssets?.find((asset) => {
     const matchesId = asset.id === tokenId;
     const matchesSupportedId = asset.supportedCurrencyId?._id === tokenId;
-    const matchesSupportedIdString = asset.supportedCurrencyId?._id?.toString() === tokenId;
+    const matchesSupportedIdString =
+      asset.supportedCurrencyId?._id?.toString() === tokenId;
     const matchesIdString = asset.id?.toString() === tokenId;
-    
+
     // NEW: Check if supportedCurrencyId is a string that matches
     const matchesSupportedIdDirect = asset.supportedCurrencyId === tokenId;
-    
+
     // NEW: Check if supportedCurrencyId is an object with _id that matches
-    const matchesSupportedIdObject = typeof asset.supportedCurrencyId === 'object' && 
+    const matchesSupportedIdObject =
+      typeof asset.supportedCurrencyId === "object" &&
       asset.supportedCurrencyId?._id === tokenId;
 
     return (
@@ -158,7 +163,9 @@ const TokenDetails = () => {
     );
   });
 
-  const finalSelectedToken = selectedToken || fallbackToken || portfolioToken;
+  const finalSelectedToken = portfolioToken || selectedToken || fallbackToken;
+
+  console.log(finalSelectedToken);
 
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [isTokenDetailsLoading, setIsTokenDetailsLoading] = useState(false);
@@ -346,7 +353,9 @@ const TokenDetails = () => {
   // This is now handled centrally - just trigger a refresh if needed
   useEffect(() => {
     if (!allTokens || allTokens.length === 0) {
-      console.log("⚠️ No tokens available, portfolio processing should be handled centrally");
+      console.log(
+        "⚠️ No tokens available, portfolio processing should be handled centrally"
+      );
     }
   }, [allTokens]);
 
@@ -365,14 +374,16 @@ const TokenDetails = () => {
     setIsFavorite(!isFavorite);
   };
 
-
   // Get wallet address for the selected token's chain
   const getWalletAddress = async () => {
     if (!finalSelectedToken || !mainUserWalletGroup?._id) return;
 
     try {
       // Use centralized getAddress function
-      const address = await getAddress(finalSelectedToken.chainSymbol, mainUserWalletGroup._id);
+      const address = await getAddress(
+        finalSelectedToken.chainSymbol,
+        mainUserWalletGroup._id
+      );
 
       if (address) {
         setWalletAddress(address);
@@ -441,10 +452,20 @@ const TokenDetails = () => {
           <CustomText color="bodyTextColor" textAlign="center" marginBottom="m">
             Token not found
           </CustomText>
-          <CustomText color="disabledTextColor" textAlign="center" marginBottom="m" fontSize={12}>
+          <CustomText
+            color="disabledTextColor"
+            textAlign="center"
+            marginBottom="m"
+            fontSize={12}
+          >
             Token ID: {tokenId}
           </CustomText>
-          <CustomText color="disabledTextColor" textAlign="center" marginBottom="m" fontSize={12}>
+          <CustomText
+            color="disabledTextColor"
+            textAlign="center"
+            marginBottom="m"
+            fontSize={12}
+          >
             Available tokens: {allTokens?.length || 0}
           </CustomText>
           <CustomButton text="Go Back" onPress={handleBack} width={120} />
@@ -1181,7 +1202,7 @@ const TokenDetails = () => {
                   alignItems="center"
                 >
                   <CustomText color="placeholderTextColor" fontSize={14}>
-                    24hr Volume
+                    24h Volume
                   </CustomText>
                   <CustomText
                     color="headerTextColor"

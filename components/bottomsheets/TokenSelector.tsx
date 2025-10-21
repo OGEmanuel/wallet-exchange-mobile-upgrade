@@ -81,8 +81,11 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   const { walletChains } = useChains();
 
   // Supported currencies for swap mode
-  const { supportedCurrencies, isLoading: isSupportedCurrenciesLoading, searchSupportedCurrencies } =
-    useSupportedCurrencies();
+  const {
+    supportedCurrencies,
+    isLoading: isSupportedCurrenciesLoading,
+    searchSupportedCurrencies,
+  } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -394,19 +397,21 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
             </Box>
           ) : (
             (filteredTokens || []).map((token: any, index: number) => {
-              const isCrypto =
-                mode === "swap" ? token.currencyId?.isCrypto : true;
-              const alpha3 = mode === "swap" ? token.currencyId?.code : null;
-              const tokenSymbol = isCrypto ? token.currencyId?.symbol : alpha3;
-              const tokenName = token.currencyId?.name;
-              const tokenImage =
-                mode === "swap"
-                  ? token.image || token.currencyId?.logo
-                  : token.image;
-              const chainName =
-                mode === "swap" ? token.chainId?.name : token.chainName;
-              const balance = mode === "swap" ? 0 : token.balance || 0;
-              const usdValue = mode === "swap" ? 0 : token.totalUsdValue || 0;
+              const isSwap = mode === "swap";
+              const isCrypto = isSwap ? token.currencyId?.isCrypto : true;
+              const alpha3 = isSwap ? token.currencyId?.code : null;
+              const tokenSymbol = isSwap
+                ? isCrypto
+                  ? token.currencyId?.symbol
+                  : alpha3
+                : token.symbol;
+              const tokenName = token.currencyId?.name || token.name;
+              const tokenImage = isSwap
+                ? token.image || token.currencyId?.logo
+                : token.image;
+              const chainName = isSwap ? token.chainId?.name : token.chainName;
+              const balance = isSwap ? 0 : token.balance || 0;
+              const usdValue = isSwap ? 0 : token.totalUsdValue || 0;
 
               return (
                 <Pressable
