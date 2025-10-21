@@ -1,6 +1,6 @@
 import {
-  ProcessedAsset,
-  ProcessedPortfolio
+    ProcessedAsset,
+    ProcessedPortfolio
 } from '@/interfaces/portfolio.interface';
 import { Chain } from '@/src/core/chains/chains-context';
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';

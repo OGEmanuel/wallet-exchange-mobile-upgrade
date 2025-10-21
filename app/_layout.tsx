@@ -24,11 +24,11 @@ import * as SecureStore from "expo-secure-store";
 import { useAtom } from "jotai";
 import React, { useEffect } from "react";
 import {
-  Appearance,
-  NativeEventSubscription,
-  StatusBar,
-  View,
-  useColorScheme,
+    Appearance,
+    NativeEventSubscription,
+    StatusBar,
+    View,
+    useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
