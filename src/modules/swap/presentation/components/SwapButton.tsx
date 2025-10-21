@@ -37,7 +37,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
           backgroundColor: theme.colors.mainBackgroundColor,
           justifyContent: "center",
           alignItems: "center",
-          padding: 8,
+          padding: 5,
           zIndex: 0,
           opacity: disabled ? 0.5 : 1,
         },

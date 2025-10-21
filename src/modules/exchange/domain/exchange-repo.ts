@@ -1,12 +1,12 @@
 import {
-  GeneralRequestModel,
-  GeneralResponseModel,
+    GeneralRequestModel,
+    GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { ExchangeActivityModel } from "@zap/blockchain-sdk";
+import { ExchangeActivityModel, PaginationOptions } from "@zap/blockchain-sdk";
 import { UserModel } from "../../kyc/domain/entities/models/user-model";
 
 export abstract class ExchangeRepo {
   abstract fetchExchangeActivities(
-    payload: GeneralRequestModel<UserModel, unknown, unknown>
+    payload: GeneralRequestModel<UserModel, unknown, PaginationOptions>
   ): Promise<GeneralResponseModel<ExchangeActivityModel[]>>;
 }

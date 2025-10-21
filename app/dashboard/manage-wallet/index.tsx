@@ -2,6 +2,7 @@ import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
+import ImportWalletModal from "@/components/Modals/ImportWalletModal";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { listWalletGroupBackups } from "@/src/core/utils/backup-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -26,7 +27,7 @@ const ManageWalletScreen = () => {
     {}
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const [showImportWalletModal, setShowImportWalletModal] = useState(false);
   // Animation values
   const underlineAnimation = useRef(new Animated.Value(0)).current;
   const contentAnimation = useRef(new Animated.Value(0)).current;
@@ -81,7 +82,7 @@ const ManageWalletScreen = () => {
   // Process and group wallet groups from context
   // Use cached aggregated balances instead of manual calculation
   const enhancedWalletGroups = getEnhancedWalletGroups();
-  
+
   const walletGroupsMap = new Map();
 
   enhancedWalletGroups.forEach((userWalletGroup: any) => {
@@ -94,8 +95,10 @@ const ManageWalletScreen = () => {
     // Get wallet info
     const walletInfo = userWalletGroup.walletId;
     const walletName =
-      userWalletGroup?.name || walletInfo?.name || `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
-    
+      userWalletGroup?.name ||
+      walletInfo?.name ||
+      `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
+
     // Use aggregated balance instead of manual calculation
     const totalValue = userWalletGroup.aggregatedBalance || 0;
     const formattedValue = formatCurrency(totalValue);
@@ -143,8 +146,8 @@ const ManageWalletScreen = () => {
   };
 
   const handleImportWallet = () => {
-    // Navigate to import wallet flow
-    router.push("/setup?import=true");
+    // Pop up import wallet modal
+    setShowImportWalletModal(true);
   };
 
   const handleWalletGroupPress = (group: any) => {
@@ -203,6 +206,10 @@ const ManageWalletScreen = () => {
 
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
+      <ImportWalletModal
+        isOpen={showImportWalletModal}
+        onClose={() => setShowImportWalletModal(false)}
+      />
       {/* Custom Header */}
       <Box style={{ paddingTop: insets.top }}>
         <Box
@@ -446,7 +453,14 @@ const ManageWalletScreen = () => {
                           borderColor="borderColor"
                         >
                           <Box marginRight="m">
-                            <Identicon value={wallet?.name || wallet._id || "0x0000000000000000000000000000000000000000"} size={32} />
+                            <Identicon
+                              value={
+                                wallet?.name ||
+                                wallet._id ||
+                                "0x0000000000000000000000000000000000000000"
+                              }
+                              size={32}
+                            />
                           </Box>
                           <Box flex={1}>
                             <CustomText

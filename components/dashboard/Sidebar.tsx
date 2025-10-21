@@ -4,11 +4,13 @@ import {
   ThemedChartIcon,
   ThemedFaceIDIcon,
   ThemedHelpIcon,
+  ThemedSignOutIcon,
   ThemedStarFillIcon
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { StorageKeys } from "@/src/core/api/models";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import {
   selectBiometricEnabled,
@@ -21,13 +23,14 @@ import {
 } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
+import { logoutUser } from "@/utils/clear-device-data";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link, Setting4 } from "iconsax-react-nativejs";
 import React, { useEffect, useState } from "react";
-import { Image, Platform, Pressable } from "react-native";
+import { Alert, Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
 import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
@@ -39,6 +42,7 @@ const Sidebar = () => {
   const isConnect = useSelector(selectWalletConnected);
   const dispatch = useDispatch();
   const { setBiometricEnabled } = useSettings();
+  const { logoutFromExchange } = useWallet();
   const user = useSelector(selectUser);
   const isBiometricEnabled = useSelector(selectBiometricEnabled);
   const theme = useTheme<Theme>();
@@ -78,6 +82,48 @@ const Sidebar = () => {
     setBiometricEnabled(
       StorageKeys.BIOMETRIC_ENABLED,
       isBiometricEnabled ? "false" : "true"
+    );
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout? You will need to sign in again to access your account.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Logout from exchange
+              await logoutFromExchange();
+              
+              // Clear user data
+              const success = await logoutUser();
+              
+              if (success) {
+                // Route to select track screen
+                router.replace("/select-track");
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Failed to logout completely. Please try again."
+                );
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
+              Alert.alert(
+                "Error",
+                "An error occurred during logout. Please try again."
+              );
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -242,6 +288,21 @@ const Sidebar = () => {
       title: "About Zap Wallet",
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
+    },
+    {
+      icon: (
+        <ThemedSignOutIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Logout",
+      link: "/dashboard/home/wallet-home/more/about",
+      isActive: false,
+      onPress: handleLogout,
+      disablClick: false,
     },
   ];
 
