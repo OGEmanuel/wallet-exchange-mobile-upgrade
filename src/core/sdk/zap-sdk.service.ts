@@ -638,7 +638,7 @@ class ZapSDKService {
 
   public async getExchangeUserId() {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().getExchangeUserId(),
+      async () => (await this.getSDK().exchangeAuth.getUser())?.id,
       'getExchangeUserId'
     );
   }

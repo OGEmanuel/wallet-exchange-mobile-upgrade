@@ -40,8 +40,12 @@ interface WalletProviderProps {
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const { loadChainsNow, walletChains } = useChains();
-  const { refreshSupportedCurrencies, supportedCurrencies } =
-    useSupportedCurrencies();
+  const {
+    refreshDefaultTokens,
+    defaultTokens,
+    refreshSupportedCurrencies,
+    supportedCurrencies,
+  } = useSupportedCurrencies();
   // State
   const [isInitialized, setIsInitialized] = useState(false);
   const [isWalletAuthenticated, setIsWalletAuthenticated] = useState(false);
@@ -49,7 +53,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [currentExchangeUser, setCurrentExchangeUser] = useState<string | null>(
     null
   );
-  const [exchangeUserData, setExchangeUserData] = useState<UserModel | null>(null);
+  const [exchangeUserData, setExchangeUserData] = useState<UserModel | null>(
+    null
+  );
   const [isAccountDeriving, setIsAccountDeriving] = useState(false);
   const [currentSeedPhrase, setCurrentSeedPhrase] = useState<string | null>(
     null
@@ -124,141 +130,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsInitialized(false);
     } finally {
       setIsInitializing(false);
-    }
-  };
-
-  // Fast cache-first authentication check
-  const checkCacheFirstAuthentication = async (): Promise<{
-    exchangeUserId: string | null;
-    isExchangeAuth: boolean;
-    walletUserId: string | null;
-    isWalletAuth: boolean;
-    userWalletGroups: any[] | null;
-    isUserWalletGroups: boolean;
-    mainWalletGroupId: string | null;
-    portfolio: any | null;
-    fromCache: boolean;
-  }> => {
-    const result: {
-      exchangeUserId: string | null;
-      isExchangeAuth: boolean;
-      walletUserId: string | null;
-      isWalletAuth: boolean;
-      userWalletGroups: any[] | null;
-      isUserWalletGroups: boolean;
-      mainWalletGroupId: string | null;
-      portfolio: any | null;
-      fromCache: boolean;
-    } = {
-      exchangeUserId: null,
-      isExchangeAuth: false,
-      walletUserId: null,
-      isWalletAuth: false,
-      userWalletGroups: null,
-      isUserWalletGroups: false,
-      mainWalletGroupId: null,
-      portfolio: null,
-      fromCache: false,
-    };
-
-    try {
-      // Check exchange authentication using SDK's built-in caching
-      const isExchangeAuth = await zapSDKService.isExchangeAuthenticated();
-      if (isExchangeAuth) {
-        console.log("🚀 SDK cache check: Found exchange authentication");
-        const exchangeUserId = await zapSDKService.getExchangeUserId();
-        if (exchangeUserId) {
-          setCurrentExchangeUser(exchangeUserId);
-          setIsExchangeAuthenticated(true);
-          result.exchangeUserId = exchangeUserId;
-          result.isExchangeAuth = true;
-
-          // Try to load cached exchange user data first
-          try {
-            // If no cached data, fetch from SDK
-            const userData = await zapSDKService.getExchangeUser();
-            if (userData) {
-              setExchangeUserData(userData);
-              console.log("🚀 Fetched and cached exchange user data");
-            }
-          } catch (error) {
-            console.warn("Failed to load exchange user data:", error);
-          }
-        }
-      }
-
-      // Check cache first for faster routing
-      const cachedWalletGroups = await loadWalletGroupsFromCache();
-      const mainWalletGroupId = await SecureStore.getItemAsync(
-        StorageKeys.MAIN_WALLET_GROUP_ID
-      );
-
-      // Also check if cache is still valid
-      const cacheValidity = await isCacheValid();
-
-      if (
-        cachedWalletGroups &&
-        cachedWalletGroups.length > 0 &&
-        mainWalletGroupId &&
-        cacheValidity.isValid
-      ) {
-        console.log(
-          "🚀 Fast cache check: Found valid cached wallet groups and main wallet group ID"
-        );
-
-        // Load portfolio from cache for the main wallet group
-        const cachedPortfolio = await loadPortfolioFromCache(mainWalletGroupId);
-
-        // Set up state from cache
-        setUserWalletGroups(cachedWalletGroups);
-        setIsUserWalletGroups(true);
-
-        const selectedGroup =
-          cachedWalletGroups.find((group) => group._id === mainWalletGroupId) ||
-          cachedWalletGroups[0];
-        setMainUserWalletGroup(selectedGroup);
-
-        if (cachedPortfolio) {
-          setPortfolio(cachedPortfolio);
-        }
-
-        // Get wallet user ID from cache or SDK
-        const walletUserId = await zapSDKService.getCurrentUserId();
-        const isWalletAuth = !!walletUserId;
-
-        if (isWalletAuth) {
-          setCurrentWalletUser(walletUserId);
-          setIsWalletAuthenticated(true);
-        }
-
-        // Check exchange auth
-        const isExchangeAuth = await zapSDKService.isExchangeAuthenticated();
-        if (isExchangeAuth) {
-          const exchangeUserId = await zapSDKService.getExchangeUserId();
-          setCurrentExchangeUser(exchangeUserId);
-          setIsExchangeAuthenticated(isExchangeAuth);
-        }
-
-        return {
-          ...result,
-          exchangeUserId: isExchangeAuth
-            ? await zapSDKService.getExchangeUserId()
-            : null,
-          isExchangeAuth,
-          walletUserId,
-          isWalletAuth,
-          userWalletGroups: cachedWalletGroups,
-          isUserWalletGroups: true,
-          mainWalletGroupId,
-          portfolio: cachedPortfolio,
-          fromCache: true,
-        };
-      }
-
-      return result;
-    } catch (error) {
-      console.error("Cache-first authentication check failed:", error);
-      return result;
     }
   };
 
@@ -338,63 +209,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     };
 
     try {
-      // First, try fast cache check
-      const cacheResult = await checkCacheFirstAuthentication();
-
-      if (
-        cacheResult.fromCache &&
-        cacheResult.userWalletGroups &&
-        cacheResult.userWalletGroups.length > 0
-      ) {
-        console.log("✅ Using cached data for fast routing");
-
-        // Route immediately if we have cached data
-        if (cacheResult.isExchangeAuth && cacheResult.exchangeUserId) {
-          result = setExchangeAndRoute(
-            cacheResult.exchangeUserId,
-            cacheResult.isExchangeAuth,
-            shouldRoute,
-            result
-          );
-        }
-        if (cacheResult.isWalletAuth && cacheResult.walletUserId) {
-          result = await setWalletAndRoute(
-            cacheResult.walletUserId,
-            cacheResult.isWalletAuth,
-            shouldRoute,
-            result
-          );
-        }
-
-        // Start background refresh in parallel to ensure data is up to date
-        setTimeout(() => {
-          console.log(
-            "🔄 Starting background refresh of wallet groups and portfolio"
-          );
-          refreshUserWalletGroups();
-          if (cacheResult.mainWalletGroupId) {
-            refreshPortfolio();
-          }
-        }, 100);
-
-        return {
-          exchangeUserId: cacheResult.exchangeUserId,
-          isExchangeAuth: cacheResult.isExchangeAuth,
-          walletUserId: cacheResult.walletUserId,
-          isWalletAuth: cacheResult.isWalletAuth,
-          userWalletGroups: cacheResult.userWalletGroups,
-          isUserWalletGroups: cacheResult.isUserWalletGroups,
-        };
-      }
-
-      // Fallback to original authentication flow if no cache
-      console.log(
-        "🔄 No valid cache found, proceeding with full authentication check"
-      );
       const walletUserId = await zapSDKService.getCurrentUserId();
       const isWalletAuth = !!walletUserId;
-      const exchangeUserId = await zapSDKService.getExchangeUserId();
-      const isExchangeAuth = !!exchangeUserId;
+      const exchangeUser = await zapSDKService.getExchangeUser();
+      const exchangeUserId = exchangeUser?._id;
+      const isExchangeAuth = await zapSDKService.isExchangeAuthenticated();
+
+      console.log(isExchangeAuth, exchangeUserId, exchangeUser, "yeahhh");
 
       if (isExchangeAuth && exchangeUserId) {
         result = setExchangeAndRoute(
@@ -445,6 +266,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     } finally {
       // Trigger chain loading now that user is authenticated
       if (!walletChains.length) loadChainsNow();
+      if (!defaultTokens.length) refreshDefaultTokens();
       if (!supportedCurrencies.length) refreshSupportedCurrencies();
 
       // Log performance metrics
@@ -1173,7 +995,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       if (result) {
         setIsExchangeAuthenticated(true);
-        setCurrentExchangeUser(result.data.user.id);
+        setCurrentExchangeUser(result.data.user.id || null);
         setExchangeUserData(result.data.user);
 
         await checkAuthenticationAndRoute();

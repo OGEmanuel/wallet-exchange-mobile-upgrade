@@ -37,8 +37,6 @@ const SwapProgressSheet = forwardRef<
     close: () => bottomSheetRef.current?.close(),
   }));
 
-  console.log("buy amaoutn", orderDetails?.baseCurrency?.currencyId?.code);
-
   return (
     <BottomSheet
       ref={bottomSheetRef}
@@ -84,7 +82,7 @@ const SwapProgressSheet = forwardRef<
             fromAmount={orderDetails?.buyAmount || "0"}
             fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
             toAmount={orderDetails?.sellAmount}
-            toCurrency={orderDetails.sellCurrency?.currencyId?.code || ""}
+            toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
             recipient={"John Doe"}
             network={(() => {})() as string}
             status="confirming"
@@ -95,7 +93,7 @@ const SwapProgressSheet = forwardRef<
           fromAmount={orderDetails?.buyAmount || "0"}
           fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
           toAmount={orderDetails?.sellAmount}
-          toCurrency={orderDetails.sellCurrency?.currencyId?.code || ""}
+          toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
           recipient={"John Doe"}
           network={(() => {})() as string}
           status="confirming"

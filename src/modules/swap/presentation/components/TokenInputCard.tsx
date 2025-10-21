@@ -1,5 +1,5 @@
 import { useTheme } from "@shopify/restyle";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Animated,
   StyleSheet,
@@ -14,7 +14,7 @@ import CustomText from "@/components/general/CustomText";
 import icons from "@/assets/icons";
 import { Theme } from "@/theme";
 import { Image } from "expo-image";
-import { formatInputAmount, parseFormattedAmount } from "../../utils";
+import { ArrowSwapVertical } from "iconsax-react-nativejs";
 
 // Create animated components
 const AnimatedBox = Animated.createAnimatedComponent(Box);
@@ -33,11 +33,17 @@ interface TokenInputCardProps {
   isReceive?: boolean;
   usdValue?: string;
   isCrypto?: boolean;
+  tokenCode?: string;
+  onToggleUSDValueShowing?: () => void;
+  isUSDValueShowing?: boolean;
+  hasError?: boolean;
+  errorColor?: string;
 }
 
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
   amount,
   tokenSymbol,
+  tokenCode,
   tokenImage,
   balance,
   showBalance = true,
@@ -49,23 +55,16 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
   isReceive = false,
   usdValue,
   isCrypto = false,
+  onToggleUSDValueShowing = () => {},
+  isUSDValueShowing = false,
+  hasError = false,
+  errorColor = "#FF6B6B",
 }) => {
   const theme = useTheme<Theme>();
-  const [formattedAmount, setFormattedAmount] = useState(amount);
 
-  // Update formatted amount when prop changes
-  useEffect(() => {
-    setFormattedAmount(amount);
-  }, [amount]);
-
-  // Handle input change with formatting
+  // Handle input change - let parent handle formatting
   const handleInputChange = (text: string) => {
-    const formatted = formatInputAmount(text, isCrypto);
-    setFormattedAmount(formatted);
-
-    // Parse the formatted value back to number for the parent component
-    const numericValue = parseFormattedAmount(formatted);
-    onAmountChange?.(numericValue.toString());
+    onAmountChange?.(text);
   };
 
   return (
@@ -76,7 +75,13 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
       backgroundColor="modalBackgroundColor"
       p="m"
       justifyContent="space-between"
-      style={animatedStyle}
+      style={[
+        animatedStyle,
+        hasError && {
+          borderWidth: 1,
+          borderColor: errorColor,
+        }
+      ]}
     >
       <Box
         width={"100%"}
@@ -85,21 +90,20 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
         alignItems="center"
       >
         <TextInput
-          value={formattedAmount}
+          value={amount}
           onChangeText={handleInputChange}
           placeholder="0"
           placeholderTextColor={theme.colors.bodyTextColor}
           keyboardType="numeric"
           style={{
-            fontSize: 16,
+            fontSize: 24,
             fontWeight: "500",
-            color: theme.colors.headerTextColor,
+            color: hasError ? errorColor : theme.colors.headerTextColor,
             flex: 1,
             paddingVertical: 8,
             paddingHorizontal: 0,
             fontFamily: "NewScience_Bold",
           }}
-          editable={!isReceive}
         />
 
         <TouchableOpacity
@@ -112,24 +116,20 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           <Image source={tokenImage} style={styles.selectedTokenImage} />
           <CustomText
             variant="body"
-            style={{ fontSize: 14, fontWeight: "400" }}
+            style={{ fontSize: 14, fontWeight: "500" }}
             marginRight="s"
           >
-            {tokenSymbol === "₦" ? "NGN" : tokenSymbol}
+            {tokenCode || tokenSymbol}
           </CustomText>
           <Image
             source={icons.down}
-            style={styles.selectedTokenImage}
+            style={styles.selectedTokenArrow}
             tintColor={theme.colors.bodyTextColor}
           />
         </TouchableOpacity>
       </Box>
 
-      {isReceive ? (
-        <CustomText variant="body" mt="s">
-          {usdValue}
-        </CustomText>
-      ) : (
+      {isReceive ? null : (
         <Box
           width={"100%"}
           flexDirection="row"
@@ -137,13 +137,36 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           alignItems="center"
           mt="s"
         >
+          <Box flexDirection="row" alignItems="center">
+            <TouchableOpacity onPress={onToggleUSDValueShowing || (() => {})}>
+              <Box
+                mr="s"
+                backgroundColor="secondaryColor"
+                borderRadius={5}
+                width={24}
+                height={24}
+                justifyContent="center"
+                alignItems="center"
+              >
+                <ArrowSwapVertical color="rgba(21, 51, 35, 1)" size={15} />
+              </Box>
+            </TouchableOpacity>
+            <CustomText color="placeholderTextColor" variant="body">
+              {usdValue}
+            </CustomText>
+          </Box>
           {showBalance && (
             <Box
               flexDirection="row"
               justifyContent="center"
               alignItems="center"
             >
-              <CustomText fontSize={12} variant="body" marginRight="s">
+              <CustomText
+                color="placeholderTextColor"
+                fontSize={12}
+                variant="body"
+                marginRight="s"
+              >
                 Bal: {balance}
               </CustomText>
               {showMaxButton && (
@@ -175,7 +198,7 @@ const styles = StyleSheet.create({
     minWidth: 107,
     height: 36,
     maxWidth: 120,
-    borderRadius: 36,
+    borderRadius: 18,
     paddingHorizontal: 8,
     justifyContent: "space-between",
   },
@@ -184,5 +207,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     marginRight: 5,
+  },
+  selectedTokenArrow: {
+    width: 12,
+    height: 12,
+    marginLeft: 4,
   },
 });
