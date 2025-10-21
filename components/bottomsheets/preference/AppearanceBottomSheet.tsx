@@ -97,13 +97,10 @@ const SwitchCards = ({
 const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const [language, setLanguage] = React.useState(supportedLanguages[0]);
   const theme = useTheme<Theme>();
-  const { toggleTheme, colorTheme, themeMode, setTheme, setSystemTheme } = useActiveTheme();
-  const {
-    hapticsEnabled,
-    animationsEnabled,
-    toggleHaptics,
-    toggleAnimations,
-  } = usePreferences();
+  const { toggleTheme, colorTheme, themeMode, setTheme, setSystemTheme } =
+    useActiveTheme();
+  const { hapticsEnabled, animationsEnabled, toggleHaptics, toggleAnimations } =
+    usePreferences();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -171,7 +168,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           <AppearanceCard
             title="System"
             isActive={themeMode === "system"}
-            onPress={() => setSystemTheme()}
+            // onPress={() => setSystemTheme()}
+            onPress={() => {}}
             image={
               <Image
                 source={require("@/assets/images/systemthemeimg.png")}
@@ -184,7 +182,8 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           <AppearanceCard
             title="Light"
             isActive={themeMode === "light"}
-            onPress={() => setTheme("light")}
+            // onPress={() => setTheme("light")}
+            onPress={() => {}}
             image={
               <Image
                 source={require("@/assets/images/lightmodeimg.png")}

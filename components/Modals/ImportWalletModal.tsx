@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 import FullPaperModalWrapper from "./FullPaperModalWrapper";
@@ -159,38 +160,46 @@ const ImportWalletModal = ({
         activeTheme === "dark" ? ["#7055FF", "#000000"] : ["#7055FF", "#FFFFFF"]
       }
     >
-      <Box
-        width={"100%"}
-        height={80}
-        alignItems="center"
-        justifyContent="center"
-        mb="l"
-      >
-        <Image
-          source={
-            activeTheme === "dark"
-              ? require("../../assets/images/arrow-down.png")
-              : require("../../assets/images/lightArrowDown.png")
-          }
-          contentFit="cover"
-          style={{ width: 100, height: 100 }}
-        />
-      </Box>
-      <CustomText variant="medium" textAlign="center" fontSize={22} mt="l">
-        Import an existing wallet
-      </CustomText>
-      <CustomText variant="body" textAlign="center" mt="m" mb="l" fontSize={14}>
-        Import a wallet you already own by any of these methods
-      </CustomText>
-      <Box pb="l">
-        {ITEMS.map((item, index) => (
-          <ImportCard
-            {...item}
-            key={index.toString()}
-            close={() => onClose()}
+      <ScrollView contentContainerStyle={{ paddingBottom: 20, paddingTop: 20 }}>
+        <Box
+          width={"100%"}
+          height={80}
+          alignItems="center"
+          justifyContent="center"
+          mb="l"
+        >
+          <Image
+            source={
+              activeTheme === "dark"
+                ? require("../../assets/images/arrow-down.png")
+                : require("../../assets/images/lightArrowDown.png")
+            }
+            contentFit="cover"
+            style={{ width: 100, height: 100 }}
           />
-        ))}
-      </Box>
+        </Box>
+        <CustomText variant="medium" textAlign="center" fontSize={22} mt="l">
+          Import an existing wallet
+        </CustomText>
+        <CustomText
+          variant="body"
+          textAlign="center"
+          mt="m"
+          mb="l"
+          fontSize={14}
+        >
+          Import a wallet you already own by any of these methods
+        </CustomText>
+        <Box pb="l">
+          {ITEMS.map((item, index) => (
+            <ImportCard
+              {...item}
+              key={index.toString()}
+              close={() => onClose()}
+            />
+          ))}
+        </Box>
+      </ScrollView>
     </FullPaperModalWrapper>
   );
 };

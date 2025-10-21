@@ -38,7 +38,6 @@ const WalletEmptyScreen = () => {
         }
         style={{
           width: "100%",
-          height: "100%",
           borderRadius: 20,
           padding: 20,
           flex: 1,
@@ -47,8 +46,8 @@ const WalletEmptyScreen = () => {
         }}
       >
         <Box
-          flex={0.8}
-          justifyContent="flex-end"
+          flex={0.5}
+          justifyContent="center"
           width={"100%"}
           alignItems="center"
         >
@@ -65,6 +64,15 @@ const WalletEmptyScreen = () => {
             mt="l"
           >
             Set up your web3 wallet
+          </CustomText>
+
+          <CustomText
+            variant="body"
+            textAlign="center"
+            style={{ width: "70%" }}
+            mt="m"
+          >
+            Create or import a hot wallet and start exploring the world of web3
           </CustomText>
         </Box>
 
