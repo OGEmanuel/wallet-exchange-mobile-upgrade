@@ -1,33 +1,35 @@
 import {
-  ThemedAddressBookIcon,
-  ThemedBankAccountIcon,
-  ThemedChartIcon,
-  ThemedFaceIDIcon,
-  ThemedHelpIcon,
-  ThemedStarFillIcon
+    ThemedAddressBookIcon,
+    ThemedBankAccountIcon,
+    ThemedChartIcon,
+    ThemedDeleteIcon,
+    ThemedFaceIDIcon,
+    ThemedHelpIcon,
+    ThemedStarFillIcon
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { StorageKeys } from "@/src/core/api/models";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import {
-  selectBiometricEnabled,
-  toggleBiometric,
+    selectBiometricEnabled,
+    toggleBiometric,
 } from "@/src/modules/settings/presentation/state/settings-slice";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import {
-  selectWalletConnected,
-  setWalletConnected,
+    selectWalletConnected,
+    setWalletConnected,
 } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
+import { clearAllDeviceData } from "@/utils/clear-device-data";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link, Setting4 } from "iconsax-react-nativejs";
 import React, { useEffect, useState } from "react";
-import { Image, Platform, Pressable } from "react-native";
+import { Alert, Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
 import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
@@ -78,6 +80,46 @@ const Sidebar = () => {
     setBiometricEnabled(
       StorageKeys.BIOMETRIC_ENABLED,
       isBiometricEnabled ? "false" : "true"
+    );
+  };
+
+  const handleClearData = async () => {
+    Alert.alert(
+      "Clear All Data",
+      "This will delete all your wallet data, settings, and account information from this device. This action cannot be undone. Are you sure you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear Data",
+          style: "destructive",
+          onPress: async () => {
+            const success = await clearAllDeviceData();
+            if (success) {
+              Alert.alert(
+                "Success",
+                "All device data has been cleared successfully.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      // Route to select track screen
+                      router.replace("/select-track");
+                    },
+                  },
+                ]
+              );
+            } else {
+              Alert.alert(
+                "Error",
+                "Failed to clear all data. Please try again."
+              );
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -244,6 +286,25 @@ const Sidebar = () => {
       isActive: false,
     },
   ];
+
+  // Add "Clear Device Data" button only in development mode
+  if (__DEV__) {
+    SIDEBAR_ABOUT_DATA.push({
+      icon: (
+        <ThemedDeleteIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Clear Device Data",
+      link: "/dashboard/home/wallet-home/more/about",
+      isActive: false,
+      onPress: handleClearData,
+      disablClick: false,
+    });
+  }
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
