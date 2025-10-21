@@ -1,28 +1,29 @@
 import {
-    ThemedAddressBookIcon,
-    ThemedBankAccountIcon,
-    ThemedChartIcon,
-    ThemedDeleteIcon,
-    ThemedFaceIDIcon,
-    ThemedHelpIcon,
-    ThemedStarFillIcon
+  ThemedAddressBookIcon,
+  ThemedBankAccountIcon,
+  ThemedChartIcon,
+  ThemedFaceIDIcon,
+  ThemedHelpIcon,
+  ThemedSignOutIcon,
+  ThemedStarFillIcon
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { StorageKeys } from "@/src/core/api/models";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import {
-    selectBiometricEnabled,
-    toggleBiometric,
+  selectBiometricEnabled,
+  toggleBiometric,
 } from "@/src/modules/settings/presentation/state/settings-slice";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import {
-    selectWalletConnected,
-    setWalletConnected,
+  selectWalletConnected,
+  setWalletConnected,
 } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
-import { clearAllDeviceData } from "@/utils/clear-device-data";
+import { logoutUser } from "@/utils/clear-device-data";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -41,6 +42,7 @@ const Sidebar = () => {
   const isConnect = useSelector(selectWalletConnected);
   const dispatch = useDispatch();
   const { setBiometricEnabled } = useSettings();
+  const { logoutFromExchange } = useWallet();
   const user = useSelector(selectUser);
   const isBiometricEnabled = useSelector(selectBiometricEnabled);
   const theme = useTheme<Theme>();
@@ -83,38 +85,40 @@ const Sidebar = () => {
     );
   };
 
-  const handleClearData = async () => {
+  const handleLogout = async () => {
     Alert.alert(
-      "Clear All Data",
-      "This will delete all your wallet data, settings, and account information from this device. This action cannot be undone. Are you sure you want to continue?",
+      "Logout",
+      "Are you sure you want to logout? You will need to sign in again to access your account.",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Clear Data",
+          text: "Logout",
           style: "destructive",
           onPress: async () => {
-            const success = await clearAllDeviceData();
-            if (success) {
-              Alert.alert(
-                "Success",
-                "All device data has been cleared successfully.",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      // Route to select track screen
-                      router.replace("/select-track");
-                    },
-                  },
-                ]
-              );
-            } else {
+            try {
+              // Logout from exchange
+              await logoutFromExchange();
+              
+              // Clear user data
+              const success = await logoutUser();
+              
+              if (success) {
+                // Route to select track screen
+                router.replace("/select-track");
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Failed to logout completely. Please try again."
+                );
+              }
+            } catch (error) {
+              console.error("Logout error:", error);
               Alert.alert(
                 "Error",
-                "Failed to clear all data. Please try again."
+                "An error occurred during logout. Please try again."
               );
             }
           },
@@ -285,26 +289,22 @@ const Sidebar = () => {
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
     },
-  ];
-
-  // Add "Clear Device Data" button only in development mode
-  if (__DEV__) {
-    SIDEBAR_ABOUT_DATA.push({
+    {
       icon: (
-        <ThemedDeleteIcon
+        <ThemedSignOutIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
           lightModeColor={theme.colors.bodyTextColor}
         />
       ),
-      title: "Clear Device Data",
+      title: "Logout",
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
-      onPress: handleClearData,
+      onPress: handleLogout,
       disablClick: false,
-    });
-  }
+    },
+  ];
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
