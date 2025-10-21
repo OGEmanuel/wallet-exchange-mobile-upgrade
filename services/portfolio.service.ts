@@ -1,6 +1,6 @@
 import {
-    ProcessedAsset,
-    ProcessedPortfolio
+  ProcessedAsset,
+  ProcessedPortfolio
 } from '@/interfaces/portfolio.interface';
 import { Chain } from '@/src/core/chains/chains-context';
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';
@@ -267,14 +267,14 @@ export class PortfolioService {
    */
   static processPortfolioData(portfolioData: UserPortfolioData): ProcessedPortfolio {
     console.log('🚀 Simplified portfolio processing started');
-
+    
     try {
       let { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
       if ((userTokenList as any)?.data?.length > 0) {
         userTokenList = (userTokenList as any).data;
       }
-
+      
       if (!mainWalletGroupPortfolio) {
         console.warn('⚠️ No main wallet group portfolio found');
         return this.getEmptyPortfolio();
@@ -312,7 +312,7 @@ export class PortfolioService {
       const assets: ProcessedAsset[] = accounts.map(account => {
         try {
           // Based on the actual SDK types, supportedCurrencyId is an ISupportedCurrency object
-          const supportedCurrency = account.supportedCurrencyId;
+        const supportedCurrency = account.supportedCurrencyId;
           const currencyId = (supportedCurrency.currencyId as ICurrency)?.symbol
             ? (supportedCurrency.currencyId as ICurrency)._id :
             typeof supportedCurrency.currencyId === 'string' ? supportedCurrency.currencyId :
@@ -324,24 +324,24 @@ export class PortfolioService {
 
           const isStable = typeof supportedCurrency.isStable === 'boolean' ? supportedCurrency.isStable : typeof (supportedCurrency?.currencyId as ICurrency)?.isStable === "boolean" ? (supportedCurrency?.currencyId as ICurrency)?.isStable || false : false;
 
-      return {
+        return {
             id: account._id,
-            accountId: account._id,
-            symbol: this.extractSymbol(account, supportedCurrency),
-            name: this.extractName(account, supportedCurrency),
+          accountId: account._id,
+          symbol: this.extractSymbol(account, supportedCurrency),
+          name: this.extractName(account, supportedCurrency),
             balance: balance,
             totalUsdValue: totalUsdValue,
             price: balance > 0 ? (totalUsdValue / balance) : 0,
-            change: 0, // Not available from API
-            changeType: 'positive' as const,
-            image: this.extractImage(supportedCurrency),
+          change: 0, // Not available from API
+          changeType: 'positive' as const,
+          image: this.extractImage(supportedCurrency),
             isStable,
             status: supportedCurrencyToTokenList.get(supportedCurrency._id)?.status || 'DISABLED',
             source: supportedCurrencyToTokenList.get(supportedCurrency._id)?.source || 'DEFAULT',
-            chainId: this.extractChainId(account),
-            chainName: this.extractChainName(account),
-            chainSymbol: this.extractChainSymbol(account),
-            chainImage: this.extractChainImage(account),
+          chainId: this.extractChainId(account),
+          chainName: this.extractChainName(account),
+          chainSymbol: this.extractChainSymbol(account),
+          chainImage: this.extractChainImage(account),
             tokenAddress: supportedCurrency?.tokenAddress || '',
             decimals: supportedCurrency?.decimals || 18,
             supportedCurrencyId: supportedCurrency._id,
@@ -387,13 +387,13 @@ export class PortfolioService {
 
       const result = {
         totalUsdValue: calculatedTotalUsdValue, // Use calculated total instead of backend total
-      assets: sortedAssets,
+        assets: sortedAssets,
         enabledAssets,
         disabledAssets,
-      totalAssets: assets.length,
-      enabledCount: enabledAssets.length,
-      disabledCount: disabledAssets.length,
-    };
+        totalAssets: assets.length,
+        enabledCount: enabledAssets.length,
+        disabledCount: disabledAssets.length,
+      };
 
       console.log(`✅ Simplified processing complete: ${result.totalAssets} assets, $${result.totalUsdValue.toFixed(2)} total value`);
       return result;
@@ -451,9 +451,9 @@ export class PortfolioService {
       // Try direct name from supportedCurrency
       if (supportedCurrency?.name) {
         return supportedCurrency.name;
-      }
-
-      // Fallback to account name
+    }
+    
+    // Fallback to account name
       return account.currencyId.name || account.name || 'Unknown Token';
     } catch (error) {
       console.warn('⚠️ Error extracting name:', error);
@@ -467,18 +467,18 @@ export class PortfolioService {
   private static extractImage(supportedCurrency: ISupportedCurrency): string {
     try {
       // Try direct image from supportedCurrency
-      if (supportedCurrency?.image) {
-        return supportedCurrency.image;
-      }
+    if (supportedCurrency?.image) {
+      return supportedCurrency.image;
+    }
 
       // Try currency logo from the currency object
       const currencyLogo = (supportedCurrency.currencyId as ICurrency)?.logo;
       if (currencyLogo) {
         return currencyLogo;
       }
-
-      // Simple fallback
-      return 'https://cryptoicons.org/api/icon/unknown/25';
+    
+    // Simple fallback
+    return 'https://cryptoicons.org/api/icon/unknown/25';
     } catch (error) {
       console.warn('⚠️ Error extracting image:', error);
       return 'https://cryptoicons.org/api/icon/unknown/25';
@@ -508,7 +508,7 @@ export class PortfolioService {
    */
   private static extractChainName(account: AccountPortfolioData): string {
     try {
-      return account.chainId?.name || 'Unknown Chain';
+    return account.chainId?.name || 'Unknown Chain';
     } catch (error) {
       console.warn('⚠️ Error extracting chain name:', error);
       return 'Unknown Chain';
@@ -520,7 +520,7 @@ export class PortfolioService {
    */
   private static extractChainSymbol(account: AccountPortfolioData): string {
     try {
-      return account.chainId?.symbol || 'UNKNOWN';
+    return account.chainId?.symbol || 'UNKNOWN';
     } catch (error) {
       console.warn('⚠️ Error extracting chain symbol:', error);
       return 'UNKNOWN';

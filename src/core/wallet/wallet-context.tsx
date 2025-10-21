@@ -146,13 +146,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isUserWalletGroups: boolean;
     }
   ) => {
-    setCurrentExchangeUser(exchangeUserId);
+        setCurrentExchangeUser(exchangeUserId);
     setIsExchangeAuthenticated(true);
-    console.log("✅ Exchange authentication found, routing to exchange");
-    result = { ...result, exchangeUserId, isExchangeAuth };
-    if (shouldRoute) {
-      router.replace("/dashboard/home/wallet-home/swap");
-    }
+        console.log("✅ Exchange authentication found, routing to exchange");
+        result = { ...result, exchangeUserId, isExchangeAuth };
+        if (shouldRoute) {
+          router.replace("/dashboard/home/wallet-home/swap");
+        }
     return result;
   };
 
@@ -169,22 +169,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isUserWalletGroups: boolean;
     }
   ) => {
-    console.log("Wallet is authenticated with wallet auth", isWalletAuth);
-    setCurrentWalletUser(walletUserId);
-    setIsWalletAuthenticated(true);
-    console.log("Wallet is authenticated with wallet auth", walletUserId);
+        console.log("Wallet is authenticated with wallet auth", isWalletAuth);
+        setCurrentWalletUser(walletUserId);
+        setIsWalletAuthenticated(true);
+        console.log("Wallet is authenticated with wallet auth", walletUserId);
 
-    result = { ...result, walletUserId, isWalletAuth: true };
-    const routeResult = await routeToWallet(
+        result = { ...result, walletUserId, isWalletAuth: true };
+        const routeResult = await routeToWallet(
       isWalletAuth,
-      walletUserId,
-      shouldRoute
-    );
-    result = {
-      ...result,
-      isUserWalletGroups: routeResult?.isUserWalletGroups,
-      userWalletGroups: routeResult?.userWalletGroups,
-    };
+          walletUserId,
+          shouldRoute
+        );
+        result = {
+          ...result,
+          isUserWalletGroups: routeResult?.isUserWalletGroups,
+          userWalletGroups: routeResult?.userWalletGroups,
+        };
     return result;
   };
 
@@ -388,11 +388,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const timestamp = await SecureStore.getItemAsync(cacheKey);
       if (!timestamp)
         return { isValid: false, shouldRefreshInBackground: false };
-
+      
       const cacheTime = parseInt(timestamp);
       const now = Date.now();
       const age = now - cacheTime;
-
+      
       // Portfolio cache has shorter duration than wallet groups (more dynamic data)
       if (age < CACHE_DURATION.SHORT) {
         // Fresh portfolio cache - use immediately
@@ -421,7 +421,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const cacheKey = `${StorageKeys.PORTFOLIO_DATA}_${userWalletGroupId}`;
       const cachedData = await SecureStore.getItemAsync(cacheKey);
       if (!cachedData) return null;
-
+      
       const parsedData = JSON.parse(cachedData);
       console.log(
         `🚀 Loading portfolio from cache for wallet group: ${userWalletGroupId}`
@@ -508,7 +508,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsBackgroundPortfolioRefresh(true);
       console.log("🔄 Refreshing portfolio in background...");
       const sdk = zapSDKService.getSDK();
-
+      
       if (sdk && typeof sdk.portfolio?.getUserPortfolio === "function") {
         const portfolioOptions = mainUserWalletGroup?._id
           ? {
@@ -535,7 +535,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             portfolioData,
             portfolioOptions.mainUserWalletGroupId
           );
-
+          
           // Update state if user is still on the app
           setPortfolio(portfolioData);
           setLastUpdate(new Date());
@@ -1115,15 +1115,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       if (!result?.userWalletGroupId) {
-        await WalletCredentialsStorage.markWalletCreationAttempt(
-          walletStorageId,
-          false
-        );
+          await WalletCredentialsStorage.markWalletCreationAttempt(
+            walletStorageId,
+            false
+          );
         throw new Error("Failed to create wallet group");
       }
 
       await WalletCredentialsStorage.markWalletAsCreated(
-        walletStorageId,
+            walletStorageId,
         result.userWalletGroupId
       );
 
@@ -1131,8 +1131,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       await switchWallet(result.userWalletGroupId, newUserWalletGroups);
 
-      return {
-        walletStorageId,
+        return {
+          walletStorageId,
         name,
         isCreated: true,
       };
@@ -1298,7 +1298,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             privateKeys
           );
 
-          console.log(
+                  console.log(
             `✅ Private key and derived address stored for ${searchChain}`
           );
         } catch (error) {
@@ -1489,7 +1489,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // For EVM chains, try to get ETH private key first (since all EVM chains use same derivation)
       if (isEVMChain(chainSymbol) && chainSymbol.toUpperCase() !== "ETH") {
-        console.log(
+      console.log(
           `🔍 EVM chain ${chainSymbol} - checking for existing ETH private key first`
         );
         const ethPrivateKeys = await getPrivateKeys(walletId, "ETH");
@@ -1536,7 +1536,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const storedSeedPhrase = await SeedPhraseStorage.getSeedPhrase(walletId);
 
       if (storedSeedPhrase?.seedPhrase) {
-        console.log(
+                console.log(
           "✅ Retrieved seed phrase from centralized storage for wallet:",
           walletId
         );
@@ -1544,7 +1544,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // If no stored seed phrase, get from credentials and store it
-      console.log(
+                console.log(
         "🔍 No stored seed phrase found, retrieving from credentials and storing..."
       );
       const credentials =
@@ -1565,7 +1565,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           credentials.derivationIndex
         );
 
-        console.log(
+                  console.log(
           "✅ Retrieved and stored seed phrase for wallet:",
           walletId
         );
@@ -1818,7 +1818,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (walletGroupsArray.length > 0) {
         await saveWalletGroupsToCache(walletGroupsArray);
       }
-
+      
       setUserWalletGroups(walletGroupsArray);
       return walletGroupsArray;
     } catch (error) {
@@ -1850,7 +1850,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         mainUserWalletGroup?.name;
       // Check if we have cached portfolio data for this wallet group
       const cacheStatus = await isPortfolioCacheValid(mainUserWalletGroup?._id);
-
+      
       if (cacheStatus.isValid) {
         const cachedPortfolio = await loadPortfolioFromCache(
           mainUserWalletGroup?._id
@@ -1871,9 +1871,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           if (cachedWalletGroupId !== currentWalletGroupId) {
             // Ignore cached data and fetch fresh
           } else {
-            setPortfolio(cachedPortfolio);
-            setLastUpdate(new Date());
-            setError(null);
+          setPortfolio(cachedPortfolio);
+          setLastUpdate(new Date());
+          setError(null);
 
             console.log(
               "🔍 Portfolio cached successfully",
@@ -1881,10 +1881,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             );
 
             // If cache is stale, refresh in background
-            if (cacheStatus.shouldRefreshInBackground) {
+          if (cacheStatus.shouldRefreshInBackground) {
               refreshPortfolioInBackground();
-            }
-            return;
+          }
+          return;
           }
         }
       }
@@ -1940,7 +1940,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             portfolioOptions.mainUserWalletGroupId
           );
         }
-
+        
         setPortfolio(portfolioData);
         setLastUpdate(new Date());
         setError(null);
@@ -1948,7 +1948,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setPortfolio(null);
       }
     } catch (error: any) {
-      setError(
+        setError(
         "Failed to refresh portfolio. Please check your authentication."
       );
     } finally {
@@ -1969,7 +1969,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         typeof sdk.portfolio.getUserPortfolio === "function"
       ) {
         return await sdk.portfolio.getUserPortfolio(currentWalletUser || "", {
-          mainUserWalletGroupId: userWalletGroupId || "",
+              mainUserWalletGroupId: userWalletGroupId || "",
         });
       } else {
         console.warn("Portfolio method not available on SDK");
@@ -2301,7 +2301,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // Find the selected user wallet group
-      const selectedGroup = userWalletGroups.find(
+      const selectedGroup = groupsToUse.find(
         (group) => group._id === userWalletGroupId
       );
 
@@ -2330,7 +2330,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           userWalletGroupId
         );
       if (credentials?.class === WALLET_GROUP_CLASS.SEEDPHRASE)
-        setCurrentSeedPhrase(credentials?.credential.toString() || null);
+      setCurrentSeedPhrase(credentials?.credential.toString() || null);
     } catch (error) {
       console.error("Failed to switch wallet:", error);
       throw error;

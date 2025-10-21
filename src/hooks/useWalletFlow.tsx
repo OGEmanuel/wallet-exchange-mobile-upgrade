@@ -144,6 +144,8 @@ export const useWalletFlow = (flowType: WalletFlowType) => {
         walletType: WALLET_GROUP_TYPE.GENERATED,
         walletClass: WALLET_GROUP_CLASS.SEEDPHRASE,
       });
+
+      console.log("result", result);
       if (result?.isCreated) {
         goToNextStep();
       } else {

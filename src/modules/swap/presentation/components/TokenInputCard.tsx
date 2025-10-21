@@ -38,6 +38,7 @@ interface TokenInputCardProps {
   isUSDValueShowing?: boolean;
   hasError?: boolean;
   errorColor?: string;
+  onFocus?: () => void;
 }
 
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
@@ -59,6 +60,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
   isUSDValueShowing = false,
   hasError = false,
   errorColor = "#FF6B6B",
+  onFocus,
 }) => {
   const theme = useTheme<Theme>();
 
@@ -80,7 +82,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
         hasError && {
           borderWidth: 1,
           borderColor: errorColor,
-        }
+        },
       ]}
     >
       <Box
@@ -89,7 +91,17 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
         justifyContent="space-between"
         alignItems="center"
       >
+        {isUSDValueShowing && !isReceive && (
+          <CustomText
+            variant="header"
+            fontSize={24}
+            color={hasError ? "error" : "headerTextColor"}
+          >
+            $
+          </CustomText>
+        )}
         <TextInput
+          onFocus={onFocus || (() => {})}
           value={amount}
           onChangeText={handleInputChange}
           placeholder="0"
@@ -138,20 +150,17 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           mt="s"
         >
           <Box flexDirection="row" alignItems="center">
-            <TouchableOpacity onPress={onToggleUSDValueShowing || (() => {})}>
-              <Box
-                mr="s"
-                backgroundColor="secondaryColor"
-                borderRadius={5}
-                width={24}
-                height={24}
-                justifyContent="center"
-                alignItems="center"
-              >
+            <CustomButton
+              onPress={onToggleUSDValueShowing || (() => {})}
+              leadingIcon={
                 <ArrowSwapVertical color="rgba(21, 51, 35, 1)" size={15} />
-              </Box>
-            </TouchableOpacity>
-            <CustomText color="placeholderTextColor" variant="body">
+              }
+              bgColor={theme.colors.secondaryColor}
+              borderRadius={5}
+              width={24}
+              height={24}
+            />
+            <CustomText ml="s" color="placeholderTextColor" variant="body">
               {usdValue}
             </CustomText>
           </Box>
