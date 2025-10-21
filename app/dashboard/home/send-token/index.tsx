@@ -840,6 +840,7 @@ const SendToken = () => {
           (await getAddress(chainSymbol, mainUserWalletGroup?._id)) || "";
 
         console.log("🔍 Address:", address);
+        console.log(amount)
         // Calculate fees
         const gasEstimate = await zapSDKService.estimateTransactionCost(
           address,

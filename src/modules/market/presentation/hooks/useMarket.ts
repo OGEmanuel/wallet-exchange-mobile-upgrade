@@ -1,6 +1,9 @@
 import { GeneralRequestModel } from "@/src/core/api/http-types";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppDispatch } from "@/state";
+import { MarketData } from "@zap/blockchain-sdk";
+import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { PriceAlertData } from "../../data/remote/market-remote-datasource";
 import { AddToWatchlistParams } from "../../domain/entities/params/add-to-watchlist-params";
@@ -12,7 +15,38 @@ const useMarket = () => {
 
   const dispatch = useDispatch<AppDispatch>();
 
+  const [marketTokens, setMarketTokens] = useState<MarketData[] | null>([]);
+  const [isMarketTokensLoading, setIsMarketTokensLoading] = useState(false);
+
+  const refreshMarketTokens = useCallback(async () => {
+    setIsMarketTokensLoading(true);
+    let response: MarketData[] | null = null;
+    try {
+      response = await zapSDKService.getMarkets();
+
+      if (response && Array.isArray(response)) {
+        setMarketTokens(response);
+      } else {
+        setMarketTokens([]);
+      }
+    } catch (error) {
+      console.error("Error fetching market tokens:", error);
+      setMarketTokens([]);
+    } finally {
+      setIsMarketTokensLoading(false);
+    }
+    return response;
+  }, []);
+
+  useEffect(() => {
+    refreshMarketTokens();
+  }, []);
+
   return {
+    marketTokens,
+    isMarketTokensLoading,
+    refreshMarketTokens,
+
     fetchMarketTokens: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
       const response = await marketUsecases.fetchMarketTokens(payload);
 
@@ -27,11 +61,11 @@ const useMarket = () => {
 
     tokenDetails: async (payload: GeneralRequestModel<string | null, unknown, unknown>) => {
       const response = await marketUsecases.tokenDetails(payload);
-      
+
       if (response?.data) {
         dispatch(marketActions.setCurrentTokenDetails(response.data || null));
       }
-      
+
       return response;
     },
 
@@ -39,14 +73,14 @@ const useMarket = () => {
     //   return await marketUsecases.tokenHistory(payload);
     // },
     tokenHistory: async (payload: GeneralRequestModel<string | null, unknown, unknown>) => {
-  const response = await marketUsecases.tokenHistory(payload);
+      const response = await marketUsecases.tokenHistory(payload);
 
-  if (response?.data) {
-    dispatch(marketActions.setTokenHistory(response?.data));
-  }
+      if (response?.data) {
+        dispatch(marketActions.setTokenHistory(response?.data));
+      }
 
-  return response;
-},
+      return response;
+    },
 
     createPriceAlert: async (payload: GeneralRequestModel<PriceAlertData, unknown, unknown>) => {
       return await marketUsecases.createPriceAlert(payload);
