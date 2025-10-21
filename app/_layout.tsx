@@ -105,26 +105,54 @@ export default function RootLayout() {
     NewScience_Thin_Extended: require("../assets/fonts/New_Science_Thin_Extended.otf"),
   });
 
-  // Hide splash screen only when both fonts are loaded and app is ready
+  // Hide splash screen when fonts are loaded and app is ready
   useEffect(() => {
-    if ((fontsLoaded || error) && isAppReady) {
-      SplashScreen.hideAsync().catch((error) => {
-        console.warn('Failed to hide splash screen:', error);
-      });
+    async function prepare() {
+      try {
+        // Wait for fonts to load
+        if (fontsLoaded || error) {
+          // Wait for app initialization
+          if (isAppReady) {
+            console.log('Hiding splash screen - all ready');
+            await SplashScreen.hideAsync();
+          }
+        }
+      } catch (e) {
+        console.warn('Error hiding splash screen:', e);
+        // Force hide splash screen even if there's an error
+        try {
+          await SplashScreen.hideAsync();
+        } catch (hideError) {
+          console.error('Failed to hide splash screen:', hideError);
+        }
+      }
     }
+
+    prepare();
   }, [fontsLoaded, error, isAppReady]);
 
-  // Fallback timeout to hide splash screen after 10 seconds to prevent infinite loading
+  // Additional safety net - force hide splash screen after 5 seconds
+  useEffect(() => {
+    const safetyTimeout = setTimeout(async () => {
+      try {
+        console.log('Safety timeout - forcing splash screen hide');
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.error('Safety timeout failed to hide splash screen:', e);
+      }
+    }, 5000);
+
+    return () => clearTimeout(safetyTimeout);
+  }, []);
+
+  // Fallback timeout to ensure app doesn't get stuck
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isAppReady) {
-        console.warn('App initialization timeout, hiding splash screen anyway');
-        SplashScreen.hideAsync().catch((error) => {
-          console.warn('Failed to hide splash screen on timeout:', error);
-        });
+        console.warn('App initialization timeout, forcing app ready state');
         setIsAppReady(true);
       }
-    }, 10000); // 10 seconds timeout
+    }, 3000); // 3 seconds timeout
 
     return () => clearTimeout(timeout);
   }, [isAppReady]);
@@ -183,7 +211,7 @@ export default function RootLayout() {
     return null;
   }
 
-  // Show loading screen while app is initializing
+  // Don't render anything until app is ready - this keeps splash screen visible
   if (!isAppReady) {
     return null;
   }
@@ -193,7 +221,10 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <AppInitializer onInitializationComplete={() => setIsAppReady(true)}>
+            <AppInitializer onInitializationComplete={() => {
+              console.log('App initialization complete, setting isAppReady to true');
+              setIsAppReady(true);
+            }}>
             <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
               <QueryClientProvider client={queryClient}>
                 <InternetConnectionProvider>

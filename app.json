@@ -28,7 +28,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png",
+      "favicon": "./assets/images/zapicon.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -36,12 +36,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#19087d",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#19087d"
           }
         }
       ],
@@ -76,6 +75,13 @@
         }
       ]
     ],
+    "splash": {
+      "image": "./assets/images/zapicon.png",
+      "resizeMode": "cover",
+      "imageWidth": 400,
+      "imageHeight": 400,
+      "backgroundColor": "#000000"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
