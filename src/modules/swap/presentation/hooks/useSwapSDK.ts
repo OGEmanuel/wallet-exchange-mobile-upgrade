@@ -28,10 +28,14 @@ export interface SwapState {
   // Amount states
   baseAmount: number;
   targetAmount: number;
-
+  isBuyAmount: boolean;
   // Raw input strings for display
   baseAmountInput: string;
   targetAmountInput: string;
+
+  // USD value tracking
+  baseAmountUSD: number;
+  isInputtingUSD: boolean;
 
   // Currency states
   baseCurrency: SupportedCurrency | null;
@@ -58,6 +62,9 @@ export const useSwapSDK = () => {
     targetAmount: 0,
     baseAmountInput: "0",
     targetAmountInput: "0",
+    baseAmountUSD: 0,
+    isInputtingUSD: false,
+    isBuyAmount: true,
     baseCurrency: null,
     targetCurrency: null,
     marketRate: null,
@@ -100,7 +107,7 @@ export const useSwapSDK = () => {
 
   // Update target amount when market rate changes
   useEffect(() => {
-    if (state.marketRate && state.marketRate.rate > 0 && state.baseAmount > 0) {
+    if (state.marketRate && state.marketRate.rate > 0 && state.baseAmount > 0 && state.isBuyAmount) {
       const calculatedTargetAmount = state.baseAmount * state.marketRate.rate;
       setState(prev => ({
         ...prev,
@@ -108,7 +115,58 @@ export const useSwapSDK = () => {
         targetAmountInput: calculatedTargetAmount.toString(),
       }));
     }
-  }, [state.marketRate, state.baseAmount]);
+  }, [state.marketRate, state.baseAmount, state.isBuyAmount]);
+
+  useEffect(() => {
+    if (state.marketRate && state.marketRate.rate > 0 && state.targetAmount > 0 && !state.isBuyAmount) {
+      const calculatedBaseAmount = state.targetAmount / state.marketRate.rate;
+      setState(prev => ({
+        ...prev,
+        baseAmount: calculatedBaseAmount,
+        baseAmountInput: calculatedBaseAmount.toString(),
+        baseAmountUSD: calculatedBaseAmount * (state.marketRate?.buyRate || 0),
+      }));
+    }
+  }, [state.marketRate, state.targetAmount, state.isBuyAmount]);
+
+  const handleBaseAmountFocus = useCallback(() => {
+    setState(prev => ({ ...prev, isBuyAmount: true }));
+  }, []);
+
+  const handleTargetAmountFocus = useCallback(() => {
+    setState(prev => ({ ...prev, isBuyAmount: false }));
+  }, []);
+
+  // Calculate initial USD value when market rate is loaded
+  useEffect(() => {
+    if (state.marketRate && (state.marketRate.buyRate || 0) > 0 && state.baseAmount > 0 && state.baseAmountUSD === 0) {
+      const usdValue = state.baseAmount * (state.marketRate.buyRate || 0);
+      setState(prev => ({
+        ...prev,
+        baseAmountUSD: usdValue,
+      }));
+    }
+  }, [state.marketRate, state.baseAmount, state.baseAmountUSD]);
+
+  // Validate min/max amounts after state updates
+  useEffect(() => {
+    if (state.marketRate && state.baseAmount > 0) {
+      if (state.baseAmount < (state.marketRate.minAmount || 0)) {
+        setState(prev => ({
+          ...prev,
+          error: `Minimum amount is ${state.marketRate?.minAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
+        }));
+      } else if (state.baseAmount > (state.marketRate.maxAmount || 0)) {
+        setState(prev => ({
+          ...prev,
+          error: `Maximum amount is ${state.marketRate?.maxAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
+        }));
+      } else if (state.baseAmount >= (state.marketRate.minAmount || 0) && state.baseAmount <= (state.marketRate.maxAmount || 0)) {
+        // Only clear error if amount is within valid range
+        setState(prev => ({ ...prev, error: null }));
+      }
+    }
+  }, [state.baseAmount, state.marketRate, state.baseCurrency]);
 
   // Fetch market rate using SDK
   const fetchMarketRate = useCallback(async (
@@ -187,8 +245,6 @@ export const useSwapSDK = () => {
         };
       }
 
-      console.log("✅ Order rates received:", rateResponse);
-
       const swapRate: SwapRate = {
         rate: (rateResponse?.data?.rate || 0),
         timestamp: Date.now(),
@@ -227,54 +283,44 @@ export const useSwapSDK = () => {
 
   // Amount change handlers
   const handleBaseAmountChange = useCallback((amount: string) => {
-    // Store the raw input for display
-    setState(prev => ({
-      ...prev,
-      baseAmountInput: amount,
-      lastEditedField: "baseAmount",
-    }));
+    setState(prev => {
+      if (prev.isInputtingUSD) {
+        // When in USD mode, remove $ symbol and parse the number
+        const cleanAmount = amount.replace(/[$,]/g, '');
+        const numAmount = parseFloat(cleanAmount) || 0;
 
-    // Parse the input - remove commas first to handle formatted numbers
-    const cleanAmount = amount.replace(/,/g, '');
-    const numAmount = parseFloat(cleanAmount) || 0;
-
-    setState(prev => ({
-      ...prev,
-      baseAmount: numAmount,
-    }));
-
-    // Calculate target amount using current rate
-    if (state.marketRate && state.marketRate.rate > 0) {
-      const calculatedTargetAmount = numAmount * state.marketRate.rate;
-      setState(prev => ({
-        ...prev,
-        targetAmount: calculatedTargetAmount,
-        targetAmountInput: calculatedTargetAmount.toString(),
-      }));
-    }
-
-    // Validate amount against min/max - only clear error if amount is valid
-    if (state.marketRate && numAmount > 0) {
-      if (numAmount < (state.marketRate.minAmount || 0)) {
-        setState(prev => ({
+        // Store USD value and convert to base amount
+        const baseAmount = numAmount / (prev.marketRate?.buyRate || 1);
+        return {
           ...prev,
-          error: `Minimum amount is ${state.marketRate?.minAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-      } else if (numAmount > (state.marketRate.maxAmount || 0)) {
-        setState(prev => ({
+          baseAmountUSD: numAmount,
+          baseAmount,
+          baseAmountInput: numAmount.toString(), // Store raw USD value
+          lastEditedField: "baseAmount",
+        };
+      } else {
+        // When in base currency mode, handle normally
+        const cleanAmount = amount.replace(/,/g, '');
+        const numAmount = parseFloat(cleanAmount) || 0;
+
+        // Calculate USD value for display
+        const usdValue = numAmount * (prev.marketRate?.buyRate || 0);
+
+        return {
           ...prev,
-          error: `Maximum amount is ${state.marketRate?.maxAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-      } else if (numAmount >= (state.marketRate.minAmount || 0) && numAmount <= (state.marketRate.maxAmount || 0)) {
-        // Only clear error if amount is within valid range
-        setState(prev => ({ ...prev, error: null }));
+          baseAmountInput: amount,
+          baseAmount: numAmount,
+          baseAmountUSD: usdValue, // Update USD value for display
+          lastEditedField: "baseAmount",
+        };
       }
-    }
+    });
+
 
     // Fetch rate if we have both currencies
-    if (state.baseCurrency && state.targetCurrency && numAmount > 0) {
+    if (state.baseCurrency && state.targetCurrency && state.baseAmount > 0 && state.isBuyAmount) {
       // When base amount changes, we're selling base currency to get target currency
-      debouncedFetchRate(state.baseCurrency, state.targetCurrency, numAmount, false);
+      debouncedFetchRate(state.baseCurrency, state.targetCurrency, state.baseAmount, state.isBuyAmount);
     }
   }, [state.baseCurrency, state.targetCurrency, state.marketRate, debouncedFetchRate]);
 
@@ -295,40 +341,11 @@ export const useSwapSDK = () => {
       targetAmount: numAmount,
     }));
 
-    // Calculate base amount using current rate
-    if (state.marketRate && state.marketRate.rate > 0) {
-      const calculatedBaseAmount = numAmount / state.marketRate.rate;
-      setState(prev => ({
-        ...prev,
-        baseAmount: calculatedBaseAmount,
-        baseAmountInput: calculatedBaseAmount.toString(),
-      }));
-    }
-
-    // Validate amount against min/max - only clear error if amount is valid
-    if (state.marketRate && numAmount > 0) {
-      // For target amount, we need to check if the equivalent base amount is within limits
-      const equivalentBaseAmount = numAmount / (state.marketRate.rate || 1);
-      if (equivalentBaseAmount < (state.marketRate.minAmount || 0)) {
-        setState(prev => ({
-          ...prev,
-          error: `Minimum amount is ${state.marketRate?.minAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-      } else if (equivalentBaseAmount > (state.marketRate.maxAmount || 0)) {
-        setState(prev => ({
-          ...prev,
-          error: `Maximum amount is ${state.marketRate?.maxAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-      } else if (equivalentBaseAmount >= (state.marketRate.minAmount || 0) && equivalentBaseAmount <= (state.marketRate.maxAmount || 0)) {
-        // Only clear error if amount is within valid range
-        setState(prev => ({ ...prev, error: null }));
-      }
-    }
-
+    console.log("buyAmount", state.isBuyAmount);
     // Fetch rate if we have both currencies
-    if (state.baseCurrency && state.targetCurrency && numAmount > 0) {
+    if (state.baseCurrency && state.targetCurrency && state.targetAmount > 0 && !state.isBuyAmount) {
       // When target amount changes, we're buying target currency with base currency
-      debouncedFetchRate(state.baseCurrency, state.targetCurrency, numAmount, true);
+      debouncedFetchRate(state.baseCurrency, state.targetCurrency, state.targetAmount, state.isBuyAmount);
     }
   }, [state.baseCurrency, state.targetCurrency, state.marketRate, debouncedFetchRate]);
 
@@ -387,26 +404,7 @@ export const useSwapSDK = () => {
       return false;
     }
 
-    // Validate against min/max amounts from market rate
-    if (state.marketRate) {
-      if (state.baseAmount < (state.marketRate.minAmount || 0)) {
-        setState(prev => ({
-          ...prev,
-          error: `Minimum amount is ${state.marketRate?.minAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-        return false;
-      }
-
-      if (state.baseAmount > (state.marketRate.maxAmount || 0)) {
-        setState(prev => ({
-          ...prev,
-          error: `Maximum amount is ${state.marketRate?.maxAmount?.toFixed(6) || "0.000000"} ${(state.baseCurrency?.currencyId as Partial<ICurrency>)?.symbol || ""}`
-        }));
-        return false;
-      }
-    }
-
-    setState(prev => ({ ...prev, error: null }));
+    // setState(prev => ({ ...prev, error: null }));
     return true;
   }, [state.baseCurrency, state.targetCurrency, state.baseAmount, state.marketRate]);
 
@@ -493,29 +491,27 @@ export const useSwapSDK = () => {
 
   // Format helpers - format with commas but preserve decimal points during typing
   const handleBaseAmountFormat = useCallback(() => {
-    const isCrypto = (state.baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
+    if (state.isInputtingUSD) {
+      if (!state.baseAmountUSD || state.baseAmountUSD === 0) return formatNumber(0, 2);
+      return formatNumber(state.baseAmountUSD, 2);
+    } else {
+      // If input ends with decimal point, preserve it
+      if (state.baseAmountInput.endsWith('.')) {
+        return state.baseAmountInput;
+      }
 
-    // If input is empty or just "0", return "0"
-    if (!state.baseAmountInput || state.baseAmountInput === "0") return "0";
+      // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
+      // This prevents formatNumber from truncating very small numbers during typing
+      if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.includes('00')) {
+        return state.baseAmountInput;
+      }
 
-    // If input ends with decimal point, preserve it
-    if (state.baseAmountInput.endsWith('.')) {
-      return state.baseAmountInput;
+      const isCrypto = (state.baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
+      return formatNumber(state.baseAmount, isCrypto ? 8 : 2);
     }
-
-    // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
-    // This prevents formatNumber from truncating very small numbers during typing
-    if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.includes('000')) {
-      return state.baseAmountInput;
-    }
-
-    // Format the number with commas
-    return formatNumber(state.baseAmount, isCrypto ? 8 : 2);
-  }, [state.baseAmountInput, state.baseAmount, state.baseCurrency]);
+  }, [state.baseAmountInput, state.baseAmount, state.baseAmountUSD, state.isInputtingUSD, state.baseCurrency]);
 
   const handleTargetAmountFormat = useCallback(() => {
-    const isCrypto = (state.targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
-
     // If input is empty or just "0", return "0"
     if (!state.targetAmountInput || state.targetAmountInput === "0") return "0";
 
@@ -526,21 +522,55 @@ export const useSwapSDK = () => {
 
     // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
     // This prevents formatNumber from truncating very small numbers during typing
-    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.includes('000')) {
+    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.includes('00')) {
       return state.targetAmountInput;
     }
 
-    // Format the number with commas
+    const isCrypto = (state.targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
     return formatNumber(state.targetAmount, isCrypto ? 8 : 2);
   }, [state.targetAmountInput, state.targetAmount, state.targetCurrency]);
 
   // Reset function
+  // Toggle USD input mode
+  const toggleUSDInput = useCallback(() => {
+    setState(prev => {
+      const newIsInputtingUSD = !prev.isInputtingUSD;
+
+      if (newIsInputtingUSD) {
+        // Switching to USD mode: convert base amount to USD
+        const usdValue = prev.baseAmount * (prev.marketRate?.buyRate || 0);
+        return {
+          ...prev,
+          isInputtingUSD: true,
+          baseAmountUSD: usdValue,
+          baseAmountInput: usdValue.toString(), // Raw USD value for input
+          // Keep baseAmount unchanged for calculations
+        };
+      } else {
+        // Switching to base currency mode: convert USD back to base amount
+        const baseAmount = prev.baseAmountUSD / (prev.marketRate?.buyRate || 1);
+        // Calculate the USD value for display
+        const usdValue = baseAmount * (prev.marketRate?.buyRate || 0);
+        return {
+          ...prev,
+          isInputtingUSD: false,
+          baseAmount: baseAmount,
+          baseAmountInput: baseAmount.toString(), // Raw base amount for input
+          baseAmountUSD: usdValue, // Update USD value for display
+        };
+      }
+    });
+  }, []);
+
   const resetExchange = useCallback(() => {
     setState({
       baseAmount: 0,
       targetAmount: 0,
       baseAmountInput: "0",
+      isBuyAmount: true,
       targetAmountInput: "0",
+      baseAmountUSD: 0,
+      isInputtingUSD: false,
       baseCurrency: null,
       targetCurrency: null,
       marketRate: null,
@@ -571,6 +601,9 @@ export const useSwapSDK = () => {
     createOrder,
     resetExchange,
     fetchMarketRate,
+    toggleUSDInput,
+    handleBaseAmountFocus,
+    handleTargetAmountFocus,
   };
 };
 

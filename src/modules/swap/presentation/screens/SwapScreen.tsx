@@ -61,8 +61,6 @@ const Swap = () => {
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const orderDetailsSheetRef = useRef<any>(null);
   const progressSheetRef = useRef<any>(null);
-  const [isUSDValueShowing, setIsUSDValueShowing] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [shouldShake, setShouldShake] = useState(false);
   // 🔹 Order creation state
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -84,6 +82,8 @@ const Swap = () => {
     marketRate,
     error,
     isLoading,
+    baseAmountUSD,
+    isInputtingUSD,
     // supportedCurrencies,
     setBaseCurrency,
     setTargetCurrency,
@@ -95,17 +95,18 @@ const Swap = () => {
     validateExchange,
     createOrder,
     fetchMarketRate,
+    toggleUSDInput,
+    handleBaseAmountFocus,
+    handleTargetAmountFocus,
   } = useSwapSDK();
 
   // 🔹 Validation and shake animation
   useEffect(() => {
     if (error) {
-      setValidationError(error);
       setShouldShake(true);
       const timer = setTimeout(() => setShouldShake(false), 500);
       return () => clearTimeout(timer);
     } else {
-      setValidationError(null);
     }
   }, [error]);
 
@@ -195,7 +196,7 @@ const Swap = () => {
     if (!validateExchange()) return;
 
     // Validate crypto address if required
-    if ((targetCurrency?.chainId as Partial<IChain>)?.isEVM) {
+    if ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto) {
       if (!validateCryptoAddress(cryptoAddress)) {
         return;
       }
@@ -286,16 +287,8 @@ const Swap = () => {
 
           <ActivityTabar activeTab="EXCHANGE" onPress={() => {}} />
 
-          {error && (
-            <Box bg="secondaryBackgroundColor" p="s" borderRadius={8} mb="s">
-              <CustomText variant="body" color="bodyTextColor">
-                {error}
-              </CustomText>
-            </Box>
-          )}
-
           {createOrderError && (
-            <Box bg="secondaryBackgroundColor" p="s" borderRadius={8} mb="s">
+            <Box bg="error" p="s" borderRadius={8} marginVertical="s">
               <CustomText variant="body" color="bodyTextColor">
                 {createOrderError}
               </CustomText>
@@ -320,12 +313,11 @@ const Swap = () => {
                     }`
                   : "0"
               }
-              onToggleUSDValueShowing={() => {
-                setIsUSDValueShowing(!isUSDValueShowing);
-              }}
-              isUSDValueShowing={isUSDValueShowing}
+              onToggleUSDValueShowing={toggleUSDInput}
+              isUSDValueShowing={isInputtingUSD}
               showBalance
               showMaxButton
+              onFocus={handleBaseAmountFocus}
               onTokenSelect={openBaseTokenSelector}
               onAmountChange={handleBaseAmountChange}
               animatedStyle={[
@@ -340,18 +332,29 @@ const Swap = () => {
                   ],
                 },
               ]}
-              usdValue={rateDetails?.baseCurrencyUsdValue || "$0.00"}
+              usdValue={
+                isInputtingUSD
+                  ? `${formatNumber(
+                      baseAmount,
+                      (baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
+                        ? 8
+                        : 2
+                    )} ${
+                      (baseCurrency?.currencyId as Partial<ICurrency>)
+                        ?.symbol || ""
+                    }`
+                  : `${formatCurrency(baseAmountUSD, "USD")}`
+              }
               isReceive={false}
               isCrypto={
                 (baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
-              hasError={!!validationError}
+              hasError={!!error}
               errorColor={theme.colors.error}
             />
           </Box>
 
-          {/* Validation Error Message */}
-          {validationError && (
+          {error && (
             <Box
               backgroundColor="error"
               borderRadius={8}
@@ -360,7 +363,7 @@ const Swap = () => {
               marginBottom="s"
             >
               <CustomText variant="body" color="white" textAlign="center">
-                {validationError}
+                {error}
               </CustomText>
             </Box>
           )}
@@ -383,6 +386,7 @@ const Swap = () => {
               isReceive
               onTokenSelect={openTargetTokenSelector}
               onAmountChange={handleTargetAmountChange}
+              onFocus={handleTargetAmountFocus}
               isCrypto={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
