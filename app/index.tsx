@@ -3,11 +3,11 @@ import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
-  Animated,
-  Dimensions,
-  ImageBackground,
-  StyleSheet,
-  View
+    Animated,
+    Dimensions,
+    ImageBackground,
+    StyleSheet,
+    View
 } from "react-native";
 
 import ThemedText from "@/components/general/ThemedText";
@@ -21,6 +21,8 @@ export default function HomeScreen() {
   const theme = useTheme<Theme>();
   const screenWidth = Dimensions.get("window").width;
   const inset = useSafeAreaInsets();
+
+  console.log('HomeScreen rendering:', { screenWidth, SIZES });
 
   // Cloud animations (3 clouds) - now vertical
   const cloud1Animation = useRef(new Animated.Value(0)).current;
