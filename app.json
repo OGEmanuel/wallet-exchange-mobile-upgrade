@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "new-zap-wallet-exchange",
+    "name": "Zap Wallet",
     "slug": "zap",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/zapicon.png",
     "scheme": "newzapwalletexchange",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -36,11 +36,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash.png",
+          "image": "./assets/images/zapicon.png",
           "resizeMode": "cover",
-          "backgroundColor": "#19087d",
+          "backgroundColor": "#000000",
           "dark": {
-            "backgroundColor": "#19087d"
+            "backgroundColor": "#000000"
           }
         }
       ],
