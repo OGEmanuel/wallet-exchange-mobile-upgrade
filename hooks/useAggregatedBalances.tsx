@@ -1,6 +1,6 @@
 /**
  * Aggregated Balances Hook
- * 
+ *
  * This hook provides cached aggregated balances for wallets and wallet groups.
  * Solves the issue where backend gives individual account balances but not
  * aggregated wallet/wallet group totals.
@@ -16,8 +16,15 @@ import { useSelector } from "react-redux";
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 export const useAggregatedBalances = () => {
-  const { portfolio, userWalletGroups, mainUserWalletGroup, isWalletAuthenticated } = useWallet();
-  const processedPortfolio = useSelector((state: any) => state.portfolio.processedPortfolio);
+  const {
+    portfolio,
+    userWalletGroups,
+    mainUserWalletGroup,
+    isWalletAuthenticated,
+  } = useWallet();
+  const processedPortfolio = useSelector(
+    (state: any) => state.portfolio.processedPortfolio
+  );
   const [aggregatedBalances, setAggregatedBalances] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +33,9 @@ export const useAggregatedBalances = () => {
   const [balanceCache, setBalanceCache] = useState<Map<string, any>>(new Map());
 
   // Portfolio cache functions (same as wallet context)
-  const loadPortfolioFromCache = async (userWalletGroupId: string): Promise<any | null> => {
+  const loadPortfolioFromCache = async (
+    userWalletGroupId: string
+  ): Promise<any | null> => {
     try {
       const cacheKey = `${StorageKeys.PORTFOLIO_DATA}_${userWalletGroupId}`;
       const cachedData = await SecureStore.getItemAsync(cacheKey);
@@ -41,12 +50,17 @@ export const useAggregatedBalances = () => {
   };
 
   // Function to trigger portfolio fetch for a specific wallet group
-  const fetchPortfolioForWalletGroup = async (userWalletGroupId: string): Promise<void> => {
+  const fetchPortfolioForWalletGroup = async (
+    userWalletGroupId: string
+  ): Promise<void> => {
     try {
       // This would need to be implemented in the wallet context
       // For now, we'll just log that we need to fetch it
     } catch (error) {
-      console.error(`Error fetching portfolio for ${userWalletGroupId}:`, error);
+      console.error(
+        `Error fetching portfolio for ${userWalletGroupId}:`,
+        error
+      );
     }
   };
 
@@ -54,15 +68,20 @@ export const useAggregatedBalances = () => {
   const isCacheValid = async (): Promise<boolean> => {
     try {
       if (!mainUserWalletGroup?._id) return false;
-      
-      const timestamp = await SecureStore.getItemAsync(`${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`);
+
+      const timestamp = await SecureStore.getItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`
+      );
       if (!timestamp) return false;
-      
+
       const cacheTime = parseInt(timestamp);
       const now = Date.now();
-      return (now - cacheTime) < CACHE_DURATION;
+      return now - cacheTime < CACHE_DURATION;
     } catch (error) {
-      console.error("Error checking aggregated balances cache validity:", error);
+      console.error(
+        "Error checking aggregated balances cache validity:",
+        error
+      );
       return false;
     }
   };
@@ -71,10 +90,12 @@ export const useAggregatedBalances = () => {
   const loadFromCache = async (): Promise<any | null> => {
     try {
       if (!mainUserWalletGroup?._id) return null;
-      
-      const cachedData = await SecureStore.getItemAsync(`${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`);
+
+      const cachedData = await SecureStore.getItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`
+      );
       if (!cachedData) return null;
-      
+
       const parsedData = JSON.parse(cachedData);
       return parsedData;
     } catch (error) {
@@ -87,10 +108,19 @@ export const useAggregatedBalances = () => {
   const saveToCache = async (data: any): Promise<void> => {
     try {
       if (!mainUserWalletGroup?._id) return;
-      
-      await SecureStore.setItemAsync(`${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`, JSON.stringify(data));
-      await SecureStore.setItemAsync(`${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`, Date.now().toString());
-      console.log("💾 Aggregated balances cached successfully for wallet group:", mainUserWalletGroup._id);
+
+      await SecureStore.setItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`,
+        JSON.stringify(data)
+      );
+      await SecureStore.setItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`,
+        Date.now().toString()
+      );
+      console.log(
+        "💾 Aggregated balances cached successfully for wallet group:",
+        mainUserWalletGroup._id
+      );
     } catch (error) {
       console.error("Error saving aggregated balances to cache:", error);
     }
@@ -100,10 +130,17 @@ export const useAggregatedBalances = () => {
   const clearCache = async (): Promise<void> => {
     try {
       if (!mainUserWalletGroup?._id) return;
-      
-      await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`);
-      await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`);
-      console.log("🗑️ Aggregated balances cache cleared for wallet group:", mainUserWalletGroup._id);
+
+      await SecureStore.deleteItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES}_${mainUserWalletGroup._id}`
+      );
+      await SecureStore.deleteItemAsync(
+        `${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainUserWalletGroup._id}`
+      );
+      console.log(
+        "🗑️ Aggregated balances cache cleared for wallet group:",
+        mainUserWalletGroup._id
+      );
     } catch (error) {
       console.error("Error clearing aggregated balances cache:", error);
     }
@@ -118,10 +155,10 @@ export const useAggregatedBalances = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Use the existing PortfolioService.calculateAggregatedBalances function
       // which works with the main portfolio data
-      const { walletBalances, walletGroupBalances, totalPortfolioValue } = 
+      const { walletBalances, walletGroupBalances, totalPortfolioValue } =
         PortfolioService.calculateAggregatedBalances(portfolio);
 
       const newBalanceCache = new Map<string, any>();
@@ -131,7 +168,8 @@ export const useAggregatedBalances = () => {
         const userWalletGroupId = userWalletGroup._id;
         const walletId = userWalletGroup.walletId?._id;
         const walletGroupId = userWalletGroup.walletGroupId?._id;
-        const isMainWalletGroup = userWalletGroupId === mainUserWalletGroup?._id;
+        const isMainWalletGroup =
+          userWalletGroupId === mainUserWalletGroup?._id;
 
         let walletBalance = 0;
         let walletGroupBalance = 0;
@@ -144,15 +182,20 @@ export const useAggregatedBalances = () => {
           // For other wallet groups, try to get from cache
           try {
             // Load cached portfolio data using the same cache functions as wallet context
-            const cachedPortfolio = await loadPortfolioFromCache(userWalletGroupId);
-            
+            const cachedPortfolio = await loadPortfolioFromCache(
+              userWalletGroupId
+            );
+
             if (cachedPortfolio?.mainWalletGroupPortfolio) {
               // Calculate balance from cached portfolio data
-              const { walletBalances: cachedWalletBalances, walletGroupBalances: cachedWalletGroupBalances } = 
-                PortfolioService.calculateAggregatedBalances(cachedPortfolio);
-              
+              const {
+                walletBalances: cachedWalletBalances,
+                walletGroupBalances: cachedWalletGroupBalances,
+              } = PortfolioService.calculateAggregatedBalances(cachedPortfolio);
+
               walletBalance = cachedWalletBalances.get(walletId) || 0;
-              walletGroupBalance = cachedWalletGroupBalances.get(walletGroupId) || 0;
+              walletGroupBalance =
+                cachedWalletGroupBalances.get(walletGroupId) || 0;
             } else {
               // Trigger portfolio fetch for this wallet group
               await fetchPortfolioForWalletGroup(userWalletGroupId);
@@ -183,10 +226,10 @@ export const useAggregatedBalances = () => {
       setBalanceCache(newBalanceCache);
 
       // Create enhanced wallet groups with their specific balances
-      const enhancedWalletGroups = userWalletGroups.map(userWalletGroup => {
+      const enhancedWalletGroups = userWalletGroups.map((userWalletGroup) => {
         const userWalletGroupId = userWalletGroup._id;
         const balanceData = newBalanceCache.get(userWalletGroupId);
-        
+
         return {
           ...userWalletGroup,
           aggregatedBalance: balanceData?.walletBalance || 0,
@@ -195,7 +238,9 @@ export const useAggregatedBalances = () => {
       });
 
       // Calculate total portfolio value from all wallet balances
-      const calculatedTotalPortfolioValue = Array.from(newBalanceCache.values()).reduce((sum, balanceData) => sum + balanceData.walletBalance, 0);
+      const calculatedTotalPortfolioValue = Array.from(
+        newBalanceCache.values()
+      ).reduce((sum, balanceData) => sum + balanceData.walletBalance, 0);
 
       const result = {
         balanceCache: Object.fromEntries(newBalanceCache),
@@ -205,7 +250,6 @@ export const useAggregatedBalances = () => {
       };
 
       setAggregatedBalances(result);
-
     } catch (err) {
       console.error("Failed to calculate all balances:", err);
       setError("Failed to calculate all balances");
@@ -230,9 +274,12 @@ export const useAggregatedBalances = () => {
   // }, [isWalletAuthenticated]);
 
   // Comprehensive balance getter functions - THE SINGLE SOURCE OF TRUTH
-  
+
   // Get balance for a specific account
-  const getAccountBalance = (userWalletGroupId: string, accountId: string): number => {
+  const getAccountBalance = (
+    userWalletGroupId: string,
+    accountId: string
+  ): number => {
     const balanceData = balanceCache.get(userWalletGroupId);
     return balanceData?.accountBalances?.[accountId] || 0;
   };
@@ -286,48 +333,68 @@ export const useAggregatedBalances = () => {
   const getCurrentWalletEnabledBalance = (): number => {
     // Use the processed portfolio data which has enabledAssets
     if (processedPortfolio?.enabledAssets) {
-      console.log('🎯 Using processed portfolio enabledAssets:', processedPortfolio.enabledAssets.length);
-      const enabledBalance = processedPortfolio.enabledAssets
-        .reduce((total: number, asset: any) => total + (asset.totalUsdValue || 0), 0);
-      console.log('💰 Enabled balance calculated:', enabledBalance);
+      console.log(
+        "🎯 Using processed portfolio enabledAssets:",
+        processedPortfolio.enabledAssets.length
+      );
+      const enabledBalance = processedPortfolio.enabledAssets.reduce(
+        (total: number, asset: any) => total + (asset.totalUsdValue || 0),
+        0
+      );
+      console.log("💰 Enabled balance calculated:", enabledBalance);
       return enabledBalance;
     }
-    
+
     // Fallback: use raw portfolio data if processed portfolio is not available
-    console.log('🔄 Using fallback method - processed portfolio not available');
-    if (!portfolio?.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts) return 0;
-    
-    const accounts = portfolio.mainWalletGroupPortfolio.mainWalletPortfolio.accounts;
-    const userTokenList = portfolio.userTokenList || [];
-    
-    console.log('📊 Raw data - accounts:', accounts.length, 'userTokenList:', userTokenList.length);
-    
+    console.log("🔄 Using fallback method - processed portfolio not available");
+    if (!portfolio?.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts)
+      return 0;
+
+    const accounts =
+      portfolio.mainWalletGroupPortfolio.mainWalletPortfolio.accounts;
+    let userTokenList = portfolio.userTokenList || [];
+
+    if (userTokenList.data && userTokenList.data.length > 0) {
+      userTokenList = userTokenList.data;
+    }
+
+    console.log(
+      "📊 Raw data - accounts:",
+      accounts.length,
+      "userTokenList:",
+      userTokenList.length
+    );
+
     // Create a map of enabled token IDs
     const enabledTokenIds = new Set(
       userTokenList
-        .filter((token: any) => token.status === 'ENABLED')
+        ?.filter((token: any) => token.status === "ENABLED")
         .map((token: any) => {
-          const supportedCurrencyId = typeof token.supportedCurrencyId === 'string' 
-            ? token.supportedCurrencyId 
-            : token.supportedCurrencyId?._id;
+          const supportedCurrencyId =
+            typeof token.supportedCurrencyId === "string"
+              ? token.supportedCurrencyId
+              : token.supportedCurrencyId?._id;
           return supportedCurrencyId;
         })
     );
-    
-    console.log('✅ Enabled token IDs:', Array.from(enabledTokenIds));
-    
+
+    console.log("✅ Enabled token IDs:", Array.from(enabledTokenIds));
+
     // Sum only accounts with enabled tokens
     const enabledAccounts = accounts.filter((account: any) => {
-      const supportedCurrencyId = account.supportedCurrencyId?._id || account.supportedCurrencyId;
+      const supportedCurrencyId =
+        account.supportedCurrencyId?._id || account.supportedCurrencyId;
       return enabledTokenIds.has(supportedCurrencyId);
     });
-    
-    console.log('🎯 Enabled accounts:', enabledAccounts.length);
-    
-    const fallbackBalance = enabledAccounts
-      .reduce((total: number, account: any) => total + (account.totalUsdValue || 0), 0);
-    
-    console.log('💰 Fallback enabled balance:', fallbackBalance);
+
+    console.log("🎯 Enabled accounts:", enabledAccounts.length);
+
+    const fallbackBalance = enabledAccounts.reduce(
+      (total: number, account: any) => total + (account.totalUsdValue || 0),
+      0
+    );
+
+    console.log("💰 Fallback enabled balance:", fallbackBalance);
     return fallbackBalance;
   };
 
@@ -345,7 +412,7 @@ export const useAggregatedBalances = () => {
     balanceCache: Object.fromEntries(balanceCache),
     isLoading,
     error,
-    
+
     // Balance getters - THE SINGLE SOURCE OF TRUTH
     getAccountBalance,
     getWalletBalance,
@@ -357,7 +424,7 @@ export const useAggregatedBalances = () => {
     getCurrentWalletBalance,
     getCurrentWalletGroupBalance,
     getCurrentWalletEnabledBalance,
-    
+
     // Actions
     refreshBalances,
     calculateAllBalances,

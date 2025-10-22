@@ -5,7 +5,7 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, MarketData, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
@@ -462,6 +462,14 @@ class ZapSDKService {
     }
   }
 
+  public async getMarkets(options?: { useCache?: boolean }) {
+    const response: MarketData[] = await this.executeWithNetworkHandling(
+      () => this.getSDK().markets.getMarkets(options),
+      'getMarkets'
+    );
+    return response || null;
+  }
+
   // Wallet Operations
   public async createWalletGroupMultipurpose(params: CreateWalletGroupMultipurposeParams) {
     return this.executeWithNetworkHandling(
@@ -550,6 +558,30 @@ class ZapSDKService {
     return this.executeWithNetworkHandlingNoAuth(
       () => this.getSDK().blockchain.deriveAddress(seedPhrase, chainSymbol, walletDepth),
       'deriveAddress'
+    );
+  }
+
+  public async getBanks() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().banks.listAll(),
+      'getBanks'
+    );
+  }
+
+  public async getBankAccounts(userId: string, options?: { limit?: number, offset?: number, useCache?: boolean }) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().bankAccounts.getUserBankAccounts(userId, options),
+      'getBankAccounts'
+    );
+  }
+
+  public async resolveBankAccount(bankId: string, accountNumber: string) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().banks.resolveAccount({
+        bankId,
+        accountNumber,
+      }),
+      'resolveBankAccount'
     );
   }
 

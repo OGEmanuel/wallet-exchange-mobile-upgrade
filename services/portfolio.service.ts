@@ -5,7 +5,7 @@ import {
 import { Chain } from '@/src/core/chains/chains-context';
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';
 import { SupportedCurrency } from '@/src/core/supported-currencies/supported-currencies-context';
-import { AccountPortfolioData, ICurrency, ISupportedCurrency, IUserPortfolio, UserPortfolioData } from '@zap/blockchain-sdk';
+import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, IUserPortfolio, MarketData, UserPortfolioData } from '@zap/blockchain-sdk';
 
 export class PortfolioService {
   private static supportedCurrencies: any[] = [];
@@ -114,13 +114,17 @@ export class PortfolioService {
    * Process userTokenList into processed tokens with balances and chain info
    * Similar to how we process portfolio assets but for the full token list
    */
-  static processTokenList(portfolioData: UserPortfolioData, chains?: Chain[], supportedCurrencies?: SupportedCurrency[]): ProcessedAsset[] {
+  static processTokenList(portfolioData: UserPortfolioData, chains?: Chain[], supportedCurrencies?: SupportedCurrency[], marketTokens?: MarketData[]): ProcessedAsset[] {
     try {
       let { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
       if (!userTokenList || !Array.isArray(userTokenList)) {
-        console.warn('⚠️ No userTokenList found');
-        return [];
+        if ((userTokenList as any)?.data && Array.isArray((userTokenList as any).data)) {
+          userTokenList = (userTokenList as any).data;
+        } else {
+          console.warn('⚠️ No userTokenList found');
+          return [];
+        }
       }
 
       // Get accounts with balances for reference
@@ -140,7 +144,7 @@ export class PortfolioService {
 
       const supportedCurrenciesMap = new Map<string, SupportedCurrency>();
       supportedCurrencies?.forEach(supportedCurrency => {
-        supportedCurrenciesMap.set(supportedCurrency._id, supportedCurrency);
+        supportedCurrenciesMap.set(supportedCurrency._id || '', supportedCurrency);
       });
 
       console.log(`📊 Processing ${userTokenList.length} tokens`);
@@ -180,7 +184,7 @@ export class PortfolioService {
 
           // Extract token information
           const supportedCurrency = token.supportedCurrencyId as unknown as ISupportedCurrency;
-          const supportedCurrencyFromMap = supportedCurrenciesMap.get((token.supportedCurrencyId as unknown as SupportedCurrency)?._id);
+          const supportedCurrencyFromMap = supportedCurrenciesMap.get((token.supportedCurrencyId as unknown as SupportedCurrency)?._id || '');
           const account = accountMap.get(supportedCurrency._id);
           const currencyId = (supportedCurrency.currencyId as ICurrency)?.symbol
             ? (supportedCurrency.currencyId as ICurrency)._id :
@@ -195,6 +199,18 @@ export class PortfolioService {
             typeof (supportedCurrency?.currencyId as ICurrency)?.isStable === "boolean" ?
               (supportedCurrency?.currencyId as ICurrency)?.isStable || false : false;
 
+          let price = 0;
+
+          if (balance > 0) {
+            price = totalUsdValue / balance;
+          } else {
+            // Use market price here
+            const marketToken = marketTokens?.find(marketToken => marketToken.currencyId === currencyId);
+            if (marketToken) {
+              price = marketToken.rate || 0;
+            }
+          }
+
           return {
             id: token._id || supportedCurrency._id,
             accountId: account?._id || token._id,
@@ -202,7 +218,7 @@ export class PortfolioService {
             name: currency?.name || '',
             balance: balance,
             totalUsdValue: totalUsdValue,
-            price: balance > 0 ? (totalUsdValue / balance) : 0,
+            price,
             change: 0, // Not available from API
             changeType: 'positive' as const,
             image: supportedCurrency.image || '',
@@ -210,9 +226,9 @@ export class PortfolioService {
             status: token.status || 'DISABLED',
             source: token.source || 'DEFAULT',
             chainId: supportedCurrency.chainId as string || '',
-            chainName: supportedCurrencyFromMap?.chainId?.name || '',
-            chainSymbol: supportedCurrencyFromMap?.chainId?.symbol || '',
-            chainImage: chainsMap.get(supportedCurrencyFromMap?.chainId?._id || "")?.nativeCurrencyId.logo || '',
+            chainName: (supportedCurrencyFromMap?.chainId as IChain)?.name || '',
+            chainSymbol: (supportedCurrencyFromMap?.chainId as IChain)?.symbol || '',
+            chainImage: chainsMap.get((supportedCurrencyFromMap?.chainId as IChain)?._id || "")?.nativeCurrencyId.logo || '',
             tokenAddress: supportedCurrency?.tokenAddress || '',
             decimals: supportedCurrency?.decimals || 18,
             supportedCurrencyId: supportedCurrency._id,
@@ -252,8 +268,6 @@ export class PortfolioService {
       const sortedAssets = processedTokens.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
 
       // Filter and sort
-      const enabledAssets = sortedAssets.filter(asset => asset.status === 'ENABLED');
-      const disabledAssets = sortedAssets.filter(asset => asset.status === 'DISABLED' || asset.status === 'HIDDEN');
       return sortedAssets;
     } catch (error) {
       console.error('❌ Token list processing failed:', error);
@@ -265,16 +279,16 @@ export class PortfolioService {
    * Process raw portfolio data into a simplified, usable format
    * Much simpler than the original - focuses on what UI actually needs
    */
-  static processPortfolioData(portfolioData: UserPortfolioData): ProcessedPortfolio {
+  static processPortfolioData(portfolioData: UserPortfolioData, marketTokens?: MarketData[]): ProcessedPortfolio {
     console.log('🚀 Simplified portfolio processing started');
-    
+
     try {
       let { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
       if ((userTokenList as any)?.data?.length > 0) {
         userTokenList = (userTokenList as any).data;
       }
-      
+
       if (!mainWalletGroupPortfolio) {
         console.warn('⚠️ No main wallet group portfolio found');
         return this.getEmptyPortfolio();
@@ -291,6 +305,10 @@ export class PortfolioService {
       console.log(`📊 Processing ${accounts.length} accounts`);
 
       const supportedCurrencyToTokenList = new Map<string, IUserPortfolio>();
+
+      if ((userTokenList as any)?.data?.length > 0) {
+        userTokenList = (userTokenList as any).data;
+      }
 
       // Check if userTokenList exists and is an array
       if (userTokenList && Array.isArray(userTokenList)) {
@@ -312,7 +330,7 @@ export class PortfolioService {
       const assets: ProcessedAsset[] = accounts.map(account => {
         try {
           // Based on the actual SDK types, supportedCurrencyId is an ISupportedCurrency object
-        const supportedCurrency = account.supportedCurrencyId;
+          const supportedCurrency = account.supportedCurrencyId;
           const currencyId = (supportedCurrency.currencyId as ICurrency)?.symbol
             ? (supportedCurrency.currencyId as ICurrency)._id :
             typeof supportedCurrency.currencyId === 'string' ? supportedCurrency.currencyId :
@@ -324,24 +342,38 @@ export class PortfolioService {
 
           const isStable = typeof supportedCurrency.isStable === 'boolean' ? supportedCurrency.isStable : typeof (supportedCurrency?.currencyId as ICurrency)?.isStable === "boolean" ? (supportedCurrency?.currencyId as ICurrency)?.isStable || false : false;
 
-        return {
+          let price = 0;
+
+          if (balance > 0) {
+            price = totalUsdValue / balance;
+          } else {
+            // Use market price here
+            const marketToken = marketTokens?.find(marketToken =>
+              typeof marketToken.currencyId === 'string' ?
+                marketToken.currencyId === currencyId : (marketToken.currencyId as ICurrency)?._id === currencyId);
+            if (marketToken) {
+              price = marketToken.rate || 0;
+            }
+          }
+
+          return {
             id: account._id,
-          accountId: account._id,
-          symbol: this.extractSymbol(account, supportedCurrency),
-          name: this.extractName(account, supportedCurrency),
+            accountId: account._id,
+            symbol: this.extractSymbol(account, supportedCurrency),
+            name: this.extractName(account, supportedCurrency),
             balance: balance,
             totalUsdValue: totalUsdValue,
-            price: balance > 0 ? (totalUsdValue / balance) : 0,
-          change: 0, // Not available from API
-          changeType: 'positive' as const,
-          image: this.extractImage(supportedCurrency),
+            price,
+            change: 0, // Not available from API
+            changeType: 'positive' as const,
+            image: this.extractImage(supportedCurrency),
             isStable,
             status: supportedCurrencyToTokenList.get(supportedCurrency._id)?.status || 'DISABLED',
             source: supportedCurrencyToTokenList.get(supportedCurrency._id)?.source || 'DEFAULT',
-          chainId: this.extractChainId(account),
-          chainName: this.extractChainName(account),
-          chainSymbol: this.extractChainSymbol(account),
-          chainImage: this.extractChainImage(account),
+            chainId: this.extractChainId(account),
+            chainName: this.extractChainName(account),
+            chainSymbol: this.extractChainSymbol(account),
+            chainImage: this.extractChainImage(account),
             tokenAddress: supportedCurrency?.tokenAddress || '',
             decimals: supportedCurrency?.decimals || 18,
             supportedCurrencyId: supportedCurrency._id,
@@ -357,9 +389,9 @@ export class PortfolioService {
             name: 'Unknown Token',
             balance: account.balance || 0,
             totalUsdValue: account.totalUsdValue || 0,
-        price: 0,
-        change: 0,
-        changeType: 'positive' as const,
+            price: 0,
+            change: 0,
+            changeType: 'positive' as const,
             image: 'https://cryptoicons.org/api/icon/unknown/25',
             isStable: false,
             status: 'DISABLED' as const,
@@ -376,7 +408,7 @@ export class PortfolioService {
         }
       });
 
-    const sortedAssets = assets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+      const sortedAssets = assets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
 
       // Filter and sort
       const enabledAssets = sortedAssets.filter(asset => asset.status === 'ENABLED');
@@ -451,9 +483,9 @@ export class PortfolioService {
       // Try direct name from supportedCurrency
       if (supportedCurrency?.name) {
         return supportedCurrency.name;
-    }
-    
-    // Fallback to account name
+      }
+
+      // Fallback to account name
       return account.currencyId.name || account.name || 'Unknown Token';
     } catch (error) {
       console.warn('⚠️ Error extracting name:', error);
@@ -467,18 +499,18 @@ export class PortfolioService {
   private static extractImage(supportedCurrency: ISupportedCurrency): string {
     try {
       // Try direct image from supportedCurrency
-    if (supportedCurrency?.image) {
-      return supportedCurrency.image;
-    }
+      if (supportedCurrency?.image) {
+        return supportedCurrency.image;
+      }
 
       // Try currency logo from the currency object
       const currencyLogo = (supportedCurrency.currencyId as ICurrency)?.logo;
       if (currencyLogo) {
         return currencyLogo;
       }
-    
-    // Simple fallback
-    return 'https://cryptoicons.org/api/icon/unknown/25';
+
+      // Simple fallback
+      return 'https://cryptoicons.org/api/icon/unknown/25';
     } catch (error) {
       console.warn('⚠️ Error extracting image:', error);
       return 'https://cryptoicons.org/api/icon/unknown/25';
@@ -508,7 +540,7 @@ export class PortfolioService {
    */
   private static extractChainName(account: AccountPortfolioData): string {
     try {
-    return account.chainId?.name || 'Unknown Chain';
+      return account.chainId?.name || 'Unknown Chain';
     } catch (error) {
       console.warn('⚠️ Error extracting chain name:', error);
       return 'Unknown Chain';
@@ -520,7 +552,7 @@ export class PortfolioService {
    */
   private static extractChainSymbol(account: AccountPortfolioData): string {
     try {
-    return account.chainId?.symbol || 'UNKNOWN';
+      return account.chainId?.symbol || 'UNKNOWN';
     } catch (error) {
       console.warn('⚠️ Error extracting chain symbol:', error);
       return 'UNKNOWN';
@@ -576,7 +608,7 @@ export class PortfolioService {
     let totalPortfolioValue = 0;
 
     try {
-      const { mainWalletGroupPortfolio, walletGroupPortfolios, userTokenList } = portfolioData;
+      const { mainWalletGroupPortfolio, walletGroupPortfolios } = portfolioData;
 
       // Process all wallet groups, not just the main one
       const allWalletGroups = {
