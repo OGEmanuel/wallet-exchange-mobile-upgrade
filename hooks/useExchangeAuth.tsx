@@ -3,7 +3,7 @@ import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/Animat
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useCallback, useRef, useState } from "react";
 
-export const useExchangeAuth = () => {
+export const useExchangeAuth = (onLoginSuccess?: () => void) => {
   const { 
     isExchangeAuthenticated, 
     exchangeUserData,
@@ -45,9 +45,13 @@ export const useExchangeAuth = () => {
     const success = await exchangeValidateOtp(email, otp);
     if (success) {
       hideExchangeLogin();
+      // Call the success callback if provided
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      }
     }
     return success;
-  }, [exchangeValidateOtp, hideExchangeLogin]);
+  }, [exchangeValidateOtp, hideExchangeLogin, onLoginSuccess]);
 
   const handleExchangeLogout = useCallback(async () => {
     await logoutFromExchange();

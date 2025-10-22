@@ -14,18 +14,18 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { uniqueId } from "lodash";
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useState,
 } from "react";
 import { AppState } from "react-native";
 import { useChains } from "../chains/chains-context";
 import zapSDKService from "../sdk/zap-sdk.service";
 import AddressesStorage, { StoredAddress } from "../storage/addresses-storage";
 import PrivateKeysStorage, {
-  StoredPrivateKey,
+    StoredPrivateKey,
 } from "../storage/private-keys-storage";
 import SeedPhraseStorage from "../storage/seed-phrase-storage";
 import { StorageKeys } from "../storage/storage-types";
@@ -107,6 +107,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       checkAuthenticationAndRoute();
       setupWebSocketListeners();
       setupAppStateListener();
+      // Restore exchange authentication state
+      restoreExchangeAuthState();
     }
   }, [isInitialized]);
 
@@ -130,6 +132,60 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsInitialized(false);
     } finally {
       setIsInitializing(false);
+    }
+  };
+
+  // Restore exchange authentication state from storage
+  const restoreExchangeAuthState = async () => {
+    try {
+      console.log("🔄 Restoring exchange authentication state...");
+      
+      // Check if exchange is authenticated via SDK
+      const isAuth = await zapSDKService.isExchangeAuthenticated();
+      if (isAuth) {
+        console.log("✅ Exchange is authenticated via SDK");
+        setIsExchangeAuthenticated(true);
+        
+        // Try to get exchange user data
+        const userData = await zapSDKService.getExchangeUser();
+        if (userData) {
+          console.log("✅ Exchange user data restored:", userData._id);
+          setExchangeUserData(userData);
+          setCurrentExchangeUser(userData._id);
+        } else {
+          console.log("⚠️ Exchange authenticated but no user data available");
+        }
+      } else {
+        console.log("❌ Exchange not authenticated via SDK");
+        // Clear any stale state
+        setIsExchangeAuthenticated(false);
+        setExchangeUserData(null);
+        setCurrentExchangeUser(null);
+      }
+    } catch (error) {
+      console.error("❌ Failed to restore exchange auth state:", error);
+      // Clear state on error
+      setIsExchangeAuthenticated(false);
+      setExchangeUserData(null);
+      setCurrentExchangeUser(null);
+    }
+  };
+
+  // Persist exchange authentication state
+  const persistExchangeAuthState = async () => {
+    try {
+      if (isExchangeAuthenticated && exchangeUserData) {
+        console.log("💾 Persisting exchange auth state...");
+        await storageService.save(StorageKeys.EXCHANGE_AUTH_STATE, {
+          isAuthenticated: true,
+          userId: exchangeUserData._id,
+          timestamp: Date.now()
+        });
+        await storageService.save(StorageKeys.EXCHANGE_USER_DATA, exchangeUserData);
+        console.log("✅ Exchange auth state persisted");
+      }
+    } catch (error) {
+      console.error("❌ Failed to persist exchange auth state:", error);
     }
   };
 
@@ -949,6 +1005,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
 
+      // Clear persisted exchange auth state
+      await storageService.remove(StorageKeys.EXCHANGE_AUTH_STATE);
+      await storageService.remove(StorageKeys.EXCHANGE_USER_DATA);
+
       console.log("✅ Exchange logout successful");
     } catch (error) {
       console.error("Logout error:", error);
@@ -998,6 +1058,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsExchangeAuthenticated(true);
         setCurrentExchangeUser(result.data.userId || null);
         setExchangeUserData(result.data.user as UserModel | null);
+
+        // Persist exchange authentication state
+        await persistExchangeAuthState();
 
         await checkAuthenticationAndRoute();
         return true;

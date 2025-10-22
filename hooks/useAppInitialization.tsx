@@ -50,6 +50,17 @@ export const useAppInitialization = () => {
           console.log("No token data found in storage");
         }
 
+        // Load persisted exchange user data
+        console.log("Loading exchange user data...");
+        const persistedExchangeUser = await storageService.get<UserModel>(
+          StorageKeys.EXCHANGE_USER_DATA
+        );
+        if (persistedExchangeUser) {
+          console.log("Exchange user data loaded from storage:", persistedExchangeUser._id);
+        } else {
+          console.log("No exchange user data found in storage");
+        }
+
         console.log("Setting initialization complete...");
         setState({
           isInitialized: true,

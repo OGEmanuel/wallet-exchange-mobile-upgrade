@@ -44,7 +44,7 @@ export const StorageKeys = {
   AGGREGATED_BALANCES: "aggregatedBalances", // Cached aggregated wallet and wallet group balances
   AGGREGATED_BALANCES_TIMESTAMP: "aggregatedBalancesTimestamp", // Cache timestamp for aggregated balances
   EXCHANGE_AUTH_STATE: "exchangeAuthState", // Exchange authentication state
-  // Note: Exchange user data is not cached locally; SDK caches it internally
+  EXCHANGE_USER_DATA: "exchangeUserData", // Exchange user data
 } as const;
 
 /**

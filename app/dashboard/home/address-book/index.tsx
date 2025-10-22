@@ -122,7 +122,7 @@ const AddressBookTabar = ({
   );
 };
 
-const EmptyState = ({ onAddAddress }: { onAddAddress: () => void }) => {
+const EmptyState = ({ onAddAddress, isExchangeTab = false }: { onAddAddress: () => void; isExchangeTab?: boolean }) => {
   return (
     <Box width={"100%"} flex={1} alignItems="center" justifyContent="center">
       <Image
@@ -132,7 +132,10 @@ const EmptyState = ({ onAddAddress }: { onAddAddress: () => void }) => {
       />
       <CustomText variant="subheader">No Contacts</CustomText>
       <CustomText textAlign="center" style={{ width: "70%" }} mt="m">
-        You need to add your addresses to view a list of addresses here
+        {isExchangeTab 
+          ? "Add your exchange addresses to manage them here. Address fetching will be available soon."
+          : "You need to add your addresses to view a list of addresses here"
+        }
       </CustomText>
         <Box height={30} />
       <CustomButton
@@ -183,18 +186,41 @@ const Addresses = () => {
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
   const { getUserAddress } = useSettings();
-  const { isExchangeAuthenticated, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
+
+  // Handle successful exchange login - navigate to add address
+  const handleExchangeLoginSuccess = () => {
+    console.log("Exchange login successful, navigating to add address");
+    // Small delay to ensure state is updated
+    setTimeout(() => {
+      router.push("/dashboard/home/address-book/add-address");
+    }, 500);
+  };
+
+  const { isExchangeAuthenticated, exchangeUserData, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth(handleExchangeLoginSuccess);
+
+  // Monitor authentication state changes
+  React.useEffect(() => {
+    console.log("Exchange authentication state changed:", {
+      isExchangeAuthenticated,
+      exchangeUserData: exchangeUserData?._id,
+      activeTab
+    });
+  }, [isExchangeAuthenticated, exchangeUserData, activeTab]);
 
   const handleAddAddress = () => {
+    console.log("Add address clicked - Tab:", activeTab, "Exchange Auth:", isExchangeAuthenticated);
+    
     if (activeTab === 'exchange') {
       // For exchange, check if user is exchange authenticated
       if (!isExchangeAuthenticated) {
+        console.log("Exchange not authenticated, showing login bottom sheet");
         // Open exchange login bottom sheet
         showExchangeLogin();
         return;
       }
     }
     
+    console.log("Navigating to add address screen");
     // Navigate to add address
     router.push("/dashboard/home/address-book/add-address");
   };
@@ -215,10 +241,18 @@ const Addresses = () => {
           return;
         }
 
+        // For exchange tab, skip address fetching for now due to token mismatch
+        if (activeTab === 'exchange') {
+          console.log("Exchange tab - skipping address fetch due to token authentication mismatch");
+          setAddressLoading(false);
+          setData([]); // Show empty state
+          return;
+        }
+
         setAddressLoading(true);
         
-        // Use appropriate user ID based on tab
-        const userId = activeTab === 'exchange' ? user?._id : user?._id;
+        // Use appropriate user ID based on tab (only for wallet tab now)
+        const userId = user?._id;
         
         if (!userId) {
           console.log("No user ID available for address fetch");
@@ -235,12 +269,12 @@ const Addresses = () => {
         console.log("Address book error:", error);
         setAddressLoading(false);
         // Only show alert if user is authenticated but request failed
-        if ((activeTab === 'exchange' && isExchangeAuthenticated) || (activeTab === 'wallet' && user?._id)) {
+        if (activeTab === 'wallet' && user?._id) {
           alert("An error occurred while loading addresses");
         }
       }
     })();
-  }, [user?._id, isExchangeAuthenticated, activeTab]);
+  }, [user?._id, isExchangeAuthenticated, exchangeUserData?._id, activeTab]);
 
   return (
     <PageWrapper>
@@ -263,15 +297,18 @@ const Addresses = () => {
 
       <Box flex={1} bg="mainBackgroundColor">
         <FlatList
-          ListEmptyComponent={() => (
-            <>
-              {!addressLoading && (
-                <Box flex={1} mt="5xl" justifyContent="center">
-                  <EmptyState onAddAddress={handleAddAddress} />
-                </Box>
-              )}
-            </>
-          )}
+                  ListEmptyComponent={() => (
+                    <>
+                      {!addressLoading && (
+                        <Box flex={1} mt="5xl" justifyContent="center">
+                          <EmptyState 
+                            onAddAddress={handleAddAddress} 
+                            isExchangeTab={activeTab === 'exchange'} 
+                          />
+                        </Box>
+                      )}
+                    </>
+                  )}
           contentContainerStyle={{ paddingHorizontal: 20 }}
           data={data}
           keyExtractor={(_, index) => index.toString()}

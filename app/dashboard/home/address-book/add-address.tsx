@@ -11,6 +11,7 @@ import {
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { addressValidation } from "@/services/formValidations";
 import { useChains } from "@/src/core/chains/chains-context";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
@@ -34,7 +35,7 @@ const Addresses = () => {
   const { walletChains, getChainBySymbol, isLoading: chainsLoading } = useChains();
   const { createAddressBook } = useSettings();
   const user = useSelector(selectUser);
-  const { isExchangeAuthenticated } = useExchangeAuth();
+  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
   const chainBottomSheetRef = useRef<BottomSheet>(null);
 
   // Get selected chain object
@@ -58,15 +59,46 @@ const Addresses = () => {
 
   const handleSubmit = async () => {
     try {
+      console.log("Add address - Auth check:", {
+        isExchangeAuthenticated,
+        exchangeUserData: exchangeUserData?._id,
+        kycUser: user?._id
+      });
+
       // Check if user is authenticated for exchange operations
       if (!isExchangeAuthenticated) {
         alert("Please log in to your exchange account to save addresses.");
         return;
       }
 
-      // Check if user ID exists
-      if (!user?._id) {
-        alert("User data not available. Please try logging in again.");
+      // Check if exchange user data exists
+      if (!exchangeUserData?._id) {
+        console.log("Exchange user data missing, trying to fetch from SDK...");
+        
+        // Try to fetch exchange user data from SDK
+        try {
+          const sdkUserData = await zapSDKService.getExchangeUser();
+          if (sdkUserData?._id) {
+            console.log("✅ Exchange user data fetched from SDK:", sdkUserData._id);
+            // Use the fetched data for the API call
+            const response = await createAddressBook({
+              body: {
+                name,
+                address,
+                chainId: selectedChain?.chainId,
+              },
+              params: { userId: sdkUserData._id },
+            });
+            console.log("Address created successfully:", response.data);
+            setLoading(false);
+            router.back();
+            return;
+          }
+        } catch (error) {
+          console.log("Failed to fetch exchange user from SDK:", error);
+        }
+        
+        alert("Exchange user data not available. Please try logging in again.");
         return;
       }
 
@@ -76,9 +108,9 @@ const Addresses = () => {
         body: {
           name,
           address,
-          chainId: selectedChain?.chainId || chains[0]?.chainId,
+          chainId: selectedChain?.chainId,
         },
-        params: { userId: user._id },
+        params: { userId: exchangeUserData._id },
       });
       console.log("Address created successfully:", response.data);
       setLoading(false);
