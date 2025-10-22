@@ -7,6 +7,7 @@ import ImportTokenModal from "@/components/Modals/ImportTokenModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
@@ -15,6 +16,7 @@ import { selectAllSupportedTokens } from "@/state/selectors/portfolio.selectors"
 import theme, { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { ICurrency } from "@zap/blockchain-sdk";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -59,8 +61,8 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
 CryptoIcon.displayName = "CryptoIcon";
 
 interface TokenSelectorProps {
-  mode: "send" | "receive";
-  onTokenSelect: (token: ProcessedAsset) => void;
+  mode: "send" | "receive" | "swap";
+  onTokenSelect: (token: ProcessedAsset | any) => void;
 }
 
 const TokenSelector: React.FC<TokenSelectorProps> = ({
@@ -77,6 +79,13 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     (state: AppRootState) => state.portfolio
   );
   const { walletChains } = useChains();
+
+  // Supported currencies for swap mode
+  const {
+    supportedCurrencies,
+    isLoading: isSupportedCurrenciesLoading,
+    searchSupportedCurrencies,
+  } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -109,27 +118,54 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
 
   // Filter tokens based on search and chain
   const filteredTokens = useMemo(() => {
-    let filtered = allTokens || [];
+    let filtered: any[] = [];
+
+    // Use different data source based on mode
+    if (mode === "swap") {
+      filtered =
+        supportedCurrencies
+          .sort((a, b) =>
+            (a.currencyId as Partial<ICurrency>)?.isCrypto ? 1 : -1
+          )
+          .filter(
+            (token) => (token.currencyId as Partial<ICurrency>)?.symbol
+          ) || [];
+    } else {
+      filtered = allTokens || [];
+    }
+
+    // Ensure filtered is always an array
+    if (!Array.isArray(filtered)) {
+      filtered = [];
+    }
 
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (token: ProcessedAsset) =>
-          token.symbol.toLowerCase().includes(query) ||
-          token.name.toLowerCase().includes(query)
-      );
+      if (mode === "swap") {
+        filtered = searchSupportedCurrencies(query);
+      } else {
+        filtered = filtered.filter((token: any) => {
+          const symbol = token.symbol;
+          const name = token.name;
+          return name.includes(query) || symbol.includes(query);
+        });
+      }
     }
 
     // Filter by chain
     if (selectedChain && selectedChain !== "ALL") {
-      filtered = filtered.filter(
-        (token) => token.chainSymbol === selectedChain
-      );
+      filtered = filtered.filter((token: any) => {
+        if (mode === "swap") {
+          return token.chainId?.symbol === selectedChain;
+        } else {
+          return token.chainSymbol === selectedChain;
+        }
+      });
     }
 
     return filtered;
-  }, [allTokens, searchQuery, selectedChain]);
+  }, [mode, allTokens, supportedCurrencies, searchQuery, selectedChain]);
 
   const handleTokenPress = (token: ProcessedAsset) => {
     if (mode === "receive") {
@@ -174,7 +210,12 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     dispatch(setStage("token"));
   }, [dispatch]);
 
-  const title = mode === "send" ? "Send Tokens" : "Receive Tokens";
+  const title =
+    mode === "send"
+      ? "Send Tokens"
+      : mode === "receive"
+      ? "Receive Tokens"
+      : "Select Currency";
 
   // For receive mode, show QR code when stage is "qrcode"
   if (mode === "receive" && stage === "qrcode" && selectedToken) {
@@ -193,11 +234,13 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         <CustomText variant="header" fontSize={20} color="headerTextColor">
           {title}
         </CustomText>
-        <Pressable onPress={() => setShowImportModal(true)}>
-          <CustomText color="secondaryColor" fontSize={14}>
-            Import Token
-          </CustomText>
-        </Pressable>
+        {mode !== "swap" && (
+          <Pressable onPress={() => setShowImportModal(true)}>
+            <CustomText color="secondaryColor" fontSize={14}>
+              Import Token
+            </CustomText>
+          </Pressable>
+        )}
       </Box>
 
       {/* Search Bar */}
@@ -318,7 +361,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           color="disabledTextColor"
           marginBottom="s"
         >
-          Your tokens ({filteredTokens.length})
+          Your tokens ({(filteredTokens || []).length})
         </CustomText>
 
         <ScrollView
@@ -333,14 +376,16 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           }}
           showsVerticalScrollIndicator={false}
         >
-          {isPortfolioLoading ? (
+          {(
+            mode === "swap" ? isSupportedCurrenciesLoading : isPortfolioLoading
+          ) ? (
             <Box>
               {/* Skeleton loaders for token cards */}
               {Array.from({ length: 5 }).map((_, index) => (
                 <TokenCardSkeleton key={index} />
               ))}
             </Box>
-          ) : filteredTokens.length === 0 ? (
+          ) : (filteredTokens || []).length === 0 ? (
             <Box
               alignItems="center"
               justifyContent="center"
@@ -351,81 +396,105 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               </CustomText>
             </Box>
           ) : (
-            filteredTokens.map((token: ProcessedAsset, index: number) => (
-              <Pressable
-                key={`${token.symbol}-${token.chainId}-${index}`}
-                onPress={() => handleTokenPress(token)}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 12,
-                  paddingHorizontal: 8,
-                  borderRadius: 8,
-                  marginBottom: 4,
-                })}
-              >
-                <CryptoIcon image={token.image} />
+            (filteredTokens || []).map((token: any, index: number) => {
+              const isSwap = mode === "swap";
+              const isCrypto = isSwap ? token.currencyId?.isCrypto : true;
+              const alpha3 = isSwap ? token.currencyId?.code : null;
+              const tokenSymbol = isSwap
+                ? isCrypto
+                  ? token.currencyId?.symbol
+                  : alpha3
+                : token.symbol;
+              const tokenName = token.currencyId?.name || token.name;
+              const tokenImage = isSwap
+                ? token.image || token.currencyId?.logo
+                : token.image;
+              const chainName = isSwap ? token.chainId?.name : token.chainName;
+              const balance = isSwap ? 0 : token.balance || 0;
+              const usdValue = isSwap ? 0 : token.totalUsdValue || 0;
 
-                <Box flex={1}>
-                  <Box flexDirection="row" alignItems="center" marginBottom="s">
+              return (
+                <Pressable
+                  key={`${tokenSymbol}-${token._id || index}-${index}`}
+                  onPress={() => handleTokenPress(token)}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    marginBottom: 4,
+                  })}
+                >
+                  <CryptoIcon image={tokenImage} />
+
+                  <Box flex={1}>
+                    <Box
+                      flexDirection="row"
+                      alignItems="center"
+                      marginBottom="s"
+                    >
+                      <CustomText
+                        variant="body"
+                        fontSize={16}
+                        color="headerTextColor"
+                      >
+                        {tokenSymbol}
+                      </CustomText>
+                      {chainName && (
+                        <Box
+                          backgroundColor="modalBackgroundColor"
+                          borderRadius={8}
+                          paddingHorizontal="s"
+                          paddingVertical="s"
+                          marginLeft="s"
+                        >
+                          <CustomText
+                            variant="body"
+                            fontSize={10}
+                            color="disabledTextColor"
+                          >
+                            {chainName}
+                          </CustomText>
+                        </Box>
+                      )}
+                    </Box>
                     <CustomText
                       variant="body"
-                      fontSize={16}
+                      fontSize={12}
+                      color="placeholderTextColor"
+                    >
+                      {tokenName}
+                    </CustomText>
+                  </Box>
+
+                  <Box alignItems="flex-end">
+                    <CustomText
+                      variant="body"
+                      fontSize={14}
                       color="headerTextColor"
                     >
-                      {token.symbol}
+                      {mode === "swap"
+                        ? "Available"
+                        : `${formatNumber(balance, 4)} ${tokenSymbol}`}
                     </CustomText>
-                    {token.chainName && (
-                      <Box
-                        backgroundColor="modalBackgroundColor"
-                        borderRadius={8}
-                        paddingHorizontal="s"
-                        paddingVertical="s"
-                        marginLeft="s"
-                      >
-                        <CustomText
-                          variant="body"
-                          fontSize={10}
-                          color="disabledTextColor"
-                        >
-                          {token.chainName}
-                        </CustomText>
-                      </Box>
-                    )}
+                    <CustomText
+                      variant="body"
+                      fontSize={12}
+                      color="disabledTextColor"
+                      mt="s"
+                    >
+                      {mode === "swap" ? "Exchange" : formatCurrency(usdValue)}
+                    </CustomText>
                   </Box>
-                  <CustomText
-                    variant="body"
-                    fontSize={12}
-                    color="placeholderTextColor"
-                  >
-                    {token.name}
-                  </CustomText>
-                </Box>
 
-                <Box alignItems="flex-end">
-                  <CustomText
-                    variant="body"
-                    fontSize={14}
-                    color="headerTextColor"
-                  >
-                    {formatNumber(token.balance, 4)} {token.symbol}
-                  </CustomText>
-                  <CustomText
-                    variant="body"
-                    fontSize={12}
-                    color="disabledTextColor"
-                    mt="s"
-                  >
-                    {formatCurrency(token.totalUsdValue)}
-                  </CustomText>
-                </Box>
-
-                <Box marginLeft="s">
-                  <ArrowRight2 size={16} color={theme.colors.white} />
-                </Box>
-              </Pressable>
-            ))
+                  <Box marginLeft="s">
+                    <ArrowRight2 size={16} color={theme.colors.white} />
+                  </Box>
+                </Pressable>
+              );
+            })
           )}
         </ScrollView>
       </Box>

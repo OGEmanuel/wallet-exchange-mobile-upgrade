@@ -12,8 +12,8 @@ import Box from "../general/Box";
 import TokenSelector from "./TokenSelector";
 
 interface TokenSelectorBottomSheetProps {
-  mode: "send" | "receive";
-  onTokenSelect?: (token: ProcessedAsset) => void;
+  mode: "send" | "receive" | "swap";
+  onTokenSelect?: (token: ProcessedAsset | any) => void;
   onClose?: () => void;
 }
 
@@ -36,21 +36,21 @@ const TokenSelectorBottomSheet = forwardRef<
   );
 
   const handleTokenSelect = useCallback(
-    (token: ProcessedAsset) => {
+    (token: ProcessedAsset | any) => {
       if (onTokenSelect) {
         onTokenSelect(token);
       }
 
       // Handle based on mode
-      if (mode === "send") {
-        // For send mode, just call onTokenSelect - parent will handle closing
+      if (mode === "send" || mode === "swap") {
+        // For send/swap mode, just call onTokenSelect - parent will handle closing
         (ref as React.RefObject<BottomSheet>).current?.close();
       } else {
         // For receive, switch to QR code stage within the same bottom sheet
         dispatch(setStage("qrcode"));
       }
     },
-    [mode, onTokenSelect, dispatch]
+    [mode, onTokenSelect, dispatch, ref]
   );
 
   const handleModalClose = useCallback(() => {

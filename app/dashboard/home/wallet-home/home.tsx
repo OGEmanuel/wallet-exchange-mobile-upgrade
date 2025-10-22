@@ -18,11 +18,13 @@ import BalanceCard from "@/components/dashboard/BalanceCard";
 import StickyHeader from "@/components/dashboard/StickyHeader";
 import WalletSelectorHeader from "@/components/dashboard/WalletSelectorHeader";
 import { AppBar, CustomButton } from "@/components/general";
+import WalletEmptyScreen from "@/components/wallet/WalletEmptyScreen";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { PortfolioService } from "@/services/portfolio.service";
 import { useChains } from "@/src/core/chains/chains-context";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import {
   setAllSupportedTokens,
   setPortfolioError,
@@ -43,7 +45,7 @@ const Home = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { walletChains } = useChains();
-  const { supportedCurrencies } = useSupportedCurrencies();
+  const { defaultTokens } = useSupportedCurrencies();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
@@ -51,7 +53,7 @@ const Home = () => {
   // Redux state
   const dispatch = useDispatch();
   const processedPortfolio = useSelector(selectProcessedPortfolio);
-
+  const { marketTokens } = useMarket();
   const {
     retryPendingWallets,
     mainUserWalletGroup,
@@ -60,10 +62,11 @@ const Home = () => {
     isInitializing,
     isAuthenticating,
     isRefreshingPortfolio,
-    isCreatingWallet
+    isCreatingWallet,
   } = useWallet();
 
-  const { getCurrentWalletBalance, getCurrentWalletEnabledBalance } = useAggregatedBalances();
+  const { getCurrentWalletBalance, getCurrentWalletEnabledBalance } =
+    useAggregatedBalances();
 
   // Initialize wallet and portfolio on mount only
   useEffect(() => {
@@ -114,12 +117,19 @@ const Home = () => {
     if (portfolio?.mainWalletGroupPortfolio) {
       const processPortfolio = async () => {
         try {
+          let userTokenList = portfolio.userTokenList || [];
+          if (userTokenList.data && userTokenList.data.length > 0) {
+            userTokenList = userTokenList.data;
+          }
           dispatch(setPortfolioLoading(true));
           dispatch(setPortfolioError(null));
-          dispatch(setRawTokenList(portfolio.userTokenList || []));
+          dispatch(setRawTokenList(userTokenList));
 
           // Process with safe service to prevent multiple simultaneous processing
-          const processed = PortfolioService.processPortfolioData(portfolio);
+          const processed = PortfolioService.processPortfolioData(
+            portfolio,
+            marketTokens || []
+          );
 
           if (!processed) {
             console.warn("⚠️ Portfolio processing was skipped or failed");
@@ -131,7 +141,8 @@ const Home = () => {
           const processedTokens = PortfolioService.processTokenList(
             portfolio,
             walletChains,
-            supportedCurrencies
+            defaultTokens,
+            marketTokens || []
           );
 
           console.log("🔍 Sample processed token:", processedTokens?.[0]);
@@ -204,12 +215,18 @@ const Home = () => {
 
   console.log(processedPortfolio?.totalUsdValue);
 
+  if (!mainUserWalletGroup) {
+    return <WalletEmptyScreen />;
+  }
+
   return (
     <PageWrapper>
       <StickyHeader
         isVisible={showStickyHeader}
         portfolioValue={
-          getCurrentWalletEnabledBalance() || processedPortfolio?.totalUsdValue || 0
+          getCurrentWalletEnabledBalance() ||
+          processedPortfolio?.totalUsdValue ||
+          0
         }
         portfolioChange={0} // We don't have change data from the API
         portfolioChangePercentage={0} // We don't have change data from the API
@@ -426,7 +443,11 @@ const Home = () => {
           router.push(`/dashboard/home/send-token?tokenId=${token.id}`);
         }}
       />
-      <TokenSelectorBottomSheet key="receive-token-selector" ref={recieveTokenRef} mode="receive" />
+      <TokenSelectorBottomSheet
+        key="receive-token-selector"
+        ref={recieveTokenRef}
+        mode="receive"
+      />
     </PageWrapper>
   );
 };

@@ -383,14 +383,13 @@ authority.`}
         >
           <ArrowDown2 size={24} color={theme.colors.white} />
         </TouchableOpacity>
-       
       </View>
       <CustomButton
-          text="Accept"
-          onPress={onAccept}
-          width="100%"
-          borderRadius={80}
-        />
+        text="Accept"
+        onPress={onAccept}
+        width="100%"
+        borderRadius={80}
+      />
       {children}
     </View>
   );
