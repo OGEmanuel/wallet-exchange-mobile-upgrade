@@ -561,6 +561,30 @@ class ZapSDKService {
     );
   }
 
+  public async getBanks() {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().banks.listAll(),
+      'getBanks'
+    );
+  }
+
+  public async getBankAccounts(userId: string, options?: { limit?: number, offset?: number, useCache?: boolean }) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().bankAccounts.getUserBankAccounts(userId, options),
+      'getBankAccounts'
+    );
+  }
+
+  public async resolveBankAccount(bankId: string, accountNumber: string) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().banks.resolveAccount({
+        bankId,
+        accountNumber,
+      }),
+      'resolveBankAccount'
+    );
+  }
+
   public async sendTransaction(params: SendTransactionRequest) {
     return this.executeWithNetworkHandlingNoAuth(
       () => this.getSDK().sendTransaction(
