@@ -5,8 +5,8 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { useAddressBookSDK } from "@/hooks/useAddressBookSDK";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -148,9 +148,15 @@ const EmptyState = ({ onAddAddress, isExchangeTab = false }: { onAddAddress: () 
   );
 };
 
-const ItemCard = () => {
+const ItemCard = ({ item }: { item: any }) => {
   const theme = useTheme<Theme>();
   
+  const formatAddress = (address: string) => {
+    if (!address) return '';
+    if (address.length <= 10) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
     <Box
       flexDirection="row"
@@ -167,10 +173,15 @@ const ItemCard = () => {
       }}
     >
       <Box flex={1}>
-        <CustomText variant="bodyBold">John Doe</CustomText>
+        <CustomText variant="bodyBold">{item.name || 'Unnamed'}</CustomText>
         <CustomText variant="body" color="disabledTextColor">
-          0x1234...5678
+          {formatAddress(item.address)}
         </CustomText>
+        {item.chainName && (
+          <CustomText variant="body" color="disabledTextColor" fontSize={12}>
+            {item.chainName}
+          </CustomText>
+        )}
       </Box>
       <MoreVertical size={25} color={theme.colors.bodyTextColor} />
     </Box>
@@ -179,13 +190,11 @@ const ItemCard = () => {
 
 const Addresses = () => {
   // states
-  const [addressLoading, setAddressLoading] = React.useState(false);
-  const [data, setData] = React.useState([]);
   const [activeTab, setActiveTab] = useState<'exchange' | 'wallet'>('exchange');
 
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
-  const { getUserAddress } = useSettings();
+  const { getUserAddresses, addresses, isLoading, error } = useAddressBookSDK();
 
   // Handle successful exchange login - navigate to add address
   const handleExchangeLoginSuccess = () => {
@@ -208,7 +217,7 @@ const Addresses = () => {
   }, [isExchangeAuthenticated, exchangeUserData, activeTab]);
 
   const handleAddAddress = () => {
-    console.log("Add address clicked - Tab:", activeTab, "Exchange Auth:", isExchangeAuthenticated);
+    console.log("Add address clicked - Tab:", activeTab, "Exchange Auth:", isExchangeAuthenticated, "Wallet Auth:", user?._id);
     
     if (activeTab === 'exchange') {
       // For exchange, check if user is exchange authenticated
@@ -216,6 +225,13 @@ const Addresses = () => {
         console.log("Exchange not authenticated, showing login bottom sheet");
         // Open exchange login bottom sheet
         showExchangeLogin();
+        return;
+      }
+    } else if (activeTab === 'wallet') {
+      // For wallet, check if user is wallet authenticated
+      if (!user?._id) {
+        console.log("Wallet not authenticated, showing login prompt");
+        alert("Please log in to your wallet account to save addresses.");
         return;
       }
     }
@@ -231,50 +247,22 @@ const Addresses = () => {
         // Only try to fetch addresses if user is authenticated for the current tab
         if (activeTab === 'exchange' && !isExchangeAuthenticated) {
           console.log("Exchange not authenticated, showing empty state");
-          setAddressLoading(false);
           return;
         }
 
         if (activeTab === 'wallet' && !user?._id) {
           console.log("Wallet not authenticated, showing empty state");
-          setAddressLoading(false);
           return;
         }
 
-        // For exchange tab, skip address fetching for now due to token mismatch
-        if (activeTab === 'exchange') {
-          console.log("Exchange tab - skipping address fetch due to token authentication mismatch");
-          setAddressLoading(false);
-          setData([]); // Show empty state
-          return;
-        }
-
-        setAddressLoading(true);
-        
-        // Use appropriate user ID based on tab (only for wallet tab now)
-        const userId = user?._id;
-        
-        if (!userId) {
-          console.log("No user ID available for address fetch");
-          setAddressLoading(false);
-          return;
-        }
-
-        const response = await getUserAddress(userId);
-        console.log("Address book data:", response.data);
-        // to avoid duplicates
-        setData([...data, ...(response.data as any)] as []);
-        setAddressLoading(false);
+        console.log(`🔍 SDK: Fetching addresses for ${activeTab} tab`);
+        await getUserAddresses(activeTab);
       } catch (error) {
         console.log("Address book error:", error);
-        setAddressLoading(false);
-        // Only show alert if user is authenticated but request failed
-        if (activeTab === 'wallet' && user?._id) {
-          alert("An error occurred while loading addresses");
-        }
+        // Error is handled by the hook
       }
     })();
-  }, [user?._id, isExchangeAuthenticated, exchangeUserData?._id, activeTab]);
+  }, [user?._id, isExchangeAuthenticated, exchangeUserData?._id, activeTab, getUserAddresses]);
 
   return (
     <PageWrapper>
@@ -297,25 +285,25 @@ const Addresses = () => {
 
       <Box flex={1} bg="mainBackgroundColor">
         <FlatList
-                  ListEmptyComponent={() => (
-                    <>
-                      {!addressLoading && (
-                        <Box flex={1} mt="5xl" justifyContent="center">
-                          <EmptyState 
-                            onAddAddress={handleAddAddress} 
-                            isExchangeTab={activeTab === 'exchange'} 
-                          />
-                        </Box>
-                      )}
-                    </>
-                  )}
+          ListEmptyComponent={() => (
+            <>
+              {!isLoading && (
+                <Box flex={1} mt="5xl" justifyContent="center">
+                  <EmptyState 
+                    onAddAddress={handleAddAddress} 
+                    isExchangeTab={activeTab === 'exchange'} 
+                  />
+                </Box>
+              )}
+            </>
+          )}
           contentContainerStyle={{ paddingHorizontal: 20 }}
-          data={data}
-          keyExtractor={(_, index) => index.toString()}
-          renderItem={({ item }) => <ItemCard />}
+          data={addresses}
+          keyExtractor={(item, index) => item._id || index.toString()}
+          renderItem={({ item }) => <ItemCard item={item} />}
           ListFooterComponent={() => (
             <>
-              {addressLoading && (
+              {isLoading && (
                 <Box
                   width={"100%"}
                   height={100}

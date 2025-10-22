@@ -2,17 +2,16 @@ import { ThemedScanIcon } from "@/assets/svg/wallet-icons-components";
 import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import {
-    AppBar,
-    Box,
-    CustomButton,
-    CustomText,
-    PageWrapper,
+  AppBar,
+  Box,
+  CustomButton,
+  CustomText,
+  PageWrapper,
 } from "@/components/general";
+import { useAddressBookSDK } from "@/hooks/useAddressBookSDK";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { addressValidation } from "@/services/formValidations";
 import { useChains } from "@/src/core/chains/chains-context";
-import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -33,7 +32,7 @@ const Addresses = () => {
 
   const theme = useTheme<Theme>();
   const { walletChains, getChainBySymbol, isLoading: chainsLoading } = useChains();
-  const { createAddressBook } = useSettings();
+  const { createAddressBook } = useAddressBookSDK();
   const user = useSelector(selectUser);
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
   const chainBottomSheetRef = useRef<BottomSheet>(null);
@@ -41,14 +40,19 @@ const Addresses = () => {
   // Get selected chain object
   const selectedChain = selectedChainSymbol ? getChainBySymbol(selectedChainSymbol) : null;
 
+
   // Set default chain when chains are loaded
   React.useEffect(() => {
+    console.log("Chains loaded:", walletChains.length, "Selected chain:", selectedChainSymbol);
     if (walletChains.length > 0 && !selectedChainSymbol) {
       // Default to Ethereum if available, otherwise first chain
       const defaultChain = walletChains.find(chain => chain.symbol === "ETH") || walletChains[0];
+      console.log("Setting default chain:", defaultChain.symbol);
       setSelectedChainSymbol(defaultChain.symbol);
     }
   }, [walletChains, selectedChainSymbol]);
+
+  // Note: Authentication check is handled in handleSubmit to allow UI interaction
 
   const handlePaste = async () => {
     const str = await getStringAsync();
@@ -65,54 +69,36 @@ const Addresses = () => {
         kycUser: user?._id
       });
 
-      // Check if user is authenticated for exchange operations
-      if (!isExchangeAuthenticated) {
-        alert("Please log in to your exchange account to save addresses.");
+      // Check if user is authenticated for either exchange or wallet
+      if (!isExchangeAuthenticated && !user?._id) {
+        alert("Please log in to save addresses. You will be redirected to the address book.");
+        router.back();
         return;
       }
 
-      // Check if exchange user data exists
-      if (!exchangeUserData?._id) {
-        console.log("Exchange user data missing, trying to fetch from SDK...");
-        
-        // Try to fetch exchange user data from SDK
-        try {
-          const sdkUserData = await zapSDKService.getExchangeUser();
-          if (sdkUserData?._id) {
-            console.log("✅ Exchange user data fetched from SDK:", sdkUserData._id);
-            // Use the fetched data for the API call
-            const response = await createAddressBook({
-              body: {
-                name,
-                address,
-                chainId: selectedChain?.chainId,
-              },
-              params: { userId: sdkUserData._id },
-            });
-            console.log("Address created successfully:", response.data);
-            setLoading(false);
-            router.back();
-            return;
-          }
-        } catch (error) {
-          console.log("Failed to fetch exchange user from SDK:", error);
-        }
-        
-        alert("Exchange user data not available. Please try logging in again.");
+      // Determine which tab we're working with based on authentication
+      let activeTab: 'exchange' | 'wallet' = 'wallet';
+      
+      if (isExchangeAuthenticated && exchangeUserData?._id) {
+        activeTab = 'exchange';
+      } else if (user?._id) {
+        activeTab = 'wallet';
+      } else {
+        alert("Authentication error. Please try logging in again.");
+        router.back();
         return;
       }
 
       setLoading(true);
       const validation = addressValidation.parse({ name, address });
-      const response = await createAddressBook({
-        body: {
-          name,
-          address,
-          chainId: selectedChain?.chainId,
-        },
-        params: { userId: exchangeUserData._id },
+      
+      const response = await createAddressBook(activeTab, {
+        name,
+        address,
+        chainId: selectedChain?.chainId?.toString() || '',
       });
-      console.log("Address created successfully:", response.data);
+      
+      console.log("Address created successfully:", response);
       setLoading(false);
       // Navigate back after successful creation
       router.back();
@@ -142,7 +128,10 @@ const Addresses = () => {
           <CustomInputWithoutForm
             placeholder="Choose Name"
             value={name}
-            onChange={(e) => setName(e)}
+            onChange={(e) => {
+              console.log("🔍 Name input changed:", e);
+              setName(e);
+            }}
             placeholderTextColor={theme.colors.disabledTextColor}
             boxStyle={{ borderWidth: 0, marginBottom: 10 }}
           />
@@ -167,7 +156,22 @@ const Addresses = () => {
               marginBottom: 10,
             }}
             onPress={() => {
-              chainBottomSheetRef.current?.snapToIndex(0);
+              console.log("🔍 Chain selector pressed!");
+              console.log("Chains available:", walletChains.length);
+              console.log("Chains loading:", chainsLoading);
+              console.log("Bottom sheet ref:", chainBottomSheetRef.current);
+              
+              if (chainBottomSheetRef.current) {
+                console.log("🚀 Opening bottom sheet...");
+                try {
+                  chainBottomSheetRef.current.snapToIndex(0);
+                  console.log("✅ Bottom sheet opened successfully");
+                } catch (error) {
+                  console.error("❌ Error opening bottom sheet:", error);
+                }
+              } else {
+                console.error("❌ Bottom sheet ref is null!");
+              }
             }}
             disabled={chainsLoading || walletChains.length === 0}
           >
@@ -180,6 +184,9 @@ const Addresses = () => {
                     ? "Select chain"
                     : "No chains available"}
             </CustomText>
+            <CustomText fontSize={10} color="disabledTextColor">
+              Debug: {chainsLoading ? "Loading" : "Loaded"} | {walletChains.length} chains
+            </CustomText>
             <ChevronDown 
               color={chainsLoading || walletChains.length === 0 
                 ? theme.colors.disabledTextColor 
@@ -190,11 +197,17 @@ const Addresses = () => {
           <CustomInputWithoutForm
             placeholder="Enter address, domain or identity"
             value={address}
-            onChange={(e) => setAddress(e)}
+            onChange={(e) => {
+              console.log("🔍 Address input changed:", e);
+              setAddress(e);
+            }}
             placeholderTextColor={theme.colors.disabledTextColor}
             boxStyle={{ borderWidth: 0, marginBottom: 10 }}
             iconRight={
-              <CustomText onPress={() => handlePaste()}>Paste</CustomText>
+              <CustomText onPress={() => {
+                console.log("🔍 Paste button pressed");
+                handlePaste();
+              }}>Paste</CustomText>
             }
           />
           <Box
@@ -218,7 +231,10 @@ const Addresses = () => {
           isLoading={loading || chainsLoading}
           disabled={loading || chainsLoading || !selectedChain}
           disabledColor={theme.colors.disabledTextColor}
-          onPress={() => handleSubmit()}
+          onPress={() => {
+            console.log("🔍 Submit button pressed");
+            handleSubmit();
+          }}
         />
       </Box>
       
@@ -226,6 +242,7 @@ const Addresses = () => {
       <SelectChainBottomSheet
         ref={chainBottomSheetRef}
         onChainSelect={(chainSymbol) => {
+          console.log("Chain selected:", chainSymbol);
           setSelectedChainSymbol(chainSymbol);
           chainBottomSheetRef.current?.close();
         }}
