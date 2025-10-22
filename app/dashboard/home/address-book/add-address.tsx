@@ -1,4 +1,5 @@
 import { ThemedScanIcon } from "@/assets/svg/wallet-icons-components";
+import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import {
     AppBar,
@@ -13,11 +14,12 @@ import { useChains } from "@/src/core/chains/chains-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { getStringAsync } from "expo-clipboard";
 import { router } from "expo-router";
 import { ChevronDown, ChevronLeft } from "lucide-react-native";
-import React from "react";
+import React, { useRef } from "react";
 import { Pressable } from "react-native";
 import { useSelector } from "react-redux";
 
@@ -25,21 +27,27 @@ const Addresses = () => {
   // states
   const [name, setName] = React.useState("");
   const [address, setAddress] = React.useState("");
-  const [selectedChain, setSelectedChain] = React.useState<any>(null);
+  const [selectedChainSymbol, setSelectedChainSymbol] = React.useState<string>("");
   const [loading, setLoading] = React.useState(false);
 
   const theme = useTheme<Theme>();
-  const { chains, getChainById, isLoading: chainsLoading } = useChains();
+  const { walletChains, getChainBySymbol, isLoading: chainsLoading } = useChains();
   const { createAddressBook } = useSettings();
   const user = useSelector(selectUser);
   const { isExchangeAuthenticated } = useExchangeAuth();
+  const chainBottomSheetRef = useRef<BottomSheet>(null);
+
+  // Get selected chain object
+  const selectedChain = selectedChainSymbol ? getChainBySymbol(selectedChainSymbol) : null;
 
   // Set default chain when chains are loaded
   React.useEffect(() => {
-    if (chains.length > 0 && !selectedChain) {
-      setSelectedChain(chains[0]);
+    if (walletChains.length > 0 && !selectedChainSymbol) {
+      // Default to Ethereum if available, otherwise first chain
+      const defaultChain = walletChains.find(chain => chain.symbol === "ETH") || walletChains[0];
+      setSelectedChainSymbol(defaultChain.symbol);
     }
-  }, [chains, selectedChain]);
+  }, [walletChains, selectedChainSymbol]);
 
   const handlePaste = async () => {
     const str = await getStringAsync();
@@ -127,26 +135,21 @@ const Addresses = () => {
               marginBottom: 10,
             }}
             onPress={() => {
-              // Cycle through available chains
-              if (chains.length > 0) {
-                const currentIndex = chains.findIndex(chain => chain.chainId === selectedChain?.chainId);
-                const nextIndex = (currentIndex + 1) % chains.length;
-                setSelectedChain(chains[nextIndex]);
-              }
+              chainBottomSheetRef.current?.snapToIndex(0);
             }}
-            disabled={chainsLoading || chains.length === 0}
+            disabled={chainsLoading || walletChains.length === 0}
           >
             <CustomText>
               {chainsLoading 
                 ? "Loading chains..." 
                 : selectedChain
                   ? selectedChain.name
-                  : chains.length > 0 
-                    ? chains[0].name 
+                  : walletChains.length > 0 
+                    ? "Select chain"
                     : "No chains available"}
             </CustomText>
             <ChevronDown 
-              color={chainsLoading || chains.length === 0 
+              color={chainsLoading || walletChains.length === 0 
                 ? theme.colors.disabledTextColor 
                 : theme.colors.bodyTextColor} 
             />
@@ -186,6 +189,15 @@ const Addresses = () => {
           onPress={() => handleSubmit()}
         />
       </Box>
+      
+      {/* Chain Selection Bottom Sheet */}
+      <SelectChainBottomSheet
+        ref={chainBottomSheetRef}
+        onChainSelect={(chainSymbol) => {
+          setSelectedChainSymbol(chainSymbol);
+          chainBottomSheetRef.current?.close();
+        }}
+      />
     </PageWrapper>
   );
 };
