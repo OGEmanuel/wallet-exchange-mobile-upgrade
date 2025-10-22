@@ -183,13 +183,13 @@ const Addresses = () => {
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
   const { getUserAddress } = useSettings();
-  const { showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
+  const { isExchangeAuthenticated, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
 
   const handleAddAddress = () => {
     if (activeTab === 'exchange') {
-      // For exchange, check if user is logged in
-      if (!user?._id) {
-        // Open login bottom sheet
+      // For exchange, check if user is exchange authenticated
+      if (!isExchangeAuthenticated) {
+        // Open exchange login bottom sheet
         showExchangeLogin();
         return;
       }
@@ -202,16 +202,32 @@ const Addresses = () => {
   React.useEffect(() => {
     (async () => {
       try {
-        // Only try to fetch addresses if user is authenticated
-        if (!user?._id) {
-          console.log("No user ID available, showing empty state");
+        // Only try to fetch addresses if user is authenticated for the current tab
+        if (activeTab === 'exchange' && !isExchangeAuthenticated) {
+          console.log("Exchange not authenticated, showing empty state");
+          setAddressLoading(false);
+          return;
+        }
+
+        if (activeTab === 'wallet' && !user?._id) {
+          console.log("Wallet not authenticated, showing empty state");
           setAddressLoading(false);
           return;
         }
 
         setAddressLoading(true);
-        const response = await getUserAddress(user._id);
-        console.log("This is the data", response.data);
+        
+        // Use appropriate user ID based on tab
+        const userId = activeTab === 'exchange' ? user?._id : user?._id;
+        
+        if (!userId) {
+          console.log("No user ID available for address fetch");
+          setAddressLoading(false);
+          return;
+        }
+
+        const response = await getUserAddress(userId);
+        console.log("Address book data:", response.data);
         // to avoid duplicates
         setData([...data, ...(response.data as any)] as []);
         setAddressLoading(false);
@@ -219,12 +235,12 @@ const Addresses = () => {
         console.log("Address book error:", error);
         setAddressLoading(false);
         // Only show alert if user is authenticated but request failed
-        if (user?._id) {
+        if ((activeTab === 'exchange' && isExchangeAuthenticated) || (activeTab === 'wallet' && user?._id)) {
           alert("An error occurred while loading addresses");
         }
       }
     })();
-  }, [user?._id]);
+  }, [user?._id, isExchangeAuthenticated, activeTab]);
 
   return (
     <PageWrapper>

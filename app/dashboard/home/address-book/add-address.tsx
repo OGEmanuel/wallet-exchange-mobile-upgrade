@@ -7,6 +7,7 @@ import {
     CustomText,
     PageWrapper,
 } from "@/components/general";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { addressValidation } from "@/services/formValidations";
 import { useChains } from "@/src/core/chains/chains-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
@@ -28,9 +29,17 @@ const Addresses = () => {
   const [loading, setLoading] = React.useState(false);
 
   const theme = useTheme<Theme>();
-  const { chains, getChainById } = useChains();
+  const { chains, getChainById, isLoading: chainsLoading } = useChains();
   const { createAddressBook } = useSettings();
   const user = useSelector(selectUser);
+  const { isExchangeAuthenticated } = useExchangeAuth();
+
+  // Set default chain when chains are loaded
+  React.useEffect(() => {
+    if (chains.length > 0 && !selectedChain) {
+      setSelectedChain(chains[0]);
+    }
+  }, [chains, selectedChain]);
 
   const handlePaste = async () => {
     const str = await getStringAsync();
@@ -41,9 +50,15 @@ const Addresses = () => {
 
   const handleSubmit = async () => {
     try {
-      // Check if user ID exists before making API call
+      // Check if user is authenticated for exchange operations
+      if (!isExchangeAuthenticated) {
+        alert("Please log in to your exchange account to save addresses.");
+        return;
+      }
+
+      // Check if user ID exists
       if (!user?._id) {
-        alert("Please log in to save addresses to your address book.");
+        alert("User data not available. Please try logging in again.");
         return;
       }
 
@@ -57,7 +72,7 @@ const Addresses = () => {
         },
         params: { userId: user._id },
       });
-      console.log(response.data);
+      console.log("Address created successfully:", response.data);
       setLoading(false);
       // Navigate back after successful creation
       router.back();
@@ -112,20 +127,29 @@ const Addresses = () => {
               marginBottom: 10,
             }}
             onPress={() => {
-              // Simple chain selection - use first available chain
+              // Cycle through available chains
               if (chains.length > 0) {
-                setSelectedChain(chains[0]);
+                const currentIndex = chains.findIndex(chain => chain.chainId === selectedChain?.chainId);
+                const nextIndex = (currentIndex + 1) % chains.length;
+                setSelectedChain(chains[nextIndex]);
               }
             }}
+            disabled={chainsLoading || chains.length === 0}
           >
             <CustomText>
-              {selectedChain
-                ? selectedChain.name
-                : chains.length > 0 
-                  ? chains[0].name 
-                  : "Select chain"}
+              {chainsLoading 
+                ? "Loading chains..." 
+                : selectedChain
+                  ? selectedChain.name
+                  : chains.length > 0 
+                    ? chains[0].name 
+                    : "No chains available"}
             </CustomText>
-            <ChevronDown color={theme.colors.bodyTextColor} />
+            <ChevronDown 
+              color={chainsLoading || chains.length === 0 
+                ? theme.colors.disabledTextColor 
+                : theme.colors.bodyTextColor} 
+            />
           </Pressable>
 
           <CustomInputWithoutForm
@@ -156,8 +180,8 @@ const Addresses = () => {
           width={"100%"}
           borderRadius={50}
           text="Add address"
-          isLoading={loading}
-          disabled={loading}
+          isLoading={loading || chainsLoading}
+          disabled={loading || chainsLoading || !selectedChain}
           disabledColor={theme.colors.disabledTextColor}
           onPress={() => handleSubmit()}
         />
