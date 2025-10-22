@@ -60,7 +60,8 @@ export class TokenManager {
       const tokenData = await this.getToken();
       
       if (!tokenData?.refreshToken) {
-        throw new Error('No refresh token available');
+        console.warn('No refresh token available - user may need to log in again');
+        return null;
       }
 
       // Check if token is expired and needs refresh
@@ -94,7 +95,14 @@ export class TokenManager {
     } catch (error) {
       console.error(`Token refresh failed (attempt ${retryCount + 1}):`, error);
       
-      // Retry logic with exponential backoff
+      // Don't retry if there's no refresh token - user needs to log in again
+      if (error instanceof Error && error.message.includes('No refresh token available')) {
+        console.warn('No refresh token available - user needs to log in again');
+        await this.clearTokens();
+        return null;
+      }
+      
+      // Retry logic with exponential backoff for other errors
       if (retryCount < this.maxRetries) {
         const delay = this.retryDelay * Math.pow(2, retryCount);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -103,7 +111,7 @@ export class TokenManager {
       
       // Clear invalid tokens on final failure
       await this.clearTokens();
-      throw error;
+      return null; // Return null instead of throwing error
     }
   }
 

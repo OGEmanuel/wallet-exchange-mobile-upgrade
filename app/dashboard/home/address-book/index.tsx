@@ -5,6 +5,7 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
@@ -12,12 +13,116 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { ChevronLeft, MoreVertical } from "lucide-react-native";
-import React from "react";
-import { ActivityIndicator } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Pressable, View } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
-const EmptyState = () => {
+// Tab component matching ActivityTabar style
+const AddressBookTabar = ({ 
+  activeTab, 
+  onPress 
+}: { 
+  activeTab: "exchange" | "wallet"; 
+  onPress: (tab: "exchange" | "wallet") => void; 
+}) => {
+  const theme = useTheme<Theme>();
+  const slideAnim = useRef(
+    new Animated.Value(activeTab === "exchange" ? 0 : 1)
+  ).current;
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: activeTab === "exchange" ? 0 : 1,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [activeTab, slideAnim]);
+
+  const handleTabPress = (tab: "exchange" | "wallet") => {
+    onPress(tab);
+  };
+
+  return (
+    <Box
+      width={"100%"}
+      height={40}
+      bg="secondaryBackgroundColor"
+      borderRadius={40}
+      alignItems="center"
+      flexDirection="row"
+      px="s"
+      position="relative"
+    >
+      {/* Sliding background */}
+      <Animated.View
+        style={{
+          position: "absolute",
+          width: "50%",
+          height: 32,
+          borderRadius: 50,
+          backgroundColor: theme.colors.white,
+          left: slideAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ["2%", "53%"],
+          }),
+          top: 4,
+        }}
+      />
+
+      <Pressable
+        style={{ width: "50%", zIndex: 0 }}
+        onPress={() => {
+          handleTabPress("exchange");
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            height: 32,
+            borderRadius: 50,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CustomText
+            variant="body"
+            fontSize={14}
+            color={activeTab === "exchange" ? "black" : "disabledTextColor"}
+          >
+            Exchange
+          </CustomText>
+        </View>
+      </Pressable>
+      <Pressable
+        style={{ width: "50%", zIndex: 0 }}
+        onPress={() => {
+          handleTabPress("wallet");
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            height: 32,
+            borderRadius: 50,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CustomText
+            variant="body"
+            fontSize={14}
+            color={activeTab === "wallet" ? "black" : "disabledTextColor"}
+          >
+            Wallet
+          </CustomText>
+        </View>
+      </Pressable>
+    </Box>
+  );
+};
+
+const EmptyState = ({ onAddAddress }: { onAddAddress: () => void }) => {
   return (
     <Box width={"100%"} flex={1} alignItems="center" justifyContent="center">
       <Image
@@ -29,11 +134,11 @@ const EmptyState = () => {
       <CustomText textAlign="center" style={{ width: "70%" }} mt="m">
         You need to add your addresses to view a list of addresses here
       </CustomText>
-      <Box height={30} />
+        <Box height={30} />
       <CustomButton
         width={"70%"}
         text="Add address"
-        onPress={() => router.push("/dashboard/home/address-book/add-address")}
+        onPress={onAddAddress}
         borderRadius={50}
       />
     </Box>
@@ -42,28 +147,28 @@ const EmptyState = () => {
 
 const ItemCard = () => {
   const theme = useTheme<Theme>();
-
+  
   return (
     <Box
-      width="100%"
-      height={90}
       flexDirection="row"
-      justifyContent="space-between"
       alignItems="center"
+      justifyContent="space-between"
+      paddingHorizontal="m"
+      paddingVertical="m"
+      backgroundColor="mainBackgroundColor"
+      borderRadius={12}
+      marginBottom="s"
+      style={{
+        borderWidth: 1,
+        borderColor: theme.colors.borderColor,
+      }}
     >
-      <Box flexDirection="row" alignItems="center">
-        <Box
-          width={60}
-          height={60}
-          bg="secondaryBackgroundColor"
-          borderRadius={12}
-        ></Box>
-        <Box marginLeft="s">
-          <CustomText>MoonBag</CustomText>
-          <CustomText mt="s">0xd5321...de32</CustomText>
-        </Box>
+      <Box flex={1}>
+        <CustomText variant="bodyBold">John Doe</CustomText>
+        <CustomText variant="body" color="disabledTextColor">
+          0x1234...5678
+        </CustomText>
       </Box>
-      {/* <ChevronRight /> */}
       <MoreVertical size={25} color={theme.colors.bodyTextColor} />
     </Box>
   );
@@ -73,26 +178,54 @@ const Addresses = () => {
   // states
   const [addressLoading, setAddressLoading] = React.useState(false);
   const [data, setData] = React.useState([]);
+  const [activeTab, setActiveTab] = useState<'exchange' | 'wallet'>('exchange');
 
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
   const { getUserAddress } = useSettings();
+  const { showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
+
+  const handleAddAddress = () => {
+    if (activeTab === 'exchange') {
+      // For exchange, check if user is logged in
+      if (!user?._id) {
+        // Open login bottom sheet
+        showExchangeLogin();
+        return;
+      }
+    }
+    
+    // Navigate to add address
+    router.push("/dashboard/home/address-book/add-address");
+  };
 
   React.useEffect(() => {
     (async () => {
       try {
+        // Only try to fetch addresses if user is authenticated
+        if (!user?._id) {
+          console.log("No user ID available, showing empty state");
+          setAddressLoading(false);
+          return;
+        }
+
         setAddressLoading(true);
-        const response = await getUserAddress(user?._id as string);
+        const response = await getUserAddress(user._id);
         console.log("This is the data", response.data);
         // to avoid duplicates
         setData([...data, ...(response.data as any)] as []);
         setAddressLoading(false);
       } catch (error) {
-        console.log(error);
-        alert("An error occured");
+        console.log("Address book error:", error);
+        setAddressLoading(false);
+        // Only show alert if user is authenticated but request failed
+        if (user?._id) {
+          alert("An error occurred while loading addresses");
+        }
       }
     })();
-  }, []);
+  }, [user?._id]);
+
   return (
     <PageWrapper>
       <AppBar
@@ -106,13 +239,19 @@ const Addresses = () => {
           />
         }
       />
+      
+      {/* Tab Navigation */}
+      <Box marginHorizontal="m" marginTop="m">
+        <AddressBookTabar activeTab={activeTab} onPress={setActiveTab} />
+      </Box>
+
       <Box flex={1} bg="mainBackgroundColor">
         <FlatList
           ListEmptyComponent={() => (
             <>
               {!addressLoading && (
                 <Box flex={1} mt="5xl" justifyContent="center">
-                  <EmptyState />
+                  <EmptyState onAddAddress={handleAddAddress} />
                 </Box>
               )}
             </>
@@ -140,23 +279,9 @@ const Addresses = () => {
           )}
         />
       </Box>
-      <Box
-        width={"100%"}
-        height={60}
-        justifyContent="center"
-        alignItems="center"
-      >
-        {!addressLoading && data.length > 0 && (
-          <CustomButton
-            width={"70%"}
-            borderRadius={50}
-            text="Add Address"
-            onPress={() =>
-              router.push("/dashboard/home/address-book/add-address")
-            }
-          />
-        )}
-      </Box>
+      
+      {/* Exchange Login Bottom Sheet */}
+      <ExchangeLoginBottomSheet />
     </PageWrapper>
   );
 };

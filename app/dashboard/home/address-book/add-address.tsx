@@ -1,17 +1,15 @@
 import { ThemedScanIcon } from "@/assets/svg/wallet-icons-components";
-import ChainsBottomSheet from "@/components/bottomsheets/preference/ChainsBottomSheet";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import {
-  AppBar,
-  Box,
-  CustomButton,
-  CustomText,
-  PageWrapper,
+    AppBar,
+    Box,
+    CustomButton,
+    CustomText,
+    PageWrapper,
 } from "@/components/general";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { addressValidation } from "@/services/formValidations";
+import { useChains } from "@/src/core/chains/chains-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { selectSettingState } from "@/src/modules/settings/presentation/state/settings-slice";
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -26,11 +24,11 @@ const Addresses = () => {
   // states
   const [name, setName] = React.useState("");
   const [address, setAddress] = React.useState("");
-  const activeChain = useSelector(selectSettingState);
+  const [selectedChain, setSelectedChain] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
 
   const theme = useTheme<Theme>();
-  const { chainsBottomSheetRef } = useBottomSheetRefs();
+  const { chains, getChainById } = useChains();
   const { createAddressBook } = useSettings();
   const user = useSelector(selectUser);
 
@@ -43,20 +41,29 @@ const Addresses = () => {
 
   const handleSubmit = async () => {
     try {
+      // Check if user ID exists before making API call
+      if (!user?._id) {
+        alert("Please log in to save addresses to your address book.");
+        return;
+      }
+
       setLoading(true);
       const validation = addressValidation.parse({ name, address });
       const response = await createAddressBook({
         body: {
           name,
           address,
-          chainId: activeChain.activeChain?.chainId as number,
+          chainId: selectedChain?.chainId || chains[0]?.chainId,
         },
-        params: { userId: user?._id as string },
+        params: { userId: user._id },
       });
       console.log(response.data);
       setLoading(false);
+      // Navigate back after successful creation
+      router.back();
     } catch (error) {
-      // alert(JSON.stringify(error["message"]));
+      console.log("Add address error:", error);
+      alert("Failed to add address. Please try again.");
       setLoading(false);
     }
   };
@@ -104,12 +111,19 @@ const Addresses = () => {
               justifyContent: "space-between",
               marginBottom: 10,
             }}
-            onPress={() => chainsBottomSheetRef.current?.snapToIndex(1)}
+            onPress={() => {
+              // Simple chain selection - use first available chain
+              if (chains.length > 0) {
+                setSelectedChain(chains[0]);
+              }
+            }}
           >
             <CustomText>
-              {activeChain.activeChain
-                ? activeChain.activeChain.name
-                : "Select chain"}
+              {selectedChain
+                ? selectedChain.name
+                : chains.length > 0 
+                  ? chains[0].name 
+                  : "Select chain"}
             </CustomText>
             <ChevronDown color={theme.colors.bodyTextColor} />
           </Pressable>
@@ -148,7 +162,6 @@ const Addresses = () => {
           onPress={() => handleSubmit()}
         />
       </Box>
-      <ChainsBottomSheet ref={chainsBottomSheetRef} />
     </PageWrapper>
   );
 };
