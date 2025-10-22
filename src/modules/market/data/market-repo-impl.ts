@@ -7,10 +7,11 @@ import { WatchlistTokenModel } from "../domain/entities/models/watchlist-token-m
 import { AddToWatchlistParams } from "../domain/entities/params/add-to-watchlist-params";
 import { MarketRepo } from "../domain/market-repo";
 import { PriceAlertData, PriceAlertResponse } from "./remote/market-remote-datasource";
-import { MarketRemoteDataSourceImpl } from "./remote/market-remote-datasource-impl";
+import { MarketZapSdkDataSourceImpl } from "./remote/market-zap-sdk-datasource-impl";
 
 export class MarketRepoImpl implements MarketRepo {
-  private readonly remoteDatasource = new MarketRemoteDataSourceImpl();
+  // private readonly remoteDatasource = new MarketRemoteDataSourceImpl();
+  private readonly remoteDatasource = new MarketZapSdkDataSourceImpl();
 
   async fetchMarketTokens(payload: GeneralRequestModel<unknown, unknown, unknown>): Promise<GeneralResponseModel<MarketTokenModel[] | null | undefined>> {
     return this.remoteDatasource.fetchMarketTokens(payload);
