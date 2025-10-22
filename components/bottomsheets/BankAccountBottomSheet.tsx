@@ -134,7 +134,7 @@ const BankAccountBottomSheet = forwardRef<
       setLoading(true);
       createAccount({
         body: {
-          currencyId: selectedCurrency ? selectedCurrency: undefined,
+          currencyId: selectedCurrency ? selectedCurrency : undefined,
           userId: userDetails?._id as string,
           bankId: activeBank ? activeBank._id : undefined,
           holderName: formData.accountHolderName

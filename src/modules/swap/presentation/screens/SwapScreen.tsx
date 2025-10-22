@@ -14,18 +14,20 @@ import BottomSheet from "@gorhom/bottom-sheet";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
 import { useTheme } from "@shopify/restyle";
 import { IChain, ICurrency } from "@zap/blockchain-sdk";
-import {
-  getAddressRequirements,
-  validateAddress,
-} from "../../utils/addressValidation";
+import * as Clipboard from "expo-clipboard";
 import { useSwapSDK } from "../hooks/useSwapSDK";
 
 // Import modular components
+import { ZapperSiginBottomSheet } from "@/components";
+import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
+import BankAccountsBottomSheet from "@/components/bottomsheets/BankAccountsBottomSheet";
+import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import {
-  SupportedCurrency,
-  useSupportedCurrencies,
-} from "@/src/core/supported-currencies/supported-currencies-context";
+import { BankAccount } from "@/interfaces/account.interface";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { ArrowDown2 } from "iconsax-react-nativejs";
 import React, {
   useCallback,
   useEffect,
@@ -55,13 +57,20 @@ const Swap = () => {
   const theme = useTheme<Theme>();
   const baseTokenRef = useRef<BottomSheet>(null);
   const targetTokenRef = useRef<BottomSheet>(null);
-
+  const addressRef = useRef<TextInput>(null);
+  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
+  const bankAccountsBottomSheetRef = useRef<BottomSheet>(null);
+  const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const [cryptoAddress, setCryptoAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const orderDetailsSheetRef = useRef<any>(null);
   const progressSheetRef = useRef<any>(null);
   const [shouldShake, setShouldShake] = useState(false);
+  const [bankAccountSelected, setBankAccountSelected] =
+    useState<BankAccount | null>(null);
+
+  const { logoutFromExchange } = useWallet();
   // 🔹 Order creation state
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [createOrderError, setCreateOrderError] = useState<string | null>(null);
@@ -71,7 +80,10 @@ const Swap = () => {
 
   // 🔹 Supported currencies context for refresh
   const { refreshSupportedCurrencies } = useSupportedCurrencies();
-  const { isExchangeAuthenticated } = useExchangeAuth();
+  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
+    useState(false);
 
   // 🔹 SDK-based swap logic
   const {
@@ -170,10 +182,10 @@ const Swap = () => {
 
   // 🔹 Address validation
   const validateCryptoAddress = useCallback(
-    (address: string) => {
+    async (address: string) => {
       if (
         !targetCurrency ||
-        !(targetCurrency.chainId as Partial<IChain>)?.isEVM
+        !(targetCurrency.currencyId as Partial<ICurrency>)?.isCrypto
       ) {
         setAddressError(null);
         return true;
@@ -184,7 +196,10 @@ const Swap = () => {
         return false;
       }
 
-      const validation = validateAddress(address, targetCurrency);
+      const validation = await zapSDKService.validateAddress(
+        address,
+        (targetCurrency.chainId as Partial<IChain>)?.symbol || ""
+      );
       setAddressError(validation.error || null);
       return validation.isValid;
     },
@@ -266,6 +281,23 @@ const Swap = () => {
       return null;
     }
   }, [marketRate, baseCurrency, targetCurrency]);
+
+  const handleConnectZapExchange = useCallback(() => {
+    zapLinkBottomSheetRef.current?.close();
+    setIsZapperBottomSheetVisible(true);
+    setTimeout(() => {
+      zapperBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
+  }, []);
+
+  const handleDisconnectZapExchange = useCallback(async () => {
+    try {
+      await logoutFromExchange();
+      zapLinkBottomSheetRef.current?.close();
+    } catch (error) {
+      console.error("Logout from exchange failed:", error);
+    }
+  }, []);
 
   return (
     <PageWrapper>
@@ -397,23 +429,7 @@ const Swap = () => {
               disabled={isAnimating || !baseCurrency || !targetCurrency}
             />
           </Box>
-
-          {rateDetails && (
-            <SwapDetailsCard
-              provider="Zap Exchange"
-              providerIcon={<ZapLogo width={20} height={20} />}
-              zapFee={rateDetails.fee}
-              rate={rateDetails.rate}
-              minimumReceived={rateDetails.min}
-              baseCurrencyUsdValue={rateDetails.baseCurrencyUsdValue}
-              onProviderPress={() => {
-                console.log("Provider pressed");
-              }}
-              isZapLinked={isExchangeAuthenticated}
-            />
-          )}
-
-          {(targetCurrency?.chainId as Partial<IChain>)?.isEVM && (
+          {(targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto ? (
             <>
               <CustomText
                 variant="body"
@@ -423,16 +439,13 @@ const Swap = () => {
               >
                 Receiving Address
               </CustomText>
-              <CustomText variant="body" color="bodyTextColor" mb="s">
-                {getAddressRequirements(targetCurrency as SupportedCurrency)}
-              </CustomText>
               <View
                 style={[
                   styles.inputContainer,
                   {
                     backgroundColor: theme.colors.surfaceContainer,
                     borderColor: addressError
-                      ? theme.colors.primaryColor
+                      ? theme.colors.error
                       : theme.colors.borderColor,
                     borderWidth: addressError ? 1 : 0,
                   },
@@ -452,6 +465,7 @@ const Swap = () => {
                   }}
                   autoCapitalize="none"
                   autoCorrect={false}
+                  ref={addressRef}
                 />
                 <TouchableOpacity
                   style={{
@@ -463,6 +477,12 @@ const Swap = () => {
                     borderColor: theme.colors.borderColor,
                     borderRadius: 4,
                   }}
+                  onPress={async () => {
+                    // Paste address from clipboard
+                    const text = await Clipboard.getStringAsync();
+                    setCryptoAddress(text);
+                    validateCryptoAddress(text);
+                  }}
                 >
                   <Image
                     source={icons.copy}
@@ -472,11 +492,71 @@ const Swap = () => {
                 </TouchableOpacity>
               </View>
               {addressError && (
-                <CustomText variant="body" color="primaryColor" mt="s">
+                <CustomText variant="body" color="error" mt="s">
                   {addressError}
                 </CustomText>
               )}
             </>
+          ) : (
+            <>
+              {isExchangeAuthenticated && (
+                <View
+                  style={[
+                    styles.inputContainer,
+                    {
+                      backgroundColor: theme.colors.surfaceContainer,
+                      borderColor: addressError
+                        ? theme.colors.error
+                        : theme.colors.borderColor,
+                      borderWidth: addressError ? 1 : 0,
+                    },
+                  ]}
+                >
+                  <CustomText color="placeholderTextColor" fontSize={12}>
+                    Sending To
+                  </CustomText>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      maxWidth: "50%",
+                    }}
+                    onPress={() => {
+                      bankAccountsBottomSheetRef.current?.snapToIndex(0);
+                    }}
+                  >
+                    <CustomText color="headerTextColor" fontSize={14}>
+                      {bankAccountSelected?.accountHolderName ||
+                        "Select Account"}
+                    </CustomText>
+                    <ArrowDown2
+                      style={{
+                        marginLeft: 7,
+                      }}
+                      size={16}
+                      fontWeight="bold"
+                      color={theme.colors.bodyTextColor}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
+
+          {rateDetails && (
+            <SwapDetailsCard
+              provider="Zap Exchange"
+              providerIcon={<ZapLogo width={20} height={20} />}
+              zapFee={rateDetails.fee}
+              rate={rateDetails.rate}
+              minimumReceived={rateDetails.min}
+              baseCurrencyUsdValue={rateDetails.baseCurrencyUsdValue}
+              onProviderPress={() =>
+                zapLinkBottomSheetRef.current?.snapToIndex(0)
+              }
+              isZapLinked={isExchangeAuthenticated}
+            />
           )}
 
           <Box mt="l">
@@ -495,13 +575,53 @@ const Swap = () => {
                 !baseCurrency ||
                 !targetCurrency ||
                 baseAmount <= 0 ||
-                ((targetCurrency?.chainId as Partial<IChain>)?.isEVM &&
+                ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
                   (!cryptoAddress.trim() || !!addressError))
               }
             />
           </Box>
         </Box>
       </ScrollView>
+
+      {isZapperBottomSheetVisible && (
+        <ZapperSiginBottomSheet
+          key="zapper-bottom-sheet"
+          ref={zapperBottomSheetRef}
+          onContinue={() => {
+            zapperBottomSheetRef.current?.close();
+            setIsZapperBottomSheetVisible(false);
+          }}
+          onClose={() => {
+            setIsZapperBottomSheetVisible(false);
+          }}
+        />
+      )}
+
+      <ZapLinkBottomSheet
+        onDisconnect={handleDisconnectZapExchange}
+        onConnect={handleConnectZapExchange}
+        isZapLinked={isExchangeAuthenticated}
+        username={exchangeUserData?.username}
+        onClose={() => zapLinkBottomSheetRef.current?.close()}
+        ref={zapLinkBottomSheetRef}
+      />
+
+      <BankAccountsBottomSheet
+        ref={bankAccountsBottomSheetRef}
+        onBankAccountSelect={(bankAccount) => {
+          setBankAccountSelected(bankAccount);
+          bankAccountsBottomSheetRef.current?.close();
+        }}
+        onClose={() => {
+          bankAccountsBottomSheetRef.current?.close();
+        }}
+        onContinue={() => {
+          if (bankAccountSelected) {
+            bankAccountsBottomSheetRef.current?.close();
+            handleContinue();
+          }
+        }}
+      />
 
       <OrderDetailsSheet
         ref={orderDetailsSheetRef}
@@ -544,10 +664,8 @@ const styles = StyleSheet.create({
   inputContainer: {
     borderRadius: 8,
     padding: 8,
-    height: 48,
-    marginTop: 8,
-    paddingHorizontal: 8,
-    marginBottom: 8,
+    paddingHorizontal: 13,
+    height: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
