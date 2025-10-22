@@ -994,9 +994,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const result = await zapSDKService.validateExchangeOtp(email, otp);
 
       if (result) {
+        console.log(result, "result");
         setIsExchangeAuthenticated(true);
-        setCurrentExchangeUser(result.data.user.id || null);
-        setExchangeUserData(result.data.user);
+        setCurrentExchangeUser(result.data.userId || null);
+        setExchangeUserData(result.data.user as UserModel | null);
 
         await checkAuthenticationAndRoute();
         return true;
