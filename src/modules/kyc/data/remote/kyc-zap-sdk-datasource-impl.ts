@@ -38,8 +38,20 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     payload: GeneralRequestModel<UserModel, unknown, unknown>
   ): Promise<GeneralResponseModel<UserModel>> {
     const sdk = zapSDKService.getSDK();
+    // const result = await sdk.exchangeAuth.getUser();
+
+    
     const result = await sdk.users.getProfile(payload.body?._id || "");
-    return result.data;
+    console.log("Resultssss:", result);
+    
+    return {
+      success: true,
+      message: "User fetched successfully",
+      data: result,
+      token: null,
+      refreshToken: null,
+      error: null,
+    };
   }
 
   async verifyEmail(
