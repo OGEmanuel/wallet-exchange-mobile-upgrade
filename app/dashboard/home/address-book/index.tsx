@@ -231,7 +231,7 @@ const Addresses = () => {
       // For wallet, check if user is wallet authenticated
       if (!user?._id) {
         console.log("Wallet not authenticated, showing login prompt");
-        alert("Please log in to your wallet account to save addresses.");
+        alert("Create a wallet to save addresses in the wallet section.");
         return;
       }
     }
