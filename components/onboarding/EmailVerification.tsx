@@ -89,12 +89,9 @@ export default function EmailVerification({
           if (!userData?.username) {
             // exchangeUser = await getExchangeUser();
           }
-          
+
           const userResponse = await fetchUserById(userData);
           exchangeUser = userResponse.data;
-
-          console.log("Exchange user:", exchangeUser);
-          console.log("User response:", exchangeUser?.username);
           
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
