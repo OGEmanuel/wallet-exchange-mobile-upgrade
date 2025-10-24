@@ -3,25 +3,43 @@ import { TouchableIcon } from "@/components";
 import { Box, CustomButton, CustomText } from "@/components/general";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
+import { useChains } from "@/src/core/chains/chains-context";
+import {
+  formatNumber,
+  formatWalletAddress,
+} from "@/src/core/utils/format-utils";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import React, {
   forwardRef,
-  useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
 import OverviewDetails from "./OverviewDetails";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const ORDER_STATUSES = {
+  PENDING: "PENDING",
+  DEPOSIT_CONFIRMING: "DEPOSIT_CONFIRMING",
+  DEPOSIT_CONFIRMED: "DEPOSIT_CONFIRMED",
+  WITHDRAWAL_CONFIRMING: "WITHDRAWAL_CONFIRMING",
+  WITHDRAWAL_CONFIRMED: "WITHDRAWAL_CONFIRMED",
+  FILLED: "FILLED",
+  OVERPAID: "OVERPAID",
+  UNDERPAID: "UNDERPAID",
+  REFUNDED: "REFUNDED",
+  FAILED: "FAILED",
+  EXPIRED: "EXPIRED",
+};
 
 interface OrderDetailsSheetProps {
   orderDetails?: CreateOrderResponse;
@@ -41,21 +59,32 @@ const OrderDetailsSheet = forwardRef<
   const theme = useTheme<Theme>();
   const [activeTab, setActiveTab] = useState<"summary" | "details">("summary");
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const { getChainBySymbol } = useChains();
 
   useImperativeHandle(ref, () => ({
     open: () => bottomSheetRef.current?.snapToIndex(0),
     close: () => bottomSheetRef.current?.close(),
   }));
 
-  useEffect(() => {
-    console.log("djdjd");
-    setTimeout(() => {
-      bottomSheetRef.current?.close();
-      onClose?.();
-    }, 5000);
-  }, []);
+  // Removed auto-close effect - let user manually close the sheet
 
   if (!orderDetails) return null;
+
+  const copyToClipboard = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert("Copied", "Address copied to clipboard");
+  };
+
+  const isSellCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
+  const isBuyCrypto = orderDetails?.buyCurrency?.currencyId?.isCrypto;
+  const sellCode = orderDetails?.sellCurrency?.currencyId?.code;
+  const sellSymbol = orderDetails?.sellCurrency?.currencyId?.symbol;
+  const buyCode = orderDetails?.buyCurrency?.currencyId?.code;
+  const buySymbol = orderDetails?.buyCurrency?.currencyId?.symbol;
+  const buyChain = getChainBySymbol(orderDetails?.buyCurrency?.chainId?.symbol);
+  const sellChain = getChainBySymbol(
+    orderDetails?.sellCurrency?.chainId?.symbol
+  );
 
   return (
     <BottomSheet
@@ -123,74 +152,38 @@ const OrderDetailsSheet = forwardRef<
               bg="secondaryBackgroundColor"
               borderRadius={8}
               p="m"
-              mb="m"
+              mb="s"
               alignItems="center"
             >
-              <CustomText variant="body" color="bodyTextColor" mb="s">
-                You&apos;re Sending
+              <CustomText variant="body" color="placeholderTextColor" mb="s">
+                YOU SEND
               </CustomText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <Image
-                  style={{ width: 20, height: 20, borderRadius: 10 }}
-                  source={orderDetails?.baseCurrency?.currencyId?.logo || ""}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    marginRight: 10,
+                  }}
+                  contentFit="fill"
+                  source={
+                    orderDetails?.buyCurrency?.currencyId?.logo ||
+                    orderDetails?.buyCurrency?.image ||
+                    ""
+                  }
                 />
                 <CustomText variant="subheader" style={{ fontSize: 22 }}>
-                  {orderDetails?.baseCurrency?.currencyId?.symbol === "₦" &&
-                    orderDetails?.baseCurrency?.currencyId?.symbol}{" "}
-                  {Number(orderDetails?.baseAmount || "0")}
-                  {orderDetails?.baseCurrency?.currencyId?.symbol !== "₦" &&
-                    orderDetails?.baseCurrency?.currencyId?.symbol}
+                  {isBuyCrypto
+                    ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
+                    : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
                 </CustomText>
               </View>
             </Box>
-            <OverviewDetails orderDetails={orderDetails} />
-
-            {/* You Receive */}
-            {/* <Box bg="secondaryBackgroundColor" borderRadius={8} p="m" mb="m">
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  You Receive:
-                </CustomText>
-                <CustomText>
-                  {orderDetails?.targetAmount}{" "}
-                  {orderDetails?.targetCurrency?.symbol}
-                </CustomText>
-              </Box>
-
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  Exchange Rate:
-                </CustomText>
-                <CustomText>
-                  1 {orderDetails?.baseCurrency?.symbol} ={" "}
-                  {orderDetails?.marketRate}{" "}
-                  {orderDetails?.targetCurrency?.symbol}
-                </CustomText>
-              </Box>
-
-              {orderDetails?.withdrawalAddress && (
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Sent To:
-                  </CustomText>
-                  <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                    {orderDetails?.withdrawalAddress?.slice(0, 10)}...
-                    {orderDetails?.withdrawalAddress?.slice(-6)}
-                  </CustomText>
-                </Box>
-              )}
-
-              <Box flexDirection="row" justifyContent="space-between" py="s">
-                <CustomText variant="body" color="bodyTextColor">
-                  Order ID:
-                </CustomText>
-                <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                  {orderDetails?.orderId?.slice(0, 8)}...
-                  {orderDetails?.orderId?.slice(-8)}
-                </CustomText>
-              </Box>
-            </Box>
-            <OverviewDetails orderDetails={orderDetails} />
+            <OverviewDetails
+              key={orderDetails?._id}
+              orderDetails={orderDetails}
+            />
 
             {/* Info Box */}
             <Box
@@ -204,12 +197,15 @@ const OrderDetailsSheet = forwardRef<
             >
               <Box width={2} height="100%" bg="warningColor" mr="s" />
               <CustomText variant="body" flex={1} style={{ fontSize: 12 }}>
-                We will complete your transaction after we confirm receipt of
-                your deposit. Please keep this order ID for reference.
+                We will complete your transaction of{" "}
+                {isSellCrypto
+                  ? formatNumber(orderDetails.sellAmount) + " " + sellSymbol
+                  : sellSymbol + formatNumber(orderDetails.sellAmount, 2)}{" "}
+                after we confirm receipt of your deposit.
               </CustomText>
             </Box>
             <CustomButton
-              onPress={() => {}}
+              onPress={() => setActiveTab("details")}
               text="Show Deposit Details"
               color="primary"
               width="auto"
@@ -221,98 +217,153 @@ const OrderDetailsSheet = forwardRef<
         ) : (
           // Details Tab
           <Box flex={1} px="m">
-            <Box alignItems="center" mt="m">
-              <CustomText variant="subheader" mb="m">
-                Order Information
-              </CustomText>
-
+            <Box alignItems="center">
+              {isBuyCrypto && (
+                <CustomText fontSize={18} variant="subheader" mb="m">
+                  Deposit Address
+                </CustomText>
+              )}
+              {isBuyCrypto ? (
+                <Box padding="s" bg="white" mb="m">
+                  <QRCode
+                    value={orderDetails?.depositAccount?.walletAddress}
+                    size={150}
+                    color="black"
+                    backgroundColor="white"
+                  />
+                </Box>
+              ) : (
+                <Box
+                  bg="secondaryBackgroundColor"
+                  borderRadius={8}
+                  p="m"
+                  mb="s"
+                  alignItems="center"
+                  width="100%"
+                >
+                  <CustomText
+                    variant="body"
+                    color="placeholderTextColor"
+                    mb="s"
+                  >
+                    YOU SEND
+                  </CustomText>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Image
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        marginRight: 10,
+                      }}
+                      contentFit="fill"
+                      source={
+                        orderDetails?.buyCurrency?.currencyId?.logo ||
+                        orderDetails?.buyCurrency?.image ||
+                        ""
+                      }
+                    />
+                    <CustomText variant="subheader" style={{ fontSize: 22 }}>
+                      {isBuyCrypto
+                        ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
+                        : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
+                    </CustomText>
+                  </View>
+                </Box>
+              )}
               <Box
                 width="100%"
                 bg="secondaryBackgroundColor"
                 borderRadius={8}
                 p="m"
+                mt="s"
               >
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Order ID:
-                  </CustomText>
-                  <CustomText>{orderDetails?.orderId}</CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Status:
-                  </CustomText>
+                {!isBuyCrypto && (
                   <CustomText
-                    color={
-                      orderDetails?.status === "completed"
-                        ? "successColor"
-                        : "warningColor"
-                    }
+                    textAlign="center"
+                    variant="body"
+                    color="bodyTextColor"
+                    mb="s"
                   >
-                    {orderDetails?.status}
+                    Make your deposit using the account details provided below.
                   </CustomText>
+                )}
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="placeholderTextColor">
+                    {isBuyCrypto ? "Chain:" : "Bank:"}
+                  </CustomText>
+                  <Box flexDirection="row">
+                    <Image
+                      source={
+                        isBuyCrypto
+                          ? buyChain?.nativeCurrencyId?.logo || ""
+                          : orderDetails?.depositAccount?.bankId?.icon || ""
+                      }
+                      style={{ width: 20, height: 20, marginRight: 10 }}
+                    />
+                    <CustomText>
+                      {isBuyCrypto
+                        ? buyChain?.name
+                        : orderDetails?.depositAccount?.bankId?.name}
+                    </CustomText>
+                  </Box>
                 </Box>
 
                 <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Base Amount:
+                  <CustomText variant="body" color="placeholderTextColor">
+                    {isBuyCrypto ? "Address:" : "Account Number:"}
                   </CustomText>
-                  <CustomText>
-                    {orderDetails?.baseAmount}{" "}
-                    {orderDetails?.baseCurrency?.symbol}
-                  </CustomText>
+                  <Box flexDirection="row">
+                    <CustomText style={{ margin: 0 }}>
+                      {isBuyCrypto
+                        ? formatWalletAddress(
+                            orderDetails?.depositAccount?.walletAddress || "",
+                            6,
+                            6
+                          )
+                        : orderDetails?.depositAccount?.number || ""}
+                    </CustomText>
+                    <TouchableOpacity
+                      onPress={() =>
+                        copyToClipboard(
+                          isBuyCrypto
+                            ? orderDetails?.depositAccount?.walletAddress || ""
+                            : orderDetails?.depositAccount?.number || ""
+                        )
+                      }
+                      style={{ marginLeft: 5 }}
+                    >
+                      <Image
+                        source={Icons.copy}
+                        style={{ width: 20, height: 20 }}
+                      />
+                    </TouchableOpacity>
+                  </Box>
                 </Box>
 
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Target Amount:
-                  </CustomText>
-                  <CustomText>
-                    {orderDetails?.targetAmount}{" "}
-                    {orderDetails?.targetCurrency?.symbol}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Market Rate:
-                  </CustomText>
-                  <CustomText>{orderDetails?.marketRate}</CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Created At:
-                  </CustomText>
-                  <CustomText>
-                    {new Date(orderDetails?.createdAt).toLocaleString()}
-                  </CustomText>
-                </Box>
-
-                <Box flexDirection="row" justifyContent="space-between" py="s">
-                  <CustomText variant="body" color="bodyTextColor">
-                    Updated At:
-                  </CustomText>
-                  <CustomText>
-                    {new Date(orderDetails?.updatedAt).toLocaleString()}
-                  </CustomText>
-                </Box>
-
-                {orderDetails?.withdrawalAddress && (
+                {!isBuyCrypto && (
                   <Box
                     flexDirection="row"
                     justifyContent="space-between"
                     py="s"
                   >
-                    <CustomText variant="body" color="bodyTextColor">
-                      Withdrawal Address:
+                    <CustomText variant="body" color="placeholderTextColor">
+                      Account Name:
                     </CustomText>
-                    <CustomText numberOfLines={1} style={{ maxWidth: 150 }}>
-                      {orderDetails?.withdrawalAddress}
-                    </CustomText>
+                    <Box flexDirection="row">
+                      <CustomText style={{ margin: 0 }}>
+                        {orderDetails?.depositAccount?.holderName || ""}
+                      </CustomText>
+                    </Box>
                   </Box>
                 )}
+
+                <Box flexDirection="row" justifyContent="space-between" py="s">
+                  <CustomText variant="body" color="placeholderTextColor">
+                    Tx ID:
+                  </CustomText>
+                  <CustomText>{orderDetails?._id}</CustomText>
+                </Box>
               </Box>
             </Box>
           </Box>

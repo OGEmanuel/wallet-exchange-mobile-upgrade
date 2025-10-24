@@ -6,9 +6,9 @@
  */
 
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import { SupportedCurrency, useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatNumber } from "@/src/core/utils/format-utils";
-import { IChain, ICurrency } from "@zap/blockchain-sdk";
+import { CreateOrderRequest, IChain, ICurrency, SupportedCurrency } from "@zap/blockchain-sdk";
 // import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useCallback, useEffect, useState } from "react";
 
@@ -409,7 +409,7 @@ export const useSwapSDK = () => {
   }, [state.baseCurrency, state.targetCurrency, state.baseAmount, state.marketRate]);
 
   // Create order using SDK
-  const createOrder = useCallback(async (withdrawalAddress?: string) => {
+  const createOrder = useCallback(async (withdrawalAddress?: string, withdrawalBankAccountId?: string) => {
     if (!validateExchange()) return null;
 
     try {
@@ -420,69 +420,27 @@ export const useSwapSDK = () => {
         throw new Error("SDK not initialized");
       }
 
-      const orderPayload = {
+      const orderPayload: CreateOrderRequest = {
         buySupportedCurrencyId: state.baseCurrency!._id,
         sellSupportedCurrencyId: state.targetCurrency!._id,
-        ...(state.lastEditedField === "targetAmount"
-          ? { sellAmount: state.targetAmount }
-          : { buyAmount: state.baseAmount }
-        ),
+        ...(state.isBuyAmount ? { buyAmount: state.baseAmount } : { sellAmount: state.targetAmount }),
         ...(withdrawalAddress && { withdrawalAddress }),
+        ...(withdrawalBankAccountId && { withdrawalAccountId: withdrawalBankAccountId }),
       };
 
-      // TODO: Implement actual SDK order creation method
-      // For now, we'll create a realistic order structure with the current rate data
-      const order = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          // Get fresh rate data for the order
-          const currentRate = await fetchMarketRate(
-            state.baseCurrency!,
-            state.targetCurrency!,
-            state.lastEditedField === "targetAmount" ? state.targetAmount : state.baseAmount,
-            state.lastEditedField === "targetAmount"
-          );
+      console.log(orderPayload)
 
-          return {
-            _id: `order_${Date.now()}`,
-            status: "PENDING",
-            buyAmount: state.baseAmount,
-            sellAmount: state.targetAmount,
-            buyCurrency: {
-              _id: state.baseCurrency!._id,
-              currencyId: state.baseCurrency!.currencyId,
-              chainId: state.baseCurrency!.chainId,
-              image: state.baseCurrency!.image,
-              decimals: state.baseCurrency!.decimals,
-              isStable: state.baseCurrency!.isStable,
-            },
-            sellCurrency: {
-              _id: state.targetCurrency!._id,
-              currencyId: state.targetCurrency!.currencyId,
-              chainId: state.targetCurrency!.chainId,
-              image: state.targetCurrency!.image,
-              decimals: state.targetCurrency!.decimals,
-              isStable: state.targetCurrency!.isStable,
-            },
-            ...orderPayload,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 20 * 60 * 1000).toISOString(), // 20 minutes from now
-            rate: currentRate?.rate || state.marketRate?.rate || 0,
-            minAmount: currentRate?.minAmount || state.marketRate?.minAmount || 0.001,
-            maxAmount: currentRate?.maxAmount || state.marketRate?.maxAmount || 1000,
-          };
-        },
-        "createExchangeOrder"
-      );
+      // Use the actual SDK createOrder method
+      const order = await zapSDKService.createOrder(orderPayload);
 
       setState(prev => ({ ...prev, isLoading: false }));
       return order;
     } catch (error) {
       console.error("Failed to create order:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to create order";
+      console.log(error)
       setState(prev => ({
         ...prev,
-        error: errorMessage,
         isLoading: false
       }));
       return null;
@@ -586,6 +544,7 @@ export const useSwapSDK = () => {
     ...state,
     supportedCurrencies,
     currenciesLoading,
+    setError: (error: string | null) => setState(prev => ({ ...prev, error })),
 
     // Actions
     setBaseAmount: (amount: number) => setState(prev => ({ ...prev, baseAmount: amount })),
