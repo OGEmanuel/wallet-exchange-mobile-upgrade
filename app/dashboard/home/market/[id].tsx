@@ -11,6 +11,10 @@ import { Box, CustomText, PageWrapper } from "@/components/general";
 import CustomButton from "@/components/general/CustomButton";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import { SIZES } from "@/data";
+import {
+  formatLargeNumber,
+  getLatestMarketData,
+} from "@/lib/utils/market/chartHelpers";
 import { formatStats } from "@/lib/utils/market/helpers";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
@@ -55,6 +59,7 @@ export default function AssetInfo() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">("USD");
   const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
     undefined
   );
@@ -238,6 +243,8 @@ export default function AssetInfo() {
                   nairaCurrency={nairaCurrency}
                   usdCurrency={usdCurrency}
                   tokenHistory={tokenHistory}
+                  selectedCurrency={selectedCurrency}
+                  onCurrencyChange={setSelectedCurrency}
                 />
 
                 <Box width="100%" paddingHorizontal="m" marginTop="m">
@@ -280,11 +287,17 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(
-                          currentTokenDetails?.tokenMetrics?.volume || 0,
-                          0,
-                          "USD"
-                        )}
+                        {tokenHistory?.rates && tokenHistory.rates.length > 0
+                          ? formatLargeNumber(
+                              getLatestMarketData(tokenHistory.rates).volume,
+                              selectedCurrency,
+                              nairaCurrency?.sellRate
+                            )
+                          : formatStats(
+                              currentTokenDetails?.tokenMetrics?.volume || 0,
+                              0,
+                              selectedCurrency
+                            )}
                       </CustomText>
                     </Box>
 
@@ -305,11 +318,17 @@ export default function AssetInfo() {
                         fontSize={14}
                         color="bodyTextColor"
                       >
-                        {formatStats(
-                          currentTokenDetails?.tokenMetrics?.marketCap || 0,
-                          0,
-                          "USD"
-                        )}
+                        {tokenHistory?.rates && tokenHistory.rates.length > 0
+                          ? formatLargeNumber(
+                              getLatestMarketData(tokenHistory.rates).marketCap,
+                              selectedCurrency,
+                              nairaCurrency?.sellRate
+                            )
+                          : formatStats(
+                              currentTokenDetails?.tokenMetrics?.marketCap || 0,
+                              0,
+                              selectedCurrency
+                            )}
                       </CustomText>
                     </Box>
                   </Box>

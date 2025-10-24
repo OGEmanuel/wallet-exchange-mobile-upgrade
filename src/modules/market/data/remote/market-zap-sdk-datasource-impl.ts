@@ -51,6 +51,7 @@ export class MarketZapSdkDataSourceImpl implements MarketRemoteDataSource {
   async tokenHistory(payload: GeneralRequestModel<string | null, unknown, unknown>): Promise<GeneralResponseModel<TokenHistoryDetailModel>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.markets.getHistoricalRates(payload.body || "");
+    console.log("Market History Result:", result);
     return {
       success: result.success,
       message: result.message,

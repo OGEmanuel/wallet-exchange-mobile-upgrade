@@ -21,6 +21,8 @@ interface AssetChartDetailsProps {
   nairaCurrency?: CurrencyModel | null;
   usdCurrency?: CurrencyModel | null;
   tokenHistory?: TokenHistoryDetailModel | null;
+  selectedCurrency?: "USD" | "NGN";
+  onCurrencyChange?: (currency: "USD" | "NGN") => void;
 }
 
 export default function AssetChartDetails({
@@ -29,6 +31,8 @@ export default function AssetChartDetails({
   nairaCurrency,
   usdCurrency,
   tokenHistory,
+  selectedCurrency: propSelectedCurrency,
+  onCurrencyChange,
 }: AssetChartDetailsProps) {
   const theme = useTheme<Theme>();
   // Detect if we're in dark mode by checking theme colors
@@ -40,7 +44,7 @@ export default function AssetChartDetails({
         (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
       );
       const labels = sortedHistory.map((item) =>
-        new Date(item.date!).toLocaleTimeString([], {
+        new Date(Number(item.date)).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         })
@@ -49,39 +53,7 @@ export default function AssetChartDetails({
 
       setChartData({ labels, datasets: [{ data }] });
     }
-  }, [tokenHistory]);
-
-  // useEffect(() => {
-  //   if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
-  //     const sortedHistory = [...tokenHistory.rates].sort(
-  //       (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
-  //     );
-
-  //     const labels = sortedHistory.map((item) =>
-  //       new Date(item.date!).toLocaleTimeString([], {
-  //         hour: "2-digit",
-  //         minute: "2-digit",
-  //       })
-  //     );
-
-  //     const data = sortedHistory.map((item) => item.rate ?? 0);
-
-  //     // ✅ Add clear console log here
-  //     console.log("📊 Chart Data Mapping (24H):");
-  //     sortedHistory.forEach((item, index) => {
-  //       const timeLabel = labels[index];
-  //       const rateValue = data[index];
-  //       console.log(
-  //         `⏰ ${timeLabel} → 💰 Rate: $${rateValue.toLocaleString(undefined, {
-  //           minimumFractionDigits: 2,
-  //           maximumFractionDigits: 6,
-  //         })}`
-  //       );
-  //     });
-
-  //     setChartData({ labels, datasets: [{ data }] });
-  //   }
-  // }, [tokenHistory]);
+  }, [tokenHistory, selectedCurrency]); // Added selectedCurrency to trigger Y-axis update
 
   // Theme-aware chart config
   const chartConfig = {
@@ -104,8 +76,15 @@ export default function AssetChartDetails({
 
   // Use passed token details data
   const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
-    "USD"
+    propSelectedCurrency || "USD"
   );
+
+  // Update local state when prop changes
+  useEffect(() => {
+    if (propSelectedCurrency) {
+      setSelectedCurrency(propSelectedCurrency);
+    }
+  }, [propSelectedCurrency]);
 
   const [timeRange, setTimeRange] = useState("24H");
   const [chartData, setChartData] = useState({
@@ -125,27 +104,47 @@ export default function AssetChartDetails({
     hasData: true,
   }));
 
-  // const getYAxisLabels = () => {
-  //   return ["40K", "30K", "20K", "10K"];
-  // };
-
   const getYAxisLabels = () => {
     const data = chartData.datasets[0]?.data || [];
     if (!data.length) return [];
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
+    let values = [...data];
+    
+    // Convert to NGN if needed
+    if (selectedCurrency === "NGN" && nairaCurrency?.sellRate) {
+      values = values.map(v => v / nairaCurrency.sellRate);
+    }
 
-    if (min === max) return [formatToSigFigMax6Digits(max)];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    if (min === max) {
+      return [formatCompactCurrency(max, selectedCurrency)];
+    }
 
     const step = (max - min) / 4;
 
-    // return Array.from({ length: 5 }, (_, i) =>
-    //   formatToSigFigMax6Digits(max - step * i)
-    // );
-    return Array.from({ length: 5 }, (_, i) =>
-      Number((max - step * i).toFixed(1))
-    );
+    return Array.from({ length: 5 }, (_, i) => {
+      const value = max - step * i;
+      return formatCompactCurrency(value, selectedCurrency);
+    });
+  };
+
+  // Helper function to format numbers compactly for Y-axis with currency
+  const formatCompactCurrency = (value: number, currency: string): string => {
+    const symbol = currency === "NGN" ? "₦" : "$";
+    
+    if (value >= 1000000000) {
+      return `${symbol}${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `${symbol}${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${symbol}${(value / 1000).toFixed(1)}K`;
+    } else if (value >= 1) {
+      return `${symbol}${value.toFixed(0)}`;
+    } else {
+      return `${symbol}${value.toFixed(2)}`;
+    }
   };
 
   const isPositive = asset?.change24h && asset.change24h > 0;
@@ -174,11 +173,6 @@ export default function AssetChartDetails({
               {tokenDetails?.tokenDetails?.name || asset?.currencyId?.name}
             </CustomText>
           </Box>
-          {/* <Box>
-            <CustomText variant="body" fontSize={14} color="success">
-              {formatToSigFigMax6Digits(asset?.dailyChange || 1)}%
-            </CustomText>
-          </Box> */}
           <Box
             flexDirection="row"
             style={{ gap: 3 }}
@@ -213,7 +207,7 @@ export default function AssetChartDetails({
             </CustomText>
             <CurrencyTab
               selectedCurrency={selectedCurrency}
-              setSelectedCurrency={setSelectedCurrency}
+              setSelectedCurrency={onCurrencyChange || setSelectedCurrency}
             />
           </Box>
           <Box alignItems="flex-end">
@@ -226,10 +220,10 @@ export default function AssetChartDetails({
         {/* Chart */}
         <Box width="100%" alignItems="center">
           <Box width="100%" flexDirection="row" alignItems="center">
-            <Box width="90%" alignItems="center">
+            <Box width="82%" alignItems="center">
               <LineChart
                 data={chartData}
-                width={SIZES.width - 150}
+                width={SIZES.width - 180}
                 height={250}
                 yAxisSuffix=""
                 withInnerLines={true}
@@ -247,17 +241,20 @@ export default function AssetChartDetails({
               />
             </Box>
             <Box
-              width="10%"
+              width="18%"
               paddingLeft="s"
               height={180}
               justifyContent="space-between"
+              alignItems="flex-start"
             >
               {getYAxisLabels().map((label, i) => (
                 <CustomText
                   key={`y-axis-${i}`}
                   variant="body"
-                  fontSize={12}
+                  fontSize={10}
                   color="disabledTextColor"
+                  numberOfLines={1}
+                  style={{ flexShrink: 0 }}
                 >
                   {label}
                 </CustomText>
@@ -285,8 +282,6 @@ export default function AssetChartDetails({
           ))}
         </Box>
       </Box>
-
-      {/* <Loader visible={isFetchingHistory || chartData.labels.length === 0} /> */}
     </Box>
   );
 }

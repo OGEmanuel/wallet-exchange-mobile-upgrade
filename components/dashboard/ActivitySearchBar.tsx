@@ -1,18 +1,19 @@
-import { View, Text, Pressable, TextInput } from "react-native";
-import React from "react";
-import Box from "../general/Box";
 import {
-  ThemedFilterIcon,
-  ThemedSearchIcon,
+  ThemedSearchIcon
 } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import React from "react";
+import { TextInput } from "react-native";
+import Box from "../general/Box";
 
 interface IProps {
   onFilterPress: () => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
-const ActivitySearchBar = ({ onFilterPress }: IProps) => {
+const ActivitySearchBar = ({ onFilterPress, searchQuery, onSearchChange }: IProps) => {
   const theme = useTheme<Theme>();
   return (
     <Box width={"100%"} height={50} flexDirection="row" marginVertical="m">
@@ -28,8 +29,10 @@ const ActivitySearchBar = ({ onFilterPress }: IProps) => {
       >
         <ThemedSearchIcon />
         <TextInput
-          placeholder="Search"
+          placeholder="Search transactions..."
           placeholderTextColor={theme.colors.bodyTextColor}
+          value={searchQuery}
+          onChangeText={onSearchChange}
           style={{
             flex: 1,
             marginLeft: 10,
@@ -38,7 +41,8 @@ const ActivitySearchBar = ({ onFilterPress }: IProps) => {
           }}
         />
       </Box>
-      <Pressable
+      {/* Commented out filter button */}
+      {/* <Pressable
         style={{
           width: 50,
           height: 50,
@@ -50,7 +54,7 @@ const ActivitySearchBar = ({ onFilterPress }: IProps) => {
         onPress={onFilterPress}
       >
         <ThemedFilterIcon />
-      </Pressable>
+      </Pressable> */}
     </Box>
   );
 };

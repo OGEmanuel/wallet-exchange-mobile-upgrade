@@ -16,6 +16,15 @@ import {
 } from "react-native";
 import { useSelector } from "react-redux";
 
+import TokenGraph from "@/components/dashboard/market/TokenGraph";
+import {
+  calculatePriceChange,
+  formatLargeNumber,
+  getAvailablePeriods,
+  getLatestMarketData,
+  getLatestRate,
+} from "@/lib/utils/market/chartHelpers";
+
 import {
   ThemedQrCodeIcon,
   ThemedSwapIcon,
@@ -177,6 +186,15 @@ const TokenDetails = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const insets = useSafeAreaInsets();
+  const [graphPeriod, setGraphPeriod] = useState<string>("7D");
+  const [graphCurrency, setGraphCurrency] = useState<"USD" | "NGN">("USD");
+  const [availableGraphPeriods, setAvailableGraphPeriods] = useState<string[]>([
+    "24h",
+    "7D",
+    "3M",
+    "6M",
+    "1Y",
+  ]);
 
   // Animation refs
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -319,6 +337,19 @@ const TokenDetails = () => {
     fetchTokenDetailsCallback();
   }, [fetchTokenDetailsCallback]);
 
+  // Update available periods when historical rates data changes
+  useEffect(() => {
+    if (historicalRates?.data?.rates) {
+      const periods = getAvailablePeriods(historicalRates.data.rates);
+      setAvailableGraphPeriods(periods);
+
+      // If current period is not available, set to the first available
+      if (periods.length > 0 && !periods.includes(graphPeriod)) {
+        setGraphPeriod(periods[0]);
+      }
+    }
+  }, [historicalRates, graphPeriod]);
+
   // Fetch transaction history when wallet address and accountId are available
   useEffect(() => {
     if (walletAddress && finalSelectedToken && finalSelectedToken.accountId) {
@@ -430,6 +461,28 @@ const TokenDetails = () => {
   const formatPercentage = (value: number) => {
     return PortfolioService.formatPercentage(value);
   };
+
+  // Handle graph period change
+  const handleGraphPeriodChange = (newPeriod: string) => {
+    if (availableGraphPeriods.includes(newPeriod)) {
+      setGraphPeriod(newPeriod);
+    }
+  };
+
+  // Handle graph currency change
+  const handleGraphCurrencyChange = (newCurrency: "USD" | "NGN") => {
+    setGraphCurrency(newCurrency);
+  };
+
+  // Get NGN sell rate from currencies
+  const ngnSellRate = useSelector((state: AppRootState) => {
+    const currencies = state.utilities?.currencies;
+    if (currencies) {
+      const ngnCurrency = currencies.find((c: any) => c.code === "NGN");
+      return ngnCurrency?.sellRate || undefined;
+    }
+    return undefined;
+  });
 
   if (isPortfolioLoading || isTokenDetailsLoading) {
     return (
@@ -814,221 +867,70 @@ const TokenDetails = () => {
         {/* Content based on active tab */}
         {activeTab === "asset" ? (
           <Box paddingHorizontal="m">
-            {/* Enhanced Price Chart Section */}
-            <Box
-              backgroundColor="modalBackgroundColor"
-              borderRadius={20}
-              padding="l"
-              marginBottom="l"
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
-              <Box
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
-                marginBottom="l"
-              >
-                <Box flex={1}>
-                  <Box flexDirection="row" alignItems="center" mb="s">
-                    <CryptoIcon
-                      image={finalSelectedToken.image}
-                      size={32}
-                      symbol={finalSelectedToken.symbol}
-                    />
-                    <CustomText
-                      variant="body"
-                      ml="s"
-                      fontSize={18}
-                      color="headerTextColor"
-                    >
-                      {tokenDetails?.tokenDetails?.name ||
-                        finalSelectedToken.name ||
-                        finalSelectedToken.symbol}
-                    </CustomText>
-                  </Box>
-                  <CustomText
-                    variant="subheader"
-                    fontSize={24}
-                    color="headerTextColor"
-                  >
-                    {formatCurrency(
-                      tokenDetails?.tokenMetrics?.rate ||
-                        finalSelectedToken.price
-                    )}
-                  </CustomText>
-                </Box>
-                <Box
-                  flex={1}
-                  alignItems="flex-end"
-                  justifyContent="space-between"
-                >
-                  <CustomText mb="s" color="success" fontSize={14}>
-                    {formatPercentage(
-                      tokenDetails?.tokenMetrics?.dailyChange ||
-                        tokenDetails?.tokenMetrics?.change24h ||
-                        finalSelectedToken.change ||
-                        0
-                    )}{" "}
-                  </CustomText>
-                  <CustomText color="bodyTextColor" fontSize={14}>
-                    past week
-                  </CustomText>
-                </Box>
-              </Box>
-
-              {/* Enhanced Chart Area */}
-              <Box height={220} borderRadius={12} marginBottom="l" padding="m">
-                {historicalRates?.data?.rates &&
-                historicalRates.data.rates.length > 0 ? (
-                  <Box flex={1} justifyContent="center" alignItems="center">
-                    <CustomText
-                      color="headerTextColor"
-                      fontSize={16}
-                      fontWeight="bold"
-                      marginBottom="s"
-                    >
-                      Price Chart
-                    </CustomText>
-                    <CustomText
-                      color="bodyTextColor"
-                      fontSize={14}
-                      textAlign="center"
-                      marginBottom="m"
-                    >
-                      {historicalRates.data.rates.length} data points available
-                    </CustomText>
-
-                    {/* Display some key metrics from historical data */}
-                    <Box width="100%" marginTop="m">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="s"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Highest Price
-                        </CustomText>
-                        <CustomText
-                          color="success"
-                          fontSize={16}
-                          variant="body"
-                        >
-                          {formatCurrency(
-                            Math.max(
-                              ...historicalRates.data.rates.map(
-                                (r: any) => r.rate
-                              )
-                            )
-                          )}
-                        </CustomText>
-                      </Box>
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="s"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Lowest Price
-                        </CustomText>
-                        <CustomText color="error" fontSize={16} variant="body">
-                          {formatCurrency(
-                            Math.min(
-                              ...historicalRates.data.rates.map(
-                                (r: any) => r.rate
-                              )
-                            )
-                          )}
-                        </CustomText>
-                      </Box>
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Current Price
-                        </CustomText>
-                        <CustomText
-                          color="headerTextColor"
-                          fontSize={16}
-                          variant="body"
-                        >
-                          {formatCurrency(
-                            historicalRates.data.rates[
-                              historicalRates.data.rates.length - 1
-                            ]?.rate || 0
-                          )}
-                        </CustomText>
-                      </Box>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box flex={1} justifyContent="center" alignItems="center">
-                    <CustomText
-                      color="headerTextColor"
-                      fontSize={16}
-                      fontWeight="bold"
-                    >
-                      Price Chart
-                    </CustomText>
-                    <CustomText
-                      color="bodyTextColor"
-                      fontSize={14}
-                      marginTop="s"
-                      textAlign="center"
-                    >
-                      Interactive chart coming soon
-                    </CustomText>
-                  </Box>
+            {/* Token Graph Component */}
+            {historicalRates?.data?.rates &&
+            historicalRates.data.rates.length > 0 ? (
+              <TokenGraph
+                symbol={tokenDetails?.tokenDetails?.symbol || finalSelectedToken.symbol}
+                price={formatCurrency(
+                  getLatestRate(
+                    historicalRates.data.rates,
+                    graphCurrency,
+                    ngnSellRate
+                  )
                 )}
+                priceChangePercentage={calculatePriceChange(
+                  historicalRates.data.rates,
+                  graphPeriod
+                )}
+                period={graphPeriod}
+                data={historicalRates.data.rates}
+                currency={graphCurrency}
+                availablePeriods={availableGraphPeriods}
+                onPeriodChange={handleGraphPeriodChange}
+                onCurrencyChange={handleGraphCurrencyChange}
+                tokenLogo={
+                  tokenDetails?.tokenDetails?.logo || finalSelectedToken.image
+                }
+                ngnSellRate={ngnSellRate}
+              />
+            ) : (
+              <Box
+                backgroundColor="modalBackgroundColor"
+                borderRadius={20}
+                padding="l"
+                marginBottom="l"
+                minHeight={200}
+                justifyContent="center"
+                alignItems="center"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <CustomText
+                  color="headerTextColor"
+                  fontSize={16}
+                  fontWeight="bold"
+                  marginBottom="s"
+                >
+                  Price Chart
+                </CustomText>
+                <CustomText
+                  color="bodyTextColor"
+                  fontSize={14}
+                  textAlign="center"
+                >
+                  {isTokenDetailsLoading
+                    ? "Loading chart data..."
+                    : "No historical data available"}
+                </CustomText>
               </Box>
-
-              {/* Enhanced Timeframe Selectors */}
-              <Box flexDirection="row" justifyContent="space-between" gap="s">
-                {["24h", "W", "M", "6M", "1Y"].map((timeframe) => (
-                  <Pressable
-                    key={timeframe}
-                    onPress={() => setSelectedTimeframe(timeframe as any)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      borderRadius: 10,
-                      backgroundColor:
-                        selectedTimeframe === timeframe
-                          ? "rgba(35, 43, 15, 1)"
-                          : "transparent",
-                      opacity: pressed ? 0.8 : 1,
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                    })}
-                  >
-                    <CustomText
-                      style={{
-                        color:
-                          selectedTimeframe === timeframe
-                            ? "rgba(199, 230, 77, 1)"
-                            : "white",
-                      }}
-                      fontSize={13}
-                      fontWeight={
-                        selectedTimeframe === timeframe ? "bold" : "600"
-                      }
-                      textAlign="center"
-                    >
-                      {timeframe}
-                    </CustomText>
-                  </Pressable>
-                ))}
-              </Box>
-            </Box>
+            )}
+            <Box marginBottom="l" />
             {/* Enhanced Your Balance */}
             <Box
               backgroundColor="modalBackgroundColor"
@@ -1194,7 +1096,8 @@ const TokenDetails = () => {
                   </CustomText>
                 </Box>
               ) : null}
-              {tokenDetails?.tokenMetrics?.volume ? (
+              {(tokenDetails?.tokenMetrics?.volume ||
+                historicalRates?.data?.rates) && (
                 <Box
                   paddingVertical="m"
                   flexDirection="row"
@@ -1209,13 +1112,18 @@ const TokenDetails = () => {
                     fontSize={16}
                     variant="body"
                   >
-                    {tokenDetails?.tokenMetrics?.volume
-                      ? formatCurrency(tokenDetails.tokenMetrics.volume)
-                      : "N/A"}
+                    {formatLargeNumber(
+                      tokenDetails?.tokenMetrics?.volume ||
+                        getLatestMarketData(historicalRates?.data?.rates)
+                          .volume,
+                      graphCurrency,
+                      ngnSellRate
+                    )}
                   </CustomText>
                 </Box>
-              ) : null}
-              {tokenDetails?.tokenMetrics?.marketCap ? (
+              )}
+              {(tokenDetails?.tokenMetrics?.marketCap ||
+                historicalRates?.data?.rates) && (
                 <Box
                   paddingVertical="m"
                   flexDirection="row"
@@ -1230,10 +1138,16 @@ const TokenDetails = () => {
                     fontSize={16}
                     variant="body"
                   >
-                    {formatCurrency(tokenDetails.tokenMetrics.marketCap)}
+                    {formatLargeNumber(
+                      tokenDetails?.tokenMetrics?.marketCap ||
+                        getLatestMarketData(historicalRates?.data?.rates)
+                          .marketCap,
+                      graphCurrency,
+                      ngnSellRate
+                    )}
                   </CustomText>
                 </Box>
-              ) : null}
+              )}
               {tokenDetails?.tokenMetrics?.totalSupply ? (
                 <Box
                   paddingVertical="m"

@@ -1,7 +1,10 @@
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
-import React from "react";
-import { Pressable } from "react-native";
+import React, { useState } from "react";
+import { Image, Pressable } from "react-native";
+import { SvgUri } from "react-native-svg";
+import { useDispatch } from "react-redux";
 import { Box, CustomText } from "../general";
 
 interface IProps {
@@ -18,6 +21,7 @@ const ActivityItemCard = ({
   amount = 12.12,
   status = "PENDING",
 }: IProps) => {
+  const dispatch = useDispatch();
   const {
     buyActivityRef,
     sentActivityRef,
@@ -26,7 +30,9 @@ const ActivityItemCard = ({
   } = useBottomSheetRefs();
 
   const handlePress = () => {
-    if (approvedActivityRef.current) {
+    if (activity && approvedActivityRef.current) {
+      // Store the selected activity in Redux state
+      dispatch(exchangeActions.setSelectedActivity(activity));
       approvedActivityRef.current.expand();
     }
   };
@@ -36,6 +42,12 @@ const ActivityItemCard = ({
     if (!address) return "0xd5321...de32";
     if (address.length <= 12) return address;
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Abbreviate wallet address
+  const abbreviateWalletAddress = (walletAddress?: string | null, startLength = 5, endLength = 4): string => {
+    if (!walletAddress) return '';
+    return walletAddress.slice(0, startLength) + '...' + walletAddress.slice(-endLength);
   };
 
   // Format date
@@ -53,26 +65,69 @@ const ActivityItemCard = ({
 
   // Get status color
   const getStatusColor = (activityStatus?: string) => {
-    switch (activityStatus?.toUpperCase()) {
-      case "COMPLETED":
-      case "SUCCESS":
-        return { bg: "#023920", text: "#24FE89" };
-      case "PENDING":
-        return { bg: "#393002", text: "#FEDB24" };
-      case "FAILED":
-        return { bg: "#390202", text: "#FE2424" };
+    if (!activityStatus) return { bg: "#6B7280", text: "#FFFFFF" }; // bg-gray-500
+
+    switch (activityStatus.toLowerCase()) {
+      case "pending":
+      case "deposit_confirming":
+      case "deposit_confirmed":
+      case "overpaid":
+      case "underpaid":
+        return { bg: "#EAB308", text: "#000000" }; // bg-yellow-500
+      case "withdrawal_confirming":
+      case "withdrawal_confirmed":
+      case "filled":
+      case "completed":
+      case "success":
+      case "confirmed":
+        return { bg: "#10B981", text: "#FFFFFF" }; // bg-green-500
+      case "expired":
+      case "failed":
+      case "error":
+      case "cancelled":
+        return { bg: "#EF4444", text: "#FFFFFF" }; // bg-red-500
       default:
-        return { bg: "#393002", text: "#FEDB24" };
+        return { bg: "#6B7280", text: "#FFFFFF" }; // bg-gray-500
     }
   };
 
+  // Determine transaction type based on activity data
+  const getTransactionType = () => {
+    if (!activity) return type;
+
+    // Check if it's a buy or sell based on the activity data
+    if (activity.buyAmount && activity.buyCurrency) {
+      return "BUY";
+    } else if (activity.sellAmount && activity.sellCurrency) {
+      return "SELL";
+    } else if (activity.amountToReceive) {
+      return "SWAP";
+    }
+    return type;
+  };
+
   // Use activity data if available, otherwise fall back to legacy props
-  const displayType = activity?.type || type;
-  const displayAmount = activity?.amount || amount;
+  const displayType = getTransactionType();
+  const displayAmount = activity?.buyAmount || activity?.sellAmount || activity?.amountToReceive || amount;
   const displayStatus = activity?.status || status;
-  const displayCurrency = activity?.currency || "USDT";
-  const displayAddress = formatAddress(activity?.toAddress);
+  const displayCurrency = activity?.buyCurrency?.currencyId?.code || activity?.sellCurrency?.currencyId?.code || "USDT";
+  const displayAddress = formatAddress(activity?.withdrawalAccount?.number || activity?.depositAccount?.number || activity?.withdrawalAccount?.walletAddress || activity?.depositAccount?.walletAddress);
   const statusColors = getStatusColor(displayStatus);
+
+  // Calculate USD value
+  const usdValue = activity?.buyRate ?
+    (activity.buyAmount || 0) * activity.buyRate :
+    activity?.sellRate ?
+      (activity.sellAmount || 0) * activity.sellRate :
+      activity?.rate ?
+        (activity.amountToReceive || 0) * activity.rate :
+        displayAmount;
+
+  // Get currency image
+  // const currencyImage = activity?.buyCurrency?.image || activity?.sellCurrency?.image;
+  const currencyImage = activity?.sellCurrency?.currencyId?.isCrypto ? activity?.sellCurrency.currencyId.logo : activity?.withdrawalAccount?.bankId?.icon;
+  const [imageError, setImageError] = useState(false);
+  const isSvg = currencyImage?.toLowerCase().endsWith(".svg");
 
   return (
     <Pressable
@@ -92,43 +147,85 @@ const ActivityItemCard = ({
           borderRadius={32}
           bg="secondaryBackgroundColor"
           marginRight="m"
-        ></Box>
-        <Box>
-          <Box flexDirection="row" alignItems="center" marginBottom="s">
-            <CustomText fontSize={14} variant="bodyMedium">
-              {displayType.charAt(0).toUpperCase() + displayType.slice(1).toLowerCase()}
+          justifyContent="center"
+          alignItems="center"
+          overflow="hidden"
+        >
+          {currencyImage && !imageError ? (
+            isSvg ? (
+              <SvgUri
+                uri={currencyImage}
+                width={24}
+                height={24}
+                onError={() => {
+                  console.log("Failed to load currency image:", currencyImage);
+                  setImageError(true);
+                }}
+              />
+            ) : (
+              <Image
+                source={{ uri: currencyImage }}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                }}
+                resizeMode="cover"
+                onError={() => {
+                  console.log("Failed to load currency image:", currencyImage);
+                  setImageError(true);
+                }}
+              />
+            )
+          ) : currencyImage && imageError ? (
+            <CustomText fontSize={10} color="white" fontWeight="bold">
+              {displayCurrency?.charAt(0) || "?"}
             </CustomText>
-            <Box
-              width={53}
-              height={19}
-              borderRadius={19}
-              justifyContent="center"
-              alignItems="center"
-              marginLeft="s"
-              style={{ backgroundColor: statusColors.bg }}
-            >
-              <CustomText fontSize={10} style={{ color: statusColors.text }}>
-                {displayStatus.charAt(0).toUpperCase()}
-                {displayStatus.slice(1).toLowerCase()}
-              </CustomText>
-            </Box>
+          ) : null}
+        </Box>
+        <Box>
+          <Box flex={1} flexDirection="column">
+            <CustomText fontSize={14} fontWeight="500" marginBottom="s">
+              To {
+                activity?.withdrawalAccount?.walletAddress ?
+                  abbreviateWalletAddress(activity.withdrawalAccount.walletAddress) :
+                  activity?.withdrawalAccount?.holderName || activity?.depositAccount?.holderName || "Unknown"
+              }
+            </CustomText>
+            <CustomText fontSize={12} color="disabledTextColor">
+              {activity?.childOrder?.createdAt
+                ? formatDate(activity.childOrder.createdAt)
+                : activity?.createdAt
+                  ? formatDate(activity.createdAt)
+                  : "Unknown time"
+              }
+            </CustomText>
           </Box>
-          <CustomText fontSize={12} color="disabledTextColor">
-            {activity?.createdAt 
-              ? formatDate(activity.createdAt)
-              : `To ${displayAddress}`
-            }
-          </CustomText>
         </Box>
       </Box>
       <Box justifyContent="center" alignItems="flex-end">
         <CustomText variant="bodyMedium" fontSize={12}>
           {displayType === "BUY" || displayType === "RECIEVD" ? "+" : "-"}
-          {displayAmount} {displayCurrency}
+          {displayAmount?.toFixed(2)} {displayCurrency}
         </CustomText>
-        <CustomText variant="bodyMedium" fontSize={10} color="disabledTextColor">
-          ${activity?.usdValue || displayAmount}
-        </CustomText>
+        {/* <CustomText variant="bodyMedium" fontSize={10} color="disabledTextColor">
+          ${usdValue?.toFixed(2)}
+        </CustomText> */}
+        <Box
+          width={53}
+          height={19}
+          borderRadius={19}
+          justifyContent="center"
+          alignItems="center"
+          marginLeft="s"
+          marginTop="s"
+          style={{ backgroundColor: statusColors.bg }}
+        >
+          <CustomText fontSize={10} style={{ color: statusColors.text }}>
+            {displayStatus.charAt(0).toUpperCase()}
+            {displayStatus.slice(1).toLowerCase()}
+          </CustomText>
+        </Box>
       </Box>
     </Pressable>
   );
