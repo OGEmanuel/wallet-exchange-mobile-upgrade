@@ -35,11 +35,38 @@ const Activity = () => {
   // const activeTab = "EXCHANGE"; // Fixed to exchange only - removed unused variable
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { exchangeActivities, hasMore } = useSelector(
     (state: AppRootState) => state.exchange
   );
+
+  // Filter activities based on search query
+  const filteredActivities = exchangeActivities.filter((activity) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const searchableText = [
+      activity.buyCurrency?.currencyId?.name,
+      activity.buyCurrency?.currencyId?.code,
+      activity.sellCurrency?.currencyId?.name,
+      activity.sellCurrency?.currencyId?.code,
+      activity.status,
+      activity._id,
+    ].filter(Boolean).join(" ").toLowerCase();
+    
+    return searchableText.includes(query);
+  });
+
+  // Debug logging for pagination
+  console.log("📊 Pagination Debug:", {
+    exchangeActivitiesCount: exchangeActivities.length,
+    filteredActivitiesCount: filteredActivities.length,
+    hasMore,
+    currentPage,
+    searchQuery: searchQuery.trim()
+  });
 
   const { fetchExchangeActivities, fetchingExchangeActivities } = useExchange();
 
@@ -64,20 +91,27 @@ const Activity = () => {
         limit: LIMIT,
       });
       
-      console.log("API response received", { page, dataLength: response.data?.length });
+      console.log("API response received", { 
+        page, 
+        dataLength: response.data?.length,
+        responseStructure: response
+      });
       
       // Update hasMore based on server response
-      // The response.data contains the actual ExchangeActivitiesResponse
+      // The response.data is the ExchangeActivitiesResponse with activities and pagination
       const activitiesData = response.data as any;
+      console.log("Activities data structure:", activitiesData);
+      
       if (activitiesData?.pagination) {
         const hasMore = activitiesData.pagination.hasMore || false;
-        console.log("Using pagination metadata", { hasMore });
+        console.log("Using pagination metadata", { hasMore, pagination: activitiesData.pagination });
         dispatch(exchangeActions.setHasMore(hasMore));
       } else {
         // Fallback: if no pagination metadata, check if we got less than limit
-        const dataLength = (activitiesData?.data || []).length;
+        const activities = activitiesData?.activities || activitiesData || [];
+        const dataLength = activities.length;
         const hasMore = dataLength >= LIMIT;
-        console.log("Using fallback logic", { dataLength, hasMore });
+        console.log("Using fallback logic", { dataLength, hasMore, limit: LIMIT });
         dispatch(exchangeActions.setHasMore(hasMore));
       }
     } catch (err) {
@@ -102,18 +136,37 @@ const Activity = () => {
     }
   };
 
-  const handleRefresh = useCallback(async () => {
-    setCurrentPage(1);
-    // Clear existing activities before loading new ones
-    dispatch(exchangeActions.clearExchangeActivities());
-    await loadActivities(1, true);
-  }, [loadActivities, dispatch]);
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
 
   const handleLoadMore = useCallback(async () => {
-    console.log("handleLoadMore called", { isLoadingMore, hasMore, fetchingExchangeActivities, currentPage });
+    console.log("🚀 handleLoadMore called", { 
+      isLoadingMore, 
+      hasMore, 
+      fetchingExchangeActivities, 
+      currentPage,
+      searchQuery,
+      filteredCount: filteredActivities.length,
+      totalCount: exchangeActivities.length
+    });
     
-    if (isLoadingMore || !hasMore || fetchingExchangeActivities) {
-      console.log("Load more blocked:", { isLoadingMore, hasMore, fetchingExchangeActivities });
+    // Don't load more if already loading
+    if (isLoadingMore || fetchingExchangeActivities) {
+      console.log("Load more blocked: already loading");
+      return;
+    }
+
+    // If no more data from server, don't load more
+    if (!hasMore) {
+      console.log("Load more blocked: no more data from server");
+      return;
+    }
+
+    // If we have a search query, only load more if we have no filtered results
+    // This allows loading more data to potentially find search matches
+    if (searchQuery.trim() && filteredActivities.length > 0) {
+      console.log("Load more blocked: search has results, no need to load more");
       return;
     }
 
@@ -130,7 +183,20 @@ const Activity = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, loadActivities]);
+  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, loadActivities, searchQuery, filteredActivities.length, exchangeActivities.length]);
+
+  const handleEndReached = useCallback(() => {
+    console.log("📱 onEndReached triggered by FlatList");
+    handleLoadMore();
+  }, [handleLoadMore]);
+
+  const handleRefresh = useCallback(async () => {
+    setCurrentPage(1);
+    setSearchQuery(""); // Clear search on refresh
+    // Clear existing activities before loading new ones
+    dispatch(exchangeActions.clearExchangeActivities());
+    await loadActivities(1, true);
+  }, [loadActivities, dispatch]);
 
   const renderFooter = () => {
     if (!isLoadingMore) return null;
@@ -167,7 +233,11 @@ const Activity = () => {
         <Box height={20} />
         <Box paddingHorizontal="m">
           {/* <ActivityTabar activeTab={activeTab} onPress={setActiveTab} /> */}
-          <ActivitySearchBar onFilterPress={() => handleFilterClick()} />
+          <ActivitySearchBar 
+            onFilterPress={() => handleFilterClick()} 
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+          />
         </Box>
 
         <LoaderWrapper
@@ -175,9 +245,9 @@ const Activity = () => {
           isError={isError}
           errorMessage={error?.message || "Failed to load activities"}
           onRetry={handleRefresh}
-          isEmpty={!isLoading && exchangeActivities.length === 0}
+          isEmpty={!isLoading && filteredActivities.length === 0}
           emptyComponent={<ActivityEmptyState />}
-          existingData={exchangeActivities.length > 0 ? exchangeActivities : undefined}
+          existingData={filteredActivities.length > 0 ? filteredActivities : undefined}
         >
           <FlatList
             contentContainerStyle={{
@@ -185,12 +255,12 @@ const Activity = () => {
               paddingTop: 20,
               paddingBottom: 100, // Increased bottom padding to avoid nav bar
             }}
-            data={exchangeActivities}
+            data={filteredActivities}
             renderItem={renderItem}
             scrollEventThrottle={16}
             keyExtractor={keyExtractor}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.5}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.1}
             ListFooterComponent={renderFooter}
             refreshControl={
               <RefreshControl

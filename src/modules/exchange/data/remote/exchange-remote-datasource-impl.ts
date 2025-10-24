@@ -13,13 +13,29 @@ export class ExchangeRemoteDataSourceImpl implements ExchangeRemoteDataSource {
   ): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
     const sdk = zapSDKService.getSDK();
     console.log("payload", payload);
+    
+    // Extract pagination options from payload.extra
+    const paginationOptions = payload.extra ? {
+      page: payload.extra.page,
+      limit: payload.extra.limit,
+      skip: payload.extra.skip,
+      sort: payload.extra.sort,
+      order: payload.extra.order
+    } : {};
+
     const result = await sdk.exchangeActivities.getDefaultUserActivities(
       payload.body?._id,
-      // payload.extra?.page,
-      // payload.extra?.limit
+      { ...paginationOptions, bypassCache: true }
     );
 
-    console.log("result 11111", result);
+    console.log("SDK Response Structure:", {
+      result,
+      hasActivities: !!result?.activities,
+      activitiesLength: result?.activities?.length,
+      hasPagination: !!result?.pagination,
+      pagination: result?.pagination,
+      hasMore: result?.pagination?.hasMore
+    });
 
     return result;
   }

@@ -1,15 +1,14 @@
-import React, { useState } from "react";
+import { ThemedClockOutlineIcon } from "@/assets/svg/wallet-icons-components";
+import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { useCallback, forwardRef } from "react";
-import Box from "../general/Box";
-import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { CustomButton, CustomText } from "../general";
+import React, { forwardRef, useCallback, useState } from "react";
 import { Pressable } from "react-native";
-import { ThemedClockOutlineIcon } from "@/assets/svg/wallet-icons-components";
+import { CustomButton, CustomText } from "../general";
+import Box from "../general/Box";
 
 // innner components
 const Summary = () => {
