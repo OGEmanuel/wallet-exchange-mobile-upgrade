@@ -1,7 +1,8 @@
+import { CustomText } from "@/components/general";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
-import { StyleSheet, Text, TextStyle, View, ViewStyle } from "react-native";
+import { StyleSheet, TextStyle, View, ViewStyle } from "react-native";
 
 interface DetailRowProps {
   label: string;
@@ -19,15 +20,12 @@ const DetailRow = ({
   const theme = useTheme<Theme>();
   return (
     <View style={[styles.row, containerStyle]}>
-      <Text
-        style={[
-          styles.label,
-          { color: theme.colors.bodyTextColor },
-          labelStyle,
-        ]}
+      <CustomText
+        color="placeholderTextColor"
+        fontSize={12}
       >
         {label}
-      </Text>
+      </CustomText>
       <View>{children}</View>
     </View>
   );

@@ -26,6 +26,8 @@ interface ProgressViewProps {
   buyCurrency?: any;
   sellCurrency?: any;
   targetCurrency?: any;
+  progress?: number;
+  currentStep?: string;
 }
 
 const ProgressView: React.FC<ProgressViewProps> = ({
@@ -40,6 +42,8 @@ const ProgressView: React.FC<ProgressViewProps> = ({
   buyCurrency,
   sellCurrency,
   targetCurrency,
+  progress = 0,
+  currentStep = "Confirming",
 }) => {
   const steps: ProgressStep[] = [
     { id: "1", label: "Confirming", status: "pending" },
@@ -86,7 +90,7 @@ const ProgressView: React.FC<ProgressViewProps> = ({
         ]}
       >
         <Text style={[styles.subtitle, { color: theme.colors.bodyTextColor }]}>
-          Swap {orderDetails.buyAmount} {fromCurrency} for
+          Swap {orderDetails?.buyAmount} {fromCurrency} for
         </Text>
 
         <View style={styles.tokenRow}>
@@ -136,7 +140,7 @@ const ProgressView: React.FC<ProgressViewProps> = ({
       <View style={styles.progressContainer}>
         <ProgressBar
           steps={steps}
-          currentStepIndex={1}
+          currentStepIndex={Math.floor((progress || 0) / 33.33)} // Convert percentage to step index
           progressColor="#93CE20"
         />
       </View>

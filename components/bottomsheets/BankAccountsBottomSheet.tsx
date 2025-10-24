@@ -6,11 +6,18 @@ import BottomSheet, {
   SCREEN_HEIGHT,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { Bank, UserBankAccount } from "@zap/blockchain-sdk";
+import { Bank, SupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import { ArrowDown2 } from "iconsax-react-nativejs";
-import { Check, Search, X } from "lucide-react-native";
-import React, { forwardRef, useCallback, useState } from "react";
+import { AlertCircle, Check, Search, X } from "lucide-react-native";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
+  Animated,
   FlatList,
   Image,
   Keyboard,
@@ -24,27 +31,32 @@ import EmptyState from "../dashboard/market/EmptyState";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
+import BankAccountCard from "../swap/BankAccountCard";
 import BankAccountsList from "./BankAccountsList";
 
 interface BankAccountsBottomSheetProps {
-  onBankAccountSelect?: (bankAccount: UserBankAccount) => void;
+  onBankAccountSelect?: (bankAccount: UserBankAccount | null) => void;
   onClose?: () => void;
   onContinue?: () => void;
+  targetCurrency: SupportedCurrency | null;
 }
 
 const BankAccountsBottomSheet = forwardRef<
   BottomSheet,
   BankAccountsBottomSheetProps
->(({ onBankAccountSelect, onClose, onContinue }, ref) => {
+>(({ onBankAccountSelect, onClose, onContinue, targetCurrency }, ref) => {
   const theme = useTheme<Theme>();
   const [selectedAccount, setSelectedAccount] =
     useState<UserBankAccount | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [accountsSearchQuery, setAccountsSearchQuery] = useState("");
   const [showAddAccountModal, setShowAddAccountModal] = useState(false);
-  const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [showBankSelector, setShowBankSelector] = useState(false);
+  const [banksSearchQuery, setBanksSearchQuery] = useState("");
+
+  // Animation for account name input glow
+  const glowAnimation = useRef(new Animated.Value(0)).current;
 
   const {
     bankAccounts,
@@ -56,7 +68,34 @@ const BankAccountsBottomSheet = forwardRef<
     resolveBankAccount,
     fetchBankAccounts,
     errorResolvingAccount,
+    createBankAccount,
+    isCreatingBankAccount,
+    errorCreatingBankAccount,
   } = useBankAccounts();
+
+  // Glow animation effect
+  useEffect(() => {
+    if (isResolvingAccount) {
+      const glowLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnimation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnimation, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      glowLoop.start();
+      return () => glowLoop.stop();
+    } else {
+      glowAnimation.setValue(0);
+    }
+  }, [isResolvingAccount, glowAnimation]);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -70,7 +109,7 @@ const BankAccountsBottomSheet = forwardRef<
   );
 
   const handleBankAccountSelect = useCallback(
-    (bankAccount: UserBankAccount) => {
+    (bankAccount: UserBankAccount | null) => {
       setSelectedAccount(bankAccount);
       if (onBankAccountSelect) {
         onBankAccountSelect(bankAccount);
@@ -104,11 +143,11 @@ const BankAccountsBottomSheet = forwardRef<
   }, []);
 
   const filteredBankAccounts = bankAccounts.filter((account) =>
-    account.name.toLowerCase().includes(searchQuery.toLowerCase())
+    account.name.toLowerCase().includes(accountsSearchQuery.toLowerCase())
   );
 
   const filteredBanks = banks.filter((bank) =>
-    bank.name.toLowerCase().includes(searchQuery.toLowerCase())
+    bank.name.toLowerCase().includes(banksSearchQuery.toLowerCase())
   );
 
   const renderBankAccount = useCallback(
@@ -325,6 +364,20 @@ const BankAccountsBottomSheet = forwardRef<
                   maxLength={10}
                 />
               </Box>
+              <Box
+                flexDirection="row"
+                alignItems="center"
+                gap="s"
+                mb="m"
+                style={{ backgroundColor: "rgba(237, 177, 24, 0.15)" }}
+                padding="s"
+                borderRadius={8}
+              >
+                <AlertCircle color={theme.colors.pendingColor} size={16} />
+                <CustomText fontSize={12}>
+                  Only personal accounts allowed
+                </CustomText>
+              </Box>
 
               <Box marginBottom="l">
                 <CustomText
@@ -334,39 +387,93 @@ const BankAccountsBottomSheet = forwardRef<
                 >
                   Account Name
                 </CustomText>
-                <TextInput
+                <Animated.View
                   style={{
-                    backgroundColor: theme.colors.surfaceContainer,
+                    borderWidth: 2,
                     borderRadius: 8,
-                    padding: 16,
-                    color: theme.colors.headerTextColor,
-                    fontSize: 16,
-                    borderWidth: 1,
-                    borderColor: errorResolvingAccount
+                    borderColor: isResolvingAccount
+                      ? glowAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [
+                            theme.colors.primaryColor,
+                            theme.colors.secondaryColor + "80",
+                          ],
+                        })
+                      : errorResolvingAccount
                       ? theme.colors.error
                       : "transparent",
-                    marginBottom: errorResolvingAccount ? 5 : 0,
+                    shadowColor: isResolvingAccount
+                      ? theme.colors.primaryColor
+                      : "transparent",
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: glowAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.6],
+                    }),
+                    shadowRadius: glowAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 8],
+                    }),
+                    elevation: isResolvingAccount ? 4 : 0,
                   }}
-                  placeholder="Name will show here"
-                  placeholderTextColor={theme.colors.placeholderTextColor}
-                  value={resolvedAccount?.name}
-                  onChangeText={setAccountName}
-                  editable={false}
-                />
+                >
+                  <TextInput
+                    style={{
+                      backgroundColor: theme.colors.surfaceContainer,
+                      borderRadius: 6,
+                      padding: 16,
+                      color: theme.colors.headerTextColor,
+                      fontSize: 16,
+                      marginBottom: errorResolvingAccount ? 5 : 0,
+                    }}
+                    placeholder="Name will show here"
+                    placeholderTextColor={theme.colors.placeholderTextColor}
+                    value={resolvedAccount?.name}
+                    editable={false}
+                  />
+                </Animated.View>
                 <CustomText variant="body" color="error" fontSize={14}>
                   {errorResolvingAccount}
                 </CustomText>
               </Box>
 
+              {errorCreatingBankAccount && (
+                <Box marginBottom="m">
+                  <CustomText variant="body" color="error" fontSize={14}>
+                    {errorCreatingBankAccount}
+                  </CustomText>
+                </Box>
+              )}
+
               <CustomButton
                 text="Add Account"
-                onPress={() => {
-                  // Handle adding the account
-                  setShowAddAccountModal(false);
+                onPress={async () => {
+                  if (!selectedBank || !resolvedAccount?.name) return;
+
+                  try {
+                    await createBankAccount(
+                      selectedBank._id,
+                      resolvedAccount.name,
+                      targetCurrency,
+                      accountNumber
+                    );
+
+                    // Reset form
+                    setAccountNumber("");
+                    setSelectedBank(null);
+                    setShowAddAccountModal(false);
+                  } catch (error) {
+                    console.error("Failed to create bank account:", error);
+                  }
                 }}
                 width={"100%"}
                 borderRadius={30}
-                disabled={!accountName || !accountNumber || !selectedBank}
+                disabled={
+                  !resolvedAccount?.name ||
+                  !selectedBank ||
+                  isCreatingBankAccount
+                }
+                isLoading={isCreatingBankAccount}
               />
               <Box height={120} />
             </BottomSheetView>
@@ -438,7 +545,7 @@ const BankAccountsBottomSheet = forwardRef<
               </Box>
 
               <Box
-                backgroundColor="surfaceContainer"
+                backgroundColor="secondaryBackgroundColor"
                 borderRadius={8}
                 paddingHorizontal="m"
                 marginBottom="m"
@@ -455,8 +562,8 @@ const BankAccountsBottomSheet = forwardRef<
                   }}
                   placeholder="Search banks"
                   placeholderTextColor={theme.colors.placeholderTextColor}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
+                  value={banksSearchQuery}
+                  onChangeText={setBanksSearchQuery}
                 />
               </Box>
 
@@ -482,7 +589,7 @@ const BankAccountsBottomSheet = forwardRef<
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["80%", "90%"]}
+      snapPoints={["870%", "90%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       onClose={onClose}
@@ -520,7 +627,7 @@ const BankAccountsBottomSheet = forwardRef<
         </Box>
 
         <Box
-          backgroundColor="surfaceContainer"
+          backgroundColor="secondaryBackgroundColor"
           borderRadius={30}
           paddingHorizontal="m"
           marginBottom="m"
@@ -537,36 +644,22 @@ const BankAccountsBottomSheet = forwardRef<
             }}
             placeholder="Search"
             placeholderTextColor={theme.colors.placeholderTextColor}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            value={accountsSearchQuery}
+            onChangeText={setAccountsSearchQuery}
           />
         </Box>
 
-        <Box flex={1}>
+        <Box minHeight={SCREEN_HEIGHT * 0.3} flex={1}>
           {selectedAccount ? (
-            <Box>
-              <Image
-                source={{
-                  uri: (selectedAccount.bankId as unknown as Bank)?.icon,
-                }}
-                style={{ width: 100, height: 100, borderRadius: 10 }}
-              />
-              <Box>
-                <CustomText
-                  variant="body"
-                  color="headerTextColor"
-                  fontSize={16}
-                >
-                  {selectedAccount.name}
-                </CustomText>
-                <CustomText variant="body" color="bodyTextColor" fontSize={14}>
-                  {selectedAccount.number}
-                </CustomText>
-              </Box>
-            </Box>
+            <BankAccountCard
+              onPress={() => handleBankAccountSelect(null)}
+              bankAccount={selectedAccount}
+              selected={true}
+            />
           ) : null}
           {filteredBankAccounts.length > 0 ? (
             <BankAccountsList
+              onPressAccount={handleBankAccountSelect}
               bankAccounts={filteredBankAccounts as UserBankAccount[]}
             />
           ) : (

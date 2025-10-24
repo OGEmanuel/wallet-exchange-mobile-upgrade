@@ -5,7 +5,7 @@
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, MarketData, SendTransactionRequest, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
+import { AddTokenRequest, CreateOrderRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, MarketData, SendTransactionRequest, SupportedCurrency, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import * as SecureStore from 'expo-secure-store';
@@ -582,6 +582,20 @@ class ZapSDKService {
         accountNumber,
       }),
       'resolveBankAccount'
+    );
+  }
+
+  public async createBankAccount(params: { bankId: string; name: string; supportedCurrency: SupportedCurrency, userId: string, number: string }) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().bankAccounts.createBankAccount(params),
+      'createBankAccount'
+    );
+  }
+
+  public async createOrder(params: CreateOrderRequest) {
+    return this.executeWithNetworkHandling(
+      () => this.getSDK().orders.createOrder(params),
+      'createOrder'
     );
   }
 

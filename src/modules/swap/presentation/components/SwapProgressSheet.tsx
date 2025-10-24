@@ -18,6 +18,9 @@ interface OrderDetailsSheetProps {
   orderDetails?: CreateOrderResponse;
   onClose?: () => void;
   title?: string;
+  orderStatus?: string;
+  progress?: number;
+  currentStep?: string;
 }
 
 export interface OrderDetailsSheetRef {
@@ -28,57 +31,80 @@ export interface OrderDetailsSheetRef {
 const SwapProgressSheet = forwardRef<
   OrderDetailsSheetRef,
   OrderDetailsSheetProps
->(({ orderDetails, onClose, title = "Order Details" }, ref) => {
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const { targetCurrency, baseCurrency } = useSwap();
-  const theme = useTheme<Theme>();
-  useImperativeHandle(ref, () => ({
-    open: () => bottomSheetRef.current?.snapToIndex(0),
-    close: () => bottomSheetRef.current?.close(),
-  }));
+>(
+  (
+    {
+      orderDetails,
+      onClose,
+      title = "Order Details",
+      orderStatus,
+      progress,
+      currentStep,
+    },
+    ref
+  ) => {
+    const bottomSheetRef = useRef<BottomSheet>(null);
+    const { targetCurrency, baseCurrency } = useSwap();
+    const theme = useTheme<Theme>();
+    useImperativeHandle(ref, () => ({
+      open: () => bottomSheetRef.current?.snapToIndex(0),
+      close: () => bottomSheetRef.current?.close(),
+    }));
 
-  return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={-1}
-      snapPoints={["90%"]}
-      enablePanDownToClose
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-          opacity={0.5}
-        />
-      )}
-      onClose={onClose}
-      backgroundStyle={{
-        backgroundColor: theme.colors.mainBackgroundColor,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-      }}
-      handleIndicatorStyle={{
-        backgroundColor: theme.colors.bodyTextColor,
-        width: 32,
-      }}
-    >
-      <BottomSheetView style={{ flex: 1, height: SIZES.height * 0.8 }}>
-        <View
-          style={[
-            styles.header,
-            { borderColor: theme.colors.secondaryBackgroundColor },
-          ]}
-        >
-          <TouchableIcon
-            source={icons.cancel}
-            onPress={() => bottomSheetRef.current?.close()}
-            width={24}
+    return (
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={["90%"]}
+        enablePanDownToClose
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
+            opacity={0.5}
           />
+        )}
+        onClose={onClose}
+        backgroundStyle={{
+          backgroundColor: theme.colors.mainBackgroundColor,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: theme.colors.bodyTextColor,
+          width: 32,
+        }}
+      >
+        <BottomSheetView style={{ flex: 1, height: SIZES.height * 0.8 }}>
+          <View
+            style={[
+              styles.header,
+              { borderColor: theme.colors.secondaryBackgroundColor },
+            ]}
+          >
+            <TouchableIcon
+              source={icons.cancel}
+              onPress={() => bottomSheetRef.current?.close()}
+              width={24}
+            />
 
-          <View style={{ width: 24 }} />
-        </View>
-        {false && (
+            <View style={{ width: 24 }} />
+          </View>
           <ProgressView
+            key={orderDetails?._id}
+            fromAmount={orderDetails?.buyAmount || "0"}
+            fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
+            toAmount={orderDetails?.sellAmount}
+            toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
+            recipient={"John Doe"}
+            network={(() => {})() as string}
+            status={orderStatus || "confirming"}
+            orderDetails={orderDetails}
+            progress={progress || 0}
+            currentStep={currentStep || "Confirming"}
+          />
+          <SuccessView
             fromAmount={orderDetails?.buyAmount || "0"}
             fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
             toAmount={orderDetails?.sellAmount}
@@ -88,21 +114,11 @@ const SwapProgressSheet = forwardRef<
             status="confirming"
             orderDetails={orderDetails}
           />
-        )}
-        <SuccessView
-          fromAmount={orderDetails?.buyAmount || "0"}
-          fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
-          toAmount={orderDetails?.sellAmount}
-          toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
-          recipient={"John Doe"}
-          network={(() => {})() as string}
-          status="confirming"
-          orderDetails={orderDetails}
-        />
-      </BottomSheetView>
-    </BottomSheet>
-  );
-}); // 👈 this closing parenthesis was missing
+        </BottomSheetView>
+      </BottomSheet>
+    );
+  }
+); // 👈 this closing parenthesis was missing
 
 export default SwapProgressSheet;
 

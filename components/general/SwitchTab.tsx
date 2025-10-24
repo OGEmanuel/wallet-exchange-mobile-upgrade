@@ -42,7 +42,6 @@ const SwitchTab = ({ labels, activeIndex, onPress }: IProps) => {
       borderRadius={40}
       alignItems="center"
       flexDirection="row"
-      px="s"
       position="relative"
       onLayout={handleLayout}
     >

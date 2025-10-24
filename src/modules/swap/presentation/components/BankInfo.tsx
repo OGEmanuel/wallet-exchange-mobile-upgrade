@@ -1,6 +1,6 @@
+import { Box, CustomText } from "@/components/general";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-// import { TokenImage } from "@/components";
+import { Image, StyleSheet } from "react-native";
 
 interface BankInfoProps {
   icon?: string;
@@ -8,24 +8,24 @@ interface BankInfoProps {
 }
 
 const BankInfo = ({ icon, name }: BankInfoProps) => (
-  <View style={styles.container}>
-    <View style={styles.iconWrapper}>
-      {/* <TokenImage uri={icon} name={name} size={20} /> */}
-    </View>
-    <Text>{name}</Text>
-  </View>
+  <Box style={styles.container}>
+    <Box style={styles.iconWrapper}>
+      <Image source={{ uri: icon }} style={{ width: 20, height: 20 }} />
+    </Box>
+    <CustomText fontSize={14}>{name}</CustomText>
+  </Box>
 );
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 7,
   },
   iconWrapper: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 4,
     backgroundColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",

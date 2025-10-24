@@ -26,7 +26,7 @@ export const useNetworkStatus = () => {
         isConnected: state.isConnected ?? false,
         isInternetReachable: state.isInternetReachable,
         type: state.type,
-        isOnline,
+        isOnline: !!isOnline,
       });
       
       setIsLoading(false);
@@ -40,7 +40,7 @@ export const useNetworkStatus = () => {
         isConnected: state.isConnected ?? false,
         isInternetReachable: state.isInternetReachable,
         type: state.type,
-        isOnline,
+        isOnline: !!isOnline,
       });
       
       setIsLoading(false);
