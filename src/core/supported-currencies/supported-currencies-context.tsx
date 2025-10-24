@@ -5,39 +5,9 @@
  * for all supported currencies throughout the app.
  */
 
-import { IChain, ICurrency } from "@zap/blockchain-sdk";
+import { IChain, ICurrency, SupportedCurrency } from "@zap/blockchain-sdk";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
-
-export interface SupportedCurrency {
-  _id?: string;
-  id?: string; // Unique identifier
-  currencyId: string | Partial<ICurrency>; // Reference to the Currency model
-  bankId?: string | Partial<IBank> | null; // Reference to the Bank model
-  chainId?: string | Partial<IChain> | null; // Reference to the Chain model
-  tokenAddress?: string | null; // Token address (optional)
-  decimals?: number; // Number of decimals (default 18)
-  image?: string; // image (optional)
-  defaultTradesProvider?: string | null; // Default provider for trades
-  defaultBuyProvider?: string | null; // Default provider for buy
-  defaultSellProvider?: string | null; // Default provider for sell
-  preferredTradesProviders?: string[]; // List of preferred providers for trades
-  defaultBalancesProvider?: string | null; // Default provider for balances
-  preferredBalancesProviders?: string[]; // List of preferred providers for balances
-  defaultRPCProvider?: string | null; // Default provider for RPC
-  isStable: boolean;
-  name?: string;
-  symbol?: string;
-  preferredRPCProviders?: string[]; // List of preferred providers for RPC
-  defaultTransactionsProvider?: string | null; // Default provider for transactions
-  preferredTransactionsProviders?: string[]; // List of preferred providers for transactions
-  deletedAt?: Date | null; // Soft deletion date
-  isActive: boolean; // For exchange (existing)
-  isWalletDefault: boolean; // NEW: Native currencies (ETH, SOL, BNB, BTC)
-  isWalletActive: boolean; // NEW: All supported + user-added tokens
-  createdAt: Date; // Automatically added by Mongoose
-  updatedAt: Date; // Automatically added by Mongoose
-}
 
 export interface IBank {
   _id?: string; // Automatically added by Mongoose
@@ -187,16 +157,21 @@ export const SupportedCurrenciesProvider: React.FC<
   ): SupportedCurrency[] => {
     return supportedCurrencies.filter(
       (currency) =>
-        (currency.chainId as Partial<IChain>)?.symbol?.toLowerCase() === chainSymbol.toLowerCase()
+        (currency.chainId as Partial<IChain>)?.symbol?.toLowerCase() ===
+        chainSymbol.toLowerCase()
     );
   };
 
   const getStableCurrencies = (): SupportedCurrency[] => {
-    return supportedCurrencies.filter((currency) => currency.isStable);
+    return supportedCurrencies.filter(
+      (currency) => (currency.currencyId as unknown as ICurrency)?.isStable
+    );
   };
 
   const getNonStableCurrencies = (): SupportedCurrency[] => {
-    return supportedCurrencies.filter((currency) => !currency.isStable);
+    return supportedCurrencies.filter(
+      (currency) => !(currency.currencyId as unknown as ICurrency)?.isStable
+    );
   };
 
   const searchSupportedCurrencies = (query: string): SupportedCurrency[] => {
@@ -207,7 +182,9 @@ export const SupportedCurrenciesProvider: React.FC<
       (currency) =>
         currency.name?.toLowerCase().includes(searchTerm) ||
         currency.symbol?.toLowerCase().includes(searchTerm) ||
-        (currency.currencyId as Partial<ICurrency>)?.code?.toLowerCase().includes(searchTerm)
+        (currency.currencyId as Partial<ICurrency>)?.code
+          ?.toLowerCase()
+          .includes(searchTerm)
     );
   };
 

@@ -1,24 +1,31 @@
 // components/bottomsheets/BankAccountsList.tsx
 
-import { Theme } from "@/theme";
-import { useTheme } from "@shopify/restyle";
 import { UserBankAccount } from "@zap/blockchain-sdk";
 import React from "react";
-import { Text, View } from "react-native";
+import { ScrollView } from "react-native";
+import BankAccountCard from "../swap/BankAccountCard";
 
 interface BankAccountsListProps {
   bankAccounts: UserBankAccount[];
+  onPressAccount: (bankAccount: UserBankAccount) => void;
 }
 
-const BankAccountsList = ({ bankAccounts }: BankAccountsListProps) => {
-  const theme = useTheme<Theme>();
-  return <View>
-    {bankAccounts.map((bankAccount) => (
-      <View key={bankAccount._id}>
-        <Text>{bankAccount.name}</Text>
-      </View>
-    ))}
-  </View>;
+const BankAccountsList = ({
+  bankAccounts,
+  onPressAccount,
+}: BankAccountsListProps) => {
+  return (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      {bankAccounts.map((bankAccount) => (
+        <BankAccountCard
+          key={bankAccount._id}
+          bankAccount={bankAccount}
+          selected={false}
+          onPress={() => onPressAccount(bankAccount)}
+        />
+      ))}
+    </ScrollView>
+  );
 };
 
 export default BankAccountsList;

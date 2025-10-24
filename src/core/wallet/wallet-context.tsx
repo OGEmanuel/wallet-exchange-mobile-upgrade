@@ -815,6 +815,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         Device.modelId ||
         `unknown-${uniqueId("supaaa-unique-id")}`;
 
+      console.log(
+        deviceToken,
+        deviceFingerprint,
+        "___DEVICE TOKEN AND FINGERPRINT___"
+      );
+
       // Attempt device-based login
       const success = await walletLogin(
         deviceToken,
