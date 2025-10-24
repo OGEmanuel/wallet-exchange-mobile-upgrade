@@ -1,18 +1,24 @@
+import { CustomText } from "@/components/general";
+import { formatNumber, formatWalletAddress } from "@/src/core/utils/format-utils";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import useAppUtilities from "../hooks/useAppUtilities";
+import { StyleSheet, View } from "react-native";
+import { CreateOrderResponse } from "../../domain/entities/order.types";
 import BankInfo from "./BankInfo";
 import DetailRow from "./DetailRow";
 import ExpirationTimer from "./ExpirationTimer";
 
-const OverviewDetails = ({ orderDetails, setActive }: any) => {
-  const { getApproximateAmount, truncateString } = useAppUtilities();
+const OverviewDetails = ({
+  orderDetails,
+}: {
+  orderDetails: CreateOrderResponse;
+}) => {
   const theme = useTheme<Theme>();
 
-  const symbol = orderDetails?.sellCurrency?.currencyId?.symbol;
-  const isCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
+  const sellSymbol = orderDetails?.sellCurrency?.currencyId?.symbol || "";
+  const isSellCrypto =
+    orderDetails?.sellCurrency?.currencyId?.isCrypto || false;
 
   return (
     <>
@@ -23,43 +29,36 @@ const OverviewDetails = ({ orderDetails, setActive }: any) => {
         ]}
       >
         <DetailRow label="You Receive:">
-          <Text
+          <CustomText
             style={[styles.walletText, { color: theme.colors.bodyTextColor }]}
           >
-            {symbol === "₦" && symbol}
-            {getApproximateAmount(
-              Number(orderDetails?.childOrder?.amountToReceive ?? "0"),
-              isCrypto,
-              false
-            )}
-            {symbol !== "₦" && symbol}
-          </Text>
+            {isSellCrypto
+              ? formatNumber(orderDetails.sellAmount) + " " + sellSymbol
+              : sellSymbol + formatNumber(orderDetails.sellAmount, 2)}
+          </CustomText>
         </DetailRow>
 
         <DetailRow label="LP Fee:">
-          <Text
-            style={[styles.walletText, { color: theme.colors.bodyTextColor }]}
-          >
-            {symbol === "₦" && symbol}
-            {getApproximateAmount(Number(0), isCrypto, false)}
-            {symbol !== "₦" && symbol}
-          </Text>
+          <CustomText fontSize={14}>
+            {isSellCrypto
+              ? formatNumber(orderDetails.lpFee ?? 0) + " " + sellSymbol
+              : sellSymbol + formatNumber(orderDetails.lpFee ?? 0, 2)}
+          </CustomText>
         </DetailRow>
 
-        <DetailRow label="Sent To:">
-          {isCrypto ? (
-            <Text
-              numberOfLines={1}
-              style={[styles.walletText, { color: theme.colors.bodyTextColor }]}
-            >
-              {truncateString(orderDetails?.withdrawalAccount?.walletAddress)}
-            </Text>
+        <DetailRow label="Receiver:">
+          {isSellCrypto ? (
+            <CustomText numberOfLines={1} fontSize={14}>
+              {formatWalletAddress(orderDetails?.withdrawalAccount?.walletAddress, 12, 10)}
+            </CustomText>
           ) : (
-            <Text>{orderDetails?.withdrawalAccount?.holderName}</Text>
+            <CustomText numberOfLines={1} fontSize={14}>
+              {orderDetails?.withdrawalAccount?.holderName}
+            </CustomText>
           )}
         </DetailRow>
 
-        {!isCrypto && (
+        {!isSellCrypto && (
           <DetailRow label="Bank:">
             <BankInfo
               icon={orderDetails?.withdrawalAccount?.bankId?.icon}
@@ -67,7 +66,7 @@ const OverviewDetails = ({ orderDetails, setActive }: any) => {
             />
           </DetailRow>
         )}
-        <ExpirationTimer />
+        <ExpirationTimer expirationTime={new Date(orderDetails.expiresAt)} />
       </View>
     </>
   );

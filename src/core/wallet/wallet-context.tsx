@@ -7,7 +7,7 @@
 
 import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
 import { IUserWalletGroup, WalletContextType } from "@/types/main";
-import { UserModel, WalletUtils, ZapSDK } from "@zap/blockchain-sdk";
+import { ExchangeValidateOtpResponse, UserModel, WalletUtils, ZapSDK } from "@zap/blockchain-sdk";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -207,7 +207,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         console.log("✅ Exchange authentication found, routing to exchange");
         result = { ...result, exchangeUserId, isExchangeAuth };
         if (shouldRoute) {
-          router.replace("/dashboard/home/wallet-home/swap");
+          // Moore I took this out because it keeps routing the user to the swap app even if they don't have username
+          // I believe you can add the username parameter to the conditions too in the SDK
+          // router.replace("/dashboard/home/wallet-home/swap");
         }
     return result;
   };
@@ -869,6 +871,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         Device.modelId ||
         `unknown-${uniqueId("supaaa-unique-id")}`;
 
+      console.log(
+        deviceToken,
+        deviceFingerprint,
+        "___DEVICE TOKEN AND FINGERPRINT___"
+      );
+
       // Attempt device-based login
       const success = await walletLogin(
         deviceToken,
@@ -975,7 +983,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const getExchangeUser = async (): Promise<any | null> => {
+  const getExchangeUser = async (): Promise<UserModel | null> => {
     try {
       if (!isExchangeAuthenticated) {
         return null;
@@ -988,7 +996,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // If no cached data, fetch from SDK
       const userData = await zapSDKService.getExchangeUser();
-      return null;
+      return userData;
     } catch (error) {
       console.error("Failed to get exchange user:", error);
       return null;
@@ -1045,7 +1053,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const exchangeValidateOtp = async (
     email: string,
     otp: string
-  ): Promise<boolean> => {
+  ): Promise<ExchangeValidateOtpResponse | boolean> => {
     try {
       setIsAuthenticating(true);
       setError(null);
@@ -1056,14 +1064,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (result) {
         console.log(result, "result");
         setIsExchangeAuthenticated(true);
-        setCurrentExchangeUser(result.data.userId || null);
+        setCurrentExchangeUser(result.data.user._id || null);
         setExchangeUserData(result.data.user as UserModel | null);
 
         // Persist exchange authentication state
         await persistExchangeAuthState();
 
         await checkAuthenticationAndRoute();
-        return true;
+        return result;
       } else {
         setError(result || "Invalid OTP");
         return false;

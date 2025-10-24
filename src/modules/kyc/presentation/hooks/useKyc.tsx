@@ -35,6 +35,10 @@ const useKyc = () => {
       extra: null,
     });
 
+    if (response.data) {
+      dispatch(kycActions.setUser(response.data));
+    }
+
     setFetchingUserDetails(false);
 
     return response;

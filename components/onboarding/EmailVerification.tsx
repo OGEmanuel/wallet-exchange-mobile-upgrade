@@ -1,8 +1,10 @@
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { ExchangeValidateOtpResponse, UserModel } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Keyboard, Pressable } from "react-native";
@@ -34,6 +36,7 @@ export default function EmailVerification({
   const { hideAllBottomSheets } = useAppBottomSheet();
   const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
     useExchangeAuth();
+    const { fetchUserById } = useKyc();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -80,10 +83,16 @@ export default function EmailVerification({
           // Check if user data has username
           let exchangeUser = exchangeUserData;
 
-          if (!exchangeUser?.username) {
-            exchangeUser = await getExchangeUser();
+          
+          const userData: UserModel = (response as ExchangeValidateOtpResponse)?.data?.user;
+          
+          if (!userData?.username) {
+            // exchangeUser = await getExchangeUser();
           }
 
+          const userResponse = await fetchUserById(userData);
+          exchangeUser = userResponse.data;
+          
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
             console.log(

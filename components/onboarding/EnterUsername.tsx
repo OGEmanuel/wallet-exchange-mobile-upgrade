@@ -1,7 +1,9 @@
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
@@ -23,6 +25,7 @@ export default function EnterUsername({
   const [userSource, setUserSource] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { addUsername, fetchUserById } = useKyc();
 
   const handleSubmitUsername = async () => {
     if (!username.trim() || !user?._id) return;
@@ -32,13 +35,19 @@ export default function EnterUsername({
 
     console.log(`payload: ${username}, ${referralCode}, ${userSource}`);
     try {
-      const response = await completeOnboarding({
+      const response = await addUsername({
         username: username.trim(),
         userSource: userSource,
         referralCode: referralCode.trim(),
       });
-      if (response?.success) {
-        onUsernameSuccess?.(username.trim());
+
+      const userResponse = await fetchUserById(user);
+      const exchangeUser = userResponse.data;
+
+      console.log("Exchange user:", exchangeUser);
+      if (exchangeUser?.username) {
+        // onUsernameSuccess?.(username.trim());
+        router.push("/dashboard/home/wallet-home/swap");
       } else {
         setError(response.message);
       }

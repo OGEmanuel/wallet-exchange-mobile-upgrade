@@ -13,8 +13,9 @@ import BottomSheet from "@gorhom/bottom-sheet";
 // import { useNavigation } from "@react-navigation/native";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
 import { useTheme } from "@shopify/restyle";
-import { IChain, ICurrency } from "@zap/blockchain-sdk";
+import { Bank, IChain, ICurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import * as Clipboard from "expo-clipboard";
+import { useOrderStatusUpdates } from "../hooks/useOrderStatusUpdates";
 import { useSwapSDK } from "../hooks/useSwapSDK";
 
 // Import modular components
@@ -23,7 +24,6 @@ import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/Animat
 import BankAccountsBottomSheet from "@/components/bottomsheets/BankAccountsBottomSheet";
 import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import { BankAccount } from "@/interfaces/account.interface";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -50,7 +50,10 @@ import {
   SwapDetailsCard,
   TokenInputCard,
 } from "../components";
-import SwapProgressSheet from "../components/SwapProgressSheet";
+import SwapProgressSheet, {
+  OrderDetailsSheetRef,
+} from "../components/SwapProgressSheet";
+import { useBankAccounts } from "../hooks/useBankAccounts";
 import { useSwapAnimations } from "../hooks/useSwapAnimations";
 
 const Swap = () => {
@@ -64,11 +67,36 @@ const Swap = () => {
   const [cryptoAddress, setCryptoAddress] = useState("");
   const [addressError, setAddressError] = useState<string | null>(null);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
-  const orderDetailsSheetRef = useRef<any>(null);
+  const orderDetailsSheetRef = useRef<OrderDetailsSheetRef>(null);
   const progressSheetRef = useRef<any>(null);
   const [shouldShake, setShouldShake] = useState(false);
+  
+  // Order status tracking
+  const {
+    currentOrder,
+    orderStatus,
+    progress,
+    isOrderActive,
+    isCompleted,
+    isFailed,
+    getCurrentStep
+  } = useOrderStatusUpdates({
+    orderId: createdOrder?._id,
+    onStatusChange: (order, status) => {
+      console.log(`Order ${order._id} status changed to: ${status}`);
+      
+      // Switch to progress screen when order starts processing
+      if (status === "DEPOSIT_CONFIRMING" || status === "DEPOSIT_CONFIRMED") {
+        orderDetailsSheetRef.current?.close();
+        progressSheetRef.current?.open();
+      }
+    },
+    onProgressUpdate: (order, progressValue) => {
+      console.log(`Order ${order._id} progress: ${progressValue}%`);
+    }
+  });
   const [bankAccountSelected, setBankAccountSelected] =
-    useState<BankAccount | null>(null);
+    useState<UserBankAccount | null>(null);
 
   const { logoutFromExchange } = useWallet();
   // 🔹 Order creation state
@@ -93,6 +121,7 @@ const Swap = () => {
     targetCurrency,
     marketRate,
     error,
+    setError,
     isLoading,
     baseAmountUSD,
     isInputtingUSD,
@@ -112,6 +141,8 @@ const Swap = () => {
     handleTargetAmountFocus,
   } = useSwapSDK();
 
+  const { fetchBankAccounts } = useBankAccounts();
+
   // 🔹 Validation and shake animation
   useEffect(() => {
     if (error) {
@@ -121,6 +152,10 @@ const Swap = () => {
     } else {
     }
   }, [error]);
+
+  useEffect(() => {
+    orderDetailsSheetRef.current?.close();
+  }, []);
 
   // 🔹 Animations hook
   const {
@@ -160,6 +195,9 @@ const Swap = () => {
       if (baseCurrency && targetCurrency && baseAmount > 0) {
         await fetchMarketRate(baseCurrency, targetCurrency, baseAmount, true);
       }
+
+      // fetch bank accounts
+      await fetchBankAccounts();
     } catch (error) {
       console.error("Refresh failed:", error);
     } finally {
@@ -172,10 +210,14 @@ const Swap = () => {
     baseAmount,
     fetchMarketRate,
     refreshSupportedCurrencies,
+    fetchBankAccounts,
   ]);
 
   // 🔹 Swap currencies (with animation)
   const handleSwapButtonPress = useCallback(() => {
+    setAddressError(null);
+    setCreateOrderError(null);
+    setError(null);
     handleSwapPress();
     handleSwapCurrencies();
   }, [handleSwapPress, handleSwapCurrencies]);
@@ -208,10 +250,25 @@ const Swap = () => {
 
   // 🔹 Order creation
   const handleContinue = useCallback(async () => {
+    setCreateOrderError(null);
+    setAddressError(null);
     if (!validateExchange()) return;
 
+    const isCrypto = (targetCurrency?.currencyId as Partial<ICurrency>)
+      ?.isCrypto;
+
+    if (isCrypto && !cryptoAddress.trim()) {
+      setCreateOrderError("Please enter a valid receiving address");
+      return;
+    }
+
+    if (!isCrypto && !bankAccountSelected?._id) {
+      setCreateOrderError("Please select a bank account to receive");
+      return;
+    }
+
     // Validate crypto address if required
-    if ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto) {
+    if (isCrypto) {
       if (!validateCryptoAddress(cryptoAddress)) {
         return;
       }
@@ -221,12 +278,16 @@ const Swap = () => {
       setIsCreatingOrder(true);
       setCreateOrderError(null);
 
-      const orderResult = await createOrder(cryptoAddress.trim() || undefined);
+      const orderResult = await createOrder(
+        isCrypto ? cryptoAddress.trim() : undefined,
+        !isCrypto ? bankAccountSelected?._id : undefined
+      );
 
       if (orderResult) {
-        console.log("Order created successfully:", orderResult);
         setCreatedOrder(orderResult);
-        orderDetailsSheetRef.current?.open();
+        setTimeout(() => {
+          orderDetailsSheetRef.current?.open();
+        }, 100);
       } else {
         setCreateOrderError("Failed to create order");
       }
@@ -244,6 +305,7 @@ const Swap = () => {
     validateCryptoAddress,
     cryptoAddress,
     createOrder,
+    bankAccountSelected,
   ]);
 
   const rateDetails = useMemo(() => {
@@ -512,11 +574,16 @@ const Swap = () => {
                     },
                   ]}
                 >
-                  <CustomText color="placeholderTextColor" fontSize={12}>
+                  <CustomText
+                    flex={1}
+                    color="placeholderTextColor"
+                    fontSize={12}
+                  >
                     Sending To
                   </CustomText>
                   <TouchableOpacity
                     style={{
+                      flex: 1,
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "center",
@@ -526,14 +593,30 @@ const Swap = () => {
                       bankAccountsBottomSheetRef.current?.snapToIndex(0);
                     }}
                   >
-                    <CustomText color="headerTextColor" fontSize={14}>
-                      {bankAccountSelected?.accountHolderName ||
-                        "Select Account"}
-                    </CustomText>
+                    <Box flex={1} flexDirection="row" alignItems="center">
+                      <Image
+                        source={{
+                          uri: (bankAccountSelected?.bankId as unknown as Bank)
+                            ?.icon,
+                        }}
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 3,
+                          marginRight: 7,
+                        }}
+                      />
+                      <CustomText
+                        color="headerTextColor"
+                        variant="body"
+                        fontSize={14}
+                        numberOfLines={1}
+                        flex={1}
+                      >
+                        {bankAccountSelected?.name.trim() || "Select Account"}
+                      </CustomText>
+                    </Box>
                     <ArrowDown2
-                      style={{
-                        marginLeft: 7,
-                      }}
                       size={16}
                       fontWeight="bold"
                       color={theme.colors.bodyTextColor}
@@ -610,7 +693,6 @@ const Swap = () => {
         ref={bankAccountsBottomSheetRef}
         onBankAccountSelect={(bankAccount) => {
           setBankAccountSelected(bankAccount);
-          bankAccountsBottomSheetRef.current?.close();
         }}
         onClose={() => {
           bankAccountsBottomSheetRef.current?.close();
@@ -618,9 +700,9 @@ const Swap = () => {
         onContinue={() => {
           if (bankAccountSelected) {
             bankAccountsBottomSheetRef.current?.close();
-            handleContinue();
           }
         }}
+        targetCurrency={targetCurrency}
       />
 
       <OrderDetailsSheet
@@ -633,9 +715,12 @@ const Swap = () => {
       />
       <SwapProgressSheet
         ref={progressSheetRef}
-        orderDetails={createdOrder}
+        orderDetails={currentOrder || createdOrder}
         onClose={() => {}}
-        title="Order Created"
+        title="Order Progress"
+        orderStatus={orderStatus}
+        progress={progress}
+        currentStep={getCurrentStep()}
       />
 
       {/* Token Selector Bottom Sheets */}

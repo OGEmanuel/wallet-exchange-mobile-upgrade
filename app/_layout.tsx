@@ -12,6 +12,7 @@ import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
 import { SupportedCurrenciesProvider } from "@/src/core/supported-currencies/supported-currencies-context";
 import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
+import { WebSocketProvider } from "@/src/core/websocket/WebSocketProvider";
 import { store } from "@/state";
 import { STORAGE_KEYS } from "@/state/storagekeys";
 import { colorThemeAtom } from "@/state/theme.atom";
@@ -24,11 +25,11 @@ import * as SecureStore from "expo-secure-store";
 import { useAtom } from "jotai";
 import React, { useEffect, useState } from "react";
 import {
-    Appearance,
-    NativeEventSubscription,
-    StatusBar,
-    View,
-    useColorScheme,
+  Appearance,
+  NativeEventSubscription,
+  StatusBar,
+  View,
+  useColorScheme,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -232,7 +233,8 @@ export default function RootLayout() {
                     <ChainsProvider>
                       <SupportedCurrenciesProvider>
                         <WalletProvider>
-                          <BottomSheetProvider>
+                          <WebSocketProvider>
+                            <BottomSheetProvider>
                       <StatusBar
                         barStyle={
                           colorTheme === "dark"
@@ -249,7 +251,8 @@ export default function RootLayout() {
                       </Stack>
                       <BottomSheetManager />
                       <AppLoadingModal />
-                          </BottomSheetProvider>
+                            </BottomSheetProvider>
+                          </WebSocketProvider>
                         </WalletProvider>
                       </SupportedCurrenciesProvider>
                     </ChainsProvider>
