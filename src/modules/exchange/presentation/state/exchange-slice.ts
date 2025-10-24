@@ -42,6 +42,9 @@ const exchangeSlice = createSlice({
     setIsLoadingMore: (state, action: PayloadAction<boolean>) => {
       state.isLoadingMore = action.payload;
     },
+    setHasMore: (state, action: PayloadAction<boolean>) => {
+      state.hasMore = action.payload;
+    },
     clearExchangeActivities: (state) => {
       state.exchangeActivities = [];
       state.currentPage = 1;

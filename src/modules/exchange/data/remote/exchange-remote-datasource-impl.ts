@@ -12,12 +12,15 @@ export class ExchangeRemoteDataSourceImpl implements ExchangeRemoteDataSource {
     payload: GeneralRequestModel<UserModel, unknown, PaginationOptions>
   ): Promise<GeneralResponseModel<ExchangeActivityModel[]>> {
     const sdk = zapSDKService.getSDK();
+    console.log("payload", payload);
     const result = await sdk.exchangeActivities.getDefaultUserActivities(
       payload.body?._id,
       // payload.extra?.page,
       // payload.extra?.limit
     );
 
-    return result.data;
+    console.log("result 11111", result);
+
+    return result;
   }
 }
