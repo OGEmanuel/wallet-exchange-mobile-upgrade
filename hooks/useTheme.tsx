@@ -13,13 +13,17 @@ export type ThemeMode = "system" | "light" | "dark";
  */
 const useActiveTheme = () => {
   const [colorTheme, setColorTheme] = useAtom(colorThemeAtom);
-  const [themeMode, setThemeModeState] = React.useState<ThemeMode>("system");
+  const [themeMode, setThemeModeState] = React.useState<ThemeMode>("dark");
 
   // Load the theme mode on mount
   React.useEffect(() => {
     const loadThemeMode = async () => {
       const savedMode = await SecureStore.getItemAsync(STORAGE_KEYS.THEME_MODE);
-      if (savedMode === "light" || savedMode === "dark" || savedMode === "system") {
+      if (
+        savedMode === "light" ||
+        savedMode === "dark" ||
+        savedMode === "system"
+      ) {
         setThemeModeState(savedMode);
       } else {
         // Default to system if not set
@@ -53,7 +57,7 @@ const useActiveTheme = () => {
     await SecureStore.deleteItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET);
     await SecureStore.setItemAsync(STORAGE_KEYS.THEME_MODE, "system");
     setThemeModeState("system");
-    
+
     // Apply current system theme
     const systemTheme = Appearance.getColorScheme();
     const theme = systemTheme === "dark" ? "dark" : "light";
