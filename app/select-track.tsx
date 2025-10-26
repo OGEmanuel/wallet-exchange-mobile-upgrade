@@ -5,13 +5,14 @@ import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useRef, useState } from "react";
+import React, { PropsWithChildren, useEffect, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
@@ -95,19 +96,27 @@ const SelectTrack = () => {
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
   const phoneVerificationBottomSheetRef =
     useRef<AnimatedGradientBottomSheetRef>(null);
+  
+    const { fetchUserById } = useKyc();
 
   // State to control bottomsheet visibility
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
 
   // Get exchange authentication state from wallet context
-  const { isExchangeAuthenticated } = useWallet();
+  const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
 
   // Get user state from Redux store for KYC
   const { user } = useSelector((state: AppRootState) => state.kyc);
 
   // Check if user is exchange authenticated
   const isUserLoggedIn = isExchangeAuthenticated;
+
+  useEffect(() => {
+    fetchUserById({
+      _id: currentExchangeUser || undefined
+    });
+  }, [currentExchangeUser]);
 
   const theme = useTheme<Theme>();
 
@@ -120,6 +129,7 @@ const SelectTrack = () => {
   }[] = [
     {
       title: "Zapper",
+      // title: "Zapper",
       body: isUserLoggedIn
         ? "Continue to your dashboard"
         : "Sign in or  create your Zap account",
