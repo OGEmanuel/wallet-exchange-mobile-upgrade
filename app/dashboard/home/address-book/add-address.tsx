@@ -63,28 +63,14 @@ const Addresses = () => {
 
   const handleSubmit = async () => {
     try {
-      console.log("Add address - Auth check:", {
+      console.log("Add exchange address - Auth check:", {
         isExchangeAuthenticated,
-        exchangeUserData: exchangeUserData?._id,
-        kycUser: user?._id
+        exchangeUserData: exchangeUserData?._id
       });
 
-      // Check if user is authenticated for either exchange or wallet
-      if (!isExchangeAuthenticated && !user?._id) {
-        alert("Please log in to save addresses. You will be redirected to the address book.");
-        router.back();
-        return;
-      }
-
-      // Determine which tab we're working with based on authentication
-      let activeTab: 'exchange' | 'wallet' = 'wallet';
-      
-      if (isExchangeAuthenticated && exchangeUserData?._id) {
-        activeTab = 'exchange';
-      } else if (user?._id) {
-        activeTab = 'wallet';
-      } else {
-        alert("Authentication error. Please try logging in again.");
+      // Check if user is exchange authenticated
+      if (!isExchangeAuthenticated || !exchangeUserData?._id) {
+        alert("Please log in to your exchange account to save addresses. You will be redirected to the address book.");
         router.back();
         return;
       }
@@ -92,22 +78,56 @@ const Addresses = () => {
       setLoading(true);
       const validation = addressValidation.parse({ name, address });
       
-      const response = await createAddressBook(activeTab, {
+      const response = await createAddressBook('exchange', {
         name,
         address,
         chainId: selectedChain?.chainId?.toString() || '',
       });
       
-      console.log("Address created successfully:", response);
+      console.log("Exchange address created successfully:", response);
       setLoading(false);
       // Navigate back after successful creation
       router.back();
     } catch (error) {
-      console.log("Add address error:", error);
-      alert("Failed to add address. Please try again.");
+      console.log("Add exchange address error:", error);
+      alert("Failed to add exchange address. Please try again.");
       setLoading(false);
     }
   };
+
+  const handleSubmitWalletAddressBook = async () => {
+    try {
+      console.log("Add wallet address - Auth check:", {
+        kycUser: user?._id
+      });
+
+      // Check if user is wallet authenticated
+      if (!user?._id) {
+        alert("Please log in to your wallet account to save addresses. You will be redirected to the address book.");
+        router.back();
+        return;
+      }
+
+      setLoading(true);
+      const validation = addressValidation.parse({ name, address });
+      
+      const response = await createAddressBook('wallet', {
+        name,
+        address,
+        chainId: selectedChain?.chainId?.toString() || '',
+      });
+      
+      console.log("Wallet address created successfully:", response);
+      setLoading(false);
+      // Navigate back after successful creation
+      router.back();
+    } catch (error) {
+      console.log("Add wallet address error:", error);
+      alert("Failed to add wallet address. Please try again.");
+      setLoading(false);
+    }
+  };
+  
   return (
     <PageWrapper>
       <Box flex={1} bg="mainBackgroundColor" paddingHorizontal="m">
@@ -233,7 +253,15 @@ const Addresses = () => {
           disabledColor={theme.colors.disabledTextColor}
           onPress={() => {
             console.log("🔍 Submit button pressed");
-            handleSubmit();
+            // Use appropriate handler based on authentication
+            if (isExchangeAuthenticated && exchangeUserData?._id) {
+              handleSubmit(); // Exchange address
+            } else if (user?._id) {
+              handleSubmitWalletAddressBook(); // Wallet address
+            } else {
+              alert("Please log in to save addresses.");
+              router.back();
+            }
           }}
         />
       </Box>

@@ -52,13 +52,15 @@ class AddressBookSDKService {
       const sdk = zapSDKService.getSDK();
       if (!sdk) return null;
       
-      // Try to get the current user to verify authentication
-      const currentUser = await sdk.getCurrentUser();
-      if (!currentUser) return null;
+      // Check if exchange user is authenticated
+      const isAuthenticated = await sdk.isExchangeAuthenticated();
+      if (!isAuthenticated) return null;
       
-      // For now, we'll use a placeholder token approach
-      // In a real implementation, the SDK should provide the actual token
-      return 'exchange-token-placeholder';
+      // Get the actual exchange token from the SDK
+      const tokens = await sdk.exchangeAuth.getTokens();
+      const token = tokens?.token || null;
+      console.log("🔑 Exchange token retrieved:", token ? "Token available" : "No token");
+      return token;
     } catch (error) {
       console.error('Failed to get exchange token:', error);
       return null;
@@ -70,6 +72,7 @@ class AddressBookSDKService {
    */
   private async makeExchangeRequest(method: string, url: string, data?: any, params?: any) {
     const token = await this.getExchangeToken();
+    console.log("token ", token)
     if (!token) {
       throw new Error('Exchange authentication required');
     }
@@ -103,13 +106,13 @@ class AddressBookSDKService {
       console.log('🔍 SDK: Fetching user addresses for:', userId, 'isExchangeUser:', isExchangeUser);
       
       if (isExchangeUser) {
-        // For exchange users, we need to ensure they're properly authenticated
-        // and use the exchange token system
-        console.log('⚠️ Exchange user detected - using direct HTTP request');
+        // For exchange users, use exchange authentication
+        console.log('🔍 Exchange user detected - using exchange authentication');
         
-        // For now, return empty array for exchange users until we implement proper token handling
-        console.log('⚠️ Exchange address fetching not yet implemented - returning empty array');
-        return [];
+        const response = await this.makeExchangeRequest('GET', `/address-book/user/${userId}`);
+        
+        console.log('✅ SDK: Exchange user addresses fetched successfully:', (response?.data as AddressBookItem[])?.length || 0);
+        return (response?.data as AddressBookItem[]) || [];
       }
       
       // Use HTTP client which handles authentication through TokenManager for wallet users
@@ -120,8 +123,8 @@ class AddressBookSDKService {
         'Get User Addresses'
       );
 
-      console.log('✅ SDK: User addresses fetched successfully:', response?.data?.length || 0);
-      return response?.data || [];
+      console.log('✅ SDK: User addresses fetched successfully:', (response?.data as AddressBookItem[])?.length || 0);
+      return (response?.data as AddressBookItem[]) || [];
     } catch (error) {
       console.error('❌ SDK: Failed to fetch user addresses:', error);
       throw error;
@@ -140,13 +143,19 @@ class AddressBookSDKService {
       console.log('🔍 SDK: Creating address book entry:', { userId, addressData, isExchangeUser });
       
       if (isExchangeUser) {
-        // For exchange users, we need to ensure they're properly authenticated
-        console.log('⚠️ Exchange user detected - using direct HTTP request');
+        // For exchange users, use exchange authentication
+        console.log('🔍 Exchange user detected - using exchange authentication');
         
-        // For now, throw an error for exchange users until we implement proper token handling
-        throw new Error('Exchange address creation not yet implemented');
+        const response = await this.makeExchangeRequest('POST', '/address-book', {
+          ...addressData,
+          userId,
+        });
+
+        console.log('✅ SDK: Exchange address book entry created successfully:', response?.data);
+        return response?.data as AddressBookItem;
       }
       
+      // For wallet users, use the standard SDK authentication
       const response = await zapSDKService.executeWithNetworkHandling(
         async () => {
           return await httpClient.post('/address-book', {
@@ -158,7 +167,7 @@ class AddressBookSDKService {
       );
 
       console.log('✅ SDK: Address book entry created successfully:', response?.data);
-      return response?.data;
+      return response?.data as AddressBookItem;
     } catch (error) {
       console.error('❌ SDK: Failed to create address book entry:', error);
       throw error;
@@ -183,7 +192,7 @@ class AddressBookSDKService {
       );
 
       console.log('✅ SDK: Address book entry updated successfully:', response?.data);
-      return response?.data;
+      return response?.data as AddressBookItem;
     } catch (error) {
       console.error('❌ SDK: Failed to update address book entry:', error);
       throw error;
@@ -227,7 +236,7 @@ class AddressBookSDKService {
       );
 
       console.log('✅ SDK: Address book entry fetched successfully:', response?.data);
-      return response?.data;
+      return response?.data as AddressBookItem;
     } catch (error) {
       console.error('❌ SDK: Failed to fetch address book entry:', error);
       throw error;
@@ -253,8 +262,8 @@ class AddressBookSDKService {
         'Search Addresses'
       );
 
-      console.log('✅ SDK: Address search completed:', response?.data?.length || 0);
-      return response?.data || [];
+      console.log('✅ SDK: Address search completed:', (response?.data as AddressBookItem[])?.length || 0);
+      return (response?.data as AddressBookItem[]) || [];
     } catch (error) {
       console.error('❌ SDK: Failed to search addresses:', error);
       throw error;
