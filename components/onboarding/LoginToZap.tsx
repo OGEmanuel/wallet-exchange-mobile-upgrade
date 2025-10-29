@@ -57,6 +57,7 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
       setLoading(true);
       setEmailError(""); // Clear any previous errors
       const response = await handleExchangeLogin(email);
+      console.log("handleExchangeLogin response:", response);
       if (response) {
         onLoginSuccess?.(email);
       } else {

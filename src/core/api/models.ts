@@ -53,7 +53,12 @@ export interface ApiRequestMetadata {
 export interface TokenData {
   token: string | null; // Access token
   refreshToken: string | null; // Refresh token for getting new access tokens
-  expiresAt: number | null; // Token expiration timestamp
+  expiresAt: number | null;
+  jwt?: string;
+  createdAt?: string;
+  _id?: string;
+  ip?: string;
+  product?: string; // Token expiration timestamp
 }
 
 /**

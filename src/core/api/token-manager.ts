@@ -1,10 +1,10 @@
 // services/token-manager.ts
-import axios, { AxiosInstance } from 'axios';
-import { storageService } from '../storage/app-storage';
-import { StorageKeys } from '../storage/storage-types';
-import { refreshTokenEndpoint } from './api_endpoints';
-import { GeneralResponseModel, RefreshTokenResponse } from './http-types';
-import { TokenData } from './models';
+import axios, { AxiosInstance } from "axios";
+import { storageService } from "../storage/app-storage";
+import { StorageKeys } from "../storage/storage-types";
+import { refreshTokenEndpoint } from "./api_endpoints";
+import { GeneralResponseModel, RefreshTokenResponse } from "./http-types";
+import { TokenData } from "./models";
 
 /**
  * Pending request interface for queuing requests during token refresh
@@ -17,13 +17,13 @@ interface PendingRequest {
 
 /**
  * TokenManager - Handles authentication token management and refresh
- * 
+ *
  * Features:
  * - Automatic token refresh with retry logic
  * - Request queuing during token refresh
  * - Secure token storage and retrieval
  * - Configurable refresh endpoints
- * 
+ *
  * @example
  * ```typescript
  * const tokenManager = new TokenManager('https://api.example.com', 30000);
@@ -39,9 +39,9 @@ export class TokenManager {
   private retryDelay: number = 1000;
 
   constructor(
-    baseURL: string, 
+    baseURL: string,
     timeout: number = 20000,
-    refreshEndpoint: string = refreshTokenEndpoint,
+    refreshEndpoint: string = refreshTokenEndpoint
   ) {
     this.refreshEndpoint = refreshEndpoint;
     this.refreshTokenAxiosInstance = axios.create({
@@ -58,49 +58,53 @@ export class TokenManager {
   async refreshToken(retryCount: number = 0): Promise<string | null> {
     try {
       const tokenData = await this.getToken();
-      
+      console.log(tokenData);
+
       if (!tokenData?.refreshToken) {
-        throw new Error('No refresh token available');
+        throw new Error("No refresh token available");
       }
 
       // Check if token is expired and needs refresh
-      if (tokenData.expiresAt && Date.now() < tokenData.expiresAt) {
-        return tokenData.token;
+      // there currently is not expires at on the token
+      if (tokenData.refreshToken && tokenData?.jwt) {
+        return tokenData["jwt"] as string;
       }
 
-      const response = await this.refreshTokenAxiosInstance.post<GeneralResponseModel<RefreshTokenResponse>>(
+      const response = await this.refreshTokenAxiosInstance.post<
+        GeneralResponseModel<RefreshTokenResponse>
+      >(
         this.refreshEndpoint,
         { refreshToken: tokenData.refreshToken },
         {
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             Authorization: `Bearer ${tokenData.token}`,
           },
         }
       );
 
       if (!response.data?.success || !response.data?.data) {
-        throw new Error('Invalid refresh token response');
+        throw new Error("Invalid refresh token response");
       }
 
       const newTokenData: TokenData = {
         token: response.data.data.token || null,
         refreshToken: response.data.data.refreshToken || tokenData.refreshToken,
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+        expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
       };
 
       await storageService.save(StorageKeys.TOKEN_DATA, newTokenData);
       return newTokenData.token;
     } catch (error) {
       console.error(`Token refresh failed (attempt ${retryCount + 1}):`, error);
-      
+
       // Retry logic with exponential backoff
       if (retryCount < this.maxRetries) {
         const delay = this.retryDelay * Math.pow(2, retryCount);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return this.refreshToken(retryCount + 1);
       }
-      
+
       // Clear invalid tokens on final failure
       await this.clearTokens();
       throw error;
@@ -115,7 +119,7 @@ export class TokenManager {
     try {
       return await storageService.get<TokenData>(StorageKeys.TOKEN_DATA);
     } catch (error) {
-      console.warn('Failed to get token from storage:', error);
+      console.warn("Failed to get token from storage:", error);
       return null;
     }
   }
@@ -130,7 +134,7 @@ export class TokenManager {
       // Navigate to login screen - you'll need to implement this based on your navigation
       // NavigationService.navigate('Login');
     } catch (error) {
-      console.error('Failed to handle auth failure:', error);
+      console.error("Failed to handle auth failure:", error);
     }
   }
 
@@ -141,7 +145,7 @@ export class TokenManager {
     try {
       await storageService.remove(StorageKeys.TOKEN_DATA);
     } catch (error) {
-      console.error('Failed to clear tokens:', error);
+      console.error("Failed to clear tokens:", error);
     }
   }
 
@@ -174,16 +178,16 @@ export class TokenManager {
    * @param newToken - The new token to use
    * @param axiosInstance - The axios instance to use for requests
    */
-  processPendingRequests(newToken: string | null, axiosInstance: AxiosInstance): void {
+  processPendingRequests(
+    newToken: string | null,
+    axiosInstance: AxiosInstance
+  ): void {
     this.pendingRequests.forEach(({ resolve, reject, config }) => {
       if (newToken) {
         config.headers.Authorization = `Bearer ${newToken}`;
-        axiosInstance
-          .request(config)
-          .then(resolve)
-          .catch(reject);
+        axiosInstance.request(config).then(resolve).catch(reject);
       } else {
-        reject(new Error('Token refresh failed'));
+        reject(new Error("Token refresh failed"));
       }
     });
     this.pendingRequests = [];
@@ -204,6 +208,4 @@ export class TokenManager {
   clearPendingRequests(): void {
     this.pendingRequests = [];
   }
-} 
-
-
+}

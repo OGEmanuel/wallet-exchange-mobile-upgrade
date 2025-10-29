@@ -44,6 +44,12 @@ export const StorageKeys = {
   AGGREGATED_BALANCES: "aggregatedBalances", // Cached aggregated wallet and wallet group balances
   AGGREGATED_BALANCES_TIMESTAMP: "aggregatedBalancesTimestamp", // Cache timestamp for aggregated balances
   EXCHANGE_AUTH_STATE: "exchangeAuthState", // Exchange authentication state
+  PIN: "pin", // User PIN for authentication
+  COLOR_THEME: "colorTheme",
+  COLOR_THEME_USER_SET: "colorTheme_user_set",
+  THEME_MODE: "themeMode", // "system" | "light" | "dark"
+  HAPTICS_ENABLED: "hapticsEnabled", // "true" | "false"
+  ANIMATIONS_ENABLED: "animationsEnabled", // "true" | "false"
   // Note: Exchange user data is not cached locally; SDK caches it internally
 } as const;
 
