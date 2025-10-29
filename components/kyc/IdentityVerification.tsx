@@ -93,11 +93,14 @@ export default function IdentityVerification({
     setCountryDocumentsLoading(true);
     setFetchDocumentTypesError(null);
 
-    fetchDocumentTypes({
+    const payload = {
       body: selectedCountry || null,
       params: {},
       extra: {},
-    })
+    };
+    console.log("payload 3920842", payload);
+
+    fetchDocumentTypes(payload)
       .then((response) => {
         if (response?.data) {
           setDocumentTypes(response.data || null);

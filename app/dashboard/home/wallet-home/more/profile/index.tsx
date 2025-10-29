@@ -4,6 +4,7 @@ import {
   ThemedProfileOutlineIcon,
   ThemedShieldOutlineIcon,
 } from "@/assets/svg/wallet-icons-components";
+import { useZapperSignBottomSheet } from "@/components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import {
   Box,
@@ -67,6 +68,8 @@ const ItemCard = ({
 const ProfilePage = () => {
   const theme = useTheme<Theme>();
   const user = useSelector(selectUser);
+  const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
+
 
   const DATA: {
     icon: React.ReactNode;
@@ -97,7 +100,17 @@ const ProfilePage = () => {
           </CustomText>
         </Box>
       ),
-      onPress: () => {},
+      onPress: () => {
+        showZapperSignBottomSheet({
+          onContinue: () => {
+            // Navigate to dashboard after successful exchange authentication
+            router.push("/dashboard/home/wallet-home/swap");
+          },
+          onClose: () => {
+            // Handle close if needed
+          },
+        });
+      },
     },
     {
       icon: (

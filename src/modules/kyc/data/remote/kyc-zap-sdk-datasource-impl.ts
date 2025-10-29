@@ -92,11 +92,16 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.exchangeAuth.updatePhoneNumber({
+    const data = {
       phone: payload?.body?.phone || null,
       countryCode: payload?.body?.countryCode || null,
       isWhatsApp: payload?.body?.isWhatsApp || false,
-    });
+    }
+    console.log("Data from authPhoneNumber:", data);
+
+    const result = await sdk.exchangeAuth.updatePhoneNumber(data);
+
+    console.log("Resultsss from authPhoneNumber:", result);
 
     return {
       success: result.success,
