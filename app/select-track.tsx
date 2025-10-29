@@ -3,8 +3,13 @@ import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/Animat
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useActiveTheme from "@/hooks/useTheme";
-import { useWallet } from "@/src/core/wallet/wallet-context";
+import { StorageKeys } from "@/src/core/api/models";
+import storageService from "@/src/core/storage/app-storage";
+import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -28,7 +33,9 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   } else {
     return (
       <LinearGradient style={{ flex: 1 }} colors={["#846FFF", "#19087D"]}>
-        <PageWrapper>{children}</PageWrapper>
+        <WalletProvider>
+          <PageWrapper>{children}</PageWrapper>
+        </WalletProvider>
       </LinearGradient>
     );
   }
@@ -102,6 +109,8 @@ const SelectTrack = () => {
 
   // Get exchange authentication state from wallet context
   const { isExchangeAuthenticated } = useWallet();
+  const { exchangeUserData } = useExchangeAuth();
+  const { fetchUserById, updateUser } = useKyc();
 
   // Get user state from Redux store for KYC
   const { user } = useSelector((state: AppRootState) => state.kyc);
@@ -131,10 +140,31 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => {
+      onPress: async () => {
         if (isUserLoggedIn) {
           // Navigate to dashboard for exchange authenticated users
-          router.push("/dashboard/home/wallet-home/home");
+          // router.push("/dashboard/home/wallet-home/home");
+          const userProfile: UserModel = JSON.parse(
+            (await storageService.getItem(StorageKeys.USER_PROFILE)) || "{}"
+          );
+
+          const userResponse = await fetchUserById(userProfile);
+          if (userResponse.data?.username) {
+            // User has username, close bottom sheet and navigate to app
+            console.log(
+              "User has username, closing bottom sheet and navigating to app"
+            );
+            updateUser(userResponse.data);
+            setIsZapperBottomSheetVisible(false);
+            router.push("/dashboard/home/wallet-home/swap");
+          } else {
+            // User doesn't have username, continue with normal flow
+            setIsZapperBottomSheetVisible(true);
+            // Use setTimeout to ensure the component is rendered before opening
+            setTimeout(() => {
+              zapperBottomSheetRef.current?.snapToIndex(0);
+            }, 100);
+          }
         } else {
           // Show exchange login bottom sheet for non-authenticated users
           setIsZapperBottomSheetVisible(true);

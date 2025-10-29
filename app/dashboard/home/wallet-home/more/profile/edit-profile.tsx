@@ -10,16 +10,19 @@ import {
   PageWrapper,
 } from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
+import { kycActions } from "@/state/reducers/kyc-reducer";
 import { selectWalletUser } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { UserModel } from "@zap/blockchain-sdk";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { User } from "iconsax-react-nativejs";
 import { CheckCircle, ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 const ItemCard = ({
   title,
@@ -64,6 +67,12 @@ const ItemCard = ({
 const EditProfile = () => {
   const theme = useTheme<Theme>();
   const user = useSelector(selectWalletUser);
+  const [username, setUsername] = React.useState(user?.username || "");
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [phone, setPhone] = React.useState(user?.phone || "");
+
+  const { updateUser } = useSettings();
+  const dispatch = useDispatch();
 
   const [type, setType] = React.useState<"firstname" | "lastname" | "phone">(
     "firstname"
@@ -108,6 +117,34 @@ const EditProfile = () => {
       },
     },
   ];
+
+  const handleUpdateUser = async () => {
+    try {
+      if (username === "") {
+        alert("Username is required");
+        return;
+      }
+
+      if (phone === "") {
+        alert("Phone number is required");
+        return;
+      }
+      setIsLoading(true);
+      const response = await updateUser(
+        {
+          username,
+          phone,
+        },
+        user as UserModel
+      );
+      dispatch(kycActions.setUser(response.data as UserModel));
+      console.log(response.data);
+      setIsLoading(false);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <PageWrapper>
       <SettingsHeader
@@ -150,13 +187,12 @@ const EditProfile = () => {
           >
             Change avatar
           </CustomText>
-          Cus
         </Box>
 
         <Box mt="l" width={"100%"}>
           <CustomInputWithoutForm
-            value={user?.username as string}
-            onChange={() => {}}
+            value={username as string}
+            onChange={(e) => setUsername(e)}
             label="Username"
           />
 
@@ -171,6 +207,7 @@ const EditProfile = () => {
                 value={user?.firstName as string}
                 onChange={() => {}}
                 label="First name"
+                editable={false}
               />
             </Box>
 
@@ -179,6 +216,7 @@ const EditProfile = () => {
                 value={user?.lastName as string}
                 onChange={() => {}}
                 label="Last name"
+                editable={false}
               />
             </Box>
           </Box>
@@ -198,9 +236,14 @@ const EditProfile = () => {
               borderLeftColor="tabBarActiveColor"
               px="s"
               justifyContent="center"
-              flexWrap="wrap"
+              flexWrap="nowrap"
             >
-              <CustomText>
+              <CustomText
+                variant="body"
+                fontSize={14}
+                flexWrap="wrap"
+                lineHeight={16}
+              >
                 Your first and last name will be retrived from your BVN and
                 government ID
               </CustomText>
@@ -212,13 +255,14 @@ const EditProfile = () => {
               value={user?.email as string}
               onChange={() => {}}
               label="Email"
+              editable={false}
             />
           </Box>
 
           <Box width={"100%"} mt="m">
             <CustomInputWithoutForm
-              value={user?.phone as string}
-              onChange={() => {}}
+              value={phone as string}
+              onChange={(e) => setPhone(e)}
               label="Phone"
               iconRight={
                 <CheckCircle size={20} color={theme.colors.primaryColor} />
@@ -231,7 +275,8 @@ const EditProfile = () => {
               width={"100%"}
               borderRadius={50}
               text="Save Changes"
-              onPress={() => {}}
+              onPress={handleUpdateUser}
+              isLoading={isLoading}
             />
           </Box>
         </Box>
