@@ -132,6 +132,7 @@
     "url": "^0.10.3",
     "util": "^0.12.5",
     "vm-browserify": "^0.0.4",
+    "yaml": "^2.8.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
