@@ -31,9 +31,11 @@ export interface WalletContextType {
   exchangeLogin: (email: string) => Promise<boolean>;
   exchangeValidateOtp: (email: string, otp: string) => Promise<boolean>;
   getExchangeUser: () => Promise<any | null>;
-  completeOnboarding: (
-    data: { username?: string | null; userSource?: string | null; referralCode?: string | null }
-  ) => Promise<{
+  completeOnboarding: (data: {
+    username?: string | null;
+    userSource?: string | null;
+    referralCode?: string | null;
+  }) => Promise<{
     success: boolean;
     message: string;
   }>;
@@ -89,13 +91,28 @@ export interface WalletContextType {
 
   // Wallet Switching
   switchWallet: (userWalletGroupId: string) => Promise<void>;
-  removeWalletGroup: (walletGroupId: string, userWalletGroupId: string) => Promise<boolean>;
+  removeWalletGroup: (
+    walletGroupId: string,
+    userWalletGroupId: string
+  ) => Promise<boolean>;
 
   // Address and Private Key Management
-  getAddresses: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
-  getPrivateKeys: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
-  getAddress: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
-  getPrivateKey: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
+  getAddresses: (
+    userWalletGroupId?: string,
+    chainSymbol?: string
+  ) => Promise<any[] | null>;
+  getPrivateKeys: (
+    userWalletGroupId?: string,
+    chainSymbol?: string
+  ) => Promise<any[] | null>;
+  getAddress: (
+    chainSymbol: string,
+    userWalletGroupId?: string
+  ) => Promise<string | null>;
+  getPrivateKey: (
+    chainSymbol: string,
+    userWalletGroupId?: string
+  ) => Promise<string | null>;
   getSeedPhrase: (userWalletGroupId?: string) => Promise<string | null>;
   getSeedPhrases: () => Promise<any[] | null>;
 }
@@ -108,7 +125,7 @@ export type IUserWalletGroup = {
   name: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IWalletGroup = {
   _id: string;
@@ -116,9 +133,9 @@ export type IWalletGroup = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export type IWallet = {}
+export type IWallet = {};
 
 export type IWalletUser = {
   _id: string;
@@ -126,7 +143,7 @@ export type IWalletUser = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IAccount = {
   _id: string;
@@ -134,7 +151,7 @@ export type IAccount = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type ITransaction = {
   _id: string;
@@ -142,7 +159,7 @@ export type ITransaction = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IWalletPortfolio = {
   _id: string;
@@ -150,4 +167,4 @@ export type IWalletPortfolio = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};

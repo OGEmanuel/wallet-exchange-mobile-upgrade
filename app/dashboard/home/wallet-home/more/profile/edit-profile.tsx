@@ -2,15 +2,21 @@ import EditAvatarBottomSheet from "@/components/bottomsheets/preference/EditAvat
 import EditFirstnameBottomSheet from "@/components/bottomsheets/preference/EditFirstnameBottomSheet";
 import EditUsernameBottomSheet from "@/components/bottomsheets/preference/EditUsernameBottomSheet";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
-import { Box, CustomText, PageWrapper } from "@/components/general";
+import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
+import {
+  Box,
+  CustomButton,
+  CustomText,
+  PageWrapper,
+} from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
-import { selectUser } from "@/state/reducers/kyc-reducer";
+import { selectWalletUser } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { User } from "iconsax-react-nativejs";
-import { ChevronRight } from "lucide-react-native";
+import { CheckCircle, ChevronRight } from "lucide-react-native";
 import React from "react";
 import { Pressable } from "react-native";
 import { useSelector } from "react-redux";
@@ -57,7 +63,7 @@ const ItemCard = ({
 
 const EditProfile = () => {
   const theme = useTheme<Theme>();
-  const user = useSelector(selectUser);
+  const user = useSelector(selectWalletUser);
 
   const [type, setType] = React.useState<"firstname" | "lastname" | "phone">(
     "firstname"
@@ -104,7 +110,10 @@ const EditProfile = () => {
   ];
   return (
     <PageWrapper>
-      <SettingsHeader title="Edit Profile" onBackPress={() => router.back()} />
+      <SettingsHeader
+        title="Account Information"
+        onBackPress={() => router.back()}
+      />
       <Box flex={1} bg="mainBackgroundColor" paddingHorizontal="m">
         <Box width={"100%"} height={"auto"} alignItems="center" mt="l">
           <Box
@@ -141,23 +150,90 @@ const EditProfile = () => {
           >
             Change avatar
           </CustomText>
+          Cus
         </Box>
 
-        <Box
-          width={"100%"}
-          height={"auto"}
-          borderRadius={12}
-          backgroundColor="secondaryBackgroundColor"
-          mt="2xl"
-          p="m"
-        >
-          {item.map((value, index) => (
-            <ItemCard
-              key={index.toString()}
-              {...value}
-              showBorder={index < item.length - 1}
+        <Box mt="l" width={"100%"}>
+          <CustomInputWithoutForm
+            value={user?.username as string}
+            onChange={() => {}}
+            label="Username"
+          />
+
+          <Box
+            width={"100%"}
+            flexDirection="row"
+            mt="m"
+            justifyContent="space-between"
+          >
+            <Box width={"47%"}>
+              <CustomInputWithoutForm
+                value={user?.firstName as string}
+                onChange={() => {}}
+                label="First name"
+              />
+            </Box>
+
+            <Box width={"47%"}>
+              <CustomInputWithoutForm
+                value={user?.lastName as string}
+                onChange={() => {}}
+                label="Last name"
+              />
+            </Box>
+          </Box>
+
+          <Box
+            width={"100%"}
+            height={50}
+            p="s"
+            mt="m"
+            backgroundColor="secondaryBackgroundColor"
+            borderRadius={12}
+          >
+            <Box
+              width={"100%"}
+              height={"100%"}
+              borderLeftWidth={2}
+              borderLeftColor="tabBarActiveColor"
+              px="s"
+              justifyContent="center"
+              flexWrap="wrap"
+            >
+              <CustomText>
+                Your first and last name will be retrived from your BVN and
+                government ID
+              </CustomText>
+            </Box>
+          </Box>
+
+          <Box width={"100%"} mt="m">
+            <CustomInputWithoutForm
+              value={user?.email as string}
+              onChange={() => {}}
+              label="Email"
             />
-          ))}
+          </Box>
+
+          <Box width={"100%"} mt="m">
+            <CustomInputWithoutForm
+              value={user?.phone as string}
+              onChange={() => {}}
+              label="Phone"
+              iconRight={
+                <CheckCircle size={20} color={theme.colors.primaryColor} />
+              }
+            />
+          </Box>
+
+          <Box mt="2xl">
+            <CustomButton
+              width={"100%"}
+              borderRadius={50}
+              text="Save Changes"
+              onPress={() => {}}
+            />
+          </Box>
         </Box>
       </Box>
       <EditAvatarBottomSheet ref={editAvatarRef} />
