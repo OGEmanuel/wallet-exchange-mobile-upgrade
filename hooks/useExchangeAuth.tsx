@@ -1,6 +1,7 @@
 import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { ExchangeValidateOtpResponse } from "@zap/blockchain-sdk";
 import { useCallback, useRef, useState } from "react";
 
 export const useExchangeAuth = () => {
@@ -42,7 +43,7 @@ export const useExchangeAuth = () => {
   }, [exchangeLogin]);
 
   const handleExchangeValidateOtp = useCallback(async (email: string, otp: string) => {
-    const success = await exchangeValidateOtp(email, otp);
+    const success: ExchangeValidateOtpResponse | boolean = await exchangeValidateOtp(email, otp);
     if (success) {
       hideExchangeLogin();
     }

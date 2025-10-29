@@ -6,24 +6,11 @@ export interface CreateOrderRequest {
   withdrawalAddress?: string;
 }
 
-export interface CreateOrderResponse {
-  orderId: string;
-  status: "pending" | "processing" | "completed" | "failed";
-  baseAmount: number;
-  targetAmount: number;
-  baseCurrency: {
-    symbol: string;
-    name: string;
-  };
-  targetCurrency: {
-    symbol: string;
-    name: string;
-  };
-  marketRate: number;
-  withdrawalAddress?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Re-export SDK types for consistency
+export { OrderStatuses } from "@zap/blockchain-sdk";
+
+// Use the SDK's CreateOrderResponseData as our main interface
+export type CreateOrderResponse = import("@zap/blockchain-sdk").CreateOrderResponseData;
 
 export interface OrderError {
   code: string;

@@ -1,14 +1,26 @@
 import icons from "@/assets/icons";
-import { CustomText } from "@/components/general";
+import { Box, CustomText } from "@/components/general";
+import { useCountdown } from "@/src/hooks/useCountdown";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet } from "react-native";
 
-export default function ExpirationTimer() {
+export default function ExpirationTimer({
+  expirationTime,
+}: {
+  expirationTime: Date;
+}) {
   const theme = useTheme<Theme>();
+  let { minutes, seconds } = useCountdown(expirationTime);
+
+  if (minutes < 0 || seconds < 0) {
+    minutes = 0;
+    seconds = 0;
+  }
   return (
-    <View
+    <Box
+      mt="s"
       style={[
         styles.container,
         { backgroundColor: theme.colors.mainBackgroundColor },
@@ -18,10 +30,11 @@ export default function ExpirationTimer() {
       <CustomText style={{ fontSize: 12 }}>
         Expires in{" "}
         <CustomText style={{ fontSize: 12 }} color="secondaryColor">
-          30:00
+          {minutes <= 0 ? "00" : minutes < 10 ? "0" + minutes : minutes}:
+          {seconds <= 0 ? "00" : seconds < 10 ? "0" + seconds : seconds}
         </CustomText>
       </CustomText>
-    </View>
+    </Box>
   );
 }
 

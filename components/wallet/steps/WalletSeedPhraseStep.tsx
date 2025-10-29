@@ -107,6 +107,7 @@ export const WalletSeedPhraseStep: React.FC<WalletSeedPhraseStepProps> = ({
           placeholderTextColor={theme.colors.placeholderTextColor}
           focusable
           multiline
+          autoCapitalize="none"
           numberOfLines={6}
           style={{
             backgroundColor: theme.colors.secondaryBackgroundColor,

@@ -7,6 +7,7 @@ interface ExchangeState {
   currentPage: number;
   hasMore: boolean;
   isLoadingMore: boolean;
+  selectedActivity: ExchangeActivityModel | null;
 }
 
 const initialState: ExchangeState = {
@@ -14,6 +15,7 @@ const initialState: ExchangeState = {
   currentPage: 1,
   hasMore: true,
   isLoadingMore: false,
+  selectedActivity: null,
 };
 
 const exchangeSlice = createSlice({
@@ -24,17 +26,22 @@ const exchangeSlice = createSlice({
       state,
       action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>
     ) => {
-      state.exchangeActivities = action.payload.data || [];
+      // The response.data is an ExchangeActivitiesResponse with activities array
+      const responseData = action.payload.data as any;
+      const activities = responseData?.activities || responseData || [];
+      state.exchangeActivities = activities;
       state.currentPage = 1;
-      state.hasMore = (action.payload.data || []).length >= 10;
+      state.hasMore = responseData?.pagination?.hasMore ?? (activities.length >= 10);
     },
     appendExchangeActivities: (
       state,
       action: PayloadAction<GeneralResponseModel<ExchangeActivityModel[]>>
     ) => {
-      const newActivities = action.payload.data || [];
+      // The response.data is an ExchangeActivitiesResponse with activities array
+      const responseData = action.payload.data as any;
+      const newActivities = responseData?.activities || responseData || [];
       state.exchangeActivities = [...state.exchangeActivities, ...newActivities];
-      state.hasMore = newActivities.length >= 10;
+      state.hasMore = responseData?.pagination?.hasMore ?? (newActivities.length >= 10);
     },
     setCurrentPage: (state, action: PayloadAction<number>) => {
       state.currentPage = action.payload;
@@ -42,11 +49,18 @@ const exchangeSlice = createSlice({
     setIsLoadingMore: (state, action: PayloadAction<boolean>) => {
       state.isLoadingMore = action.payload;
     },
+    setHasMore: (state, action: PayloadAction<boolean>) => {
+      state.hasMore = action.payload;
+    },
+    setSelectedActivity: (state, action: PayloadAction<ExchangeActivityModel | null>) => {
+      state.selectedActivity = action.payload;
+    },
     clearExchangeActivities: (state) => {
       state.exchangeActivities = [];
       state.currentPage = 1;
       state.hasMore = true;
       state.isLoadingMore = false;
+      state.selectedActivity = null;
     },
   },
 });

@@ -2,13 +2,19 @@
 
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import { Bank, UserBankAccount } from "@zap/blockchain-sdk";
+import {
+  Bank,
+  CurrencyID,
+  SupportedCurrency,
+  UserBankAccount,
+} from "@zap/blockchain-sdk";
 import { useEffect, useState } from "react";
 
 export const useBankAccounts = () => {
   const [bankAccounts, setBankAccounts] = useState<UserBankAccount[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
-  const [resolvedAccount, setResolvedAccount] = useState<UserBankAccount | null>(null);
+  const [resolvedAccount, setResolvedAccount] =
+    useState<UserBankAccount | null>(null);
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
   const [isLoadingBankAccounts, setIsLoadingBankAccounts] = useState(false);
   const [isResolvingAccount, setIsResolvingAccount] = useState(false);
@@ -17,6 +23,10 @@ export const useBankAccounts = () => {
     null
   );
   const [errorResolvingAccount, setErrorResolvingAccount] = useState<
+    string | null
+  >(null);
+  const [isCreatingBankAccount, setIsCreatingBankAccount] = useState(false);
+  const [errorCreatingBankAccount, setErrorCreatingBankAccount] = useState<
     string | null
   >(null);
 
@@ -51,17 +61,77 @@ export const useBankAccounts = () => {
   const resolveBankAccount = async (bankId: string, accountNumber: string) => {
     setIsResolvingAccount(true);
     try {
-      console.log(bankId, accountNumber)
       const resolvedAccount = await zapSDKService.resolveBankAccount(
         bankId,
         accountNumber
       );
-      setResolvedAccount(resolvedAccount?.data as unknown as UserBankAccount | null);
+      console.log(resolvedAccount);
+
+      const name = (resolvedAccount?.data as any)?.data;
+
+      if (name) {
+        const account = {
+          name,
+          holderName: name,
+          number: accountNumber,
+          bankId,
+        };
+
+        setResolvedAccount(account as unknown as UserBankAccount);
+        setErrorResolvingAccount(null);
+      } else {
+        setResolvedAccount(null);
+        setErrorResolvingAccount("Failed to resolve account");
+      }
     } catch (error: any) {
+      setResolvedAccount(null);
+      console.log(error);
       setErrorResolvingAccount(error?.message);
       console.log(error, "error");
     } finally {
       setIsResolvingAccount(false);
+    }
+  };
+
+  const createBankAccount = async (
+    bankId: string,
+    name: string,
+    supportedCurrency: SupportedCurrency | null,
+    number: string
+  ) => {
+    setIsCreatingBankAccount(true);
+    setErrorCreatingBankAccount(null);
+    try {
+      if (
+        !supportedCurrency ||
+        (supportedCurrency.currencyId as CurrencyID)?.isCrypto
+      ) {
+        throw new Error("Supported currency must be fiat");
+      }
+
+      const newBankAccount = await zapSDKService.createBankAccount({
+        bankId,
+        name,
+        supportedCurrency,
+        userId: currentExchangeUser || "",
+        number,
+      });
+
+      // Add the new account to the list
+      setBankAccounts((prev) => [...prev, newBankAccount]);
+      setResolvedAccount(null);
+
+      setBankAccounts((prev) => [...prev, newBankAccount]);
+      fetchBankAccounts();
+
+      return newBankAccount;
+    } catch (error: any) {
+      setErrorCreatingBankAccount(
+        error?.message || "Failed to create bank account"
+      );
+      throw error;
+    } finally {
+      setIsCreatingBankAccount(false);
     }
   };
 
@@ -88,5 +158,8 @@ export const useBankAccounts = () => {
     isResolvingAccount,
     errorResolvingAccount,
     resolvedAccount,
+    createBankAccount,
+    isCreatingBankAccount,
+    errorCreatingBankAccount,
   };
 };

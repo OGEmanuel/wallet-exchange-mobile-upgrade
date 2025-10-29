@@ -29,8 +29,11 @@ export interface WalletContextType {
   ) => Promise<boolean>;
   logoutFromExchange: () => Promise<void>;
   exchangeLogin: (email: string) => Promise<boolean>;
-  exchangeValidateOtp: (email: string, otp: string) => Promise<boolean>;
-  getExchangeUser: () => Promise<any | null>;
+  exchangeValidateOtp: (
+    email: string,
+    otp: string
+  ) => Promise<ExchangeValidateOtpResponse | boolean>;
+  getExchangeUser: () => Promise<UserModel | null>;
   completeOnboarding: (data: {
     username?: string | null;
     userSource?: string | null;
