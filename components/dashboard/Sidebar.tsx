@@ -5,10 +5,11 @@ import {
   ThemedFaceIDIcon,
   ThemedHelpIcon,
   ThemedSignOutIcon,
-  ThemedStarFillIcon
+  ThemedStarFillIcon,
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { StorageKeys } from "@/src/core/api/models";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
@@ -19,20 +20,27 @@ import {
 import { selectUser } from "@/state/reducers/kyc-reducer";
 import {
   selectWalletConnected,
+  selectWalletUser,
   setWalletConnected,
+  setWalletUser,
 } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
 import { logoutUser } from "@/utils/clear-device-data";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { UserModel } from "@zap/blockchain-sdk";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link, Setting4 } from "iconsax-react-nativejs";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
+import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
+import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
+import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
 import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
@@ -48,7 +56,43 @@ const Sidebar = () => {
   const theme = useTheme<Theme>();
   const { changePinRef } = useBottomSheetRefs();
   const [hasHardware, setHasHardware] = useState(false);
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
+    useState(false);
+  const walletUser = useSelector(selectWalletUser);
+
   const OS = Platform.OS;
+  const { currentWalletUser, getExchangeUser } = useWallet();
+  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
+  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
+
+  React.useEffect(() => {
+    if (currentWalletUser) {
+      (async function () {
+        console.log("CURRENT WALLET USER", currentWalletUser);
+        const usr = await getExchangeUser();
+        dispatch(setWalletUser(exchangeUserData as UserModel));
+        console.log("EXCHANGE USER", exchangeUserData);
+      })();
+    }
+  }, [currentWalletUser, exchangeUserData]);
+
+  const handleConnectZapExchange = useCallback(() => {
+    zapLinkBottomSheetRef.current?.close();
+    setIsZapperBottomSheetVisible(true);
+    setTimeout(() => {
+      zapperBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
+  }, []);
+
+  const handleDisconnectZapExchange = useCallback(async () => {
+    try {
+      await logoutFromExchange();
+      zapLinkBottomSheetRef.current?.close();
+    } catch (error) {
+      console.error("Logout from exchange failed:", error);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -85,6 +129,15 @@ const Sidebar = () => {
     );
   };
 
+  const handleCheck = () => {
+    if (!currentWalletUser) {
+      setIsZapperBottomSheetVisible(true);
+      zapperBottomSheetRef.current?.snapToIndex(0);
+    } else {
+      router.push("/dashboard/home/wallet-home/more/profile");
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert(
       "Logout",
@@ -101,10 +154,10 @@ const Sidebar = () => {
             try {
               // Logout from exchange
               await logoutFromExchange();
-              
+
               // Clear user data
               const success = await logoutUser();
-              
+
               if (success) {
                 // Route to select track screen
                 router.replace("/select-track");
@@ -196,7 +249,11 @@ const Sidebar = () => {
     // },
     {
       icon: (
-        <Setting4 color={theme.colors.bodyTextColor} size={20} variant="Outline" />
+        <Setting4
+          color={theme.colors.bodyTextColor}
+          size={20}
+          variant="Outline"
+        />
       ),
       title: "Preferences",
       link: "/dashboard/home/wallet-home/more/preferences",
@@ -320,14 +377,17 @@ const Sidebar = () => {
           justifyContent: "flex-end",
         }}
       >
-        <Box
-          width="100%"
-          height={66}
-          borderRadius={8}
-          flexDirection="row"
-          alignItems="center"
-          paddingHorizontal="m"
-          style={{ backgroundColor: "#12121233" }}
+        <Pressable
+          style={{
+            backgroundColor: "#12121233",
+            width: "100%",
+            height: 66,
+            borderRadius: 8,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 20,
+          }}
+          onPress={() => handleCheck()}
         >
           <Box
             width={40}
@@ -335,7 +395,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {user && (
+            {currentWalletUser && (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -344,14 +404,14 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: user?.avatar?.backgroundColor,
+                  backgroundColor: walletUser?.avatar?.backgroundColor,
                 }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
                   <Image
-                    source={{ uri: user?.avatar?.url }}
+                    source={{ uri: walletUser?.avatar?.url }}
                     style={[
                       { width: 40, height: 40, borderRadius: 20 },
                       pressed && { opacity: 0.7 },
@@ -360,7 +420,7 @@ const Sidebar = () => {
                 )}
               </Pressable>
             )}
-            {!user && (
+            {!currentWalletUser && (
               <Image
                 source={require("@/assets/images/personplaceholder.png")}
                 style={{ width: 40, height: 40, borderRadius: 20 }}
@@ -368,10 +428,10 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {user && (
+            {currentWalletUser && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  {user?.username || "anonymous.zap"}
+                  {walletUser?.username || "anonymous.zap"}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>
@@ -380,7 +440,7 @@ const Sidebar = () => {
                 </Box>
               </>
             )}
-            {!user && (
+            {!currentWalletUser && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
                   anonymous.zap
@@ -398,7 +458,7 @@ const Sidebar = () => {
               </>
             )}
           </Box>
-        </Box>
+        </Pressable>
       </LinearGradient>
       <Box flex={1}>
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -512,6 +572,27 @@ const Sidebar = () => {
         </ScrollView>
       </Box> */}
       <ChangePinBottomSheet ref={changePinRef} />
+      {isZapperBottomSheetVisible && (
+        <ZapperSiginBottomSheet
+          key="zapper-bottom-sheet"
+          ref={zapperBottomSheetRef}
+          onContinue={() => {
+            zapperBottomSheetRef.current?.close();
+            setIsZapperBottomSheetVisible(false);
+          }}
+          onClose={() => {
+            setIsZapperBottomSheetVisible(false);
+          }}
+        />
+      )}
+      <ZapLinkBottomSheet
+        onDisconnect={handleDisconnectZapExchange}
+        onConnect={handleConnectZapExchange}
+        isZapLinked={isExchangeAuthenticated}
+        username={exchangeUserData?.username}
+        onClose={() => zapLinkBottomSheetRef.current?.close()}
+        ref={zapLinkBottomSheetRef}
+      />
     </Box>
   );
 };

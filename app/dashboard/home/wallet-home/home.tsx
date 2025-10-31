@@ -63,6 +63,7 @@ const Home = () => {
     isAuthenticating,
     isRefreshingPortfolio,
     isCreatingWallet,
+    currentWalletUser,
   } = useWallet();
 
   const { getCurrentWalletBalance, getCurrentWalletEnabledBalance } =

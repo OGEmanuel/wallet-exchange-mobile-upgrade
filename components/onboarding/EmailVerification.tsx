@@ -1,5 +1,7 @@
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import storageService from "@/src/core/storage/app-storage";
+import { StorageKeys } from "@/src/core/storage/storage-types";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
@@ -36,7 +38,7 @@ export default function EmailVerification({
   const { hideAllBottomSheets } = useAppBottomSheet();
   const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
     useExchangeAuth();
-    const { fetchUserById } = useKyc();
+  const { fetchUserById } = useKyc();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -80,19 +82,31 @@ export default function EmailVerification({
 
         // Check if verification was successful
         if (response) {
+          await storageService.setItem(
+            StorageKeys.TOKEN_DATA,
+            JSON.stringify(
+              (response as ExchangeValidateOtpResponse).data?.session || ""
+            )
+          );
+
           // Check if user data has username
           let exchangeUser = exchangeUserData;
 
-          
-          const userData: UserModel = (response as ExchangeValidateOtpResponse)?.data?.user;
-          
+          const userData = (response as ExchangeValidateOtpResponse)?.data
+            ?.user;
+
+          await storageService.setItem(
+            StorageKeys.USER_PROFILE,
+            JSON.stringify(userData)
+          );
+
           if (!userData?.username) {
             // exchangeUser = await getExchangeUser();
           }
 
-          const userResponse = await fetchUserById(userData);
+          const userResponse = await fetchUserById(userData as UserModel);
           exchangeUser = userResponse.data;
-          
+
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
             console.log(

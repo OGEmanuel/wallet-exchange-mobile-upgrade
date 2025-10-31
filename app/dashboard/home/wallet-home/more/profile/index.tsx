@@ -13,15 +13,15 @@ import {
   PageWrapper,
 } from "@/components/general";
 import { selectUser } from "@/state/reducers/kyc-reducer";
+import { selectWalletUser } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { User } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React from "react";
-import { Pressable } from "react-native";
+import { Image, Pressable } from "react-native";
 import { useSelector } from "react-redux";
 
 const ItemCard = ({
@@ -29,11 +29,13 @@ const ItemCard = ({
   title,
   badge = undefined,
   onPress,
+  completeBadge,
 }: {
   icon: React.ReactNode;
   title: string;
   badge?: React.ReactNode;
   onPress: () => void;
+  completeBadge?: React.ReactNode;
 }) => {
   const theme = useTheme<Theme>();
   return (
@@ -49,9 +51,16 @@ const ItemCard = ({
     >
       <Box flexDirection="row" alignItems="center">
         {icon}
-        <CustomText fontSize={12} marginLeft="m">
-          {title}
-        </CustomText>
+        <Box alignItems="flex-start">
+          <CustomText fontSize={12} marginLeft="m">
+            {title}
+          </CustomText>
+          {completeBadge && (
+            <Box ml="m" mt="s">
+              {completeBadge}
+            </Box>
+          )}
+        </Box>
       </Box>
       <Box flexDirection="row" alignItems="center">
         {badge && badge}
@@ -70,12 +79,14 @@ const ProfilePage = () => {
   const user = useSelector(selectUser);
   const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
 
+  const walletUser = useSelector(selectWalletUser);
 
   const DATA: {
     icon: React.ReactNode;
     title: string;
     badge?: React.ReactNode;
     onPress: () => void;
+    completeBadge?: React.ReactNode;
   }[] = [
     {
       icon: (
@@ -84,19 +95,33 @@ const ProfilePage = () => {
           darkModeColor={theme.colors.bodyTextColor}
         />
       ),
-      title: "Personal verification",
+      title: "Acount verification",
       badge: (
         <Box
           width={"auto"}
           padding="s"
-          borderRadius={8}
+          borderRadius={20}
           bg="secondaryBackgroundColor"
           justifyContent="center"
           alignItems="center"
-          style={{ backgroundColor: "#EDB1181A" }}
+          style={{ backgroundColor: "white" }}
         >
-          <CustomText fontSize={10} color="pendingColor">
-            Incomplete
+          <CustomText fontSize={10} style={{ color: "black" }}>
+            Go to KYC
+          </CustomText>
+        </Box>
+      ),
+      completeBadge: (
+        <Box
+          width={100}
+          height={20}
+          borderRadius={40}
+          justifyContent="center"
+          alignItems="center"
+          style={{ backgroundColor: "#2E8B57" }}
+        >
+          <CustomText fontSize={12} style={{ color: "#90EE90" }}>
+            Complete
           </CustomText>
         </Box>
       ),
@@ -168,11 +193,11 @@ const ProfilePage = () => {
               alignItems="center"
               style={{
                 backgroundColor:
-                  user?.avatar?.backgroundColor ||
+                  walletUser?.avatar?.backgroundColor ||
                   theme.colors.fadedPrimaryColor,
               }}
             >
-              {user?.avatar?.url ? (
+              {walletUser?.avatar?.url ? (
                 <Image
                   source={{ uri: user?.avatar?.url }}
                   style={{ width: "100%", height: "100%", borderRadius: 50 }}
@@ -186,16 +211,17 @@ const ProfilePage = () => {
               )}
             </Box>
             <CustomText variant="medium" fontFamily="14" mt="s">
-              {user?.username}
+              {walletUser?.username}
             </CustomText>
             <CustomText variant="body" mt="s" fontFamily="14" marginBottom="m">
-              {user?.email}
+              {walletUser?.email}
             </CustomText>
             <CustomButton
               text="Edit Profile"
               width={"30%"}
               height={32}
               borderRadius={30}
+              variant="bodySubheader"
               leadingIcon={
                 <ThemedEditIcon
                   width={16}

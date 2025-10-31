@@ -26,7 +26,9 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   } else {
     return (
       <LinearGradient style={{ flex: 1 }} colors={["#846FFF", "#19087D"]}>
-        <PageWrapper>{children}</PageWrapper>
+        <WalletProvider>
+          <PageWrapper>{children}</PageWrapper>
+        </WalletProvider>
       </LinearGradient>
     );
   }
@@ -128,7 +130,7 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => {
+      onPress: async () => {
         if (isUserLoggedIn) {
           // Navigate to dashboard for exchange authenticated users
           router.push("/dashboard/home/wallet-home/home");
