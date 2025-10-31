@@ -43,10 +43,18 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
 
   const isDark = theme.colors.headerTextColor === "#FBFBFB";
 
-  const tokenSymbol = symbol || asset?.currencyId?.symbol || "BTC";
+  const tokenSymbol = symbol || 
+                     parsedAsset?.currencyId?.symbol || 
+                     parsedAsset?.symbol || 
+                     asset?.currencyId?.symbol || 
+                     asset?.symbol || 
+                     asset || 
+                     "Unknown";
   const tokenLogo =
     logo ||
+    parsedAsset?.currencyId?.logo ||
     asset?.currencyId?.logo ||
+    asset?.logo ||
     "https://assets.coingecko.com/coins/images/1/large/bitcoin.png";
 
   // Check if token is in watchlist
@@ -194,7 +202,26 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
         </Pressable>
       </Box>
 
-      <Box flexDirection="row" gap="s" alignItems="center">
+      <Pressable
+        onPress={() => {
+          // Navigate to unified token details page
+          router.push(`/dashboard/home/token-details/${currencyId || (parsedAsset as any)?._id}`);
+        }}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          gap: 8,
+          alignItems: "center",
+          opacity: pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+        })}
+        android_ripple={{
+          color: "rgba(255,255,255,0.1)",
+          borderless: false,
+        }}
+      >
         <TokenImage uri={tokenLogo} name={tokenSymbol} size={24} />
         <CustomText
           variant="bodySubheader"
@@ -203,7 +230,7 @@ const AssetHeader: React.FC<AssetHeaderProps> = ({
         >
           {tokenSymbol}
         </CustomText>
-      </Box>
+      </Pressable>
 
       <Box flexDirection="row" gap="m" width={92} justifyContent="flex-end">
         <TouchableIcon source={icons.alert} onPress={handleAddToPriceAlert} />

@@ -1,12 +1,15 @@
 import Box from "@/components/general/Box";
 import CryptoIcon from "@/components/general/CrptoIcon";
 import CustomText from "@/components/general/CustomText";
+import { filterRatesByPeriod, getLatestRate } from "@/lib/utils/market/chartHelpers";
+import { formatPrice } from "@/lib/utils/market/priceFormatter";
 import { Rate } from "@/src/modules/market/domain/entities/models/token-history-model";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Dimensions, Pressable } from "react-native";
-import { LineChart } from "react-native-gifted-charts";
+import { LineChart } from "react-native-chart-kit";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -46,6 +49,8 @@ interface TokenGraphProps {
   onCurrencyChange?: (currency: "USD" | "NGN") => void;
   tokenLogo?: string;
   ngnSellRate?: number;
+  nairaCurrency?: CurrencyModel | null;
+  usdCurrency?: CurrencyModel | null;
 }
 
 const TokenGraph: React.FC<TokenGraphProps> = ({
@@ -60,20 +65,126 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
   onCurrencyChange,
   tokenLogo,
   ngnSellRate,
+  nairaCurrency,
+  usdCurrency,
 }) => {
   const theme = useTheme<Theme>();
   const [selectedPeriod, setSelectedPeriod] = useState(period);
   const [hoveredValue, setHoveredValue] = useState<number | null>(null);
+  
+  // Chart data state for react-native-chart-kit
+  const [chartKitData, setChartKitData] = useState({
+    labels: [] as string[],
+    datasets: [
+      {
+        data: [0, 0, 0, 0, 0, 0, 0],
+      },
+    ],
+  });
+
+  // Update selectedPeriod when period prop changes
+  useEffect(() => {
+    setSelectedPeriod(period);
+  }, [period]);
+
+  // Convert data to chart-kit format
+  useEffect(() => {
+    if (data && Array.isArray(data)) {
+      const sortedHistory = [...data].sort(
+        (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
+      );
+      const labels = sortedHistory.map((item) =>
+        new Date(Number(item.date)).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+      const chartValues = sortedHistory.map((item) => {
+        let rate = item.rate ?? 0;
+        // Convert to NGN if needed
+        if (currency === "NGN" && ngnSellRate) {
+          rate = rate * ngnSellRate;
+        }
+        return rate;
+      });
+
+      setChartKitData({ labels, datasets: [{ data: chartValues }] });
+    }
+  }, [data, currency, ngnSellRate]);
 
   const periods = ["24h", "7D", "3M", "6M", "1Y"];
+
+  // Y-axis label formatting function
+  const getYAxisLabels = () => {
+    const data = chartKitData.datasets[0]?.data || [];
+    if (!data.length) return [];
+
+    let values = [...data];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    if (min === max) {
+      return [formatCompactCurrency(max, currency)];
+    }
+
+    const step = (max - min) / 4;
+
+    return Array.from({ length: 5 }, (_, i) => {
+      const value = max - step * i;
+      return formatCompactCurrency(value, currency);
+    });
+  };
+
+  // Helper function to format numbers compactly for Y-axis with currency
+  const formatCompactCurrency = (value: number, currency: string): string => {
+    const symbol = currency === "NGN" ? "₦" : "$";
+    
+    if (value >= 1000000000) {
+      return `${symbol}${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `${symbol}${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${symbol}${(value / 1000).toFixed(1)}K`;
+    } else if (value >= 1) {
+      return `${symbol}${value.toFixed(0)}`;
+    } else {
+      return `${symbol}${value.toFixed(2)}`;
+    }
+  };
+
+  // Detect if we're in dark mode by checking theme colors
+  const isDark = theme.colors.headerTextColor === "#FBFBFB";
+
+  // Theme-aware chart config
+  const chartConfig = {
+    backgroundColor: isDark ? "#2F333D" : "#ffffff",
+    backgroundGradientFrom: isDark ? "#2F333D" : "#ffffff",
+    backgroundGradientTo: isDark ? "#2F333D" : "#ffffff",
+    decimalPlaces: 0,
+    color: (opacity = 1) => `rgba(96, 69, 255, ${opacity})`,
+    labelColor: (opacity = 1) =>
+      isDark ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    propsForDots: {
+      r: "6",
+      strokeWidth: "2",
+      stroke: "#6045FF",
+    },
+  };
 
   // Format rates data for chart
   const chartData = useMemo((): TokenData[] => {
     if (!data || data.length === 0) return [];
 
+    // Filter data by period first
+    const filteredData = filterRatesByPeriod(data, period);
+
     // Convert rates to chart data format
-    const formattedData = data.map((rate, index) => {
+    const formattedData = filteredData.map((rate, index) => {
       let value = rate.rate || 0;
+      const originalValue = value;
 
       // Convert to NGN if needed
       if (currency === "NGN" && ngnSellRate && ngnSellRate > 0) {
@@ -113,7 +224,14 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
       };
     });
 
-    return formattedData;
+    // Reduce data points for better chart performance if we have too many
+    let finalData = formattedData;
+    if (formattedData.length > 50) {
+      const step = Math.ceil(formattedData.length / 50);
+      finalData = formattedData.filter((_, index) => index % step === 0);
+    }
+
+    return finalData;
   }, [data, currency, ngnSellRate, period]);
 
 
@@ -134,6 +252,10 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
   };
 
   const isPeriodAvailable = (p: string): boolean => {
+    // Make 7D specifically unavailable/unclickable
+    if (p === "7D") {
+      return false;
+    }
     return availablePeriods.includes(p);
   };
 
@@ -141,6 +263,7 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
   const values = chartData.map((item) => item.value);
   const minValue = Math.min(...values) * 0.998;
   const maxValue = Math.max(...values) * 1.002;
+
 
   const getPeriodLabel = (p: string): string => {
     switch (p) {
@@ -201,7 +324,11 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
             color="headerTextColor"
             marginBottom="s"
           >
-            {price}
+            {(() => {
+              // Calculate dynamic price based on current currency
+              const latestRate = getLatestRate(data, "USD");
+              return formatPrice(latestRate, currency, nairaCurrency, usdCurrency);
+            })()}
           </CustomText>
         </Box>
 
@@ -247,89 +374,49 @@ const TokenGraph: React.FC<TokenGraphProps> = ({
 
       {/* Chart */}
       <Box height={220} marginBottom="m">
-        {chartData.length > 0 ? (
-          <LineChart
-            data={chartData}
-            width={SCREEN_WIDTH - 80}
-            height={200}
-            spacing={Math.max(40, (SCREEN_WIDTH - 120) / chartData.length)}
-            color={theme.colors.primaryColor}
-            thickness={2}
-            startFillColor={theme.colors.primaryColor}
-            endFillColor="transparent"
-            startOpacity={0.3}
-            endOpacity={0.1}
-            initialSpacing={10}
-            noOfSections={4}
-            yAxisColor={theme.colors.placeholderTextColor}
-            xAxisColor={theme.colors.placeholderTextColor}
-            yAxisTextStyle={{
-              color: theme.colors.placeholderTextColor,
-              fontSize: 10,
-            }}
-            xAxisLabelTextStyle={{
-              color: theme.colors.placeholderTextColor,
-              fontSize: 10,
-              width: 50,
-            }}
-            hideDataPoints={chartData.length > 20}
-            dataPointsColor={theme.colors.primaryColor}
-            dataPointsRadius={4}
-            curved
-            areaChart
-            hideRules
-            yAxisExtraHeight={20}
-            formatYLabel={(value) => {
-              const numValue = parseFloat(value);
-              return formatCurrencyValue(numValue, currency);
-            }}
-            onPress={(item: any, index: number) => {
-              setHoveredValue(item.value);
-            }}
-            showVerticalLines={false}
-            verticalLinesColor="rgba(255,255,255,0.1)"
-            rulesColor="rgba(255,255,255,0.05)"
-            rulesType="solid"
-            pointerConfig={{
-              pointerStripHeight: 200,
-              pointerStripColor: theme.colors.primaryColor,
-              pointerStripWidth: 2,
-              pointerColor: theme.colors.primaryColor,
-              radius: 6,
-              pointerLabelWidth: 120,
-              pointerLabelHeight: 60,
-              activatePointersOnLongPress: false,
-              autoAdjustPointerLabelPosition: true,
-              pointerLabelComponent: (items: any) => {
-                const item = items[0];
-                return (
-                  <Box
-                    backgroundColor="mainBackgroundColor"
-                    padding="s"
-                    borderRadius={8}
-                    style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4,
-                      elevation: 5,
-                    }}
-                  >
-            <CustomText
-              fontSize={14}
-              color="headerTextColor"
-              fontWeight="bold"
+        {chartKitData.datasets[0].data.length > 0 ? (
+          <Box width="100%" flexDirection="row" alignItems="center">
+            <Box width="82%" alignItems="center">
+              <LineChart
+                data={chartKitData}
+                width={SCREEN_WIDTH - 180}
+                height={200}
+                yAxisSuffix=""
+                withInnerLines={true}
+                withOuterLines={false}
+                withHorizontalLabels={false}
+                withVerticalLabels={false}
+                withDots={false}
+                bezier
+                chartConfig={chartConfig}
+                style={{
+                  paddingRight: 0,
+                  marginLeft: -20,
+                  marginRight: -20,
+                }}
+              />
+            </Box>
+            <Box
+              width="18%"
+              paddingLeft="s"
+              height={180}
+              justifyContent="space-between"
+              alignItems="flex-start"
             >
-              {formatCurrencyValue(item.value, currency)}
-            </CustomText>
-                    <CustomText fontSize={10} color="placeholderTextColor">
-                      {item.label}
-                    </CustomText>
-                  </Box>
-                );
-              },
-            }}
-          />
+              {getYAxisLabels().map((label, i) => (
+                <CustomText
+                  key={`y-axis-${i}`}
+                  variant="body"
+                  fontSize={10}
+                  color="disabledTextColor"
+                  numberOfLines={1}
+                  style={{ flexShrink: 0 }}
+                >
+                  {label}
+                </CustomText>
+              ))}
+            </Box>
+          </Box>
         ) : (
           <Box flex={1} justifyContent="center" alignItems="center">
             <CustomText

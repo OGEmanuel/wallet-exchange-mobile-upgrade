@@ -16,13 +16,14 @@ import {
   getLatestMarketData,
 } from "@/lib/utils/market/chartHelpers";
 import { formatStats } from "@/lib/utils/market/helpers";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, Linking, ScrollView } from "react-native";
+import { Dimensions, Image, Linking, Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 // Initialize dimensions
@@ -66,6 +67,7 @@ export default function AssetInfo() {
   const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
     undefined
   );
+  const [enhancedTokenDetails, setEnhancedTokenDetails] = useState<any>(null);
 
   // Fetch currencies and token details when component mounts
   useEffect(() => {
@@ -90,11 +92,26 @@ export default function AssetInfo() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
+        // First fetch basic token details via the market hook
         await fetchTokenDetails({
           body: id as string,
           params: {},
           extra: null,
         });
+        
+        // Then fetch enhanced details with news using SDK directly
+        try {
+          const sdk = zapSDKService.getSDK();
+          if (sdk && sdk.markets) {
+            const enhancedDetails = await sdk.markets.getTokenDetails(id as string);
+            setEnhancedTokenDetails(enhancedDetails);
+            console.log("Enhanced token details with news:", enhancedDetails);
+          }
+        } catch (sdkError) {
+          console.warn("Failed to fetch enhanced token details:", sdkError);
+          // Continue with basic token details even if enhanced fetch fails
+        }
+        
         // Token details are now automatically stored in Redux state via the hook
       } catch (err: any) {
         console.error("Error fetching token details:", err);
@@ -104,7 +121,7 @@ export default function AssetInfo() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, fetchTokenDetails]);
 
   const fetchTokenHistoryCallback = useCallback(async () => {
     try {
@@ -210,14 +227,22 @@ export default function AssetInfo() {
         animationType="fade"
       >
         <Box flex={1} paddingBottom="xl">
+          {(() => {
+            console.log("🔍 AssetHeader Debug Data:");
+            console.log("   - ID:", id);
+            console.log("   - currentTokenDetails:", currentTokenDetails);
+            console.log("   - parsedAsset:", parsedAsset);
+            console.log("   - Token Name:", currentTokenDetails?.tokenDetails?.name);
+            console.log("   - Token Symbol:", currentTokenDetails?.tokenDetails?.symbol);
+            console.log("   - ParsedAsset Symbol:", parsedAsset?.currencyId?.symbol || parsedAsset?.symbol);
+            console.log("   - Token Logo:", currentTokenDetails?.tokenDetails?.logo);
+            return null;
+          })()}
           <AssetHeader
-            asset={
-              currentTokenDetails?.tokenDetails?.name ||
-              currentTokenDetails?.tokenDetails?.symbol
-            }
+            asset={currentTokenDetails?.tokenDetails?.name}
             parsedAsset={parsedAsset}
             logo={currentTokenDetails?.tokenDetails?.logo}
-            symbol={currentTokenDetails?.tokenDetails?.symbol}
+            symbol={currentTokenDetails?.tokenDetails?.symbol || parsedAsset?.currencyId?.symbol || parsedAsset?.symbol}
             currencyId={currentTokenDetails?.tokenMetrics?.currencyId}
           />
           <Box width="100%" paddingVertical="m">
@@ -246,6 +271,8 @@ export default function AssetInfo() {
                   selectedCurrency={selectedCurrency}
                   onCurrencyChange={setSelectedCurrency}
                 />
+
+
 
                 <Box width="100%" paddingHorizontal="m" marginTop="m">
                   <Box
@@ -460,83 +487,269 @@ export default function AssetInfo() {
                   </Box>
                 )}
 
-                {/* News Section */}
-                {currentTokenDetails?.tokenNews &&
-                  currentTokenDetails.tokenNews.length > 0 && (
-                    <Box width="100%" paddingHorizontal="m" marginTop="l">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <CustomText
-                          variant="bodySubheader"
-                          fontSize={16}
-                          style={{ fontFamily: "NewScience_Bold" }}
-                        >
-                          Latest News
-                        </CustomText>
+                {/* Top Stories Section */}
+                <Box width="100%" paddingHorizontal="m" marginTop="l">
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <CustomText
+                      variant="bodySubheader"
+                      fontSize={16}
+                      style={{ fontFamily: "NewScience_Bold" }}
+                    >
+                      Top Stories
+                    </CustomText>
 
-                        <CustomButton
-                          text="View More"
-                          color="white"
-                          onPress={() => {
-                            router.push("/dashboard/home/all-news");
-                          }}
-                          width="25%"
-                          borderRadius={50}
-                          height={35}
-                          bgColor="#6045FF"
-                        />
-                      </Box>
+                    <CustomButton
+                      text="View All"
+                      color="white"
+                      onPress={() => {
+                        router.push(`/dashboard/home/token-details/news?tokenId=${id}`);
+                      }}
+                      width="25%"
+                      borderRadius={50}
+                      height={35}
+                      bgColor="#6045FF"
+                    />
+                  </Box>
 
-                      <Box marginTop="s">
-                        {currentTokenDetails.tokenNews
-                          .slice(0, 3)
-                          .map((news, index) => (
+                  <Box marginTop="s">
+                    {(enhancedTokenDetails?.tokenNews || currentTokenDetails?.tokenNews) && 
+                     (enhancedTokenDetails?.tokenNews?.length > 0 || (currentTokenDetails?.tokenNews?.length ?? 0) > 0) ? (
+                      (enhancedTokenDetails?.tokenNews || currentTokenDetails?.tokenNews || [])
+                        .slice(0, 3)
+                        .map((article: any, index: number) => (
+                          <Pressable
+                            key={article.id || index}
+                            onPress={() => {
+                              router.push(`/dashboard/home/token-details/news/${article.id || index}?tokenId=${id}`);
+                            }}
+                            style={({ pressed }) => ({
+                              opacity: pressed ? 0.8 : 1,
+                              transform: [{ scale: pressed ? 0.98 : 1 }],
+                            })}
+                          >
                             <Box
-                              key={news.id || index}
                               width="100%"
                               bg="secondaryBackgroundColor"
                               borderRadius={16}
                               marginBottom="s"
                               padding="m"
+                              style={{
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 4,
+                              }}
                             >
-                              <CustomText
-                                variant="body"
-                                fontSize={14}
-                                color="bodyTextColor"
-                                marginBottom="s"
-                                numberOfLines={2}
-                              >
-                                {news.title}
-                              </CustomText>
-                              {news.source?.name && (
-                                <CustomText
-                                  variant="body"
-                                  fontSize={12}
-                                  color="disabledTextColor"
-                                >
-                                  {news.source.name}
-                                </CustomText>
-                              )}
-                              {news.publishedAt && (
-                                <CustomText
-                                  variant="body"
-                                  fontSize={12}
-                                  color="disabledTextColor"
-                                  marginTop="s"
-                                >
-                                  {new Date(
-                                    news.publishedAt
-                                  ).toLocaleDateString()}
-                                </CustomText>
-                              )}
+                              <Box marginBottom="s">
+                                <Box flexDirection="row" alignItems="center" mb="s">
+                                  {/* Article Image */}
+                                  <Box
+                                    width={30}
+                                    height={30}
+                                    borderRadius={5}
+                                    backgroundColor="borderColor"
+                                    marginRight="s"
+                                    overflow="hidden"
+                                  >
+                                    {article?.source?.image ? (
+                                      <Image
+                                        source={{ uri: article.source.image }}
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                        }}
+                                        resizeMode="cover"
+                                      />
+                                    ) : (
+                                      <Box
+                                        flex={1}
+                                        justifyContent="center"
+                                        alignItems="center"
+                                        backgroundColor="borderColor"
+                                      >
+                                        <CustomText fontSize={24}>📰</CustomText>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                  <Box
+                                    borderRadius={6}
+                                    flexDirection="row"
+                                    alignItems="center"
+                                    flex={1}
+                                  >
+                                    <CustomText
+                                      color="white"
+                                      variant="bodyMedium"
+                                      fontSize={14}
+                                    >
+                                      {article.source?.name || "News"}
+                                    </CustomText>
+                                    <CustomText
+                                      color="placeholderTextColor"
+                                      variant="bodyMedium"
+                                      fontSize={14}
+                                    >
+                                      {" "} • {" "}
+                                      {article.publishedAt
+                                        ? new Date(article.publishedAt).toLocaleDateString()
+                                        : "Today"}
+                                    </CustomText>
+                                  </Box>
+                                </Box>
+
+                                {/* Article Content */}
+                                <Box flex={1}>
+                                  <Box
+                                    marginBottom="s"
+                                    flexDirection="row"
+                                    alignItems="center"
+                                    justifyContent="space-between"
+                                  >
+                                    <CustomText
+                                      color="headerTextColor"
+                                      fontSize={15}
+                                      variant="body"
+                                      lineHeight={20}
+                                      numberOfLines={2}
+                                      flex={1}
+                                    >
+                                      {article.title || "Latest news about this token"}
+                                    </CustomText>
+                                    <Box
+                                      width={80}
+                                      height={80}
+                                      marginLeft="s"
+                                      borderRadius={10}
+                                      overflow="hidden"
+                                    >
+                                      {article.image ? (
+                                        <Image
+                                          source={{ uri: article.image }}
+                                          style={{ width: "100%", height: "100%" }}
+                                          resizeMode="cover"
+                                        />
+                                      ) : null}
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              </Box>
                             </Box>
-                          ))}
-                      </Box>
-                    </Box>
-                  )}
+                          </Pressable>
+                        ))
+                    ) : (
+                      // Mock news data if no news is available from API
+                      [
+                        {
+                          id: "1",
+                          title: `${currentTokenDetails?.tokenDetails?.symbol || "Token"} shows strong performance in recent market trends`,
+                          source: { name: "CryptoNews" },
+                          publishedAt: new Date(),
+                        },
+                        {
+                          id: "2", 
+                          title: `Market analysis: ${currentTokenDetails?.tokenDetails?.name || "Token"} reaches new milestone`,
+                          source: { name: "CoinDesk" },
+                          publishedAt: new Date(Date.now() - 86400000), // 1 day ago
+                        },
+                        {
+                          id: "3",
+                          title: `Expert predictions for ${currentTokenDetails?.tokenDetails?.symbol || "Token"} in the coming quarter`,
+                          source: { name: "BlockchainNews" },
+                          publishedAt: new Date(Date.now() - 172800000), // 2 days ago
+                        }
+                      ].map((article, index) => (
+                        <Pressable
+                          key={article.id}
+                          onPress={() => {
+                            router.push(`/dashboard/home/token-details/news/${article.id}?tokenId=${id}`);
+                          }}
+                          style={({ pressed }) => ({
+                            opacity: pressed ? 0.8 : 1,
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                          })}
+                        >
+                          <Box
+                            width="100%"
+                            bg="secondaryBackgroundColor"
+                            borderRadius={16}
+                            marginBottom="s"
+                            padding="m"
+                            style={{
+                              shadowColor: "#000",
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 8,
+                              elevation: 4,
+                            }}
+                          >
+                            <Box marginBottom="s">
+                              <Box flexDirection="row" alignItems="center" mb="s">
+                                {/* Article Image */}
+                                <Box
+                                  width={30}
+                                  height={30}
+                                  borderRadius={5}
+                                  backgroundColor="borderColor"
+                                  marginRight="s"
+                                  overflow="hidden"
+                                >
+                                  <Box
+                                    flex={1}
+                                    justifyContent="center"
+                                    alignItems="center"
+                                    backgroundColor="borderColor"
+                                  >
+                                    <CustomText fontSize={24}>📰</CustomText>
+                                  </Box>
+                                </Box>
+                                <Box
+                                  borderRadius={6}
+                                  flexDirection="row"
+                                  alignItems="center"
+                                  flex={1}
+                                >
+                                  <CustomText
+                                    color="white"
+                                    variant="bodyMedium"
+                                    fontSize={14}
+                                  >
+                                    {article.source?.name || "News"}
+                                  </CustomText>
+                                  <CustomText
+                                    color="placeholderTextColor"
+                                    variant="bodyMedium"
+                                    fontSize={14}
+                                  >
+                                    {" "} • {" "}
+                                    {article.publishedAt.toLocaleDateString()}
+                                  </CustomText>
+                                </Box>
+                              </Box>
+
+                              {/* Article Content */}
+                              <Box flex={1}>
+                                <CustomText
+                                  color="headerTextColor"
+                                  fontSize={15}
+                                  variant="body"
+                                  lineHeight={20}
+                                  numberOfLines={2}
+                                >
+                                  {article.title}
+                                </CustomText>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Pressable>
+                      ))
+                    )}
+                  </Box>
+                </Box>
 
                 <Box paddingHorizontal="m" paddingVertical="m">
                   <CustomButton

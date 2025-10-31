@@ -38,6 +38,11 @@ export default function AssetChartDetails({
   // Detect if we're in dark mode by checking theme colors
   const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
 
+  // Use passed token details data
+  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
+    propSelectedCurrency || "USD"
+  );
+
   useEffect(() => {
     if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
       const sortedHistory = [...tokenHistory.rates].sort(
@@ -74,11 +79,6 @@ export default function AssetChartDetails({
     },
   };
 
-  // Use passed token details data
-  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
-    propSelectedCurrency || "USD"
-  );
-
   // Update local state when prop changes
   useEffect(() => {
     if (propSelectedCurrency) {
@@ -112,7 +112,7 @@ export default function AssetChartDetails({
     
     // Convert to NGN if needed
     if (selectedCurrency === "NGN" && nairaCurrency?.sellRate) {
-      values = values.map(v => v / nairaCurrency.sellRate);
+      values = values.map(v => v / nairaCurrency.sellRate!);
     }
 
     const min = Math.min(...values);
@@ -207,7 +207,14 @@ export default function AssetChartDetails({
             </CustomText>
             <CurrencyTab
               selectedCurrency={selectedCurrency}
-              setSelectedCurrency={onCurrencyChange || setSelectedCurrency}
+              setSelectedCurrency={onCurrencyChange ? 
+                ((currency: React.SetStateAction<"USD" | "NGN">) => {
+                  if (typeof currency === 'string') {
+                    onCurrencyChange(currency);
+                  }
+                }) as React.Dispatch<React.SetStateAction<"USD" | "NGN">>
+                : setSelectedCurrency
+              }
             />
           </Box>
           <Box alignItems="flex-end">
