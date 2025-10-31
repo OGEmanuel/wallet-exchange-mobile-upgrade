@@ -1,5 +1,6 @@
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
 import React, { useState } from "react";
 import { Image, Pressable } from "react-native";
@@ -22,6 +23,7 @@ const ActivityItemCard = ({
   status = "PENDING",
 }: IProps) => {
   const dispatch = useDispatch();
+  const { getApproximateAmount, getAmountToReceive } = useUtilities();
   const {
     buyActivityRef,
     sentActivityRef,
@@ -185,7 +187,7 @@ const ActivityItemCard = ({
         </Box>
         <Box>
           <Box flex={1} flexDirection="column">
-            <CustomText fontSize={14} fontWeight="500" marginBottom="s">
+            <CustomText fontSize={14} fontWeight="500" marginBottom="s" width={150}>
               To {
                 activity?.withdrawalAccount?.walletAddress ?
                   abbreviateWalletAddress(activity.withdrawalAccount.walletAddress) :
@@ -205,8 +207,9 @@ const ActivityItemCard = ({
       </Box>
       <Box justifyContent="center" alignItems="flex-end">
         <CustomText variant="bodyMedium" fontSize={12}>
-          {displayType === "BUY" || displayType === "RECIEVD" ? "+" : "-"}
-          {displayAmount?.toFixed(2)} {displayCurrency}
+          {/* {displayType === "BUY" || displayType === "RECIEVD" ? "+" : "-"} */}
+          {/* {displayAmount?.toFixed(2)} {displayCurrency} */}
+          {getApproximateAmount(getAmountToReceive(activity), activity?.sellCurrency?.currencyId?.isCrypto)} {activity?.sellCurrency?.currencyId?.code}
         </CustomText>
         {/* <CustomText variant="bodyMedium" fontSize={10} color="disabledTextColor">
           ${usdValue?.toFixed(2)}

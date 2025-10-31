@@ -62,6 +62,7 @@ const exchangeSlice = createSlice({
       state.isLoadingMore = false;
       state.selectedActivity = null;
     },
+    resetExchangeState: () => initialState,
   },
 });
 

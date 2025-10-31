@@ -4,6 +4,7 @@ import {
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppDispatch } from "@/state";
 
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
@@ -18,6 +19,7 @@ interface FetchExchangeActivitiesParams {
 
 const useExchange = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const { currentExchangeUser } = useWallet();
   const [fetchingExchangeActivities, setFetchingExchangeActivities] = useState<boolean>(false);
 
   const fetchExchangeActivities = async ({

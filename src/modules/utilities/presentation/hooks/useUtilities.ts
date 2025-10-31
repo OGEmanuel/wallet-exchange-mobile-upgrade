@@ -1,6 +1,7 @@
 import { GeneralRequestModel, GeneralResponseModel } from "@/src/core/api/http-types";
 import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { AppDispatch } from "@/state";
+import { ExchangeActivityModel, TransactionStatus } from "@zap/blockchain-sdk";
 import { useDispatch } from "react-redux";
 import { VerifiedCountryModel } from "../../domain/entities/models/verified-country-model";
 import { UtilitiesUsecases } from "../../domain/usecases/utilities-usecases";
@@ -41,6 +42,35 @@ const useUtilities = () => {
       const response = await utilitiesUsecases.uploadFile(payload);
 
       return response;
+    },
+
+    getApproximateAmount: (amount?: number, isCrypto?: boolean, forMarket?: boolean): string => {
+      if (amount === undefined) return '0.00';
+  
+      let decimalPlaces: number;
+  
+      if (isCrypto) {
+        // If crypto less than 1: use 6 or 8 decimal places depending on the forMarket flag
+        // If crypto greater than or equal to 1: use 4 decimal places
+        decimalPlaces = amount < 1 ? (forMarket ? 8 : 6) : 4;
+      } else {
+        decimalPlaces = 2;
+      }
+  
+      const formatted = amount.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: decimalPlaces
+      });
+  
+      return formatted;
+    },
+
+    getActualTransactionStatus: (transaction?: ExchangeActivityModel | null): TransactionStatus | undefined => {
+      return (transaction?.childOrder && transaction.childOrder.status !== "PENDING") ? transaction.childOrder.status : transaction?.status;
+    },
+  
+    getAmountToReceive: (transaction?: ExchangeActivityModel | null): number => {
+      return transaction?.amountToReceive || 0;
     },
   };
 };

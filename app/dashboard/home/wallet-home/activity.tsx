@@ -173,17 +173,49 @@ const Activity = () => {
     console.log("Loading more data for page:", currentPage + 1);
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
     
     try {
-      await loadActivities(nextPage, false);
-      console.log("Load more completed for page:", nextPage);
+      const response = await fetchExchangeActivities({
+        user,
+        page: nextPage,
+        limit: LIMIT,
+      });
+      
+      // Check if we got data back
+      const activitiesData = response.data as any;
+      const activities = activitiesData?.activities || activitiesData || [];
+      
+      console.log("Load more response:", {
+        page: nextPage,
+        dataLength: activities.length,
+        responseStructure: response
+      });
+      
+      // Only increment currentPage if we got data
+      if (activities && activities.length > 0) {
+        console.log("Load more completed with data, incrementing page to:", nextPage);
+        setCurrentPage(nextPage);
+        
+        // Update hasMore based on server response
+        if (activitiesData?.pagination) {
+          const hasMore = activitiesData.pagination.hasMore || false;
+          dispatch(exchangeActions.setHasMore(hasMore));
+        } else {
+          // Fallback: if no pagination metadata, check if we got less than limit
+          const dataLength = activities.length;
+          const hasMore = dataLength >= LIMIT;
+          dispatch(exchangeActions.setHasMore(hasMore));
+        }
+      } else {
+        console.log("Load more returned no data, page stays at:", currentPage);
+        dispatch(exchangeActions.setHasMore(false));
+      }
     } catch (error) {
       console.error("Load more failed:", error);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, loadActivities, searchQuery, filteredActivities.length, exchangeActivities.length]);
+  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length]);
 
   const handleEndReached = useCallback(() => {
     console.log("📱 onEndReached triggered by FlatList");

@@ -1,6 +1,7 @@
 import { StorageKeys } from '@/src/core/api/models';
 import storageService from '@/src/core/storage/app-storage';
 import * as SecureStore from 'expo-secure-store';
+import { resetAppState } from './reset-app-state';
 
 /**
  * Logs out the user by clearing authentication and user data
@@ -43,6 +44,10 @@ export const logoutUser = async (): Promise<boolean> => {
         console.log(`⚠️ Could not clear SecureStore key: ${key} (might not exist)`);
       }
     }
+
+    // Reset Redux state to initial values
+    console.log('🔄 Resetting app state...');
+    resetAppState();
 
     // Note: We preserve device settings like:
     // - APP_THEME (user's theme preference)

@@ -4,6 +4,7 @@ import {
 } from "@/src/core/api/http-types";
 import { StorageKeys } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import { SubmitVerificationParams } from "@zap/blockchain-sdk";
@@ -24,13 +25,17 @@ const useKyc = () => {
   const [fetchingUserDetails, setFetchingUserDetails] =
     useState<boolean>(false);
 
+  const { currentExchangeUser } = useWallet();
+
   const fetchUserById = async (
     payload: UserModel | null
   ): Promise<GeneralResponseModel<UserModel>> => {
     setFetchingUserDetails(true);
     const usecase = new KycUsecases();
     const response = await usecase.executeFetchUserById({
-      body: payload,
+      body: {
+        _id: payload?._id || currentExchangeUser || user?._id || undefined,
+      },
       params: null,
       extra: null,
     });
