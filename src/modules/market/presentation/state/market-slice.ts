@@ -60,6 +60,7 @@ const marketSlice = createSlice({
         console.log("WatchlistTokens after removal:", state.watchlistTokens);
       }
     },
+    resetMarketState: () => initialState,
   },
 });
 

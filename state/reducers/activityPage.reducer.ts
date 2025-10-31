@@ -17,10 +17,11 @@ export const activityPageSlice = createSlice({
     setShowFilter: (state, action: PayloadAction<boolean>) => {
       state.showFilter = action.payload;
     },
+    resetActivityPage: () => initialState,
   },
 });
 
-export const { setShowFilter } = activityPageSlice.actions;
+export const { setShowFilter, resetActivityPage } = activityPageSlice.actions;
 // select states
 export const selectShowFilter = (state: AppRootState) =>
   state.activityPage.showFilter;

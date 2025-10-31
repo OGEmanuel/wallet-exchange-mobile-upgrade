@@ -50,6 +50,15 @@ const settingsSlice = createSlice({
     setSettings: (state, action: PayloadAction<SettingsModel>) => {
       state.settings = action.payload;
     },
+    resetUserSettings: (state) => {
+      // Reset user-specific settings but preserve device preferences
+      state.activeChain = null;
+      state.activeBank = null;
+      state.activeCurrency = null;
+      state.settings = null;
+      // Preserve biometricEnabled as it's a device preference
+    },
+    resetAllSettings: () => initialState,
     // Add your reducers here
     // Example:
     // setData: (state, action: PayloadAction<unknown[]>) => {
@@ -70,6 +79,8 @@ export const {
   setActiveBank,
   setActiveCurrency,
   setSettings,
+  resetUserSettings,
+  resetAllSettings,
 } = settingsSlice.actions;
 export const selectBiometricEnabled = (state: AppRootState) =>
   state.settings.biometricEnabled;

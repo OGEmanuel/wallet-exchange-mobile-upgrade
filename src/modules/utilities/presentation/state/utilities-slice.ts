@@ -28,6 +28,7 @@ const utilitiesSlice = createSlice({
     setVerifiedCountries: (state, action: PayloadAction<VerifiedCountryModel[] | null>) => {
       state.verifiedCountries = action.payload;
     },
+    resetUtilitiesState: () => initialState,
   },
 });
 
