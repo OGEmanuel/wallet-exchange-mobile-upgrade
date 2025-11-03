@@ -5,22 +5,24 @@ import { WalletPinSetupStep } from "@/components/wallet/steps/WalletPinSetupStep
 import { WalletFlowData } from "@/src/hooks/useWalletFlow";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Modal, TouchableWithoutFeedback } from "react-native";
 
 interface PinSetupModalProps {
   visible: boolean;
   onClose: () => void;
   onComplete: () => void;
+  skipIntro?: boolean; // If true, skip the intro screen and go directly to PIN setup
 }
 
 export const PinSetupModal: React.FC<PinSetupModalProps> = ({
   visible,
   onClose,
   onComplete,
+  skipIntro = false,
 }) => {
   const theme = useTheme<Theme>();
-  const [showCreatePin, setShowCreatePin] = useState(false);
+  const [showCreatePin, setShowCreatePin] = useState(skipIntro);
   const [walletData, setWalletData] = useState<WalletFlowData>({
     name: "",
     passcode: "",
@@ -37,13 +39,28 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({
   };
 
   const handleBack = () => {
-    setShowCreatePin(false);
+    if (skipIntro) {
+      // If we skipped intro, back should close the modal
+      onClose();
+    } else {
+      setShowCreatePin(false);
+    }
   };
 
   const handleUpdateData = (data: Partial<WalletFlowData>) => {
     console.log('📝 Updating wallet data in modal:', data);
     setWalletData((prev) => ({ ...prev, ...data }));
   };
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (visible) {
+      setShowCreatePin(skipIntro);
+      setWalletData({ name: "", passcode: "" });
+    } else {
+      setShowCreatePin(skipIntro);
+    }
+  }, [visible, skipIntro]);
 
   if (showCreatePin) {
     return (
@@ -172,25 +189,27 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({
 
           {/* Buttons */}
           <Box flexDirection="row" gap="m">
-            <CustomButton
-              flex={1}
-              text="Skip"
-              onPress={onClose}
-              bgColor={theme.colors.inActiveBtnColor}
-              color={theme.colors.bodyTextColor}
-              borderRadius={40}
-              borderWidth={1}
-              borderColor={theme.colors.inActiveBtnColor}
-            />
+            <Box flex={1}>
+              <CustomButton
+                text="Skip"
+                onPress={onClose}
+                bgColor={theme.colors.inActiveBtnColor}
+                color={theme.colors.bodyTextColor}
+                borderRadius={40}
+                borderWidth={1}
+                borderColor={theme.colors.inActiveBtnColor}
+              />
+            </Box>
 
-            <CustomButton
-              flex={1}
-              text="Create Pin"
-              onPress={handleCreatePin}
-              bgColor={theme.colors.primaryColor}
-              color={theme.colors.white}
-              borderRadius={40}
-            />
+            <Box flex={1}>
+              <CustomButton
+                text="Create Pin"
+                onPress={handleCreatePin}
+                bgColor={theme.colors.primaryColor}
+                color={theme.colors.white}
+                borderRadius={40}
+              />
+            </Box>
           </Box>
         </Box>
       </Box>

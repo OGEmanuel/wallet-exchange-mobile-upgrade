@@ -4,78 +4,86 @@ import {
   ThemedChartIcon,
   ThemedFaceIDIcon,
   ThemedHelpIcon,
+  ThemedShieldFillIcon,
   ThemedSignOutIcon,
-  ThemedStarFillIcon,
+  ThemedStarFillIcon
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { StorageKeys } from "@/src/core/api/models";
+import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import {
-  selectBiometricEnabled,
-  toggleBiometric,
-} from "@/src/modules/settings/presentation/state/settings-slice";
-import { selectUser } from "@/state/reducers/kyc-reducer";
-import {
-  selectWalletConnected,
-  selectWalletUser,
-  setWalletConnected,
-  setWalletUser,
-} from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
-import { logoutUser } from "@/utils/clear-device-data";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { UserModel } from "@zap/blockchain-sdk";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { Link, Setting4 } from "iconsax-react-nativejs";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Image, Platform, Pressable } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
-import { useDispatch, useSelector } from "react-redux";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
-import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
+import { PinEntryModal } from "../Modals/PinEntryModal";
+import { PinSetupModal } from "../Modals/PinSetupModal";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
-  const isConnect = useSelector(selectWalletConnected);
-  const dispatch = useDispatch();
-  const { setBiometricEnabled } = useSettings();
-  const { logoutFromExchange } = useWallet();
-  const user = useSelector(selectUser);
-  const isBiometricEnabled = useSelector(selectBiometricEnabled);
   const theme = useTheme<Theme>();
-  const { changePinRef } = useBottomSheetRefs();
-  const [hasHardware, setHasHardware] = useState(false);
-  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
-    useState(false);
-  const walletUser = useSelector(selectWalletUser);
-
-  const OS = Platform.OS;
-  const { currentWalletUser, getExchangeUser } = useWallet();
+  const { logoutFromExchange } = useWallet();
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  
+  const [hasHardware, setHasHardware] = useState(false);
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] = useState(false);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"logout" | "changePin" | null>(null);
+
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
-  React.useEffect(() => {
-    if (currentWalletUser) {
-      (async function () {
-        console.log("CURRENT WALLET USER", currentWalletUser);
-        const usr = await getExchangeUser();
-        dispatch(setWalletUser(exchangeUserData as UserModel));
-        console.log("EXCHANGE USER", exchangeUserData);
-      })();
-    }
-  }, [currentWalletUser, exchangeUserData]);
+  const OS = Platform.OS;
+
+  // Load biometric preference from SecureStore
+  useEffect(() => {
+    const loadBiometricPreference = async () => {
+      try {
+        const stored = await SecureStore.getItemAsync(StorageKeys.BIOMETRIC_ENABLED);
+        setIsBiometricEnabled(stored === "true");
+      } catch (error) {
+        console.error("Failed to load biometric preference:", error);
+      }
+    };
+    loadBiometricPreference();
+  }, []);
+
+  // Check for biometric hardware
+  useEffect(() => {
+    const checkBiometricHardware = async () => {
+      try {
+        const has = await LocalAuthentication.hasHardwareAsync();
+        if (has) {
+          const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+          // Check if device supports biometric authentication
+          const hasBiometric = types.length > 0;
+          setHasHardware(hasBiometric);
+        } else {
+          setHasHardware(false);
+        }
+      } catch (error) {
+        console.error("Failed to check biometric hardware:", error);
+        setHasHardware(false);
+      }
+    };
+    checkBiometricHardware();
+  }, []);
 
   const handleConnectZapExchange = useCallback(() => {
     zapLinkBottomSheetRef.current?.close();
@@ -92,110 +100,96 @@ const Sidebar = () => {
     } catch (error) {
       console.error("Logout from exchange failed:", error);
     }
-  }, []);
+  }, [logoutFromExchange]);
 
-  useEffect(() => {
-    (async () => {
-      const has = await LocalAuthentication.hasHardwareAsync();
-      if (has) {
-        // ANDROID CHECK
-        if (Platform.OS === "android" && has) {
-          setHasHardware(true);
-        } else {
-          setHasHardware(false);
-        }
 
-        // IOS CHECK
-        if (Platform.OS === "ios" && has) {
-          setHasHardware(true);
-        } else {
-          setHasHardware(false);
-        }
-      } else {
-        setHasHardware(false);
-      }
-    })();
-  }, []);
-
-  const handleConnect = () => {
-    dispatch(setWalletConnected(!isConnect));
-  };
-
-  const handleBiometricEnabled = async () => {
-    dispatch(toggleBiometric());
-    setBiometricEnabled(
-      StorageKeys.BIOMETRIC_ENABLED,
-      isBiometricEnabled ? "false" : "true"
-    );
-  };
+  const handleBiometricEnabled = useCallback(async () => {
+    const newValue = !isBiometricEnabled;
+    setIsBiometricEnabled(newValue);
+    try {
+      await SecureStore.setItemAsync(
+        StorageKeys.BIOMETRIC_ENABLED,
+        newValue ? "true" : "false"
+      );
+    } catch (error) {
+      console.error("Failed to save biometric preference:", error);
+      // Revert state on error
+      setIsBiometricEnabled(!newValue);
+    }
+  }, [isBiometricEnabled]);
 
   const handleCheck = () => {
-    if (!currentWalletUser) {
-      setIsZapperBottomSheetVisible(true);
-      zapperBottomSheetRef.current?.snapToIndex(0);
+    if (!isExchangeAuthenticated || !exchangeUserData?.username) {
+      // Not connected - show connect modal
+      zapLinkBottomSheetRef.current?.snapToIndex(0);
     } else {
+      // Connected - go to profile
       router.push("/dashboard/home/wallet-home/more/profile");
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout? You will need to sign in again to access your account.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // Logout from exchange
-              await logoutFromExchange();
-
-              // Clear user data
-              const success = await logoutUser();
-
-              if (success) {
-                // Route to select track screen
-                router.replace("/select-track");
-              } else {
-                Alert.alert(
-                  "Error",
-                  "Failed to logout completely. Please try again."
-                );
-              }
-            } catch (error) {
-              console.error("Logout error:", error);
-              Alert.alert(
-                "Error",
-                "An error occurred during logout. Please try again."
-              );
-            }
-          },
-        },
-      ]
-    );
+  // Protected action handler - requires PIN verification
+  const handleProtectedAction = async (action: "logout" | "changePin", callback: () => void) => {
+    try {
+      const hasPin = await pinStorageService.hasPin();
+      
+      if (hasPin) {
+        // PIN exists, show PIN entry modal
+        setPendingAction(action);
+        setShowPinEntry(true);
+      } else {
+        // No PIN, proceed directly
+        callback();
+      }
+    } catch (error) {
+      console.error("Failed to check PIN status:", error);
+      // On error, proceed anyway (fail open for UX)
+      callback();
+    }
   };
 
-  // adding the data hear
-  const SIDEBAR_DATA: ISidebarItem[] = [
-    // {
-    //   icon: (
-    //     <ThemedResolveChatIcon
-    //       width={20}
-    //       height={20}
-    //       darkModeColor={theme.colors.bodyTextColor}
-    //       lightModeColor={theme.colors.bodyTextColor}
-    //     />
-    //   ),
-    //   title: "Wallet Connect",
-    //   link: "/dashboard/home/connect",
-    //   isActive: false,
-    // },
-    {
+  // Handle PIN verification success
+  const handlePinSuccess = useCallback(async (pin: string) => {
+    setShowPinEntry(false);
+    
+    if (pendingAction === "changePin") {
+      // Show PIN setup modal to create new PIN
+      setShowPinSetup(true);
+    }
+    
+    setPendingAction(null);
+  }, [pendingAction]);
+
+  // Handle PIN modal close
+  const handlePinClose = useCallback(() => {
+    setShowPinEntry(false);
+    setPendingAction(null);
+  }, []);
+
+  // Handle logout - open disconnect modal (like swap screen)
+  const handleLogout = useCallback(() => {
+    zapLinkBottomSheetRef.current?.snapToIndex(0);
+  }, []);
+
+  const handleChangePin = useCallback(() => {
+    handleProtectedAction("changePin", () => {
+      // If no PIN exists, show setup directly
+      setShowPinSetup(true);
+    });
+  }, []);
+  
+  const handlePinSetupComplete = useCallback(() => {
+    setShowPinSetup(false);
+    console.log("✅ PIN changed successfully");
+  }, []);
+  
+  const handlePinSetupClose = useCallback(() => {
+    setShowPinSetup(false);
+  }, []);
+
+  // Sidebar data
+  const SIDEBAR_DATA: ISidebarItem[] = useMemo(() => [
+    ...(isExchangeAuthenticated ? [{
       icon: (
         <ThemedBankAccountIcon
           width={20}
@@ -207,7 +201,7 @@ const Sidebar = () => {
       title: "Bank Accounts",
       link: "/dashboard/home/wallet-home/more/bank",
       isActive: false,
-    },
+    }] : []),
     {
       icon: (
         <ThemedAddressBookIcon
@@ -234,19 +228,6 @@ const Sidebar = () => {
       link: "/dashboard/home/market",
       isActive: false,
     },
-    // {
-    //   icon: (
-    //     <ThemedGiftFill3Icon
-    //       width={20}
-    //       height={20}
-    //       darkModeColor={theme.colors.tabBarActiveColor}
-    //       lightModeColor={theme.colors.tabBarActiveColor}
-    //     />
-    //   ),
-    //   title: "Affilates & Referrals",
-    //   link: "/dashboard/home/reward",
-    //   isActive: true,
-    // },
     {
       icon: (
         <Setting4
@@ -259,67 +240,71 @@ const Sidebar = () => {
       link: "/dashboard/home/wallet-home/more/preferences",
       isActive: false,
     },
-  ];
+  ], [theme.colors.bodyTextColor, isExchangeAuthenticated]);
 
-  const SIDEBAR_SECURITY_DATA: ISidebarItem[] = [
+  const SIDEBAR_SECURITY_DATA: ISidebarItem[] = useMemo(() => {
+    const baseData: ISidebarItem[] = [
+      {
+        icon: (
+          <ThemedNumpadIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Change Zap PIN",
+        link: "/dashboard/home/wallet-home/more/about",
+        isActive: false,
+        onPress: handleChangePin,
+        disablClick: false,
+      },
+    ];
+
+    if (hasHardware) {
+      baseData.unshift({
+        icon: (
+          <ThemedFaceIDIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Login with FaceID",
+        link: "/dashboard/home/about",
+        isActive: false,
+        disablClick: true,
+        trailingItem: (
+          <Switch
+            value={isBiometricEnabled}
+            onValueChange={handleBiometricEnabled}
+            trackColor={{
+              false: theme.colors.primaryColor,
+              true: theme.colors.primaryColor,
+            }}
+          />
+        ),
+      });
+    }
+
+    return baseData;
+  }, [hasHardware, isBiometricEnabled, theme.colors.bodyTextColor, theme.colors.primaryColor, handleBiometricEnabled, handleChangePin]);
+
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(() => [
     {
       icon: (
-        <ThemedNumpadIcon
+        <ThemedShieldFillIcon
           width={20}
           height={20}
           darkModeColor={theme.colors.bodyTextColor}
           lightModeColor={theme.colors.bodyTextColor}
         />
       ),
-      title: "Change Zap PIN",
-      link: "/dashboard/home/wallet-home/more/about",
+      title: "Terms of Service",
+      link: "/dashboard/home/wallet-home/more/legal",
       isActive: false,
-      onPress: () => changePinRef.current?.snapToIndex(1),
-      disablClick: false,
     },
-  ];
-
-  if (hasHardware)
-    SIDEBAR_SECURITY_DATA.unshift({
-      icon: (
-        <ThemedFaceIDIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Login with FaceID",
-      link: "/dashboard/home/about",
-      isActive: false,
-      disablClick: true,
-      trailingItem: (
-        <Switch
-          value={isBiometricEnabled}
-          onValueChange={() => handleBiometricEnabled()}
-          trackColor={{
-            false: theme.colors.primaryColor,
-            true: theme.colors.primaryColor,
-          }}
-        />
-      ),
-    });
-
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
-    // {
-    //   icon: (
-    //     <ThemedShieldFillIcon
-    //       width={20}
-    //       height={20}
-    //       darkModeColor={theme.colors.bodyTextColor}
-    //       lightModeColor={theme.colors.bodyTextColor}
-    //     />
-    //   ),
-    //   title: "Terms of Service",
-    //   link: "/dashboard/home/security",
-    //   isActive: false,
-    //   onPress: () => {},
-    // },
     {
       icon: (
         <ThemedHelpIcon
@@ -343,7 +328,7 @@ const Sidebar = () => {
         />
       ),
       title: "About Zap Wallet",
-      link: "/dashboard/home/wallet-home/more/about",
+      link: "/dashboard/home/wallet-home/more/help",
       isActive: false,
     },
     {
@@ -361,7 +346,13 @@ const Sidebar = () => {
       onPress: handleLogout,
       disablClick: false,
     },
-  ];
+  ].filter((item) => {
+    // Only show Logout if exchange is authenticated
+    if (item.title === "Logout") {
+      return isExchangeAuthenticated;
+    }
+    return true;
+  }), [theme.colors.bodyTextColor, handleLogout, isExchangeAuthenticated]);
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -395,7 +386,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {currentWalletUser && (
+            {exchangeUserData?.avatar ? (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -404,14 +395,14 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: walletUser?.avatar?.backgroundColor,
+                  backgroundColor: exchangeUserData?.avatar?.backgroundColor,
                 }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
                   <Image
-                    source={{ uri: walletUser?.avatar?.url }}
+                    source={{ uri: exchangeUserData?.avatar?.url }}
                     style={[
                       { width: 40, height: 40, borderRadius: 20 },
                       pressed && { opacity: 0.7 },
@@ -419,8 +410,7 @@ const Sidebar = () => {
                   />
                 )}
               </Pressable>
-            )}
-            {!currentWalletUser && (
+            ) : (
               <Image
                 source={require("@/assets/images/personplaceholder.png")}
                 style={{ width: 40, height: 40, borderRadius: 20 }}
@@ -428,10 +418,10 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {currentWalletUser && (
+            {exchangeUserData?.username ? (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  {walletUser?.username || "anonymous.zap"}
+                  {exchangeUserData?.username || "anonymous.zap"}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>
@@ -439,8 +429,7 @@ const Sidebar = () => {
                   </CustomText>
                 </Box>
               </>
-            )}
-            {!currentWalletUser && (
+            ) : (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
                   anonymous.zap
@@ -462,34 +451,7 @@ const Sidebar = () => {
       </LinearGradient>
       <Box flex={1}>
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          <Box
-            width="100%"
-            height={70}
-            flexDirection="row"
-            justifyContent="space-between"
-            alignItems="center"
-            paddingHorizontal="m"
-          >
-            <Box>
-              <CustomText variant="bodySubheader" fontSize={16}>
-                Simple mode
-              </CustomText>
-              <CustomText fontSize={12}>
-                Provide easy use for beginners
-              </CustomText>
-            </Box>
-            <Box justifyContent="center">
-              <Switch
-                value={isConnect}
-                onValueChange={() => handleConnect()}
-                trackColor={{
-                  false: theme.colors.primaryColor,
-                  true: theme.colors.primaryColor,
-                }}
-              />
-            </Box>
-          </Box>
-          <Box paddingHorizontal="m">
+          <Box paddingHorizontal="m" paddingTop="l">
             <Box
               width={"100%"}
               height={"auto"}
@@ -500,7 +462,7 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_DATA.map((item, index) => (
-                <SidebarItemCard key={index.toString()} {...item} />
+                <SidebarItemCard key={item.title || index.toString()} {...item} />
               ))}
             </Box>
           </Box>
@@ -524,7 +486,7 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                <SidebarItemCard key={index.toString()} {...item} />
+                <SidebarItemCard key={item.title || index.toString()} {...item} />
               ))}
             </Box>
           </Box>
@@ -548,30 +510,12 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_ABOUT_DATA.map((item, index) => (
-                <SidebarItemCard key={index.toString()} {...item} />
+                <SidebarItemCard key={item.title || index.toString()} {...item} />
               ))}
             </Box>
           </Box>
         </ScrollView>
       </Box>
-      {/* <Box
-        width="100%"
-        height={170}
-        borderTopWidth={1}
-        borderTopColor="borderColor"
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20 }}
-        >
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-        </ScrollView>
-      </Box> */}
-      <ChangePinBottomSheet ref={changePinRef} />
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
           key="zapper-bottom-sheet"
@@ -592,6 +536,17 @@ const Sidebar = () => {
         username={exchangeUserData?.username}
         onClose={() => zapLinkBottomSheetRef.current?.close()}
         ref={zapLinkBottomSheetRef}
+      />
+      <PinEntryModal
+        visible={showPinEntry}
+        onSuccess={handlePinSuccess}
+        onClose={handlePinClose}
+      />
+      <PinSetupModal
+        visible={showPinSetup}
+        onClose={handlePinSetupClose}
+        onComplete={handlePinSetupComplete}
+        skipIntro={true}
       />
     </Box>
   );

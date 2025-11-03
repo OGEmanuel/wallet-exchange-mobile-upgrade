@@ -4,7 +4,7 @@ import {
   ThemedProfileOutlineIcon,
   ThemedShieldOutlineIcon,
 } from "@/assets/svg/wallet-icons-components";
-import { useZapperSignBottomSheet } from "@/components";
+import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import {
   Box,
@@ -12,17 +12,19 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
-import { selectUser } from "@/state/reducers/kyc-reducer";
-import { selectWalletUser } from "@/state/reducers/wallet.reducer";
+import KYCFlowManager from "@/components/kyc/KYCFlowManager";
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { userHasAtleastOneDocumentApproved } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { Theme } from "@/theme";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { User } from "iconsax-react-nativejs";
-import { ChevronRight } from "lucide-react-native";
-import React from "react";
+import { ChevronRight, User } from "lucide-react-native";
+import React, { useRef } from "react";
 import { Image, Pressable } from "react-native";
-import { useSelector } from "react-redux";
 
 const ItemCard = ({
   icon,
@@ -76,10 +78,41 @@ const ItemCard = ({
 
 const ProfilePage = () => {
   const theme = useTheme<Theme>();
-  const user = useSelector(selectUser);
-  const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
+  const { exchangeUserData, logoutFromExchange } = useWallet();
+  const { isExchangeAuthenticated } = useExchangeAuth();
+  const { showBottomSheet } = useAppBottomSheet();
+  const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
 
-  const walletUser = useSelector(selectWalletUser);
+  const showKYCBottomSheet = (options?: { onComplete?: () => void; onClose?: () => void }) => {
+    return showBottomSheet({
+      component: (
+        <KYCFlowManager
+          onComplete={() => {
+            options?.onComplete?.();
+          }}
+          onBack={() => {
+            options?.onClose?.();
+          }}
+        />
+      ),
+      props: {
+        snapPoints: ["90%"],
+        enablePanDownToClose: true,
+        showGradientHandle: true,
+        gradientColors: [
+          theme.colors.primaryColor,
+          theme.colors.mainBackgroundColor,
+          theme.colors.mainBackgroundColor,
+        ],
+      },
+      onClose: options?.onClose,
+    });
+  };
+
+  const walletUser = exchangeUserData;
+
+  // Check if user has at least one verification document approved
+  const isVerificationComplete: boolean = userHasAtleastOneDocumentApproved(walletUser);
 
   const DATA: {
     icon: React.ReactNode;
@@ -96,7 +129,7 @@ const ProfilePage = () => {
         />
       ),
       title: "Acount verification",
-      badge: (
+      badge: !isVerificationComplete ? (
         <Box
           width={"auto"}
           padding="s"
@@ -104,14 +137,14 @@ const ProfilePage = () => {
           bg="secondaryBackgroundColor"
           justifyContent="center"
           alignItems="center"
-          style={{ backgroundColor: "white" }}
+          style={{ backgroundColor: "#EF4444" }}
         >
-          <CustomText fontSize={10} style={{ color: "black" }}>
-            Go to KYC
+          <CustomText fontSize={10} style={{ color: "#FFFFFF" }}>
+            Not Verified
           </CustomText>
         </Box>
-      ),
-      completeBadge: (
+      ) : undefined,
+      completeBadge: isVerificationComplete ? (
         <Box
           width={100}
           height={20}
@@ -121,15 +154,14 @@ const ProfilePage = () => {
           style={{ backgroundColor: "#2E8B57" }}
         >
           <CustomText fontSize={12} style={{ color: "#90EE90" }}>
-            Complete
+            Verified
           </CustomText>
         </Box>
-      ),
+      ) : undefined,
       onPress: () => {
-        showZapperSignBottomSheet({
-          onContinue: () => {
-            // Navigate to dashboard after successful exchange authentication
-            router.push("/dashboard/home/wallet-home/swap");
+        showKYCBottomSheet({
+          onComplete: () => {
+            // Handle KYC completion if needed
           },
           onClose: () => {
             // Handle close if needed
@@ -145,8 +177,7 @@ const ProfilePage = () => {
         />
       ),
       title: "Two factor authentication",
-      onPress: () =>
-        router.push("/dashboard/home/wallet-home/more/profile/enable-2fa"),
+      onPress: () => {},
     },
     {
       icon: (
@@ -199,14 +230,13 @@ const ProfilePage = () => {
             >
               {walletUser?.avatar?.url ? (
                 <Image
-                  source={{ uri: user?.avatar?.url }}
+                  source={{ uri: walletUser?.avatar?.url }}
                   style={{ width: "100%", height: "100%", borderRadius: 50 }}
                 />
               ) : (
                 <User
                   size={50}
                   color={theme.colors.bodyTextColor}
-                  variant="Bold"
                 />
               )}
             </Box>
@@ -226,6 +256,8 @@ const ProfilePage = () => {
                 <ThemedEditIcon
                   width={16}
                   height={16}
+                  darkModeColor={theme.colors.white}
+                  lightModeColor={theme.colors.bodyTextColor}
                   style={{ marginRight: 5 }}
                 />
               }
@@ -265,26 +297,30 @@ const ProfilePage = () => {
             width={"100%"}
             borderRadius={50}
             bgColor={theme.colors.secondaryBackgroundColor}
-            text="Delete Account"
+            text="Remove Account"
             color={theme.colors.error}
-            onPress={() =>
-              router.push(
-                "/dashboard/home/wallet-home/more/profile/delete-account"
-              )
-            }
+            onPress={() => {
+              zapLinkBottomSheetRef.current?.snapToIndex(0);
+            }}
           />
         </Box>
       </Box>
-      {/* <Box paddingHorizontal="m">
-        <CustomButton
-          width={"100%"}
-          borderRadius={50}
-          bgColor={theme.colors.secondaryBackgroundColor}
-          text="Delete Account"
-          color={theme.colors.error}
-          onPress={() => {}}
-        />
-      </Box> */}
+      <ZapLinkBottomSheet
+        ref={zapLinkBottomSheetRef}
+        isZapLinked={isExchangeAuthenticated}
+        username={exchangeUserData?.username}
+        onDisconnect={async () => {
+          try {
+            await logoutFromExchange();
+            zapLinkBottomSheetRef.current?.close();
+          } catch (error) {
+            console.error("Logout from exchange failed:", error);
+          }
+        }}
+        onClose={() => {
+          zapLinkBottomSheetRef.current?.close();
+        }}
+      />
     </PageWrapper>
   );
 };

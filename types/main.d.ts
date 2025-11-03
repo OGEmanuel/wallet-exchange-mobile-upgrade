@@ -39,6 +39,7 @@ export interface WalletContextType {
     username?: string | null;
     userSource?: string | null;
     referralCode?: string | null;
+    userId?: string | null;
   }) => Promise<{
     success: boolean;
     message: string;

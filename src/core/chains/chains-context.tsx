@@ -42,7 +42,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     setChainsMap(
       new Map(walletChains.map((chain) => [chain._id || "", chain]))
     );
-  }, [chains]);
+  }, [walletChains]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -52,6 +52,14 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
+      // Check if user is wallet authenticated before fetching chains
+      const walletUserId = await zapSDKService.getCurrentUserId();
+      if (!walletUserId) {
+        console.log("⚠️ User not authenticated, skipping wallet chains fetch");
+        setIsLoading(false);
+        return;
+      }
+
       // Fetch wallet chains (chains that support wallet operations)
       const walletChainsData = await zapSDKService.getWalletChains();
 
@@ -60,9 +68,24 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
 
       setLastFetched(new Date());
       console.log("✅ Chains loaded successfully:", walletChainsData.length);
-    } catch (err) {
-      console.error("❌ Failed to load chains:", err);
-      setError(err instanceof Error ? err.message : "Failed to load chains");
+    } catch (err: any) {
+      // Handle authentication errors gracefully
+      const errorMessage = err?.message || "";
+      const isAuthError = 
+        errorMessage.includes("No authentication token") ||
+        errorMessage.includes("No refresh token") ||
+        errorMessage.includes("Refresh token is invalid") ||
+        errorMessage.includes("re-authenticate") ||
+        err?.status === 401;
+
+      if (isAuthError) {
+        console.log("⚠️ Authentication required to load wallet chains");
+        // Don't set error for auth issues - user just needs to log in
+        setError(null);
+      } else {
+        console.error("❌ Failed to load chains:", err);
+        setError(err instanceof Error ? err.message : "Failed to load chains");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -823,7 +823,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       // Get persistent device fingerprint (stable, doesn't change)
       const deviceFingerprint = await getPersistentDeviceFingerprint();
-      console.log("🔐 Using persistent device fingerprint for login");
+      console.log(
+        "🔐 Using persistent device fingerprint for login",
+        deviceFingerprint
+      );
 
       // Get push notification token (can change, so get fresh each time)
       let pushToken = "";
@@ -910,7 +913,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       await SecureStore.setItemAsync("device_fingerprint", fingerprintString);
 
       console.log("✅ New device fingerprint created and stored", fingerprint);
-      return fingerprint;
+      return fingerprintString;
     } catch (error) {
       console.error("Failed to get/create device fingerprint:", error);
 
@@ -1065,6 +1068,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     username?: string | null;
     userSource?: string | null;
     referralCode?: string | null;
+    userId?: string | null;
   }): Promise<{
     success: boolean;
     message: string;
@@ -1073,9 +1077,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsAuthenticating(true);
       setError(null);
 
+      // Extract userId from data and use it, or fall back to currentExchangeUser
+      const userId = data.userId || currentExchangeUser;
+      
+      // Remove userId from data object before passing to SDK
+      const { userId: _, ...onboardingData } = data;
+      
       const result = await zapSDKService.completeOnboarding(
-        currentExchangeUser,
-        data
+        userId,
+        onboardingData
       );
 
       // Prefer user in response if present; otherwise fetch current exchange user

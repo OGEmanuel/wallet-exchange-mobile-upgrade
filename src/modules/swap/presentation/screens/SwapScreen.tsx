@@ -23,10 +23,13 @@ import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import BankAccountsBottomSheet from "@/components/bottomsheets/BankAccountsBottomSheet";
 import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
+import KYCFlowManager from "@/components/kyc/KYCFlowManager";
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { userHasAtleastOneDocumentApproved } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { ArrowDown2 } from "iconsax-react-nativejs";
 import React, {
   useCallback,
@@ -109,6 +112,7 @@ const Swap = () => {
   // 🔹 Supported currencies context for refresh
   const { refreshSupportedCurrenciesForSwap } = useSupportedCurrencies();
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const { showBottomSheet } = useAppBottomSheet();
 
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
@@ -590,6 +594,37 @@ const Swap = () => {
                       maxWidth: "50%",
                     }}
                     onPress={() => {
+                      // Check if user is verified
+                      const isVerificationComplete = userHasAtleastOneDocumentApproved(exchangeUserData);
+                      
+                      if (!isVerificationComplete) {
+                        // Show KYC flow instead of bank account bottom sheet
+                        showBottomSheet({
+                          component: (
+                            <KYCFlowManager
+                              onComplete={() => {
+                                // After KYC completion, they can try again
+                              }}
+                              onBack={() => {
+                                // Handle close if needed
+                              }}
+                            />
+                          ),
+                          props: {
+                            snapPoints: ["90%"],
+                            enablePanDownToClose: true,
+                            showGradientHandle: true,
+                            gradientColors: [
+                              theme.colors.primaryColor,
+                              theme.colors.mainBackgroundColor,
+                              theme.colors.mainBackgroundColor,
+                            ],
+                          },
+                        });
+                        return;
+                      }
+                      
+                      // User is verified, show bank account bottom sheet
                       bankAccountsBottomSheetRef.current?.snapToIndex(0);
                     }}
                   >

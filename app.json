@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "new-zap-wallet-exchange",
-    "slug": "zap",
+    "slug": "new-zap-wallet-exchange",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -64,13 +64,6 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "858e4f24-9027-482a-80f5-7011c39d0064"
-      }
-    },
-    "owner": "zap-africa"
+    }
   }
 }

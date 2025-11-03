@@ -81,7 +81,6 @@
     "iconsax-react-nativejs": "^0.0.8",
     "inherits": "^2.0.4",
     "jotai": "^2.14.0",
-    "lodash": "^4.17.21",
     "lottie-react-native": "^7.3.4",
     "lucide-react-native": "^0.544.0",
     "os-browserify": "^0.3.0",
@@ -136,7 +135,6 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.20",
     "@types/react": "~19.1.0",
     "@types/react-native-confetti": "^0.1.4",
     "eslint": "^9.25.0",

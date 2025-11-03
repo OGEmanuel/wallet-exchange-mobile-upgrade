@@ -6,9 +6,9 @@ import MarketFilter from "@/components/dashboard/market/MarketFilter";
 import MarketTableItem from "@/components/dashboard/market/MarketTableItem";
 import SwitchTab from "@/components/dashboard/market/SwitchTab";
 import TableHeader from "@/components/dashboard/market/TableHeader";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
@@ -16,9 +16,8 @@ import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/cu
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { router } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 const Explore = () => {
@@ -239,18 +238,7 @@ const Explore = () => {
 
   return (
     <PageWrapper>
-      <Box width="100%" flexDirection="row" alignItems="center" justifyContent="center" mb="s" mt="s">
-        <Pressable onPress={() => router.back()} style={{ position: "absolute", left: 0, paddingLeft: 16, zIndex: 1 }}>
-          <ArrowLeft2 size={24} color="#222" />
-        </Pressable>
-        <CustomText
-          variant="bodyBold"
-          textAlign="center"
-          style={{ fontFamily: "NewScience_Bold" }}
-        >
-          Markets
-        </CustomText>
-      </Box>
+      <SettingsHeader title="Markets" onBackPress={() => router.back()} />
       <Box width="100%" mt="m">
         <SwitchTab
           active={isTokens}

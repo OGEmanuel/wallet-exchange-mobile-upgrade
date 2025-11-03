@@ -1,7 +1,8 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { ChevronLeft } from "lucide-react-native";
+import { ArrowLeft2 } from "iconsax-react-nativejs";
 import React from "react";
+import { Pressable } from "react-native";
 import { Box, CustomText } from "../general";
 
 const SettingsHeader = ({
@@ -14,22 +15,26 @@ const SettingsHeader = ({
   const theme = useTheme<Theme>();
   return (
     <Box
-      width={"100%"}
-      height={50}
-      borderBottomColor="borderColor"
-      borderBottomWidth={1}
-      alignItems="center"
-      justifyContent="space-between"
+      width="100%"
       flexDirection="row"
-      paddingHorizontal="m"
+      alignItems="center"
+      justifyContent="center"
+      mb="s"
+      mt="s"
     >
-      <ChevronLeft
-        size={25}
-        color={theme.colors.bodyTextColor}
-        onPress={() => onBackPress()}
-      />
-      <CustomText variant="medium">{title}</CustomText>
-      <Box />
+      <Pressable
+        onPress={onBackPress}
+        style={{ position: "absolute", left: 0, paddingLeft: 16, zIndex: 1 }}
+      >
+        <ArrowLeft2 size={24} color={theme.colors.bodyTextColor} />
+      </Pressable>
+      <CustomText
+        variant="bodyBold"
+        textAlign="center"
+        style={{ fontFamily: "NewScience_Bold" }}
+      >
+        {title}
+      </CustomText>
     </Box>
   );
 };

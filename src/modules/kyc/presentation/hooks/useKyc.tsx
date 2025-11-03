@@ -7,7 +7,7 @@ import { storageService } from "@/src/core/storage/app-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
-import { SubmitVerificationParams } from "@zap/blockchain-sdk";
+import { SubmitVerificationParams, TokenData } from "@zap/blockchain-sdk";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { UserModel } from "../../domain/entities/models/user-model";
@@ -172,36 +172,25 @@ const useKyc = () => {
         extra: null,
       });
 
-      // const authVerificationData = response.data;
+      const authVerificationData = response.data;
 
-      // if (authVerificationData) {
-      //   try {
-      //     // const responseData = response.data as any;
-      //     // const tokenData: TokenData = {
-      //     //   // token: responseData.token || null,
-      //     //   // refreshToken: responseData.refreshToken || null,
-      //     //   // expiresAt:
-      //     //   //   responseData.expiresAt || Date.now() + 24 * 60 * 60 * 1000, // Default 24 hours if not provided
-      //     // };
-
-      //     // Only save if we have at least a token
-      //     // if (tokenData.token) {
-      //     //   // await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-      //     //   // console.log("Tokens stored successfully after email verification", {
-      //     //   //   hasToken: !!tokenData.token,
-      //     //   //   hasRefreshToken: !!tokenData.refreshToken,
-      //     //   //   expiresAt: tokenData.expiresAt,
-      //     //   // });
-      //     // } else {
-      //     //   console.warn("No token found in response data");
-      //     // }
-      //   } catch (error) {
-      //     console.error(
-      //       "Failed to store tokens after email verification:",
-      //       error
-      //     );
-      //   }
-      // }
+      if (authVerificationData) {
+        try {
+          // const responseData = response.data as any;
+          const tokenData: TokenData = {
+            token: authVerificationData?.token || null,
+            refreshToken: authVerificationData?.refreshToken || null,
+            expiresAt: null,
+          };
+          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+          console.log("Tokens stored successfully after email verification");
+        } catch (error) {
+          console.error(
+            "Failed to store tokens after email verification:",
+            error
+          );
+        }
+      }
 
       return response;
     },

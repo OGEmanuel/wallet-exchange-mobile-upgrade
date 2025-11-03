@@ -1,7 +1,5 @@
 import { ThemedThemeIcon } from "@/assets/svg/wallet-icons-components";
 import AppearanceBottomSheet from "@/components/bottomsheets/preference/AppearanceBottomSheet";
-import ChangeCurrencyBottomSheet from "@/components/bottomsheets/preference/ChangeCurrencyBottomSheet";
-import LanguageBottomSheet from "@/components/bottomsheets/preference/LanguageBottomSheet";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { Box, CustomText, PageWrapper } from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
@@ -10,7 +8,7 @@ import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { Money4 } from "iconsax-react-nativejs";
 import { Bell, ChevronRight, Speech } from "lucide-react-native";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable } from "react-native";
 
 interface ItemCardProps {
@@ -25,13 +23,15 @@ const ItemCard = ({ title, icon, onPress }: ItemCardProps) => {
   return (
     <Pressable
       onPress={onPress}
-      style={{
+      style={({ pressed }) => ({
         width: "100%",
         height: 50,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-      }}
+        opacity: pressed ? 0.5 : 1,
+        marginBottom: 5,
+      })}
     >
       <Box flexDirection="row" alignItems="center">
         {icon}
@@ -45,75 +45,74 @@ const ItemCard = ({ title, icon, onPress }: ItemCardProps) => {
   );
 };
 
-const Index = () => {
+const PreferencesIndex = () => {
   const theme = useTheme<Theme>();
-  const {
-    currencyBottomSheetRef,
-    languageBottomSheetRef,
-    appearanceBottomSheetRef,
-  } = useBottomSheetRefs();
-  const items: ItemCardProps[] = [
-    {
-      title: "Default Currency",
-      icon: (
-        <Money4 width={24} height={24} color={theme.colors.bodyTextColor} />
-      ),
-      onPress: () => currencyBottomSheetRef.current?.snapToIndex(1),
-    },
-    {
-      title: "Appearance",
-      icon: (
-        <ThemedThemeIcon
-          width={24}
-          height={24}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      onPress: () => appearanceBottomSheetRef.current?.snapToIndex(1),
-    },
-    {
-      title: "Notifications",
-      icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
-      onPress: () =>
-        router.push(
-          "/dashboard/home/wallet-home/more/preferences/notifications"
+  const { appearanceBottomSheetRef } = useBottomSheetRefs();
+
+  const items: ItemCardProps[] = useMemo(
+    () => [
+      {
+        title: "Default Currency",
+        icon: (
+          <Money4 width={24} height={24} color={theme.colors.bodyTextColor} />
         ),
-    },
-    {
-      title: "Language",
-      icon: (
-        <Speech width={24} height={24} color={theme.colors.bodyTextColor} />
-      ),
-      onPress: () => languageBottomSheetRef.current?.snapToIndex(1),
-    },
-    // {
-    //   title: "App Icon",
-    //   icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
-    //   onPress: () => {},
-    // },
-  ];
+        onPress: () => {
+          // TODO: Implement currency selection bottom sheet
+          console.log("Currency selection not yet implemented");
+        },
+      },
+      {
+        title: "Appearance",
+        icon: (
+          <ThemedThemeIcon
+            width={24}
+            height={24}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        onPress: () => appearanceBottomSheetRef.current?.snapToIndex(1),
+      },
+      {
+        title: "Notifications",
+        icon: (
+          <Bell width={24} height={24} color={theme.colors.bodyTextColor} />
+        ),
+        onPress: () =>
+          router.push(
+            "/dashboard/home/wallet-home/more/preferences/notifications"
+          ),
+      },
+      {
+        title: "Language",
+        icon: (
+          <Speech width={24} height={24} color={theme.colors.bodyTextColor} />
+        ),
+        onPress: () => {
+          // TODO: Implement language selection bottom sheet
+          console.log("Language selection not yet implemented");
+        },
+      },
+      // {
+      //   title: "App Icon",
+      //   icon: <Bell width={24} height={24} color={theme.colors.bodyTextColor} />,
+      //   onPress: () => {},
+      // },
+    ],
+    [theme.colors.bodyTextColor, appearanceBottomSheetRef]
+  );
+
   return (
     <PageWrapper>
       <SettingsHeader title="Preferences" onBackPress={() => router.back()} />
       <Box flex={1} paddingHorizontal="m" paddingTop="l">
-        <Box
-          borderRadius={12}
-          borderWidth={1}
-          borderColor="borderColor"
-          p="s"
-          bg="secondaryBackgroundColor"
-        >
-          {items.map((item, index) => (
-            <ItemCard key={index.toString()} {...item} />
-          ))}
-        </Box>
+        {items.map((item) => (
+          <ItemCard key={item.title} {...item} />
+        ))}
       </Box>
-      <ChangeCurrencyBottomSheet ref={currencyBottomSheetRef} />
-      <LanguageBottomSheet ref={languageBottomSheetRef} />
       <AppearanceBottomSheet ref={appearanceBottomSheetRef} />
     </PageWrapper>
   );
 };
 
-export default Index;
+export default PreferencesIndex;

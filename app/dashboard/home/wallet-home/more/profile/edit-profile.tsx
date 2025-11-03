@@ -10,140 +10,145 @@ import {
   PageWrapper,
 } from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { kycActions } from "@/state/reducers/kyc-reducer";
-import { selectWalletUser } from "@/state/reducers/wallet.reducer";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { UserModel } from "@zap/blockchain-sdk";
-import { Image } from "expo-image";
+import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
-import { User } from "iconsax-react-nativejs";
-import { CheckCircle, ChevronRight } from "lucide-react-native";
-import React from "react";
-import { Pressable } from "react-native";
-import { useDispatch, useSelector } from "react-redux";
-
-const ItemCard = ({
-  title,
-  value,
-  onPress,
-  showBorder = true,
-}: {
-  title: string;
-  value: string;
-  onPress: () => void;
-  showBorder: boolean;
-}) => {
-  const theme = useTheme<Theme>();
-  return (
-    <Pressable onPress={onPress}>
-      <Box
-        flexDirection="row"
-        justifyContent="space-between"
-        alignItems="center"
-        height={60}
-        borderBottomWidth={showBorder ? 0.5 : 0}
-        borderBottomColor="borderColor"
-      >
-        <CustomText
-          fontSize={12}
-          variant="bodyMedium"
-          color="disabledTextColor"
-        >
-          {title}
-        </CustomText>
-        <Box flexDirection="row" alignItems="center">
-          <CustomText fontSize={14} color="bodyTextColor">
-            {value}
-          </CustomText>
-          <ChevronRight size={20} color={theme.colors.bodyTextColor} />
-        </Box>
-      </Box>
-    </Pressable>
-  );
-};
+import { CheckCircle, User } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 
 const EditProfile = () => {
   const theme = useTheme<Theme>();
-  const user = useSelector(selectWalletUser);
-  const [username, setUsername] = React.useState(user?.username || "");
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [phone, setPhone] = React.useState(user?.phone || "");
+  const { getExchangeUser } = useWallet();
+  const [user, setUser] = useState<UserModel | null>(null);
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { updateUser } = useSettings();
-  const dispatch = useDispatch();
-
-  const [type, setType] = React.useState<"firstname" | "lastname" | "phone">(
-    "firstname"
-  );
+  // Type for EditFirstnameBottomSheet (firstname, lastname, or phone)
+  const type: "firstname" | "lastname" | "phone" = "firstname";
+  
   // refs
   const { editAvatarRef, editUsernameRef, editFirstnameRef } =
     useBottomSheetRefs();
-  const item: {
-    title: string;
-    value: string;
-    onPress: () => void;
-  }[] = [
-    {
-      title: "Username",
-      value: user?.username || "",
-      onPress: () => {
-        editUsernameRef.current?.snapToIndex(1);
-      },
-    },
-    {
-      title: "First name",
-      value: user?.firstName || "",
-      onPress: () => {
-        setType("firstname");
-        editFirstnameRef.current?.snapToIndex(1);
-      },
-    },
-    {
-      title: "Last name",
-      value: user?.lastName || "",
-      onPress: () => {
-        setType("lastname");
-        editFirstnameRef.current?.snapToIndex(1);
-      },
-    },
-    {
-      title: "Phone number",
-      value: user?.phone || "",
-      onPress: () => {
-        setType("phone");
-        editFirstnameRef.current?.snapToIndex(1);
-      },
-    },
-  ];
+
+  // Fetch user profile on mount
+  useEffect(() => {
+    const fetchUser = async () => {
+      setLoadingUser(true);
+      setError(null);
+      try {
+        const userData = await getExchangeUser();
+        if (userData) {
+          setUser(userData);
+          setUsername(userData.username || "");
+          setPhone(userData.phone || "");
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch user profile:", err);
+        setError(err?.message || "Failed to load user profile");
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUser();
+  }, [getExchangeUser]);
 
   const handleUpdateUser = async () => {
+    if (!user?._id) {
+      alert("User not found. Please try again.");
+      return;
+    }
+
     try {
-      if (username === "") {
+      if (username.trim() === "") {
         alert("Username is required");
         return;
       }
 
-      if (phone === "") {
+      if (phone.trim() === "") {
         alert("Phone number is required");
         return;
       }
+
       setIsLoading(true);
-      const response = await updateUser(
-        {
-          username,
-          phone,
-        },
-        user as UserModel
-      );
-      dispatch(kycActions.setUser(response.data as UserModel));
-      console.log(response.data);
+      setError(null);
+
+      const sdk = zapSDKService.getSDK();
+      const updatedUser = await sdk.users.updateProfile(user._id, {
+        username: username.trim(),
+        phone: phone.trim(),
+      });
+
+      if (updatedUser) {
+        // Update local state
+        setUser(updatedUser as UserModel);
+        setUsername(updatedUser.username || "");
+        setPhone(updatedUser.phone || "");
+        alert("Profile updated successfully!");
+      }
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      setError(error?.message || "Failed to update profile");
+      alert(error?.message || "Failed to update profile. Please try again.");
+    } finally {
       setIsLoading(false);
-    } catch (error) {
-      console.log(error);
     }
   };
+
+  if (loadingUser) {
+    return (
+      <PageWrapper>
+        <SettingsHeader
+          title="Account Information"
+          onBackPress={() => router.back()}
+        />
+        <Box flex={1} justifyContent="center" alignItems="center">
+          <CustomText variant="body" color="bodyTextColor">
+            Loading profile...
+          </CustomText>
+        </Box>
+      </PageWrapper>
+    );
+  }
+
+  if (error && !user) {
+    return (
+      <PageWrapper>
+        <SettingsHeader
+          title="Account Information"
+          onBackPress={() => router.back()}
+        />
+        <Box flex={1} justifyContent="center" alignItems="center" paddingHorizontal="m">
+          <CustomText variant="body" color="error" textAlign="center">
+            {error}
+          </CustomText>
+        </Box>
+      </PageWrapper>
+    );
+  }
+
+  if (!user) {
+    return (
+      <PageWrapper>
+        <SettingsHeader
+          title="Account Information"
+          onBackPress={() => router.back()}
+        />
+        <Box flex={1} justifyContent="center" alignItems="center">
+          <CustomText variant="body" color="bodyTextColor">
+            User not found
+          </CustomText>
+        </Box>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
@@ -157,24 +162,25 @@ const EditProfile = () => {
             width={60}
             height={60}
             borderRadius={30}
+            bg="fadedPrimary"
             justifyContent="center"
             alignItems="center"
             style={{
               backgroundColor:
-                user?.avatar?.backgroundColor || theme.colors.fadedPrimaryColor,
+                user?.avatar?.backgroundColor ||
+                theme.colors.fadedPrimaryColor,
             }}
           >
-            {user?.avatar?.url && (
-              <Image
-                source={{ uri: user?.avatar?.url }}
+            {user?.avatar?.url ? (
+              <ExpoImage
+                source={{ uri: user.avatar.url }}
                 style={{ width: "100%", height: "100%", borderRadius: 30 }}
+                contentFit="cover"
               />
-            )}
-            {!user?.avatar?.url && (
+            ) : (
               <User
-                size={50}
+                size={30}
                 color={theme.colors.bodyTextColor}
-                variant="Bold"
               />
             )}
           </Box>
@@ -189,9 +195,17 @@ const EditProfile = () => {
           </CustomText>
         </Box>
 
+        {error && (
+          <Box mt="m" padding="s" backgroundColor="error" borderRadius={8}>
+            <CustomText variant="body" color="white" fontSize={12}>
+              {error}
+            </CustomText>
+          </Box>
+        )}
+
         <Box mt="l" width={"100%"}>
           <CustomInputWithoutForm
-            value={username as string}
+            value={username}
             onChange={(e) => setUsername(e)}
             label="Username"
           />
@@ -204,7 +218,7 @@ const EditProfile = () => {
           >
             <Box width={"47%"}>
               <CustomInputWithoutForm
-                value={user?.firstName as string}
+                value={user?.firstName || ""}
                 onChange={() => {}}
                 label="First name"
                 editable={false}
@@ -213,7 +227,7 @@ const EditProfile = () => {
 
             <Box width={"47%"}>
               <CustomInputWithoutForm
-                value={user?.lastName as string}
+                value={user?.lastName || ""}
                 onChange={() => {}}
                 label="Last name"
                 editable={false}
@@ -244,7 +258,7 @@ const EditProfile = () => {
                 flexWrap="wrap"
                 lineHeight={16}
               >
-                Your first and last name will be retrived from your BVN and
+                Your first and last name will be retrieved from your BVN and
                 government ID
               </CustomText>
             </Box>
@@ -252,7 +266,7 @@ const EditProfile = () => {
 
           <Box width={"100%"} mt="m">
             <CustomInputWithoutForm
-              value={user?.email as string}
+              value={user?.email || ""}
               onChange={() => {}}
               label="Email"
               editable={false}
@@ -261,7 +275,7 @@ const EditProfile = () => {
 
           <Box width={"100%"} mt="m">
             <CustomInputWithoutForm
-              value={phone as string}
+              value={phone}
               onChange={(e) => setPhone(e)}
               label="Phone"
               iconRight={
