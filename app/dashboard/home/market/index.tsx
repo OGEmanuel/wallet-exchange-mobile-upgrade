@@ -15,8 +15,10 @@ import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
+import { router } from "expo-router";
+import { ArrowLeft2 } from "iconsax-react-nativejs";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView } from "react-native";
+import { Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 const Explore = () => {
@@ -237,7 +239,10 @@ const Explore = () => {
 
   return (
     <PageWrapper>
-      <Box width="100%" alignItems="center">
+      <Box width="100%" flexDirection="row" alignItems="center" justifyContent="center" mb="s" mt="s">
+        <Pressable onPress={() => router.back()} style={{ position: "absolute", left: 0, paddingLeft: 16, zIndex: 1 }}>
+          <ArrowLeft2 size={24} color="#222" />
+        </Pressable>
         <CustomText
           variant="bodyBold"
           textAlign="center"

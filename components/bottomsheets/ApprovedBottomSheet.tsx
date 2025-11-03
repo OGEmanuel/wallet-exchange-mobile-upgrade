@@ -1,6 +1,6 @@
-import {
-  ThemedLinkExternalIcon
-} from "@/assets/svg/wallet-icons-components";
+import CryptoIcon from "@/components/general/CrptoIcon";
+import { showErrorToast, showSuccessToast } from "@/src/core/utils/toast-utils";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import BottomSheet, {
@@ -8,16 +8,18 @@ import BottomSheet, {
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { forwardRef, useCallback, useState } from "react";
-import { ScrollView } from "react-native";
-import { SvgUri } from "react-native-svg";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { Copy } from "lucide-react-native";
+import React, { forwardRef, useCallback } from "react";
+import { Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 import { Box, CustomText } from "../general";
 
-const ApprovedBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const [activeTab, setActiveTab] = useState<1 | 2>(1);
+const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>((props, ref) => {
   const theme = useTheme<Theme>();
   const { selectedActivity } = useSelector((state: AppRootState) => state.exchange);
+  const { getApproximateAmount, getAmountToReceive, getActualTransactionStatus } = useUtilities();
   
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -29,6 +31,73 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     ),
     []
   );
+
+  // Get transaction type
+  const getTransactionType = () => {
+    if (!selectedActivity) return "Transaction";
+
+    if (selectedActivity.buyAmount && selectedActivity.buyCurrency) {
+      return "Buy";
+    } else if (selectedActivity.sellAmount && selectedActivity.sellCurrency) {
+      return "Sell";
+    } else if (selectedActivity.amountToReceive) {
+      return "Swap";
+    }
+    return "Transaction";
+  };
+
+  // Format date
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${month} ${day}, ${year} ${hours}:${minutes}`;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      showSuccessToast("Copied to clipboard");
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      showErrorToast("Failed to copy");
+    }
+  };
+
+  const displayCurrency = selectedActivity?.sellCurrency?.currencyId?.code || selectedActivity?.buyCurrency?.currencyId?.code || "USDT";
+  const actualStatus = getActualTransactionStatus(selectedActivity);
+
+  // Get status color
+  const getStatusColor = (activityStatus?: string) => {
+    if (!activityStatus) return { bg: "#6B7280", text: "#FFFFFF" };
+    switch (activityStatus.toLowerCase()) {
+      case "pending":
+      case "deposit_confirming":
+      case "deposit_confirmed":
+        return { bg: "#EAB308", text: "#000000" };
+      case "withdrawal_confirming":
+      case "withdrawal_confirmed":
+      case "filled":
+      case "completed":
+      case "success":
+      case "confirmed":
+      case "successful":
+        return { bg: "#10B981", text: "#FFFFFF" };
+      case "expired":
+      case "failed":
+      case "error":
+      case "cancelled":
+        return { bg: "#EF4444", text: "#FFFFFF" };
+      default:
+        return { bg: "#6B7280", text: "#FFFFFF" };
+    }
+  };
 
   return (
     <BottomSheet
@@ -81,215 +150,260 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         >
           {selectedActivity ? (
             <>
-              {/* Transaction Header */}
-              <Box alignItems="center" mb="l">
-                <CustomText variant="bodyMedium" fontSize={18} textAlign="center">
-                  Transaction Details
+              {/* Header */}
+              <Box alignItems="center" marginBottom="xl">
+                <CustomText
+                  variant="header"
+                  fontSize={24}
+                  color="headerTextColor"
+                  marginBottom="s"
+                >
+                  {getTransactionType()}
                 </CustomText>
-                <CustomText variant="body" fontSize={12} mt="s" textAlign="center">
-                  {selectedActivity.createdAt 
-                    ? new Date(selectedActivity.createdAt).toLocaleString()
-                    : "Date not available"
-                  }
+                <CustomText color="placeholderTextColor" fontSize={14}>
+                  {selectedActivity?.childOrder?.createdAt
+                    ? formatDate(selectedActivity.childOrder.createdAt)
+                    : selectedActivity?.createdAt
+                      ? formatDate(selectedActivity.createdAt)
+                      : "Unknown time"}
                 </CustomText>
               </Box>
 
-              {/* Transaction Amount */}
-              <Box
-                width={"100%"}
-                alignItems="center"
-                justifyContent="center"
-                bg="secondaryBackgroundColor"
-                borderRadius={12}
-                height={120}
-                mb="l"
+              {/* Transaction Type Subtitle */}
+              <CustomText 
+                color="disabledTextColor" 
+                fontSize={12} 
+                textAlign="center"
+                marginBottom="s"
               >
-                <Box flexDirection="row" alignItems="center" mb="s">
-                  {selectedActivity.buyCurrency?.image && (
-                    <SvgUri
-                      uri={selectedActivity.buyCurrency.image}
-                      width={24}
-                      height={24}
-                      style={{ marginRight: 8 }}
-                    />
-                  )}
-                  <CustomText variant="subheader" fontSize={22}>
-                    {selectedActivity.buyAmount || selectedActivity.sellAmount || selectedActivity.amountToReceive || 0} {selectedActivity.buyCurrency?.currencyId?.code || selectedActivity.sellCurrency?.currencyId?.code || "USDT"}
-                  </CustomText>
-                </Box>
-                <CustomText variant="body" fontSize={14} color="disabledTextColor">
-                  Status: {selectedActivity.status || "Unknown"}
+                {/* {selectedActivity?.sellAmount && selectedActivity?.sellCurrency && selectedActivity?.buyCurrency
+                  ? `Swap ${getApproximateAmount(selectedActivity.sellAmount, selectedActivity.sellCurrency.currencyId?.isCrypto)} ${selectedActivity.sellCurrency.currencyId?.code} for`
+                  : getTransactionType()
+                } */}
+                {
+                  `Swap ${getApproximateAmount(selectedActivity.buyAmount, selectedActivity?.buyCurrency?.currencyId?.isCrypto)} ${selectedActivity.buyCurrency?.currencyId?.code} for`
+                }
+              </CustomText>
+
+              {/* Main Transaction Card */}
+              <Box 
+                flexDirection="row" 
+                alignItems="center" 
+                justifyContent="center"
+                marginBottom="s"
+                mb="xl"
+              >
+                <CryptoIcon
+                  image={selectedActivity?.sellCurrency?.currencyId?.logo}
+                  size={32}
+                  symbol={selectedActivity?.sellCurrency?.currencyId?.code}
+                />
+
+                <CustomText
+                  variant="header"
+                  fontSize={32}
+                  color="headerTextColor"
+                  ml="s"
+                >
+                  {getApproximateAmount(getAmountToReceive(selectedActivity), selectedActivity?.sellCurrency?.currencyId?.isCrypto)} {selectedActivity?.sellCurrency?.currencyId?.code}
                 </CustomText>
               </Box>
+
+              {/* Rate Display */}
+              {(selectedActivity?.rate || selectedActivity?.buyRate || selectedActivity?.sellRate) && (
+                <CustomText 
+                  color="disabledTextColor" 
+                  fontSize={12} 
+                  textAlign="center"
+                  marginBottom="xl"
+                >
+                  @{getApproximateAmount(selectedActivity?.rate || selectedActivity?.buyRate || selectedActivity?.sellRate || 0, true)} {selectedActivity?.sellCurrency?.currencyId?.code}/{selectedActivity?.buyCurrency?.currencyId?.code}
+                </CustomText>
+              )}
 
               {/* Transaction Details */}
               <Box
-                width={"100%"}
-                paddingHorizontal="m"
-                paddingVertical="m"
-                borderRadius={8}
+                borderRadius={12}
+                padding="m"
                 borderWidth={1}
                 borderColor="borderColor"
                 mb="l"
               >
-                {/* Transaction Type */}
-                <Box
-                  width={"100%"}
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  height={40}
-                  borderBottomWidth={1}
-                  borderBottomColor="borderColor"
-                >
-                  <CustomText color="disabledTextColor" fontSize={12}>
-                    Type
-                  </CustomText>
-                  <CustomText fontSize={12}>
-                    {selectedActivity.buyAmount ? "BUY" : selectedActivity.sellAmount ? "SELL" : "SWAP"}
-                  </CustomText>
-                </Box>
-
-                {/* Buy Currency */}
-                {selectedActivity.buyCurrency && (
-                  <Box
-                    width={"100%"}
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    height={40}
-                    borderBottomWidth={1}
-                    borderBottomColor="borderColor"
-                  >
-                    <CustomText color="disabledTextColor" fontSize={12}>
-                      Buy Currency
-                    </CustomText>
-                    <CustomText fontSize={12}>
-                      {selectedActivity.buyCurrency.currencyId?.code} ({selectedActivity.buyCurrency.currencyId?.name})
-                    </CustomText>
-                  </Box>
-                )}
-
-                {/* Sell Currency */}
-                {selectedActivity.sellCurrency && (
-                  <Box
-                    width={"100%"}
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    height={40}
-                    borderBottomWidth={1}
-                    borderBottomColor="borderColor"
-                  >
-                    <CustomText color="disabledTextColor" fontSize={12}>
-                      Sell Currency
-                    </CustomText>
-                    <CustomText fontSize={12}>
-                      {selectedActivity.sellCurrency.currencyId?.code} ({selectedActivity.sellCurrency.currencyId?.name})
-                    </CustomText>
-                  </Box>
-                )}
-
-                {/* Rate */}
-                {(selectedActivity.buyRate || selectedActivity.sellRate || selectedActivity.rate) && (
-                  <Box
-                    width={"100%"}
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    height={40}
-                    borderBottomWidth={1}
-                    borderBottomColor="borderColor"
-                  >
-                    <CustomText color="disabledTextColor" fontSize={12}>
-                      Rate
-                    </CustomText>
-                    <CustomText fontSize={12}>
-                      {selectedActivity.buyRate || selectedActivity.sellRate || selectedActivity.rate}
-                    </CustomText>
-                  </Box>
-                )}
-
-                {/* LP Fee */}
-                {selectedActivity.lpFee && (
-                  <Box
-                    width={"100%"}
-                    flexDirection="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                    height={40}
-                    borderBottomWidth={1}
-                    borderBottomColor="borderColor"
-                  >
-                    <CustomText color="disabledTextColor" fontSize={12}>
-                      LP Fee
-                    </CustomText>
-                    <CustomText fontSize={12}>
-                      {selectedActivity.lpFee} {selectedActivity.lpFeeUsd ? `($${selectedActivity.lpFeeUsd})` : ""}
-                    </CustomText>
-                  </Box>
-                )}
-
                 {/* Transaction ID */}
                 {selectedActivity._id && (
                   <Box
-                    width={"100%"}
                     flexDirection="row"
                     justifyContent="space-between"
                     alignItems="center"
-                    height={40}
+                    paddingVertical="m"
+                    borderBottomWidth={1}
+                    borderBottomColor="modalBackgroundColor"
                   >
-                    <CustomText color="disabledTextColor" fontSize={12}>
-                      Transaction ID
+                    <CustomText color="placeholderTextColor" fontSize={14}>
+                      ID
                     </CustomText>
                     <Box flexDirection="row" alignItems="center">
-                      <CustomText fontSize={12} marginRight="s">
-                        {selectedActivity._id.slice(0, 8)}...{selectedActivity._id.slice(-8)}
+                      <CustomText color="headerTextColor" fontSize={14} marginRight="s">
+                        {selectedActivity._id}
                       </CustomText>
-                      <ThemedLinkExternalIcon width={15} height={15} />
+                      <Pressable onPress={() => copyToClipboard(selectedActivity._id || "")}>
+                        <Copy size={16} color={theme.colors.placeholderTextColor} />
+                      </Pressable>
                     </Box>
                   </Box>
                 )}
-              </Box>
 
-              {/* Deposit/Withdrawal Accounts */}
-              {(selectedActivity.depositAccount || selectedActivity.withdrawalAccount) && (
+                {/* Amount Swapped */}
+                {selectedActivity?.sellAmount && selectedActivity?.sellCurrency && (
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    paddingVertical="m"
+                    borderBottomWidth={1}
+                    borderBottomColor="modalBackgroundColor"
+                  >
+                    <CustomText color="placeholderTextColor" fontSize={14}>
+                      Amount Swapped
+                    </CustomText>
+                    <CustomText color="headerTextColor" fontSize={14}>
+                      {getApproximateAmount(selectedActivity.sellAmount, selectedActivity.sellCurrency.currencyId?.isCrypto)} {selectedActivity.sellCurrency.currencyId?.code}
+                    </CustomText>
+                  </Box>
+                )}
+
+                {/* Amount Received */}
                 <Box
-                  width={"100%"}
-                  paddingHorizontal="m"
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
                   paddingVertical="m"
-                  borderRadius={8}
-                  borderWidth={1}
-                  borderColor="borderColor"
-                  mb="l"
+                  borderBottomWidth={1}
+                  borderBottomColor="modalBackgroundColor"
                 >
-                  <CustomText variant="bodyMedium" fontSize={14} mb="s">
-                    Account Details
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Amount Received
                   </CustomText>
-                  
-                  {selectedActivity.depositAccount && (
-                    <Box mb="s">
-                      <CustomText color="disabledTextColor" fontSize={12} mb="s">
-                        Deposit Account
-                      </CustomText>
-                      <CustomText fontSize={12}>
-                        {selectedActivity.depositAccount.number || selectedActivity.depositAccount.walletAddress || "N/A"}
-                      </CustomText>
-                    </Box>
-                  )}
-
-                  {selectedActivity.withdrawalAccount && (
-                    <Box>
-                      <CustomText color="disabledTextColor" fontSize={12} mb="s">
-                        Withdrawal Account
-                      </CustomText>
-                      <CustomText fontSize={12}>
-                        {selectedActivity.withdrawalAccount.number || selectedActivity.withdrawalAccount.walletAddress || "N/A"}
-                      </CustomText>
-                    </Box>
-                  )}
+                  <CustomText color="headerTextColor" fontSize={14}>
+                    {getApproximateAmount(getAmountToReceive(selectedActivity), selectedActivity?.buyCurrency?.currencyId?.isCrypto)} {selectedActivity?.buyCurrency?.currencyId?.code || displayCurrency}
+                  </CustomText>
                 </Box>
-              )}
+
+                {/* Rate */}
+                {(selectedActivity?.rate || selectedActivity?.buyRate || selectedActivity?.sellRate) && (
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    paddingVertical="m"
+                    borderBottomWidth={1}
+                    borderBottomColor="modalBackgroundColor"
+                  >
+                    <CustomText color="placeholderTextColor" fontSize={14}>
+                      Rate
+                    </CustomText>
+                    <CustomText color="headerTextColor" fontSize={14}>
+                      {getApproximateAmount(selectedActivity?.rate || selectedActivity?.buyRate || selectedActivity?.sellRate || 0, true)} {selectedActivity?.buyCurrency?.currencyId?.code || displayCurrency}/{selectedActivity?.sellCurrency?.currencyId?.code || "USDT"}
+                    </CustomText>
+                  </Box>
+                )}
+
+                {/* Chain */}
+                <Box
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  paddingVertical="m"
+                  borderBottomWidth={1}
+                  borderBottomColor="modalBackgroundColor"
+                >
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Chain
+                  </CustomText>
+                  <CustomText color="headerTextColor" fontSize={14}>
+                    Ethereum
+                  </CustomText>
+                </Box>
+
+                {/* Date */}
+                <Box
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  paddingVertical="m"
+                  borderBottomWidth={1}
+                  borderBottomColor="modalBackgroundColor"
+                >
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Date
+                  </CustomText>
+                  <CustomText color="headerTextColor" fontSize={14}>
+                    {selectedActivity?.childOrder?.createdAt
+                      ? formatDate(selectedActivity.childOrder.createdAt)
+                      : selectedActivity?.createdAt
+                        ? formatDate(selectedActivity.createdAt)
+                        : "Unknown time"}
+                  </CustomText>
+                </Box>
+
+                {/* Receiver */}
+                {selectedActivity?.withdrawalAccount?.walletAddress && (
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    paddingVertical="m"
+                    borderBottomWidth={1}
+                    borderBottomColor="modalBackgroundColor"
+                  >
+                    <CustomText color="placeholderTextColor" fontSize={14}>
+                      Receiver
+                    </CustomText>
+                    <Box flexDirection="row" alignItems="center" flex={1} justifyContent="flex-end">
+                      <CustomText 
+                        color="headerTextColor" 
+                        fontSize={14} 
+                        marginRight="s"
+                        numberOfLines={1}
+                        flexShrink={1}
+                      >
+                        {selectedActivity.withdrawalAccount?.walletAddress}
+                      </CustomText>
+                      <Pressable onPress={() => copyToClipboard(selectedActivity.withdrawalAccount?.walletAddress || "")}>
+                        <Copy size={16} color={theme.colors.placeholderTextColor} />
+                      </Pressable>
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Status */}
+                <Box
+                  flexDirection="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  paddingVertical="m"
+                >
+                  <CustomText color="placeholderTextColor" fontSize={14}>
+                    Status
+                  </CustomText>
+                  <Box flexDirection="row" alignItems="center">
+                    <Box
+                      width={8}
+                      height={8}
+                      borderRadius={4}
+                      style={{ backgroundColor: getStatusColor(actualStatus).bg }}
+                      marginRight="s"
+                    />
+                    <CustomText 
+                      color="headerTextColor" 
+                      fontSize={14}
+                      style={{ color: getStatusColor(actualStatus).text }}
+                    >
+                      {actualStatus?.charAt(0).toUpperCase()}{actualStatus?.slice(1).toLowerCase()}
+                    </CustomText>
+                  </Box>
+                </Box>
+              </Box>
             </>
           ) : (
             <Box alignItems="center" justifyContent="center" flex={1}>
@@ -303,5 +417,7 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+ApprovedBottomSheet.displayName = "ApprovedBottomSheet";
 
 export default ApprovedBottomSheet;

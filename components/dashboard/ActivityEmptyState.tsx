@@ -1,13 +1,15 @@
-import { View, Text, Image } from "react-native";
-import React from "react";
-import Box from "../general/Box";
-import CustomText from "../general/CustomText";
-import CustomButton from "../general/CustomButton";
-import { useTheme } from "@shopify/restyle";
 import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { useRouter } from "expo-router";
+import React from "react";
+import { Image } from "react-native";
+import Box from "../general/Box";
+import CustomButton from "../general/CustomButton";
+import CustomText from "../general/CustomText";
 
 const ActivityEmptyState = () => {
   const theme = useTheme<Theme>();
+  const router = useRouter();
   return (
     <Box width={"100%"} height="auto" alignItems="center">
       <Image
@@ -30,7 +32,9 @@ const ActivityEmptyState = () => {
         text="Buy crypto"
         variant="bodySubheader"
         fontSize={12}
-        onPress={() => {}}
+        onPress={() => {
+          router.push("/dashboard/home/wallet-home/swap");
+        }}
       />
     </Box>
   );

@@ -17,10 +17,11 @@ export const recievePageSlice = createSlice({
     setStage: (state, action: PayloadAction<State["stage"]>) => {
       state.stage = action.payload;
     },
+    resetReceivePage: () => initialState,
   },
 });
 
-export const { setStage } = recievePageSlice.actions;
+export const { setStage, resetReceivePage } = recievePageSlice.actions;
 // select states
 export const selectStage = (state: RootState) => state.recievePage.stage;
 

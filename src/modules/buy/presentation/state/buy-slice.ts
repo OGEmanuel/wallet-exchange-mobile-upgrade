@@ -39,6 +39,7 @@ const buySlice = createSlice({
     setBuyCurrency: (state, action: PayloadAction<BuyState["currency"]>) => {
       state.currency = action.payload;
     },
+    resetBuyState: () => initialState,
     // Add your reducers here
     // Example:
     // setData: (state, action: PayloadAction<unknown[]>) => {
@@ -56,6 +57,7 @@ const buySlice = createSlice({
 export const {
   /* Add your action creators here */ setBuyStage,
   setBuyCurrency,
+  resetBuyState,
 } = buySlice.actions;
 export const selectBuyStage = (state: AppRootState) => state.buy.stage;
 export const selectBuyCurrency = (state: AppRootState) => state.buy.currency;

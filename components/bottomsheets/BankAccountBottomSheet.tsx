@@ -12,7 +12,7 @@ import BottomSheet, {
 import { useTheme } from "@shopify/restyle";
 import { ChevronRight } from "lucide-react-native";
 import React, { forwardRef, useCallback, useState } from "react";
-import { Alert, Image, Pressable, TextInput } from "react-native";
+import { Alert, Image, Pressable, ScrollView, TextInput } from "react-native";
 import { useSelector } from "react-redux";
 import { Box, CustomButton, CustomText } from "../general";
 
@@ -781,26 +781,32 @@ const BankAccountBottomSheet = forwardRef<
           paddingTop: 10,
         }}
       >
-        <Box marginBottom="l">
-          <CustomText
-            variant="bodyBold"
-            textAlign="center"
-            style={{ fontFamily: "NewScience_Bold" }}
-          >
-            Add {selectedCurrency} Account
-          </CustomText>
-        </Box>
+        <ScrollView
+          style={{ flex: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Box marginBottom="l">
+            <CustomText
+              variant="bodyBold"
+              textAlign="center"
+              style={{ fontFamily: "NewScience_Bold" }}
+            >
+              Add {selectedCurrency} Account
+            </CustomText>
+          </Box>
 
-        {renderForm()}
+          {renderForm()}
 
-        <Box marginTop="l">
-          <CustomButton
-            text={"Add account"}
-            onPress={handleAddAccount}
-            width={"100%"}
-            borderRadius={50}
-          />
-        </Box>
+          <Box marginTop="l">
+            <CustomButton
+              text={"Add account"}
+              onPress={handleAddAccount}
+              width={"100%"}
+              borderRadius={50}
+            />
+          </Box>
+        </ScrollView>
       </BottomSheetView>
     </BottomSheet>
   );

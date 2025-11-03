@@ -153,7 +153,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         if (shouldRoute) {
           // Moore I took this out because it keeps routing the user to the swap app even if they don't have username
           // I believe you can add the username parameter to the conditions too in the SDK
-          // router.replace("/dashboard/home/wallet-home/swap");
+          router.replace("/dashboard/home/wallet-home/swap");
+          // if (exchangeUserData && exchangeUserData?.username) {
+          // }
         }
     return result;
   };
@@ -912,7 +914,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (result.success) {
         setIsWalletAuthenticated(true);
         setCurrentWalletUser(result.userId);
-        await checkAuthenticationAndRoute(false);
+        await checkAuthenticationAndRoute(!!exchangeUserData?.username);
+        // await checkAuthenticationAndRoute(false);
         return true;
       } else {
         setError(result || "Login failed");
@@ -1004,7 +1007,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (result) {
         console.log(result, "result");
         setIsExchangeAuthenticated(true);
-        setCurrentExchangeUser(result.data.user._id || null);
+        setCurrentExchangeUser(result.data.user?._id || null);
         setExchangeUserData(result.data.user as UserModel | null);
 
         await checkAuthenticationAndRoute();

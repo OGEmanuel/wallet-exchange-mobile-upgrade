@@ -1,25 +1,18 @@
-import { ZapperSiginBottomSheet } from "@/components";
-import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
-import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useActiveTheme from "@/hooks/useTheme";
-import { StorageKeys } from "@/src/core/api/models";
-import storageService from "@/src/core/storage/app-storage";
-import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
-import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
-import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useRef, useState } from "react";
+import React, { PropsWithChildren, useEffect } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
-import { useSelector } from "react-redux";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
   const { colorTheme } = useActiveTheme();
@@ -99,24 +92,20 @@ const Card = ({
 };
 
 const SelectTrack = () => {
-  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
-  const phoneVerificationBottomSheetRef =
-    useRef<AnimatedGradientBottomSheetRef>(null);
-
-  // State to control bottomsheet visibility
-  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
-    useState(false);
+  const { fetchUserById } = useKyc();
+  const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
 
   // Get exchange authentication state from wallet context
-  const { isExchangeAuthenticated } = useWallet();
-  const { exchangeUserData } = useExchangeAuth();
-  const { fetchUserById, updateUser } = useKyc();
-
-  // Get user state from Redux store for KYC
-  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
 
   // Check if user is exchange authenticated
   const isUserLoggedIn = isExchangeAuthenticated;
+
+  useEffect(() => {
+    fetchUserById({
+      _id: currentExchangeUser || undefined
+    });
+  }, [currentExchangeUser, fetchUserById]);
 
   const theme = useTheme<Theme>();
 
@@ -129,6 +118,7 @@ const SelectTrack = () => {
   }[] = [
     {
       title: "Zapper",
+      // title: "Zapper",
       body: isUserLoggedIn
         ? "Continue to your dashboard"
         : "Sign in or  create your Zap account",
@@ -143,35 +133,18 @@ const SelectTrack = () => {
       onPress: async () => {
         if (isUserLoggedIn) {
           // Navigate to dashboard for exchange authenticated users
-          // router.push("/dashboard/home/wallet-home/home");
-          const userProfile: UserModel = JSON.parse(
-            (await storageService.getItem(StorageKeys.USER_PROFILE)) || "{}"
-          );
-
-          const userResponse = await fetchUserById(userProfile);
-          if (userResponse.data?.username) {
-            // User has username, close bottom sheet and navigate to app
-            console.log(
-              "User has username, closing bottom sheet and navigating to app"
-            );
-            updateUser(userResponse.data);
-            setIsZapperBottomSheetVisible(false);
-            router.push("/dashboard/home/wallet-home/swap");
-          } else {
-            // User doesn't have username, continue with normal flow
-            setIsZapperBottomSheetVisible(true);
-            // Use setTimeout to ensure the component is rendered before opening
-            setTimeout(() => {
-              zapperBottomSheetRef.current?.snapToIndex(0);
-            }, 100);
-          }
+          router.push("/dashboard/home/wallet-home/home");
         } else {
           // Show exchange login bottom sheet for non-authenticated users
-          setIsZapperBottomSheetVisible(true);
-          // Use setTimeout to ensure the component is rendered before opening
-          setTimeout(() => {
-            zapperBottomSheetRef.current?.snapToIndex(0);
-          }, 100);
+          showZapperSignBottomSheet({
+            onContinue: () => {
+              // Navigate to dashboard after successful exchange authentication
+              router.push("/dashboard/home/wallet-home/swap");
+            },
+            onClose: () => {
+              // Handle close if needed
+            },
+          });
         }
       },
     },
@@ -218,21 +191,6 @@ const SelectTrack = () => {
           ))}
         </ScrollView>
       </Box>
-
-      {isZapperBottomSheetVisible && (
-        <ZapperSiginBottomSheet
-          ref={zapperBottomSheetRef}
-          onContinue={() => {
-            zapperBottomSheetRef.current?.close();
-            setIsZapperBottomSheetVisible(false);
-            // Navigate to dashboard after successful exchange authentication
-            router.push("/dashboard/home/wallet-home/swap");
-          }}
-          onClose={() => {
-            setIsZapperBottomSheetVisible(false);
-          }}
-        />
-      )}
     </Wrapper>
   );
 };
