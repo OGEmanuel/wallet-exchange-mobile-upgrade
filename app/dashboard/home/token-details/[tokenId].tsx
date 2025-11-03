@@ -5,30 +5,29 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Bell, SendHorizonal, Star } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    Image,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
 } from "react-native";
 import { useSelector } from "react-redux";
 
 import TokenGraph from "@/components/dashboard/market/TokenGraph";
 import {
-    calculatePriceChange,
-    formatLargeNumber,
-    getAvailablePeriods,
-    getLatestMarketData,
-    getLatestRate,
+  calculatePriceChange,
+  formatLargeNumber,
+  getAvailablePeriods,
+  getLatestMarketData,
 } from "@/lib/utils/market/chartHelpers";
 import { formatPrice } from "@/lib/utils/market/priceFormatter";
 
 import {
-    ThemedQrCodeIcon,
-    ThemedSwapIcon,
+  ThemedQrCodeIcon,
+  ThemedSwapIcon,
 } from "@/assets/svg/wallet-icons-components";
 import ThemedGlassIcon from "@/assets/svg/wallet-icons-components/ThemedGlassIcon";
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
@@ -49,22 +48,22 @@ import { formatCurrency, formatDate } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import {
-    selectAllSupportedTokens,
-    selectAssetBySupportedCurrencyId,
-    selectProcessedPortfolio,
+  selectAllSupportedTokens,
+  selectAssetBySupportedCurrencyId,
+  selectProcessedPortfolio,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { BlockchainTransaction } from "@zap/blockchain-sdk";
+import { BlockchainTransaction, ICurrency } from "@zap/blockchain-sdk";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TokenDetails = () => {
   console.log("🚀 TokenDetails component rendering");
-  
+
   const { tokenId: rawTokenId } = useLocalSearchParams();
   console.log("📱 Raw tokenId from params:", rawTokenId);
-  
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -92,6 +91,8 @@ const TokenDetails = () => {
   const handleTransactionPress = (transaction: BlockchainTransaction) => {
     console.log("🎯 Transaction pressed:", transaction);
     setSelectedTransaction(transaction);
+    // Open the bottom sheet when transaction is selected
+    transactionDetailsRef.current?.snapToIndex(0);
   };
 
   // Handle different tokenId formats
@@ -111,7 +112,7 @@ const TokenDetails = () => {
   // Ensure tokenId is a string
   tokenId = String(tokenId);
   console.log("🔑 Processed tokenId:", tokenId);
-  
+
   const router = useRouter();
   const theme = useTheme<Theme>();
   const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } =
@@ -126,7 +127,8 @@ const TokenDetails = () => {
   // Fallback: manually find token if selector doesn't work
   const allTokens = useSelector(selectAllSupportedTokens);
   const portfolioAssets = processedPortfolio?.assets || [];
-  const marketTokens = useSelector((state: AppRootState) => state.market.marketTokens) || [];
+  const marketTokens =
+    useSelector((state: AppRootState) => state.market.marketTokens) || [];
 
   const fallbackToken = allTokens?.find((token) => {
     // Try multiple matching strategies
@@ -187,16 +189,22 @@ const TokenDetails = () => {
   console.log("   - Symbol:", finalSelectedToken?.symbol);
   console.log("   - Code:", (finalSelectedToken as any)?.code);
   console.log("   - Currency ID:", finalSelectedToken?.currencyId);
-  console.log("   - Supported Currency ID:", finalSelectedToken?.supportedCurrencyId);
+  console.log(
+    "   - Supported Currency ID:",
+    finalSelectedToken?.supportedCurrencyId
+  );
   console.log("   - Token ID used:", tokenId);
   console.log("   - Market tokens count:", marketTokens?.length);
-  
+
   if (marketTokens?.length > 0) {
-    console.log("   - Sample market tokens:", marketTokens.slice(0, 3).map(mt => ({
-      symbol: mt.symbol || mt.currencyId?.symbol,
-      currencyId: mt.currencyId,
-      _id: (mt as any)._id
-    })));
+    console.log(
+      "   - Sample market tokens:",
+      marketTokens.slice(0, 3).map((mt) => ({
+        symbol: mt.symbol || (mt.currencyId as ICurrency)?.symbol,
+        currencyId: mt.currencyId,
+        _id: (mt as any)._id,
+      }))
+    );
   }
 
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
@@ -278,6 +286,16 @@ const TokenDetails = () => {
     useState<BlockchainTransaction | null>(null);
   const transactionDetailsRef = useRef<BottomSheet>(null);
 
+  // Open bottom sheet when transaction is selected
+  useEffect(() => {
+    if (selectedTransaction) {
+      // Small delay to ensure the component is rendered
+      setTimeout(() => {
+        transactionDetailsRef.current?.snapToIndex(0);
+      }, 100);
+    }
+  }, [selectedTransaction]);
+
   const fetchTokenHistoryCallback = useCallback(async () => {
     if (!finalSelectedToken || !walletAddress) {
       console.log("Missing required data:", {
@@ -322,62 +340,74 @@ const TokenDetails = () => {
     console.log("📞 fetchTokenDetailsCallback called");
     console.log("   - tokenId:", tokenId);
     console.log("   - finalSelectedToken exists:", !!finalSelectedToken);
-    
+
     if (tokenId && finalSelectedToken) {
       console.log("✅ Conditions met, starting fetch process");
       setIsTokenDetailsLoading(true);
       try {
         // Map from supportedCurrencyId to actual market currency ID using symbol/code
         let marketCurrencyId: string | undefined;
-        
+
         // Get the token symbol from finalSelectedToken
         const tokenSymbol = finalSelectedToken.symbol;
         const tokenCode = (finalSelectedToken as any).code; // Some tokens might use 'code' instead of 'symbol'
-        
-        console.log("🔍 Looking for market currency ID for symbol:", tokenSymbol, "or code:", tokenCode);
+
+        console.log(
+          "🔍 Looking for market currency ID for symbol:",
+          tokenSymbol,
+          "or code:",
+          tokenCode
+        );
         console.log("📊 Available market tokens:", marketTokens.length);
-        
+
         // Find the corresponding market token by symbol/code
-        const matchingMarketToken = marketTokens.find(marketToken => {
-          const marketSymbol = marketToken.currencyId?.symbol || marketToken.symbol;
-          const marketCode = (marketToken.currencyId as any)?.code || (marketToken as any).code;
-          
+        const matchingMarketToken = marketTokens.find((marketToken) => {
+          const marketTokenCurrency = marketToken.currencyId as ICurrency;
+          const marketSymbol =
+            marketTokenCurrency?.symbol || marketToken.symbol;
+          const marketCode =
+            (marketToken.currencyId as any)?.code || (marketToken as any).code;
+
           return (
             marketSymbol === tokenSymbol ||
             marketSymbol === tokenCode ||
             marketCode === tokenSymbol ||
             marketCode === tokenCode ||
-            marketToken.currencyId?._id === tokenSymbol ||
-            marketToken.currencyId?._id === tokenCode
+            marketTokenCurrency?._id === tokenSymbol ||
+            marketTokenCurrency?._id === tokenCode
           );
         });
-        
+
         if (matchingMarketToken && matchingMarketToken.currencyId) {
           // Use the market token's currency ID
-          if (typeof matchingMarketToken.currencyId === 'string') {
+          if (typeof matchingMarketToken.currencyId === "string") {
             marketCurrencyId = matchingMarketToken.currencyId;
           } else {
-            marketCurrencyId = (matchingMarketToken.currencyId as any)._id || (matchingMarketToken.currencyId as string);
+            marketCurrencyId = matchingMarketToken.currencyId._id;
           }
         }
-        
+
         // Fallback: try using the tokenId directly or finalSelectedToken currency info
         if (!marketCurrencyId) {
           if (finalSelectedToken.currencyId) {
-            if (typeof finalSelectedToken.currencyId === 'string') {
+            if (typeof finalSelectedToken.currencyId === "string") {
               marketCurrencyId = finalSelectedToken.currencyId;
             } else {
-              marketCurrencyId = (finalSelectedToken.currencyId as any)?._id || (finalSelectedToken.currencyId as string);
+              marketCurrencyId =
+                (finalSelectedToken.currencyId as ICurrency)?._id ||
+                finalSelectedToken.currencyId;
             }
           } else if (finalSelectedToken.supportedCurrencyId) {
-            if (typeof finalSelectedToken.supportedCurrencyId === 'string') {
+            if (typeof finalSelectedToken.supportedCurrencyId === "string") {
               marketCurrencyId = finalSelectedToken.supportedCurrencyId;
             } else {
-              marketCurrencyId = finalSelectedToken.supportedCurrencyId._id || finalSelectedToken.supportedCurrencyId;
+              marketCurrencyId =
+                finalSelectedToken.supportedCurrencyId._id ||
+                finalSelectedToken.supportedCurrencyId;
             }
           }
         }
-        
+
         // Final fallback: use tokenId directly
         if (!marketCurrencyId) {
           marketCurrencyId = tokenId;
@@ -397,7 +427,10 @@ const TokenDetails = () => {
 
         // Fetch token details and historical rates in parallel
         // Note: SDK may not support period parameter, so we get all data and filter client-side
-        console.log("🕐 Fetching historical rates (period filtering will be done client-side):", graphPeriod);
+        console.log(
+          "🕐 Fetching historical rates (period filtering will be done client-side):",
+          graphPeriod
+        );
         const [tokenDetailsResponse, historicalRatesResponse] =
           await Promise.all([
             sdk.markets.getTokenDetails(marketCurrencyId),
@@ -409,14 +442,28 @@ const TokenDetails = () => {
         console.log("   - Type:", typeof historicalRatesResponse);
         console.log("   - Keys:", Object.keys(historicalRatesResponse || {}));
         console.log("   - Data property:", historicalRatesResponse?.data);
-        console.log("   - Data keys:", Object.keys(historicalRatesResponse?.data || {}));
+        console.log(
+          "   - Data keys:",
+          Object.keys(historicalRatesResponse?.data || {})
+        );
         console.log("   - Rates array:", historicalRatesResponse?.data?.rates);
-        console.log("   - Rates length:", historicalRatesResponse?.data?.rates?.length);
-        
+        console.log(
+          "   - Rates length:",
+          historicalRatesResponse?.data?.rates?.length
+        );
+
         if (historicalRatesResponse?.data?.rates?.length > 0) {
-          console.log("   - First rate entry:", historicalRatesResponse.data.rates[0]);
-          console.log("   - Last rate entry:", historicalRatesResponse.data.rates[historicalRatesResponse.data.rates.length - 1]);
-          
+          console.log(
+            "   - First rate entry:",
+            historicalRatesResponse.data.rates[0]
+          );
+          console.log(
+            "   - Last rate entry:",
+            historicalRatesResponse.data.rates[
+              historicalRatesResponse.data.rates.length - 1
+            ]
+          );
+
           // Check the structure of rate entries
           const sampleRate = historicalRatesResponse.data.rates[0];
           console.log("   - Rate entry keys:", Object.keys(sampleRate || {}));
@@ -428,7 +475,7 @@ const TokenDetails = () => {
             price: sampleRate?.price,
             value: sampleRate?.value,
             timestamp: sampleRate?.timestamp,
-            date: sampleRate?.date
+            date: sampleRate?.date,
           });
         }
 
@@ -468,18 +515,31 @@ const TokenDetails = () => {
       console.log("🔄 Period Selection Logic:");
       console.log("   - Available periods from data:", periods);
       console.log("   - Current graphPeriod:", graphPeriod);
-      console.log("   - Is current period available?:", periods.includes(graphPeriod));
-      
+      console.log(
+        "   - Is current period available?:",
+        periods.includes(graphPeriod)
+      );
+
       // Always ensure 24h is available as it's our default
-      const finalPeriods = periods.includes("24h") ? periods : ["24h", ...periods];
+      const finalPeriods = periods.includes("24h")
+        ? periods
+        : ["24h", ...periods];
       setAvailableGraphPeriods(finalPeriods);
 
       // Keep the current period if it's 24h (our default), otherwise follow the original logic
       if (graphPeriod === "24h") {
         console.log("   - Keeping default 24h period");
         // Don't change the period, keep it as 24h
-      } else if (finalPeriods.length > 0 && !finalPeriods.includes(graphPeriod)) {
-        console.log("   - Changing period from", graphPeriod, "to", finalPeriods[0]);
+      } else if (
+        finalPeriods.length > 0 &&
+        !finalPeriods.includes(graphPeriod)
+      ) {
+        console.log(
+          "   - Changing period from",
+          graphPeriod,
+          "to",
+          finalPeriods[0]
+        );
         setGraphPeriod(finalPeriods[0]);
       } else {
         console.log("   - Keeping current period:", graphPeriod);
@@ -612,23 +672,25 @@ const TokenDetails = () => {
   };
 
   // Get currency objects (similar to [id] page)
-  const { nairaCurrency, usdCurrency, ngnSellRate } = useSelector((state: AppRootState) => {
-    const currencies = state.utilities?.currencies;
-    if (currencies) {
-      const ngnCurrency = currencies.find((c: any) => c.code === "NGN");
-      const usdCurrencyObj = currencies.find((c: any) => c.code === "USD");
+  const { nairaCurrency, usdCurrency, ngnSellRate } = useSelector(
+    (state: AppRootState) => {
+      const currencies = state.utilities?.currencies;
+      if (currencies) {
+        const ngnCurrency = currencies.find((c: any) => c.code === "NGN");
+        const usdCurrencyObj = currencies.find((c: any) => c.code === "USD");
+        return {
+          nairaCurrency: ngnCurrency,
+          usdCurrency: usdCurrencyObj,
+          ngnSellRate: ngnCurrency?.sellRate || undefined,
+        };
+      }
       return {
-        nairaCurrency: ngnCurrency,
-        usdCurrency: usdCurrencyObj,
-        ngnSellRate: ngnCurrency?.sellRate || undefined
+        nairaCurrency: undefined,
+        usdCurrency: undefined,
+        ngnSellRate: undefined,
       };
     }
-    return {
-      nairaCurrency: undefined,
-      usdCurrency: undefined,
-      ngnSellRate: undefined
-    };
-  });
+  );
 
   if (isPortfolioLoading || isTokenDetailsLoading) {
     return (
@@ -1015,18 +1077,20 @@ const TokenDetails = () => {
           <Box paddingHorizontal="m">
             {/* Token Graph Component */}
 
-            
             {historicalRates?.data?.rates &&
             historicalRates.data.rates.length > 0 ? (
-                <>
-  
+              <>
                 <TokenGraph
-                  symbol={tokenDetails?.tokenDetails?.symbol || finalSelectedToken.symbol}
+                  symbol={
+                    tokenDetails?.tokenDetails?.symbol ||
+                    finalSelectedToken.symbol
+                  }
                   price={(() => {
-                    // Use the same logic as AssetChartDetails in [id] page
-                    const latestRate = getLatestRate(historicalRates.data.rates, "USD");
+                    // Use the price from portfolio data (finalSelectedToken.price) to match the portfolio display
+                    // This ensures consistency between portfolio and token details page
+                    const portfolioPrice = finalSelectedToken.price || 0;
                     return formatPrice(
-                      latestRate,
+                      portfolioPrice,
                       graphCurrency,
                       nairaCurrency,
                       usdCurrency
@@ -1859,7 +1923,10 @@ const TokenDetails = () => {
         transaction={selectedTransaction}
         selectedToken={finalSelectedToken}
         visible={!!selectedTransaction}
-        onClose={() => setSelectedTransaction(null)}
+        onClose={() => {
+          setSelectedTransaction(null);
+          transactionDetailsRef.current?.close();
+        }}
       />
     </PageWrapper>
   );

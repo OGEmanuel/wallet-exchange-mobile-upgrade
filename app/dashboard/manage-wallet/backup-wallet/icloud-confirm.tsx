@@ -1,10 +1,12 @@
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
+import { WALLET_GROUP_CLASS } from "@/configs/constants";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { createWalletGroupBackup } from "@/src/core/utils/backup-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Check, Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -24,7 +26,7 @@ const ICloudConfirmScreen = () => {
     originalPassword: string;
     walletGroupId: string;
   }>();
-  const { userWalletGroups, refreshPortfolio } = useWallet();
+  const { userWalletGroups, refreshPortfolio, getAddress } = useWallet();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPasswordMatch, setIsPasswordMatch] = useState(false);
@@ -63,15 +65,31 @@ const ICloudConfirmScreen = () => {
         (wallet) => wallet.walletGroupId?._id === walletGroupId
       );
 
+      // Get wallet credentials
+      const walletCredentials =
+        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+          walletGroupId
+        );
+      const address = await getAddress(
+        walletCredentials?.chain || "",
+        walletsInGroup[0]?._id
+      );
+
       // Prepare wallet data for backup
       const walletData = walletsInGroup.map((wallet) => ({
         id: wallet._id,
         name:
-          wallet.name || `Wallet ${wallet.address?.slice(0, 6) || "Unknown"}`,
-        address: wallet.address || "Unknown",
-        chain: wallet.chainId?.name || "Unknown",
-        seedPhrase: wallet.seedPhrase,
-        privateKey: wallet.privateKey,
+          wallet.name || `Wallet ${wallet.walletId?.slice(0, 6) || "Unknown"}`,
+        address: address || "Unknown",
+        chain: walletCredentials?.chain || "Unknown",
+        seedPhrase:
+          walletCredentials?.class === WALLET_GROUP_CLASS.SEEDPHRASE
+            ? walletCredentials?.credential
+            : undefined,
+        privateKey:
+          walletCredentials?.class === WALLET_GROUP_CLASS.PRIVATE_KEY
+            ? walletCredentials?.credential
+            : undefined,
       }));
 
       // Create the backup
@@ -107,16 +125,10 @@ const ICloudConfirmScreen = () => {
 
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
-      <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+      <Box style={{ paddingTop: insets.top , paddingBottom: 20}}>
+        <SettingsHeader
           title="iCloud Backup"
-          leading={
-            <ArrowLeft2
-              onPress={handleBack}
-              size={24}
-              color={theme.colors.headerTextColor}
-            />
-          }
+          onBackPress={handleBack}
         />
       </Box>
 

@@ -1,5 +1,6 @@
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
-import { AppBar, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import ChainLogo from "@/components/general/ChainLogo";
 import { useChains } from "@/src/core/chains/chains-context";
@@ -13,8 +14,7 @@ import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
-import { useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
+import { router, useLocalSearchParams } from "expo-router";
 import { Copy, QrCode } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, InteractionManager, Pressable, ScrollView } from "react-native";
@@ -39,6 +39,9 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
     walletChains,
     isLoading: chainsLoading,
     error: chainsError,
+    getChainImage,
+    getChainById,
+    getChainBySymbol,
   } = useChains();
 
   console.log("🔍 Debug - chainsLoading:", chainsLoading);
@@ -152,11 +155,14 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           userWalletGroup._id
         );
         await new Promise((resolve) => setTimeout(resolve, 500));
-        
+
         // Check again after delay
         const retryStoredAddresses = await getAddresses(userWalletGroup._id);
         if (retryStoredAddresses && retryStoredAddresses.length > 0) {
-          console.log("✅ Found stored addresses after delay:", retryStoredAddresses.length);
+          console.log(
+            "✅ Found stored addresses after delay:",
+            retryStoredAddresses.length
+          );
           setWalletAddresses(retryStoredAddresses);
           setIsLoading(false);
           return;
@@ -193,7 +199,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
         console.log("🔍 Deriving all addresses once...");
         console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
         setIsAccountDeriving(true);
-        
+
         // Use InteractionManager to defer heavy computation and allow UI to remain responsive
         // This prevents the app from freezing during crypto derivation
         const derivedResult = await new Promise<any>((resolve, reject) => {
@@ -211,7 +217,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
             }, 100); // Small delay to ensure UI thread is free
           });
         });
-        
+
         setIsAccountDeriving(false);
         console.log("🔍 Derived result:", derivedResult);
 
@@ -263,11 +269,11 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           processedChains.add(chainData.symbol);
 
           const addressData: StoredAddress = {
-            chainId: chainData.chainId,
+            chainId: chainData.chainId || 0,
             chainSymbol: chainData.symbol,
             chainName: chainData.name,
             address: derivedAddress,
-            logoUrl: chainData.nativeCurrencyId?.logo,
+            logoUrl: getChainImage(chainData._id || ""),
             isEVM: chainData.isEVM,
             timestamp: Date.now(),
           };
@@ -300,17 +306,22 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
     };
 
     getWalletAddresses();
-  }, [wallet, userWalletGroup, walletChains, chainsLoading, getSDK, isAccountDeriving]);
+  }, [
+    wallet,
+    userWalletGroup,
+    walletChains,
+    chainsLoading,
+    getSDK,
+    isAccountDeriving,
+  ]);
 
   if (!wallet) {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
         <Box style={{ paddingTop: insets.top }}>
-          <AppBar
+          <SettingsHeader
             title="Wallet Addresses"
-            leading={
-              <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-            }
+            onBackPress={() => router.back()}
           />
         </Box>
         <Box flex={1} justifyContent="center" alignItems="center">
@@ -325,11 +336,9 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+        <SettingsHeader
           title="Wallet Addresses"
-          leading={
-            <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-          }
+          onBackPress={() => router.back()}
         />
       </Box>
 
@@ -358,74 +367,83 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
               </CustomText>
             </Box>
           ) : (
-            walletAddresses.map((addressData, index) => (
-              <Box
-                key={index}
-                backgroundColor="modalBackgroundColor"
-                borderRadius={12}
-                borderColor="borderColor"
-                padding="m"
-                marginBottom="s"
-              >
+            walletAddresses.map((addressData, index) => {
+              const chain = getChainBySymbol(addressData.chainSymbol.toUpperCase());
+              const chainImage = getChainImage(chain?._id || "");
+              const chainName = chain?.name || addressData.chainName;
+              const chainSymbol = chain?.symbol || addressData.chainSymbol;
+              return (
                 <Box
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="space-between"
+                  key={index}
+                  backgroundColor="modalBackgroundColor"
+                  borderRadius={12}
+                  borderColor="borderColor"
+                  padding="m"
+                  marginBottom="s"
                 >
-                  <Box flexDirection="row" alignItems="center" flex={1}>
-                    <ChainLogo
-                      symbol={addressData.chainSymbol}
-                      name={addressData.chainName}
-                      logoUrl={addressData.logoUrl}
-                      width={40}
-                      height={40}
-                      style={{ marginRight: theme.spacing.m }}
-                    />
+                  <Box
+                    flexDirection="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <Box flexDirection="row" alignItems="center" flex={1}>
+                      <ChainLogo
+                        symbol={chainSymbol}
+                        name={chainName}
+                        logoUrl={chainImage}
+                        width={40}
+                        height={40}
+                        style={{ marginRight: theme.spacing.m }}
+                      />
 
-                    <Box flex={1}>
-                      <CustomText
-                        variant="bodyBold"
-                        fontSize={16}
-                        color="headerTextColor"
-                        marginBottom="s"
+                      <Box flex={1}>
+                        <CustomText
+                          variant="bodyBold"
+                          fontSize={16}
+                          color="headerTextColor"
+                          marginBottom="s"
+                        >
+                          {chainName}
+                        </CustomText>
+                        <CustomText
+                          variant="body"
+                          fontSize={14}
+                          color="disabledTextColor"
+                        >
+                          {formatAddress(addressData.address)}
+                        </CustomText>
+                      </Box>
+                    </Box>
+
+                    <Box flexDirection="row" alignItems="center">
+                      <Pressable
+                        onPress={() => handleShowQR(addressData)}
+                        style={({ pressed }) => ({
+                          opacity: pressed ? 0.7 : 1,
+                          padding: 8,
+                          marginRight: 8,
+                        })}
                       >
-                        {addressData.chainName}
-                      </CustomText>
-                      <CustomText
-                        variant="body"
-                        fontSize={14}
-                        color="disabledTextColor"
+                        <QrCode
+                          size={20}
+                          color={theme.colors.headerTextColor}
+                        />
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleCopyAddress(addressData.address)}
+                        style={({ pressed }) => ({
+                          opacity: pressed ? 0.7 : 1,
+                          padding: 8,
+                        })}
                       >
-                        {formatAddress(addressData.address)}
-                      </CustomText>
+                        <Copy size={20} color={theme.colors.headerTextColor} />
+                      </Pressable>
                     </Box>
                   </Box>
-
-                  <Box flexDirection="row" alignItems="center">
-                    <Pressable
-                      onPress={() => handleShowQR(addressData)}
-                      style={({ pressed }) => ({
-                        opacity: pressed ? 0.7 : 1,
-                        padding: 8,
-                        marginRight: 8,
-                      })}
-                    >
-                      <QrCode size={20} color={theme.colors.headerTextColor} />
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => handleCopyAddress(addressData.address)}
-                      style={({ pressed }) => ({
-                        opacity: pressed ? 0.7 : 1,
-                        padding: 8,
-                      })}
-                    >
-                      <Copy size={20} color={theme.colors.headerTextColor} />
-                    </Pressable>
-                  </Box>
                 </Box>
-              </Box>
-            ))
+              );
+            })
           )}
         </Box>
       </ScrollView>

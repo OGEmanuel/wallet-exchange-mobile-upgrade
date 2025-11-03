@@ -160,7 +160,7 @@ export class PortfolioService {
    * Process raw portfolio data into a simplified, usable format
    * Balances come from batch fetching, prices come from userTokenList or market fallback
    */
-  static processPortfolioData(portfolioData: UserPortfolioData, chainsMap: Map<string, IChain>, supportedCurrencies?: ISupportedCurrency[]): ProcessedPortfolio {
+  static processPortfolioData(portfolioData: UserPortfolioData, chainsMap: Map<string, IChain>, supportedCurrencies?: ISupportedCurrency[], getChainImage?: (chainId: string) => string): ProcessedPortfolio {
     try {
       const { mainWalletGroupPortfolio, userTokenList } = portfolioData;
 
@@ -208,7 +208,7 @@ export class PortfolioService {
             chainId: chainId || '',
             chainName: chain?.name || '',
             chainSymbol: chain?.symbol || '',
-            chainImage: (chain?.nativeCurrencyId as any)?.logo || '',
+            chainImage: getChainImage ? getChainImage(chain?._id || "") : '',
             tokenAddress: supportedCurrency?.tokenAddress || '',
             decimals: supportedCurrency?.decimals || 18,
             supportedCurrencyId,
@@ -253,7 +253,7 @@ export class PortfolioService {
             chainId: chainId || '',
             chainName: chain?.name || '',
             chainSymbol: chain?.symbol || '',
-            chainImage: (chain?.nativeCurrencyId as any)?.logo || '',
+            chainImage: getChainImage ? getChainImage(chain?._id || "") : '',
             tokenAddress: supportedCurrency?.tokenAddress || '',
             decimals: supportedCurrency?.decimals || 18,
             supportedCurrencyId: supportedCurrency?._id || 'unknown',
@@ -459,5 +459,50 @@ export class PortfolioService {
         maximumFractionDigits: 2,
       }).format(balance);
     }
+  }
+
+  /**
+   * Format balance with compact notation (K, M, B, T suffixes) for large numbers
+   * Numbers under 1000 use normal formatBalance formatting
+   * 
+   * @param balance - The balance value to format
+   * @param decimals - Optional decimals parameter (unused but kept for compatibility)
+   * @returns Formatted string with K/M/B/T suffixes for numbers >= 1000
+   * 
+   * @example
+   * formatBalanceCompact(500) // "500.00"
+   * formatBalanceCompact(1000) // "1K"
+   * formatBalanceCompact(3400) // "3.4K"
+   * formatBalanceCompact(1200000) // "1.2M"
+   * formatBalanceCompact(2500000000) // "2.5B"
+   */
+  static formatBalanceCompact(balance: number, decimals: number = 8): string {
+    if (balance === 0) return '0';
+
+
+    // Billion
+    if (balance >= 1_000_000_000) {
+      const billions = balance / 1_000_000_000;
+      return `${billions.toFixed(1)}B`;
+    }
+
+    // Million
+    if (balance >= 1_000_000) {
+      const millions = balance / 1_000_000;
+      return `${millions.toFixed(1)}M`;
+    }
+
+    // Thousand (1000 and above)
+    if (balance >= 1000) {
+      const thousands = balance / 1000;
+      // Show decimal only if not a whole number
+      const formatted = thousands % 1 === 0
+        ? thousands.toFixed(0)
+        : thousands.toFixed(1);
+      return `${formatted}K`;
+    }
+
+    // Fallback (shouldn't reach here due to early return for < 1000)
+    return this.formatBalance(balance, decimals);
   }
 }

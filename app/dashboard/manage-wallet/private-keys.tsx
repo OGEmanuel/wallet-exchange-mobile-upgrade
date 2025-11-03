@@ -1,4 +1,5 @@
-import { AppBar, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import ChainLogo from "@/components/general/ChainLogo";
 import PrivateKeyGuardScreen from "@/components/guards/PrivateKeyGuardScreen";
@@ -11,7 +12,6 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { InteractionManager, Pressable, ScrollView } from "react-native";
@@ -22,16 +22,16 @@ interface PrivateKeysProps {}
 const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const { userWalletGroups, getSDK, setIsAccountDeriving, isAccountDeriving } = useWallet();
+  const { userWalletGroups, getSDK, setIsAccountDeriving, isAccountDeriving } =
+    useWallet();
   const {
     walletChains,
     isLoading: chainsLoading,
     error: chainsError,
+    getChainImage,
+    getChainBySymbol,
   } = useChains();
 
-  console.log("🔍 Debug - chainsLoading:", chainsLoading);
-  console.log("🔍 Debug - chainsError:", chainsError);
-  console.log("🔍 Debug - walletChains length:", walletChains?.length);
   const { walletId } = useLocalSearchParams<{ walletId: string }>();
   const router = useRouter();
 
@@ -54,10 +54,6 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
     (group) => group?.walletId?._id === walletId
   );
   const wallet = userWalletGroup?.walletId;
-
-  console.log("🔍 Debug - userWalletGroup:", userWalletGroup);
-  console.log("🔍 Debug - wallet:", wallet);
-  console.log("🔍 Debug - walletChains:", walletChains?.length);
 
   const handlePrivateKeyPress = (keyData: any) => {
     // Navigate to private key detail modal
@@ -102,7 +98,9 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
 
     // Check if derivation is already in progress
     if (isAccountDeriving) {
-      console.log("⏳ Account derivation already in progress, skipping duplicate derivation");
+      console.log(
+        "⏳ Account derivation already in progress, skipping duplicate derivation"
+      );
       // Wait a bit and check for stored keys
       setTimeout(async () => {
         const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
@@ -158,13 +156,16 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
 
       // Add a small delay to allow for async storage operations from other components
       await new Promise((resolve) => setTimeout(resolve, 500));
-      
+
       // Check again after delay (retryPendingWallets might have completed)
       const retryStoredPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
         userWalletGroup._id
       );
       if (retryStoredPrivateKeys && retryStoredPrivateKeys.length > 0) {
-        console.log("✅ Found stored private keys after delay:", retryStoredPrivateKeys.length);
+        console.log(
+          "✅ Found stored private keys after delay:",
+          retryStoredPrivateKeys.length
+        );
         const keys = retryStoredPrivateKeys.map((storedKey) => ({
           chain: storedKey.chainName,
           symbol: storedKey.chainSymbol,
@@ -250,10 +251,10 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
           BTC: "btc",
           SOL: "sol",
           TRX: "trx",
-          MATIC: "eth", // Polygon uses ETH derivation
-          ARB: "eth", // Arbitrum uses ETH derivation
-          OP: "eth", // Optimism uses ETH derivation
-          BASE: "eth", // Base uses ETH derivation
+          MATIC: "eth",
+          ARB: "eth",
+          OP: "eth",
+          BASE: "eth",
         };
 
         const mappedSymbol =
@@ -277,7 +278,7 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
           symbol: chainData.symbol,
           privateKey: privateKey,
           chainId: chainData.chainId,
-          logoUrl: chainData.nativeCurrencyId?.logo,
+          logoUrl: getChainImage(chainData._id || ""),
           isEVM: chainData.isEVM,
         };
 
@@ -290,7 +291,7 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
           chainSymbol: chainData.symbol,
           chainName: chainData.name,
           privateKey: privateKey,
-          logoUrl: chainData.nativeCurrencyId?.logo,
+          logoUrl: getChainImage(chainData._id || ""),
           isEVM: chainData.isEVM,
           timestamp: Date.now(),
         });
@@ -359,11 +360,9 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
         <Box style={{ paddingTop: insets.top }}>
-          <AppBar
+          <SettingsHeader
             title="Private keys"
-            leading={
-              <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-            }
+            onBackPress={() => router.back()}
           />
         </Box>
         <Box flex={1} justifyContent="center" alignItems="center">
@@ -396,11 +395,9 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+        <SettingsHeader
           title="Private keys"
-          leading={
-            <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-          }
+          onBackPress={() => router.back()}
         />
       </Box>
 
@@ -433,63 +430,69 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
               </CustomText>
             </Box>
           ) : (
-            privateKeys.map((keyData, index) => (
-              <Pressable
-                key={index}
-                onPress={() => handlePrivateKeyPress(keyData)}
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Box
-                  backgroundColor="modalBackgroundColor"
-                  borderRadius={12}
-                  borderColor="borderColor"
-                  padding="m"
-                  marginBottom="s"
+            privateKeys.map((keyData, index) => {
+              const chain = getChainBySymbol(keyData.symbol.toUpperCase());
+              const chainImage = getChainImage(chain?._id || "");
+              const chainName = chain?.name || keyData.chain;
+              const chainSymbol = chain?.symbol || keyData.symbol;
+              return (
+                <Pressable
+                  key={index}
+                  onPress={() => handlePrivateKeyPress(keyData)}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                  })}
                 >
                   <Box
-                    flexDirection="row"
-                    alignItems="center"
-                    justifyContent="space-between"
+                    backgroundColor="modalBackgroundColor"
+                    borderRadius={12}
+                    borderColor="borderColor"
+                    padding="m"
+                    marginBottom="s"
                   >
-                    <Box flexDirection="row" alignItems="center" flex={1}>
-                      <ChainLogo
-                        symbol={keyData.symbol}
-                        name={keyData.chain}
-                        logoUrl={keyData.logoUrl}
-                        width={40}
-                        height={40}
-                        style={{ marginRight: theme.spacing.m }}
-                      />
+                    <Box
+                      flexDirection="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                    >
+                      <Box flexDirection="row" alignItems="center" flex={1}>
+                        <ChainLogo
+                          symbol={chainSymbol}
+                          name={chainName}
+                          logoUrl={chainImage}
+                          width={40}
+                          height={40}
+                          style={{ marginRight: theme.spacing.m }}
+                        />
 
-                      <Box flex={1}>
-                        <CustomText
-                          variant="bodyBold"
-                          fontSize={16}
-                          color="headerTextColor"
-                          marginBottom="s"
-                        >
-                          {keyData.chain}
-                        </CustomText>
-                        <CustomText
-                          variant="body"
-                          fontSize={14}
-                          color="disabledTextColor"
-                        >
-                          {formatPrivateKey(keyData.privateKey)}
-                        </CustomText>
+                        <Box flex={1}>
+                          <CustomText
+                            variant="bodyBold"
+                            fontSize={16}
+                            color="headerTextColor"
+                            marginBottom="s"
+                          >
+                            {chainName}
+                          </CustomText>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="disabledTextColor"
+                          >
+                            {formatPrivateKey(keyData.privateKey)}
+                          </CustomText>
+                        </Box>
                       </Box>
-                    </Box>
 
-                    <ChevronRight
-                      size={20}
-                      color={theme.colors.headerTextColor}
-                    />
+                      <ChevronRight
+                        size={20}
+                        color={theme.colors.headerTextColor}
+                      />
+                    </Box>
                   </Box>
-                </Box>
-              </Pressable>
-            ))
+                </Pressable>
+              );
+            })
           )}
         </Box>
       </ScrollView>

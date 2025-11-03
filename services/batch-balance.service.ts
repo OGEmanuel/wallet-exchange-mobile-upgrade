@@ -393,7 +393,7 @@ export class BatchBalanceService {
       if (Array.isArray(userTokenList) && userTokenList.length > 0) {
         // Create a map: supportedCurrencyId -> account._id for matching
         const supportedCurrencyToAccountId = new Map<string, string>();
-        
+
         // Build map from accounts
         if (portfolioDataAny.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts) {
           portfolioDataAny.mainWalletGroupPortfolio.mainWalletPortfolio.accounts.forEach((account: any) => {
@@ -410,7 +410,7 @@ export class BatchBalanceService {
             const supportedCurrencyId = typeof token.supportedCurrencyId === 'string'
               ? token.supportedCurrencyId
               : (token.supportedCurrencyId as any)?._id;
-            
+
             if (supportedCurrencyId) {
               const accountId = supportedCurrencyToAccountId.get(supportedCurrencyId);
               if (accountId) {
@@ -578,29 +578,29 @@ export class BatchBalanceService {
             }
           }
         }
-        
+
         if (currencyIdValue) {
           // Try direct lookup
           let marketPrice = marketTokensMap.get(currencyIdValue)?.rate;
-          
+
           // If not found, try as string comparison (in case of format mismatch)
           if (!marketPrice || marketPrice === 0) {
             // Try to find by iterating and comparing (in case IDs are stored differently)
             for (const [marketCurrencyId, marketToken] of marketTokensMap.entries()) {
-              if (marketCurrencyId === currencyIdValue || 
-                  marketCurrencyId.toString() === currencyIdValue.toString() ||
-                  currencyIdValue.toString() === marketCurrencyId.toString()) {
+              if (marketCurrencyId === currencyIdValue ||
+                marketCurrencyId.toString() === currencyIdValue.toString() ||
+                currencyIdValue.toString() === marketCurrencyId.toString()) {
                 marketPrice = marketToken.rate;
                 break;
               }
             }
           }
-          
+
           if (marketPrice && marketPrice > 0) {
             if (debug || updatedCount < 5) {
               const isNative = isNativeTokenAccount(account);
-              const source = isNative ? 'chain.nativeCurrencyId' : 
-                           (account.currencyId ? 'account.currencyId' : 'supportedCurrency.currencyId');
+              const source = isNative ? 'chain.nativeCurrencyId' :
+                (account.currencyId ? 'account.currencyId' : 'supportedCurrency.currencyId');
               console.log(`💰 Using market price fallback for account ${account._id}: ${marketPrice} (currencyId: ${currencyIdValue}, source: ${source})`);
             }
             return marketPrice;
@@ -610,7 +610,7 @@ export class BatchBalanceService {
         } else if (debug) {
           const chainId = account.chainId || account.supportedCurrencyId?.chainId;
           const chainIdObj = chainId && typeof chainId === 'object' ? chainId : null;
-          
+
           console.log(`⚠️ Could not extract currencyId from account ${account._id}:`, {
             hasAccountCurrencyId: !!account.currencyId,
             accountCurrencyId: account.currencyId,
@@ -631,7 +631,7 @@ export class BatchBalanceService {
         const isNative = isNativeTokenAccount(account);
         const chainId = account.chainId || account.supportedCurrencyId?.chainId;
         const chainIdObj = chainId && typeof chainId === 'object' ? chainId : null;
-        
+
         console.log('🔍 No price found for account:', {
           accountId: account._id,
           accountBalance: account.balance,
@@ -726,14 +726,14 @@ export class BatchBalanceService {
     // The balanceResults map is keyed by assetId (which is account._id)
     // We match accounts by their _id to update their balances
     console.log(`📊 Starting account balance updates: ${balanceResults.size} batch results, ${nativeBalances?.size || 0} native balances`);
-    
+
     let contractTokensUpdated = 0;
     let nativeTokensUpdated = 0;
-    
+
     if (
       updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts
     ) {
-      
+
       updatedPortfolio.mainWalletGroupPortfolio.mainWalletPortfolio.accounts.forEach(
         (account: any) => {
           const accountId = account._id; // This matches the assetId we passed to getBatchBalancesForAssets
@@ -752,11 +752,11 @@ export class BatchBalanceService {
             if (chainSymbol && nativeBalances.has(chainSymbol)) {
               const nativeBalance = nativeBalances.get(chainSymbol)!;
               const balance = nativeBalance.balance || 0;
-              
+
               if (balance > 0) {
                 const shouldDebug = updatedCount < 5 || (balance > 0 && updatedCount < 15);
                 const price = getPriceFromPortfolio(account, shouldDebug);
-                
+
                 account.balance = balance;
                 if (price > 0) {
                   account.totalUsdValue = balance * price;
@@ -777,10 +777,10 @@ export class BatchBalanceService {
           // Accounts without batch results already have balance = 0 from clearAllBackendBalances
         }
       );
-      
+
       console.log(`📊 Main wallet portfolio: ${contractTokensUpdated} contract tokens, ${nativeTokensUpdated} native tokens updated`);
     }
-    
+
     // Final summary log after processing all accounts
     console.log(`📊 Final summary: ${contractTokensUpdated} contract tokens, ${nativeTokensUpdated} native tokens updated, ${updatedCount} total accounts updated`);
 
@@ -808,11 +808,11 @@ export class BatchBalanceService {
                   if (chainSymbol && nativeBalances.has(chainSymbol)) {
                     const nativeBalance = nativeBalances.get(chainSymbol)!;
                     const balance = nativeBalance.balance || 0;
-                    
+
                     if (balance > 0) {
                       const shouldDebug = updatedCount < 5 || (balance > 0 && updatedCount < 15);
                       const price = getPriceFromPortfolio(account, shouldDebug);
-                      
+
                       account.balance = balance;
                       if (price > 0) {
                         account.totalUsdValue = balance * price;

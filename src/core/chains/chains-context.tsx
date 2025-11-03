@@ -5,9 +5,10 @@
  * for wallet chains throughout the app.
  */
 
-import { IChain } from "@zap/blockchain-sdk";
+import { IChain, ICurrency } from "@zap/blockchain-sdk";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
+import { useSupportedCurrencies } from "../supported-currencies/supported-currencies-context";
 
 interface ChainsContextType {
   // State
@@ -26,6 +27,7 @@ interface ChainsContextType {
   getEVMChains: () => IChain[];
   getNonEVMChains: () => IChain[];
   getNumericChainId: (chainIdString: string) => number | null;
+  getChainImage: (chainId: string) => string;
 }
 
 const ChainsContext = createContext<ChainsContextType | undefined>(undefined);
@@ -36,6 +38,7 @@ interface ChainsProviderProps {
 
 export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const [chains, setChains] = useState<IChain[]>([]);
+  const { getSupportedCurrencyBySymbol } = useSupportedCurrencies();
   const [walletChains, setWalletChains] = useState<IChain[]>([]);
   const [chainsMap, setChainsMap] = useState<Map<string, IChain>>(new Map());
   React.useEffect(() => {
@@ -46,6 +49,22 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const getChainImage = (chainId: string): string => {
+    const chain = chainsMap.get(chainId);
+    const nativeCurrency = chain?.nativeCurrencyId as ICurrency;
+    if (chain?.isEVM && nativeCurrency?.symbol !== chain?.symbol) {
+      if (chain?.symbol?.toUpperCase() === "BASE") {
+        return "https://altcoinsbox.com/wp-content/uploads/2023/02/base-logo-in-blue.svg";
+      }
+      const currency = getSupportedCurrencyBySymbol(chain?.symbol);
+
+      if ((currency?.currencyId as ICurrency)?.logo) {
+        return (currency?.currencyId as ICurrency)?.logo || "";
+      }
+    }
+    return nativeCurrency?.logo || "";
+  };
 
   const refreshChains = async () => {
     try {
@@ -71,7 +90,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     } catch (err: any) {
       // Handle authentication errors gracefully
       const errorMessage = err?.message || "";
-      const isAuthError = 
+      const isAuthError =
         errorMessage.includes("No authentication token") ||
         errorMessage.includes("No refresh token") ||
         errorMessage.includes("Refresh token is invalid") ||
@@ -105,11 +124,11 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   };
 
   const getEVMChains = (): IChain[] => {
-    return walletChains.filter((chain) => (chain as any).isEVM);
+    return walletChains.filter((chain) => chain.isEVM);
   };
 
   const getNonEVMChains = (): IChain[] => {
-    return walletChains.filter((chain) => !(chain as any).isEVM);
+    return walletChains.filter((chain) => !chain.isEVM);
   };
 
   const getNumericChainId = (chainIdString: string): number | null => {
@@ -149,6 +168,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     getEVMChains,
     getNonEVMChains,
     getNumericChainId,
+    getChainImage,
   };
 
   return (

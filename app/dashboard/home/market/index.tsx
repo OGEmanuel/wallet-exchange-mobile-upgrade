@@ -10,11 +10,11 @@ import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
+import { MarketData } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView } from "react-native";
@@ -183,7 +183,7 @@ const Explore = () => {
     // Extract market data from watchlist items
     const watchlistMarketData = watchlistTokens
       .map((item) => item.marketData)
-      .filter(Boolean) as MarketTokenModel[];
+      .filter(Boolean) as MarketData[];
 
     if (watchlistMarketData.length === 0) return [];
 

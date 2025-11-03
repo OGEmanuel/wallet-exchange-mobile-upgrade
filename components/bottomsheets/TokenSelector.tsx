@@ -78,7 +78,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   const { isPortfolioLoading } = useSelector(
     (state: AppRootState) => state.portfolio
   );
-  const { walletChains } = useChains();
+  const { walletChains, getChainImage } = useChains();
 
   // Supported currencies for swap mode
   const {
@@ -107,8 +107,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       .map((chain) => ({
         symbol: chain.symbol,
         name: chain.name,
-        image: chain.nativeCurrencyId.logo,
-        chainImage: chain.nativeCurrencyId.logo,
+        image: getChainImage(chain._id || ""),
+        chainImage: getChainImage(chain._id || ""),
         chainSymbol: chain.symbol,
         chainName: chain.name,
       }));

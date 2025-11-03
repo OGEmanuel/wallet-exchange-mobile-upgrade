@@ -41,12 +41,12 @@ global.Buffer = Buffer;
 
 // Component to handle app-wide loading modal
 const AppLoadingModal = () => {
-  const { 
-    isAccountDeriving, 
-    isRetryingPendingWallets, 
-    isInitializing, 
-    isAuthenticating, 
-    isCreatingWallet 
+  const {
+    isAccountDeriving,
+    isRetryingPendingWallets,
+    isInitializing,
+    isAuthenticating,
+    isCreatingWallet,
   } = useWallet();
 
   const getLoadingMessage = () => {
@@ -170,42 +170,42 @@ export default function RootLayout() {
         <GestureHandlerRootView>
           <Provider store={store}>
             <AppInitializer>
-            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
-              <QueryClientProvider client={queryClient}>
-                <InternetConnectionProvider>
-                  <NetworkProvider>
-                    <ChainsProvider>
+              <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
+                <QueryClientProvider client={queryClient}>
+                  <InternetConnectionProvider>
+                    <NetworkProvider>
                       <SupportedCurrenciesProvider>
-                        <WalletProvider>
-                          <WebSocketProvider>
-                            <OnboardingProvider>
-                              <BottomSheetProvider>
-                        <StatusBar
-                          barStyle={
-                            colorTheme === "dark"
-                              ? "light-content"
-                              : "dark-content"
-                          }
-                        />
-                        {/* <PinGuard /> */}
-                        <Stack screenOptions={{ headerShown: false }}>
-                          <Stack.Screen
-                            name="index"
-                            options={{ title: "Home" }}
-                          />
-                        </Stack>
-                        <BottomSheetManager />
-                        <AppLoadingModal />
-                              </BottomSheetProvider>
-                            </OnboardingProvider>
-                          </WebSocketProvider>
-                        </WalletProvider>
+                        <ChainsProvider>
+                          <WalletProvider>
+                            <WebSocketProvider>
+                              <OnboardingProvider>
+                                <BottomSheetProvider>
+                                  <StatusBar
+                                    barStyle={
+                                      colorTheme === "dark"
+                                        ? "light-content"
+                                        : "dark-content"
+                                    }
+                                  />
+                                  {/* <PinGuard /> */}
+                                  <Stack screenOptions={{ headerShown: false }}>
+                                    <Stack.Screen
+                                      name="index"
+                                      options={{ title: "Home" }}
+                                    />
+                                  </Stack>
+                                  <BottomSheetManager />
+                                  <AppLoadingModal />
+                                </BottomSheetProvider>
+                              </OnboardingProvider>
+                            </WebSocketProvider>
+                          </WalletProvider>
+                        </ChainsProvider>
                       </SupportedCurrenciesProvider>
-                    </ChainsProvider>
-                  </NetworkProvider>
-                </InternetConnectionProvider>
-              </QueryClientProvider>
-            </ThemeProvider>
+                    </NetworkProvider>
+                  </InternetConnectionProvider>
+                </QueryClientProvider>
+              </ThemeProvider>
             </AppInitializer>
           </Provider>
         </GestureHandlerRootView>

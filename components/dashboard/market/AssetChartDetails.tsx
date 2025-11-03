@@ -2,12 +2,12 @@ import { Box, CustomText } from "@/components/general";
 import { SIZES } from "@/data";
 import { formatToSigFigMax6Digits } from "@/lib/utils/market/helpers";
 import { formatPrice } from "@/lib/utils/market/priceFormatter";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import { TokenDetailModel } from "@/src/modules/market/domain/entities/models/token-detail-model";
 import { TokenHistoryDetailModel } from "@/src/modules/market/domain/entities/models/token-history-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ICurrency, MarketData } from "@zap/blockchain-sdk";
 import { ArrowDown3, ArrowUp3 } from "iconsax-react-nativejs";
 import React, { useEffect, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
@@ -17,7 +17,7 @@ import TokenImage from "./TokenImage";
 
 interface AssetChartDetailsProps {
   tokenDetails: TokenDetailModel | null;
-  asset?: MarketTokenModel | null;
+  asset?: MarketData | null;
   nairaCurrency?: CurrencyModel | null;
   usdCurrency?: CurrencyModel | null;
   tokenHistory?: TokenHistoryDetailModel | null;
@@ -165,12 +165,12 @@ export default function AssetChartDetails({
         >
           <Box flexDirection="row" alignItems="center" gap="s">
             <TokenImage
-              uri={tokenDetails?.tokenDetails?.logo || asset?.currencyId?.logo}
+              uri={tokenDetails?.tokenDetails?.logo || (asset?.currencyId as ICurrency)?.logo}
               name={tokenDetails?.tokenDetails?.symbol}
               size={24}
             />
             <CustomText variant="bodySubheader" fontSize={20}>
-              {tokenDetails?.tokenDetails?.name || asset?.currencyId?.name}
+              {tokenDetails?.tokenDetails?.name || (asset?.currencyId as ICurrency)?.name}
             </CustomText>
           </Box>
           <Box

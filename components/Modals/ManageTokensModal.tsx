@@ -74,7 +74,7 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 }) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
-  const { walletChains } = useChains();
+  const { walletChains, getChainImage } = useChains();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -100,8 +100,8 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
       .map((chain) => ({
         symbol: chain.symbol,
         name: chain.name,
-        image: chain.nativeCurrencyId.logo,
-        chainImage: chain.nativeCurrencyId.logo,
+        image: getChainImage(chain._id || ""),
+        chainImage: getChainImage(chain._id || ""),
         chainSymbol: chain.symbol,
         chainName: chain.name,
       }));

@@ -1,5 +1,6 @@
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import Identicon from "@/components/general/Identicon";
 import AddWalletModal from "@/components/Modals/AddWalletModal";
@@ -13,15 +14,16 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
-import { ArrowLeft, ChevronRight, CloudOff, Plus } from "lucide-react-native";
+import { ChevronRight, CloudOff, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface WalletGroupDetailProps {}
 
 const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   const theme = useTheme<Theme>();
+  const insets = useSafeAreaInsets();
   const {
     userWalletGroups,
     currentWalletUser,
@@ -87,9 +89,9 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   if (!userWalletGroup) {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
-        <AppBar
+        <SettingsHeader
           title="Wallet Group"
-          leading={<ArrowLeft size={24} color={theme.colors.headerTextColor} />}
+          onBackPress={() => router.back()}
         />
         <Box flex={1} justifyContent="center" alignItems="center">
           <CustomText variant="body" color="disabledTextColor">
@@ -227,8 +229,9 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   };
 
   const handleRecoveryPhrase = () => {
-    // TODO: Navigate to recovery phrase screen
-    Alert.alert("Recovery Phrase", "Navigate to recovery phrase screen");
+    router.push(
+      `/dashboard/manage-wallet/secret-phrase?walletId=${userWalletGroup?.walletId?._id}`
+    );
   };
 
   const handleBackupWallet = () => {
@@ -311,22 +314,10 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       {/* Header */}
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="space-between"
-        paddingTop="xl"
-        backgroundColor="mainBackgroundColor"
-      >
-        <AppBar
+      <Box style={{ paddingTop: insets.top }}>
+        <SettingsHeader
           title={userWalletGroup.walletGroupId.name || "Wallet Group"}
-          leading={
-            <ArrowLeft2
-              onPress={handleBack}
-              size={24}
-              color={theme.colors.headerTextColor}
-            />
-          }
+          onBackPress={() => router.back()}
         />
       </Box>
 
@@ -422,7 +413,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <ThemedEditIcon />
+                  <ThemedEditIcon darkModeColor={theme.colors.white} lightModeColor={theme.colors.black} />
                 </Pressable>
               )}
             </Box>

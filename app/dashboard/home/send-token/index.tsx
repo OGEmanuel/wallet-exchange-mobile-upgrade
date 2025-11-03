@@ -15,6 +15,7 @@ import {
   PageWrapper,
 } from "@/components/general";
 import Box from "@/components/general/Box";
+import CryptoIcon from "@/components/general/CrptoIcon";
 import ErrorModal, { ErrorModalProps } from "@/components/general/ErrorModal";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
@@ -23,6 +24,7 @@ import { useChains } from "@/src/core/chains/chains-context";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { AppRootState } from "@/state";
 import {
   selectAssetBySupportedCurrencyId,
   selectProcessedPortfolio,
@@ -31,7 +33,7 @@ import { Theme } from "@/theme";
 import { createErrorModalProps } from "@/utils/error-handler";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { SendTransactionRequest } from "@zap/blockchain-sdk";
+import { ICurrency, SendTransactionRequest } from "@zap/blockchain-sdk";
 import { ethers } from "ethers";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Clipboard from "expo-clipboard";
@@ -107,13 +109,12 @@ const SendToken = () => {
   const processedPortfolio = useSelector(selectProcessedPortfolio);
 
   // Also try to get token using Redux selector
-  const reduxToken = useSelector((state: any) =>
+  const reduxToken = useSelector((state: AppRootState) =>
     selectAssetBySupportedCurrencyId(state, tokenId)
   );
   const [showRecentTransfers, setShowRecentTransfers] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [showWalletSelector, setShowWalletSelector] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isValidatingAddress, setIsValidatingAddress] = useState(false);
   const [addressValidationError, setAddressValidationError] = useState<
@@ -420,7 +421,7 @@ const SendToken = () => {
   };
 
   // Error handling functions
-  const showErrorModal = (error: any, context: any = {}) => {
+  const showErrorModal = (error: any, context: Record<string, any> = {}) => {
     const errorProps = createErrorModalProps(error, context);
     setErrorModal({
       visible: true,
@@ -796,14 +797,16 @@ const SendToken = () => {
           (asset: ProcessedAsset) => {
             return (
               asset.symbol.toUpperCase() ===
-                (chainToUse?.nativeCurrencyId as any)?.symbol.toUpperCase() &&
+                (
+                  chainToUse?.nativeCurrencyId as ICurrency
+                )?.symbol.toUpperCase() &&
               asset.chainSymbol.toUpperCase() ===
                 chainToUse?.symbol.toUpperCase()
             );
           }
         )?.price;
 
-        if ((chainToUse as any).isEVM) {
+        if (chainToUse?.isEVM) {
           feeData.fee = parseFloat(
             ethers.formatEther(
               BigInt(gasEstimate.gasPrice * gasEstimate.gasLimit)
@@ -1080,25 +1083,6 @@ const SendToken = () => {
 
   const closeQRScanner = () => {
     setShowQRScanner(false);
-  };
-
-  const handleWalletSelectorPress = () => {
-    setShowWalletSelector(true);
-  };
-
-  const handleWalletSelect = (walletGroup: any) => {
-    // Handle wallet selection if needed
-    setShowWalletSelector(false);
-  };
-
-  const handleManageWallets = () => {
-    setShowWalletSelector(false);
-    router.push("/dashboard/manage-wallet");
-  };
-
-  const handleAddWallet = () => {
-    setShowWalletSelector(false);
-    // TODO: Navigate to add wallet flow
   };
 
   const handleMaxAmount = () => {
@@ -1790,11 +1774,10 @@ const SendToken = () => {
                       justifyContent="center"
                       marginRight="s"
                     >
-                      {selectedToken?.image ? (
-                        <SvgUri
-                          uri={selectedToken.chainImage}
-                          width={18}
-                          height={18}
+                      {selectedToken?.chainImage ? (
+                        <CryptoIcon
+                          image={selectedToken.chainImage}
+                          size={18}
                         />
                       ) : (
                         <Box

@@ -44,7 +44,7 @@ import { useDispatch, useSelector } from "react-redux";
 const Home = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { chainsMap } = useChains();
+  const { chainsMap, getChainImage } = useChains();
   const { defaultTokens } = useSupportedCurrencies();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
@@ -250,7 +250,7 @@ const Home = () => {
 
           dispatch(setRawTokenList(userTokenList));
 
-          const processed = PortfolioService.processPortfolioData(portfolio, chainsMap, defaultTokens);
+          const processed = PortfolioService.processPortfolioData(portfolio, chainsMap, defaultTokens, getChainImage);
 
           if (!processed) {
             console.warn("⚠️ Portfolio processing was skipped or failed");

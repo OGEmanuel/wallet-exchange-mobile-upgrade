@@ -5,11 +5,7 @@
  * for all supported currencies throughout the app.
  */
 
-import {
-  IChain,
-  ICurrency,
-  ISupportedCurrency,
-} from "@zap/blockchain-sdk";
+import { IChain, ICurrency, ISupportedCurrency } from "@zap/blockchain-sdk";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
 
@@ -137,14 +133,18 @@ export const SupportedCurrenciesProvider: React.FC<
   const getSupportedCurrencyById = (
     id: string
   ): ISupportedCurrency | undefined => {
-    return supportedCurrenciesForSwap.find((currency) => currency._id === id);
+    return supportedCurrenciesForSwap.find(
+      (supportedCurrency) => supportedCurrency._id === id
+    );
   };
 
   const getSupportedCurrencyBySymbol = (
     symbol: string
   ): ISupportedCurrency | undefined => {
     return supportedCurrenciesForSwap.find(
-      (currency) => currency.symbol?.toLowerCase() === symbol.toLowerCase()
+      (supportedCurrency) =>
+        (supportedCurrency.currencyId as ICurrency)?.symbol?.toLowerCase() ===
+        symbol.toLowerCase()
     );
   };
 
@@ -152,7 +152,8 @@ export const SupportedCurrenciesProvider: React.FC<
     chainId: string
   ): ISupportedCurrency[] => {
     return supportedCurrenciesForSwap.filter(
-      (currency) => (currency.chainId as Partial<IChain>)?._id === chainId
+      (supportedCurrency) =>
+        (supportedCurrency.chainId as Partial<IChain>)?._id === chainId
     );
   };
 
@@ -160,33 +161,42 @@ export const SupportedCurrenciesProvider: React.FC<
     chainSymbol: string
   ): ISupportedCurrency[] => {
     return supportedCurrenciesForSwap.filter(
-      (currency) =>
-        (currency.chainId as Partial<IChain>)?.symbol?.toLowerCase() ===
-        chainSymbol.toLowerCase()
+      (supportedCurrency) =>
+        (
+          supportedCurrency.chainId as Partial<IChain>
+        )?.symbol?.toLowerCase() === chainSymbol.toLowerCase()
     );
   };
 
   const getStableCurrenciesForSwap = (): ISupportedCurrency[] => {
     return supportedCurrenciesForSwap.filter(
-      (currency) => (currency.currencyId as unknown as ICurrency)?.isStable
+      (supportedCurrency) =>
+        (supportedCurrency.currencyId as ICurrency)?.isStable
     );
   };
 
   const getNonStableCurrenciesForSwap = (): ISupportedCurrency[] => {
     return supportedCurrenciesForSwap.filter(
-      (currency) => !(currency.currencyId as unknown as ICurrency)?.isStable
+      (supportedCurrency) =>
+        !(supportedCurrency.currencyId as ICurrency)?.isStable
     );
   };
 
-  const searchSupportedCurrenciesForSwap = (query: string): ISupportedCurrency[] => {
+  const searchSupportedCurrenciesForSwap = (
+    query: string
+  ): ISupportedCurrency[] => {
     if (!query.trim()) return supportedCurrenciesForSwap;
 
     const searchTerm = query.toLowerCase();
     return supportedCurrenciesForSwap.filter(
-      (currency) =>
-        currency.name?.toLowerCase().includes(searchTerm) ||
-        currency.symbol?.toLowerCase().includes(searchTerm) ||
-        (currency.currencyId as Partial<ICurrency>)?.code
+      (supportedCurrency) =>
+        (supportedCurrency.currencyId as ICurrency)?.name
+          ?.toLowerCase()
+          .includes(searchTerm) ||
+        (supportedCurrency.currencyId as ICurrency)?.symbol
+          ?.toLowerCase()
+          .includes(searchTerm) ||
+        (supportedCurrency.currencyId as ICurrency)?.code
           ?.toLowerCase()
           .includes(searchTerm)
     );
