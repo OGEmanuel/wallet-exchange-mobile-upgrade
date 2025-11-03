@@ -1,4 +1,9 @@
+import storageService from "@/src/core/storage/app-storage";
+import { StorageKeys } from "@/src/core/storage/storage-types";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { CreateAccountBody } from "../../domain/entities/params/create-account-body";
 import { ICreateAddressBook } from "../../domain/entities/params/create-addressbook-body";
 import { IDeleteaddressParam } from "../../domain/entities/params/delete-address-param";
@@ -14,9 +19,49 @@ import { UpdateSettingsBody } from "../../domain/entities/params/update-settings
 import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-user-details-params";
 import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
 import { SettingsUsecases } from "../../domain/usecases/settings-usecases";
+import {
+  selectSettingState,
+  setDefaultCurrency,
+} from "../state/settings-slice";
 
 const useSettings = () => {
+  let defaultCurrency = useSelector(selectSettingState).selectedCurrency;
+  const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    (async function () {
+      // get the default currency from the local storage first
+      const item = await storageService.getItem(StorageKeys.SELECTED_CURRENCY);
+      if (item) {
+        const currency = JSON.parse(item as string) as CurrencyModel;
+        dispatch(setDefaultCurrency(currency));
+      }
+    })();
+  }, []);
+
   return {
+    defaultCurrency,
+    setDefaultCurrenct: async (currency: CurrencyModel) => {
+      dispatch(setDefaultCurrency(currency));
+      // store in local Storage
+      await storageService.setItem(
+        StorageKeys.SELECTED_CURRENCY,
+        JSON.stringify(currency)
+      );
+    },
+    getDefaultCurrency: async (): Promise<CurrencyModel | null> => {
+      if (!defaultCurrency) {
+        // get from local storage
+        const local = await storageService.get(StorageKeys.SELECTED_CURRENCY);
+        if (local) {
+          const currency = JSON.parse(local as string) as CurrencyModel;
+          dispatch(setDefaultCurrency(currency));
+          return currency;
+        }
+        return null;
+      }
+      return defaultCurrency;
+    },
     getActivities: async (payload: IActivityLogsParams) => {
       const usecase = new SettingsUsecases();
       const response = await usecase.getActivityLogs({

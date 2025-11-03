@@ -117,7 +117,9 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
+  ): Promise<
+    GeneralResponseModel<{ currencies: CurrencyModel[]; totalCount: number }>
+  > {
     return this.remoteDatasource.getCurrencies(payload);
   }
 
