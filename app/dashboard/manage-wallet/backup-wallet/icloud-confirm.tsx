@@ -1,23 +1,32 @@
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
+import { WALLET_GROUP_CLASS } from "@/configs/constants";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { createWalletGroupBackup } from "@/src/core/utils/backup-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Check, Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ICloudConfirmScreen = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { originalPassword, walletGroupId } = useLocalSearchParams<{ 
+  const { originalPassword, walletGroupId } = useLocalSearchParams<{
     originalPassword: string;
     walletGroupId: string;
   }>();
-  const { userWalletGroups, refreshPortfolio } = useWallet();
+  const { userWalletGroups, refreshPortfolio, getAddress } = useWallet();
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPasswordMatch, setIsPasswordMatch] = useState(false);
@@ -30,7 +39,9 @@ const ICloudConfirmScreen = () => {
   const handlePasswordChange = (text: string) => {
     setPassword(text);
     // Compare with the original password from the previous screen
-    const decodedOriginalPassword = originalPassword ? decodeURIComponent(originalPassword) : "";
+    const decodedOriginalPassword = originalPassword
+      ? decodeURIComponent(originalPassword)
+      : "";
     setIsPasswordMatch(text === decodedOriginalPassword && text.length > 0);
   };
 
@@ -39,27 +50,46 @@ const ICloudConfirmScreen = () => {
 
     try {
       setIsBackingUp(true);
-      
+
       // Find any wallet that belongs to this wallet group
-      const walletInGroup = userWalletGroups.find(wallet => wallet.walletGroupId?._id === walletGroupId);
+      const walletInGroup = userWalletGroups.find(
+        (wallet) => wallet.walletGroupId?._id === walletGroupId
+      );
       if (!walletInGroup) {
         Alert.alert("Error", "Wallet group not found");
         return;
       }
 
       // Get wallets in this group
-      const walletsInGroup = userWalletGroups.filter(wallet => 
-        wallet.walletGroupId?._id === walletGroupId
+      const walletsInGroup = userWalletGroups.filter(
+        (wallet) => wallet.walletGroupId?._id === walletGroupId
+      );
+
+      // Get wallet credentials
+      const walletCredentials =
+        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+          walletGroupId
+        );
+      const address = await getAddress(
+        walletCredentials?.chain || "",
+        walletsInGroup[0]?._id
       );
 
       // Prepare wallet data for backup
-      const walletData = walletsInGroup.map(wallet => ({
+      const walletData = walletsInGroup.map((wallet) => ({
         id: wallet._id,
-        name: wallet.name || `Wallet ${wallet.address?.slice(0, 6) || 'Unknown'}`,
-        address: wallet.address || 'Unknown',
-        chain: wallet.chainId?.name || "Unknown",
-        seedPhrase: wallet.seedPhrase,
-        privateKey: wallet.privateKey,
+        name:
+          wallet.name || `Wallet ${wallet.walletId?.slice(0, 6) || "Unknown"}`,
+        address: address || "Unknown",
+        chain: walletCredentials?.chain || "Unknown",
+        seedPhrase:
+          walletCredentials?.class === WALLET_GROUP_CLASS.SEEDPHRASE
+            ? walletCredentials?.credential
+            : undefined,
+        privateKey:
+          walletCredentials?.class === WALLET_GROUP_CLASS.PRIVATE_KEY
+            ? walletCredentials?.credential
+            : undefined,
       }));
 
       // Create the backup
@@ -73,10 +103,15 @@ const ICloudConfirmScreen = () => {
       if (success) {
         // Refresh portfolio to update backup status
         await refreshPortfolio();
-        
+
         // Navigate to success screen
-        console.log("🔍 iCloud Confirm - Navigating to backup complete with walletGroupId:", walletGroupId);
-        router.push(`/dashboard/manage-wallet/backup-wallet/backup-complete?walletGroupId=${walletGroupId}`);
+        console.log(
+          "🔍 iCloud Confirm - Navigating to backup complete with walletGroupId:",
+          walletGroupId
+        );
+        router.push(
+          `/dashboard/manage-wallet/backup-wallet/backup-complete?walletGroupId=${walletGroupId}`
+        );
       } else {
         Alert.alert("Error", "Failed to create backup. Please try again.");
       }
@@ -90,16 +125,10 @@ const ICloudConfirmScreen = () => {
 
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
-      <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+      <Box style={{ paddingTop: insets.top , paddingBottom: 20}}>
+        <SettingsHeader
           title="iCloud Backup"
-          leading={
-            <ArrowLeft2
-              onPress={handleBack}
-              size={24}
-              color={theme.colors.headerTextColor}
-            />
-          }
+          onBackPress={handleBack}
         />
       </Box>
 
@@ -210,7 +239,11 @@ const ICloudConfirmScreen = () => {
         {/* Complete Backup Button */}
         <Box paddingHorizontal="l" paddingBottom="xl">
           <CustomButton
-            bgColor={isPasswordMatch ? theme.colors.primaryColor : "rgba(255, 255, 255, 0.2)"}
+            bgColor={
+              isPasswordMatch
+                ? theme.colors.primaryColor
+                : "rgba(255, 255, 255, 0.2)"
+            }
             text={isBackingUp ? "Creating Backup..." : "Complete Back up"}
             onPress={handleCompleteBackup}
             width="100%"

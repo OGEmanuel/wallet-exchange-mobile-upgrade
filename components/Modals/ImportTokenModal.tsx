@@ -2,11 +2,12 @@ import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomS
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
-import { Chain } from "@/src/core/chains/chains-context";
+import { useChains } from "@/src/core/chains/chains-context";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { IChain } from "@zap/blockchain-sdk";
 import * as Clipboard from "expo-clipboard";
 import { ChevronDown, MoreHorizontal, X } from "lucide-react-native";
 import React, { useRef, useState } from "react";
@@ -32,7 +33,7 @@ interface ImportTokenModalProps {
     decimals: string;
     tokenAddress: string;
   }) => void;
-  allChains: Chain[];
+  allChains: IChain[];
   mainUserWalletGroup: any;
 }
 
@@ -44,10 +45,10 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
   mainUserWalletGroup,
 }) => {
   const theme = useTheme<Theme>();
-
+  const { getChainImage } = useChains();
   const [selectedChain, setSelectedChain] = useState(allChains?.[0] || null);
   const [selectedChainImage, setSelectedChainImage] = useState(
-    allChains?.[0]?.nativeCurrencyId?.logo || ""
+    getChainImage(allChains?.[0]?._id || "")
   );
   const [contractAddress, setContractAddress] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
@@ -126,7 +127,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       setContractAddressError("");
       // Fetch token details when valid address is entered
       if (selectedChain) {
-        fetchTokenDetails(text.trim(), selectedChain._id.toString());
+        fetchTokenDetails(text.trim(), selectedChain._id?.toString() || "");
       }
     } else {
       setContractAddressError("");
@@ -166,7 +167,7 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
       }
 
       const importResult = await zapSDKService.addToken({
-        chainId: selectedChain._id.toString(),
+        chainId: selectedChain._id?.toString() || "",
         tokenAddress: tokenAddress || contractAddress.trim(),
         userWalletGroupId: mainUserWalletGroup._id,
       });
@@ -222,14 +223,14 @@ const ImportTokenModal: React.FC<ImportTokenModalProps> = ({
     const chain = allChains.find((c) => c.symbol === chainSymbol);
     if (chain) {
       setSelectedChain(chain);
-      setSelectedChainImage(chain.nativeCurrencyId.logo);
+      setSelectedChainImage(getChainImage(chain._id || ""));
 
       // If we have a valid contract address, fetch token details for the new chain
       if (
         contractAddress.trim() &&
         validateContractAddress(contractAddress.trim())
       ) {
-        fetchTokenDetails(contractAddress.trim(), chain._id.toString());
+        fetchTokenDetails(contractAddress.trim(), chain._id?.toString() || "");
       }
     }
   };

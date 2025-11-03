@@ -6,7 +6,6 @@
  * - Order status updates → Order details screen updates
  */
 
-import { refreshPortfolio } from "@/services/portfolio.service";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -101,7 +100,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     portfolioUpdateTimeoutRef.current = setTimeout(async () => {
       try {
         // Refresh portfolio data
-        await refreshPortfolio();
+        await refreshPortfolio(mainUserWalletGroup?._id, true);
         
         // Refresh wallet groups to get updated balances
         await refreshUserWalletGroups();

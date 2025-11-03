@@ -1,7 +1,7 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -33,50 +33,50 @@ export default function HomeScreen() {
   const dollarAnimation = useRef(new Animated.Value(0)).current;
   const asteriskAnimation = useRef(new Animated.Value(0)).current;
 
-  // useEffect(() => {
-  //   // Vertical floating animations
-  //   const createFloatingAnimation = (
-  //     animValue: Animated.Value,
-  //     duration: number,
-  //     delay: number = 0
-  //   ) => {
-  //     const animate = () => {
-  //       Animated.sequence([
-  //         Animated.timing(animValue, {
-  //           toValue: -15,
-  //           duration: duration,
-  //           useNativeDriver: true,
-  //         }),
-  //         Animated.timing(animValue, {
-  //           toValue: 15,
-  //           duration: duration,
-  //           useNativeDriver: true,
-  //         }),
-  //       ]).start(() => animate());
-  //     };
-  //     setTimeout(animate, delay);
-  //   };
+  useEffect(() => {
+    // Vertical floating animations
+    const createFloatingAnimation = (
+      animValue: Animated.Value,
+      duration: number,
+      delay: number = 0
+    ) => {
+      const animate = () => {
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: -15,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 15,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+        ]).start(() => animate());
+      };
+      setTimeout(animate, delay);
+    };
 
-  //   // Cloud vertical floating animations
-  //   createFloatingAnimation(cloud1Animation, 3000, 0);
-  //   createFloatingAnimation(cloud2Animation, 3500, 1000);
-  //   createFloatingAnimation(cloud3Animation, 2800, 2000);
+    // Cloud vertical floating animations
+    createFloatingAnimation(cloud1Animation, 3000, 0);
+    createFloatingAnimation(cloud2Animation, 3500, 1000);
+    createFloatingAnimation(cloud3Animation, 2800, 2000);
 
-  //   // Start floating animations with different timings
-  //   createFloatingAnimation(handPhoneAnimation, 2000, 0);
-  //   createFloatingAnimation(bitcoinAnimation, 1800, 500);
-  //   createFloatingAnimation(dollarAnimation, 2200, 1000);
-  //   createFloatingAnimation(asteriskAnimation, 1900, 1500);
-  // }, [
-  //   cloud1Animation,
-  //   cloud2Animation,
-  //   cloud3Animation,
-  //   handPhoneAnimation,
-  //   bitcoinAnimation,
-  //   dollarAnimation,
-  //   asteriskAnimation,
-  //   screenWidth,
-  // ]);
+    // Start floating animations with different timings
+    createFloatingAnimation(handPhoneAnimation, 2000, 0);
+    createFloatingAnimation(bitcoinAnimation, 1800, 500);
+    createFloatingAnimation(dollarAnimation, 2200, 1000);
+    createFloatingAnimation(asteriskAnimation, 1900, 1500);
+  }, [
+    cloud1Animation,
+    cloud2Animation,
+    cloud3Animation,
+    handPhoneAnimation,
+    bitcoinAnimation,
+    dollarAnimation,
+    asteriskAnimation,
+    screenWidth,
+  ]);
 
   return (
     <LinearGradient

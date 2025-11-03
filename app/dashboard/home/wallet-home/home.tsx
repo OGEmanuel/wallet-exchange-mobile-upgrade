@@ -22,17 +22,17 @@ import WalletEmptyScreen from "@/components/wallet/WalletEmptyScreen";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
 import { PortfolioService } from "@/services/portfolio.service";
 import { useChains } from "@/src/core/chains/chains-context";
+import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import {
-  setAllSupportedTokens,
+  clearPortfolioData,
+  clearTokenListData,
   setPortfolioError,
   setPortfolioLoading,
   setProcessedPortfolio,
-  setProcessedTokenList,
   setRawPortfolio,
-  setRawTokenList,
+  setRawTokenList
 } from "@/state/reducers/portfolio.reducer";
 import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -44,7 +44,7 @@ import { useDispatch, useSelector } from "react-redux";
 const Home = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { walletChains } = useChains();
+  const { chainsMap, getChainImage } = useChains();
   const { defaultTokens } = useSupportedCurrencies();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
@@ -53,39 +53,160 @@ const Home = () => {
   // Redux state
   const dispatch = useDispatch();
   const processedPortfolio = useSelector(selectProcessedPortfolio);
-  const { marketTokens } = useMarket();
   const {
     retryPendingWallets,
     mainUserWalletGroup,
     portfolio,
     refreshPortfolio,
     isInitializing,
-    isAuthenticating,
     isRefreshingPortfolio,
-    isCreatingWallet,
-    currentWalletUser,
   } = useWallet();
 
-  const { getCurrentWalletBalance, getCurrentWalletEnabledBalance } =
-    useAggregatedBalances();
+  const { getCurrentWalletEnabledBalance } = useAggregatedBalances();
+
+  // Clear Redux portfolio state immediately when wallet changes
+  // This ensures stale balance data doesn't show when switching wallets
+  const prevWalletIdRef = React.useRef<string | undefined>(
+    mainUserWalletGroup?._id
+  );
+
+  useEffect(() => {
+    const currentWalletId = mainUserWalletGroup?._id;
+    const prevWalletId = prevWalletIdRef.current;
+
+    // Only clear if wallet actually changed (not just on mount)
+    if (currentWalletId && prevWalletId && currentWalletId !== prevWalletId) {
+      console.log(
+        `🔄 Wallet changed from ${prevWalletId} to ${currentWalletId} - clearing Redux portfolio state`
+      );
+      // Clear Redux state immediately when wallet changes
+      dispatch(clearPortfolioData());
+      dispatch(clearTokenListData());
+    }
+
+    // Update ref to current wallet ID
+    prevWalletIdRef.current = currentWalletId;
+  }, [mainUserWalletGroup?._id, dispatch]);
 
   // Initialize wallet and portfolio on mount only
+  // Track the wallet ID to prevent duplicate refreshes during switching
+  const initializingWalletIdRef = React.useRef<string | undefined>(undefined);
+  const lastProcessedWalletIdRef = React.useRef<string | undefined>(undefined);
+  const retryPendingWalletsCalledRef = React.useRef<Set<string>>(new Set()); // Track which wallets have had retryPendingWallets called
+
   useEffect(() => {
     const initializeWallet = async () => {
+      const currentWalletId = mainUserWalletGroup?._id;
+
+      // Basic guard: Skip if no wallet or already initializing this exact wallet
       if (
-        mainUserWalletGroup &&
-        !isInitializing &&
-        !isAuthenticating &&
-        !isCreatingWallet
+        !mainUserWalletGroup ||
+        !currentWalletId ||
+        initializingWalletIdRef.current === currentWalletId
       ) {
-        console.log("🚀 Initializing wallet and portfolio");
-        await retryPendingWallets();
-        await refreshPortfolio();
+        console.log("⏸️ Skipping initialization (basic guards):", {
+          hasWallet: !!mainUserWalletGroup,
+          currentWalletId,
+          alreadyInitializing:
+            initializingWalletIdRef.current === currentWalletId,
+        });
+        return;
+      }
+
+      // Mark this wallet as being initialized to prevent duplicate calls
+      initializingWalletIdRef.current = currentWalletId;
+
+      console.log("🚀 Initializing wallet for:", currentWalletId);
+
+      try {
+        // Check if this is a newly created wallet that needs accounts added
+        // Newly created wallets will have accounts pending
+        let hasPendingAccounts = false;
+        try {
+          const accountsPendingWallets =
+            await WalletCredentialsStorage.getAccountsPendingWallets();
+          hasPendingAccounts = accountsPendingWallets.some(
+            (w) => w.userWalletGroupId === currentWalletId
+          );
+          console.log("🔍 Checked for pending accounts:", {
+            currentWalletId,
+            hasPendingAccounts,
+            pendingWalletsCount: accountsPendingWallets.length,
+          });
+        } catch (error) {
+          console.error("Failed to check pending accounts:", error);
+        }
+
+        // Call retryPendingWallets if:
+        // 1. Wallet has pending accounts (newly created), OR
+        // 2. We haven't called it for this wallet yet
+        const shouldCallRetry =
+          hasPendingAccounts ||
+          !retryPendingWalletsCalledRef.current.has(currentWalletId);
+
+        if (shouldCallRetry) {
+          console.log(
+            "🔄 Calling retryPendingWallets for wallet:",
+            currentWalletId,
+            {
+              hasPendingAccounts,
+              alreadyCalled:
+                retryPendingWalletsCalledRef.current.has(currentWalletId),
+            }
+          );
+          retryPendingWalletsCalledRef.current.add(currentWalletId);
+          // Force execution for newly created wallets to ensure accounts are added immediately
+          await retryPendingWallets(hasPendingAccounts);
+          console.log(
+            "✅ retryPendingWallets completed - accounts should now be on backend"
+          );
+        } else {
+          console.log(
+            "⏭️ Skipping retryPendingWallets - already called for wallet:",
+            currentWalletId
+          );
+        }
+
+        // Only refresh portfolio if we haven't processed this wallet yet
+        // switchWallet should handle loading from cache
+        if (lastProcessedWalletIdRef.current !== currentWalletId) {
+          console.log("🔄 Refreshing portfolio for wallet:", currentWalletId);
+          await refreshPortfolio(currentWalletId);
+          lastProcessedWalletIdRef.current = currentWalletId;
+        } else {
+          console.log(
+            "⏭️ Skipping portfolio refresh - already processed wallet:",
+            currentWalletId
+          );
+        }
+      } catch (error) {
+        console.error("❌ Error during wallet initialization:", error);
+      } finally {
+        // Reset initialization flag after a delay
+        setTimeout(() => {
+          if (initializingWalletIdRef.current === currentWalletId) {
+            initializingWalletIdRef.current = undefined;
+          }
+        }, 1000);
       }
     };
 
-    initializeWallet();
-  }, [mainUserWalletGroup]);
+    // Small delay to allow switchWallet to complete first
+    const timeoutId = setTimeout(() => {
+      initializeWallet();
+    }, 200);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mainUserWalletGroup?._id]);
+
+  useEffect(() => {
+    const currentWalletId = mainUserWalletGroup?._id;
+    if (currentWalletId) {
+      // Only keep track of current wallet, clear others to save memory
+      retryPendingWalletsCalledRef.current = new Set([currentWalletId]);
+    }
+  }, [mainUserWalletGroup?._id]);
 
   // Prevent back navigation to setup screen
   useEffect(() => {
@@ -104,7 +225,10 @@ const Home = () => {
   const onRefresh = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      await refreshPortfolio();
+      const currentWalletId = mainUserWalletGroup?._id;
+      if (currentWalletId) {
+        await refreshPortfolio(currentWalletId, true);
+      }
       // Portfolio processing will happen automatically when portfolio data changes
     } catch (error) {
       console.error("Failed to refresh portfolio:", error);
@@ -115,22 +239,18 @@ const Home = () => {
 
   // Process portfolio data when it changes and store in Redux with caching
   useEffect(() => {
-    if (portfolio?.mainWalletGroupPortfolio) {
+    if (portfolio?.mainWalletGroupPortfolio && defaultTokens && chainsMap) {
       const processPortfolio = async () => {
         try {
-          let userTokenList = portfolio.userTokenList || [];
-          if (userTokenList.data && userTokenList.data.length > 0) {
-            userTokenList = userTokenList.data;
-          }
           dispatch(setPortfolioLoading(true));
           dispatch(setPortfolioError(null));
+          let userTokenList = PortfolioService.normalizeUserTokenList(
+            portfolio.userTokenList
+          );
+
           dispatch(setRawTokenList(userTokenList));
 
-          // Process with safe service to prevent multiple simultaneous processing
-          const processed = PortfolioService.processPortfolioData(
-            portfolio,
-            marketTokens || []
-          );
+          const processed = PortfolioService.processPortfolioData(portfolio, chainsMap, defaultTokens, getChainImage);
 
           if (!processed) {
             console.warn("⚠️ Portfolio processing was skipped or failed");
@@ -138,21 +258,11 @@ const Home = () => {
             return;
           }
 
-          // Process token list with balances and chain info
-          const processedTokens = PortfolioService.processTokenList(
-            portfolio,
-            walletChains,
-            defaultTokens,
-            marketTokens || []
-          );
-
-          console.log("🔍 Sample processed token:", processedTokens?.[0]);
+          console.log(processed.assets.filter(asset => asset.symbol === 'USDT'));
 
           // Store in Redux
           dispatch(setRawPortfolio(portfolio));
           dispatch(setProcessedPortfolio(processed));
-          dispatch(setProcessedTokenList(processedTokens));
-          dispatch(setAllSupportedTokens(processedTokens)); // For backward compatibility
         } catch (error) {
           console.error("Failed to process portfolio data:", error);
           dispatch(setPortfolioError("Failed to process portfolio data"));
@@ -162,8 +272,22 @@ const Home = () => {
       };
 
       processPortfolio();
+    } else if (portfolio === null) {
+      // Clear Redux state when portfolio is null (e.g., when switching wallets)
+      console.log("🧹 Portfolio is null, clearing Redux state");
+      dispatch(clearPortfolioData());
+      dispatch(clearTokenListData());
+    } else {
+      // Portfolio exists but missing mainWalletGroupPortfolio structure
+      console.warn(
+        "⚠️ Portfolio exists but missing mainWalletGroupPortfolio:",
+        {
+          hasPortfolio: !!portfolio,
+          hasMainWalletGroupPortfolio: !!portfolio?.mainWalletGroupPortfolio,
+        }
+      );
     }
-  }, [portfolio]);
+  }, [portfolio, dispatch, defaultTokens, chainsMap]);
 
   // Portfolio loading is now handled in the initialization useEffect above
 
@@ -415,14 +539,22 @@ const Home = () => {
         <Box flex={0.4} paddingHorizontal="m">
           <AssetsSection
             mainUserWalletGroup={mainUserWalletGroup}
-            onRefreshPortfolio={refreshPortfolio}
+            onRefreshPortfolio={() => {
+              const currentWalletId = mainUserWalletGroup?._id;
+              if (currentWalletId) {
+                refreshPortfolio(currentWalletId);
+              }
+            }}
             onManagePress={() => {
               // Navigate to manage assets page
             }}
             onRetry={async () => {
               try {
                 dispatch(setPortfolioError(null));
-                await refreshPortfolio();
+                const currentWalletId = mainUserWalletGroup?._id;
+                if (currentWalletId) {
+                  await refreshPortfolio(currentWalletId);
+                }
               } catch (err) {
                 console.error("Failed to retry portfolio:", err);
                 dispatch(setPortfolioError("Failed to refresh portfolio"));

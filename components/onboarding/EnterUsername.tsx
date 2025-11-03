@@ -1,11 +1,8 @@
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
-import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { Box, CustomButton, CustomText } from "../general";
 import FindZapOption from "./FindZapOption";
@@ -18,42 +15,53 @@ export default function EnterUsername({
   onUsernameSuccess,
 }: EnterUsernameProps) {
   const theme = useTheme<Theme>();
-  const { completeOnboarding } = useWallet();
-  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { completeOnboarding, currentExchangeUser, exchangeUserData } = useWallet();
   const [username, setUsername] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [userSource, setUserSource] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { addUsername, fetchUserById } = useKyc();
 
   const handleSubmitUsername = async () => {
-    if (!username.trim() || !user?._id) return;
+    if (!username.trim()) {
+      setError("Username is required");
+      return;
+    }
+
+    // Get user ID from available sources
+    const userId = currentExchangeUser || exchangeUserData?._id || null;
+    
+    if (!userId) {
+      setError("User ID is required. Please verify your email first.");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
-    console.log(`payload: ${username}, ${referralCode}, ${userSource}`);
+    console.log(`Complete onboarding payload: userId=${userId}, username=${username}, userSource=${userSource}, referralCode=${referralCode}`);
     try {
-      const response = await addUsername({
+      const result = await completeOnboarding({
         username: username.trim(),
-        userSource: userSource,
-        referralCode: referralCode.trim(),
+        userSource: userSource || null,
+        referralCode: referralCode.trim() || null,
+        userId: userId,
       });
 
-      const userResponse = await fetchUserById(user);
-      const exchangeUser = userResponse.data;
-
-      console.log("Exchange user:", exchangeUser);
-      if (exchangeUser?.username) {
-        // onUsernameSuccess?.(username.trim());
+      if (result.success) {
+        // Onboarding succeeded - the username was submitted successfully
+        // Even if the user object doesn't immediately show the username,
+        // we should proceed since the backend accepted it
+        console.log("Onboarding completed successfully");
+        onUsernameSuccess?.(username.trim());
         router.push("/dashboard/home/wallet-home/swap");
       } else {
-        setError(response.message);
+        setError(result.message || "Failed to complete onboarding");
       }
     } catch (err) {
-      console.error("Error adding username:", err);
-      setError("Username is already taken or an error occurred");
+      console.error("Error completing onboarding:", err);
+      const errorMessage = err instanceof Error ? err.message : "Username is already taken or an error occurred";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

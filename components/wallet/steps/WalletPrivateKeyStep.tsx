@@ -43,6 +43,7 @@ export const WalletPrivateKeyStep: React.FC<WalletPrivateKeyStepProps> = ({
     walletChains,
     isLoading: loadingChains,
     getChainBySymbol,
+    getChainImage,
   } = useChains();
   const [privateKey, setPrivateKey] = useState(walletData.privateKey || "");
   const [selectedChain, setSelectedChain] = useState(walletData.chain || "SOL");
@@ -242,13 +243,13 @@ export const WalletPrivateKeyStep: React.FC<WalletPrivateKeyStepProps> = ({
                   "🔍 Rendering ChainLogo for:",
                   selectedChain,
                   getChainLabel(selectedChain),
-                  chain?.nativeCurrencyId?.logo
+                  getChainImage(chain?._id || "")
                 );
                 return (
                   <ChainLogo
                     symbol={selectedChain}
                     name={getChainLabel(selectedChain)}
-                    logoUrl={chain?.nativeCurrencyId?.logo}
+                    logoUrl={getChainImage(chain?._id || "")}
                     width={32}
                     height={32}
                     style={{ marginRight: theme.spacing.m }}

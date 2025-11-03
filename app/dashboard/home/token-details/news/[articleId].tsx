@@ -2,10 +2,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Bell, Star } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Image,
-  Pressable,
-  ScrollView,
-  StatusBar,
+    Image,
+    Pressable,
+    ScrollView,
+    StatusBar,
 } from "react-native";
 import { useSelector } from "react-redux";
 
@@ -16,7 +16,7 @@ import PageWrapper from "@/components/general/PageWrapper";
 import ZapLoader from "@/components/general/ZapLoader";
 import { formatDate } from "@/src/core/utils/format-utils";
 import { AppRootState } from "@/state";
-import { selectTokenBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
+import { selectAssetBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { SvgUri } from "react-native-svg";
 
@@ -99,7 +99,7 @@ const ArticlePage = () => {
 
   // Redux state
   const selectedToken = useSelector((state: AppRootState) =>
-    selectTokenBySupportedCurrencyId(state, tokenId as string)
+    selectAssetBySupportedCurrencyId(state, tokenId as string)
   );
 
   const [isLoading, setIsLoading] = useState(false);

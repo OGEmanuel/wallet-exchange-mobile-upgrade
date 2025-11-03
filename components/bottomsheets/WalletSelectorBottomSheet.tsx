@@ -46,8 +46,11 @@ const WalletSelectorBottomSheet = ({
   const theme = useTheme<Theme>();
 
   const { userWalletGroups, portfolio, removeWalletGroup } = useWallet();
-  const { getEnhancedWalletGroups, getTotalPortfolioValue, isLoading: isBalancesLoading } =
-    useAggregatedBalances();
+  const {
+    getEnhancedWalletGroups,
+    getTotalPortfolioValue,
+    isLoading: isBalancesLoading,
+  } = useAggregatedBalances();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
@@ -62,10 +65,29 @@ const WalletSelectorBottomSheet = ({
   const portfolioValue = `$${totalPortfolioValue.toFixed(2)}`;
 
   // Use cached aggregated balances instead of manual calculation
+  // Fallback to userWalletGroups if enhancedWalletGroups is empty (e.g., during wallet switching)
+  // Always ensure we have wallet groups to display, even during transitions
   const enhancedWalletGroups = getEnhancedWalletGroups();
 
+  // Prioritize enhancedWalletGroups (with balances), but always fallback to userWalletGroups
+  // This ensures wallets are always visible even when balances haven't been calculated yet
+  const walletGroupsToUse =
+    enhancedWalletGroups.length > 0
+      ? enhancedWalletGroups
+      : userWalletGroups && userWalletGroups.length > 0
+      ? userWalletGroups
+      : [];
+
+  // If we still don't have any wallet groups, show empty state
+  if (
+    walletGroupsToUse.length === 0 &&
+    (!userWalletGroups || userWalletGroups.length === 0)
+  ) {
+    // Return empty list - this shouldn't happen but handle gracefully
+  }
+
   // Process wallet groups with aggregated balances
-  const processedWalletGroups = enhancedWalletGroups.reduce(
+  const processedWalletGroups = walletGroupsToUse.reduce(
     (groupsMap: Map<string, any>, userWalletGroup: any) => {
       const walletGroupId = userWalletGroup.walletGroupId?._id;
       const walletGroupName =
@@ -78,8 +100,9 @@ const WalletSelectorBottomSheet = ({
         walletInfo?.name ||
         `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
 
-      // Use aggregated balance instead of manual calculation
-      const totalValue = userWalletGroup.aggregatedBalance || 0;
+      // Use aggregated balance if available (from enhancedWalletGroups), otherwise 0
+      // This handles the case when using raw userWalletGroups during wallet switching
+      const totalValue = userWalletGroup.aggregatedBalance ?? 0;
       const formattedValue = `$${totalValue.toFixed(2)}`;
 
       // If this wallet group doesn't exist in our map, create it
@@ -114,10 +137,13 @@ const WalletSelectorBottomSheet = ({
   ).map((group) => {
     const groupData = group as any;
     // Calculate total value for the group using aggregated balances
-    const totalValue = (groupData.wallets as any[]).reduce((sum: number, wallet: any) => {
-      const value = parseFloat(wallet.balance.replace("$", "")) || 0;
-      return sum + value;
-    }, 0);
+    const totalValue = (groupData.wallets as any[]).reduce(
+      (sum: number, wallet: any) => {
+        const value = parseFloat(wallet.balance.replace("$", "")) || 0;
+        return sum + value;
+      },
+      0
+    );
 
     return {
       ...groupData,
@@ -542,7 +568,12 @@ const WalletSelectorBottomSheet = ({
           <CustomButton
             bgColor={theme.colors.primaryColor}
             text="Add New Wallet"
-            leadingIcon={<ThemedAddIcon />}
+            leadingIcon={
+              <ThemedAddIcon
+                darkModeColor={theme.colors.white}
+                lightModeColor={theme.colors.black}
+              />
+            }
             onPress={handleAddWalletPress}
             width="100%"
             borderRadius={50}

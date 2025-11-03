@@ -6,21 +6,15 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
-import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { SettingsModel } from "@/src/modules/settings/domain/entities/models/Settings-model";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import {
-  selectSettingState,
-  setSettings,
-} from "@/src/modules/settings/presentation/state/settings-slice";
-import { selectUser } from "@/state/reducers/kyc-reducer";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { UpdateSettingsBody } from "@/src/modules/settings/domain/entities/params/update-settings-body";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { InfoCircle } from "iconsax-react-nativejs";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Switch } from "react-native";
-import { useDispatch, useSelector } from "react-redux";
 
 const NotificationCard = ({
   title,
@@ -63,7 +57,7 @@ const NotificationCard = ({
       </Box>
       {isWaitlist && (
         <Box width="100%" flexDirection="row" alignItems="center">
-          <CustomText>Watchlist Threashold</CustomText>
+          <CustomText>Watchlist Threshold</CustomText>
           <InfoCircle
             size={24}
             color={theme.colors.bodyTextColor}
@@ -89,69 +83,126 @@ const NotificationCard = ({
 };
 
 const Notifications = () => {
-  const [isSaving, setIsSaving] = useState(false);
-  const [show, setShow] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const { settings } = useSelector(selectSettingState);
-  const user = useSelector(selectUser);
-  const { getSettings, updateSettings } = useSettings();
-  const dispatch = useDispatch();
   const theme = useTheme<Theme>();
-  const [settingsState, setSettingsState] = useState<SettingsModel>(
-    {} as SettingsModel
-  );
+  const { currentExchangeUser } = useWallet();
+  const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Notification preferences state
+  const [preferences, setPreferences] = useState<UpdateSettingsBody>({
+    push: false,
+    email: false,
+    priceAlert: false,
+    watchlist: false,
+    watchlistTreshHold: 0,
+    userId: "",
+  });
 
-  React.useEffect(() => {
-    if (settings) {
-      // Sync local state with store settings when available
-      setSettingsState(settings as SettingsModel);
-      setShow(true);
-      return;
-    }
-    if (user?._id) {
+  // Fetch notification preferences on mount
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      if (!currentExchangeUser) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
-      (async () => {
-        try {
-          const response = await getSettings({
-            params: { user: user as UserModel },
+      setError(null);
+      try {
+        const data = await zapSDKService.getNotificationPreferences({
+          userId: currentExchangeUser,
+        });
+
+        if (data) {
+          setPreferences({
+            push: data.push ?? false,
+            email: data.email ?? false,
+            priceAlert: data.priceAlert ?? false,
+            watchlist: data.watchlist ?? false,
+            watchlistTreshHold: data.watchlistTreshHold ?? 0,
+            transaction: data.transaction ?? false,
+            marketing: data.marketing ?? false,
+            twoFA: data.twoFA ?? false,
+            userId: currentExchangeUser,
           });
-          const { _id, __v, ...rest } = response.data as SettingsModel;
-          setSettingsState({ ...rest } as SettingsModel);
-          setShow(true);
-        } catch (e) {
-          // Optionally handle error state here
-        } finally {
-          setLoading(false);
         }
-      })();
-    }
-  }, [settings, user?._id]);
+      } catch (err: any) {
+        console.error("Failed to fetch notification preferences:", err);
+        setError(err?.message || "Failed to load notification preferences");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPreferences();
+  }, [currentExchangeUser]);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const payload: SettingsModel = {
-        ...(settings ?? settingsState),
-        userId: user?._id as string,
-      } as SettingsModel;
+    if (!currentExchangeUser) {
+      setError("User not authenticated");
+      return;
+    }
 
-      const response = await updateSettings({
-        params: { user: user as UserModel },
-        body: payload,
+    setIsSaving(true);
+    setError(null);
+    try {
+      const payload: UpdateSettingsBody = {
+        ...preferences,
+        userId: currentExchangeUser,
+      };
+
+      const result = await zapSDKService.updateNotificationPreferences({
+        userId: currentExchangeUser,
+        notificationPreferences: payload,
       });
 
-      const { _id, __v, ...rest } = response.data as SettingsModel;
-      setSettingsState((prev) => ({ ...prev, ...rest } as SettingsModel));
-      dispatch(setSettings({ ...rest } as SettingsModel));
-    } catch (error) {
-      // Optionally handle error (e.g., show toast)
+      if (result) {
+        // Update local state with the response
+        setPreferences({
+          push: result.push ?? preferences.push,
+          email: result.email ?? preferences.email,
+          priceAlert: result.priceAlert ?? preferences.priceAlert,
+          watchlist: result.watchlist ?? preferences.watchlist,
+          watchlistTreshHold: result.watchlistTreshHold ?? preferences.watchlistTreshHold,
+          transaction: result.transaction ?? preferences.transaction,
+          marketing: result.marketing ?? preferences.marketing,
+          twoFA: result.twoFA ?? preferences.twoFA,
+          userId: currentExchangeUser,
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to update notification preferences:", err);
+      setError(err?.message || "Failed to save notification preferences");
     } finally {
       setIsSaving(false);
     }
   };
+
+  const updatePreference = (key: keyof UpdateSettingsBody, value: boolean | number) => {
+    setPreferences((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  if (!currentExchangeUser) {
+    return (
+      <PageWrapper>
+        <SettingsHeader title="Notifications" onBackPress={() => router.back()} />
+        <Box flex={1} alignItems="center" justifyContent="center">
+          <CustomText variant="body" color="error">
+            Please login to manage notification preferences
+          </CustomText>
+        </Box>
+      </PageWrapper>
+    );
+  }
+
   return (
     <PageWrapper>
       <SettingsHeader title="Notifications" onBackPress={() => router.back()} />
+      
       {loading && (
         <Box
           width="100%"
@@ -162,76 +213,61 @@ const Notifications = () => {
           <ActivityIndicator size="small" color={theme.colors.primaryColor} />
         </Box>
       )}
-      {!loading && show && (
+
+      {error && (
+        <Box paddingHorizontal="m" paddingVertical="s">
+          <CustomText variant="body" color="error" fontSize={14}>
+            {error}
+          </CustomText>
+        </Box>
+      )}
+
+      {!loading && (
         <>
           <Box paddingHorizontal="m" pt="l" flex={1}>
             <NotificationCard
               title="Watchlist Settings"
               description="Get notified daily about price changes happening in the market."
-              isActive={Boolean((settings?.watchlist ?? settingsState.watchlist) ?? false)}
+              isActive={Boolean(preferences.watchlist ?? false)}
               onPress={() => {
-                const current = (settings?.watchlist ?? settingsState.watchlist) ?? false;
-                if (settings) {
-                  dispatch(setSettings({ ...settings, watchlist: !current }));
-                } else {
-                  setSettingsState((prev) => ({ ...prev, watchlist: !current } as SettingsModel));
-                }
+                updatePreference("watchlist", !preferences.watchlist);
               }}
               isWaitlist={true}
-              threshold={String((settings?.watchlistTreshHold ?? settingsState.watchlistTreshHold ?? 0))}
+              threshold={String(preferences.watchlistTreshHold ?? 0)}
               onThresholdChange={(val) => {
                 const num = Number(val);
                 const safe = Number.isFinite(num) ? num : 0;
-                if (settings) {
-                  dispatch(setSettings({ ...settings, watchlistTreshHold: safe }));
-                } else {
-                  setSettingsState((prev) => ({ ...prev, watchlistTreshHold: safe } as SettingsModel));
-                }
+                updatePreference("watchlistTreshHold", safe);
               }}
             />
 
             <NotificationCard
               title="Price Alerts"
               description="Enable price alerts to stay informed when the price reaches your desired level."
-              isActive={Boolean((settings?.priceAlert ?? settingsState.priceAlert) ?? false)}
+              isActive={Boolean(preferences.priceAlert ?? false)}
               isWaitlist={false}
               onPress={() => {
-                const current = (settings?.priceAlert ?? settingsState.priceAlert) ?? false;
-                if (settings) {
-                  dispatch(setSettings({ ...settings, priceAlert: !current }));
-                } else {
-                  setSettingsState((prev) => ({ ...prev, priceAlert: !current } as SettingsModel));
-                }
+                updatePreference("priceAlert", !preferences.priceAlert);
               }}
             />
 
             <NotificationCard
               title="Push Notifications"
               description="Enable push notifications to stay informed when the price reaches your desired level."
-              isActive={Boolean((settings?.push ?? settingsState.push) ?? false)}
+              isActive={Boolean(preferences.push ?? false)}
               isWaitlist={false}
               onPress={() => {
-                const current = (settings?.push ?? settingsState.push) ?? false;
-                if (settings) {
-                  dispatch(setSettings({ ...settings, push: !current }));
-                } else {
-                  setSettingsState((prev) => ({ ...prev, push: !current } as SettingsModel));
-                }
+                updatePreference("push", !preferences.push);
               }}
             />
 
             <NotificationCard
               title="Email Notifications"
               description="Enable email notifications to stay informed when the price reaches your desired level."
-              isActive={Boolean((settings?.email ?? settingsState.email) ?? false)}
+              isActive={Boolean(preferences.email ?? false)}
               isWaitlist={false}
               onPress={() => {
-                const current = (settings?.email ?? settingsState.email) ?? false;
-                if (settings) {
-                  dispatch(setSettings({ ...settings, email: !current }));
-                } else {
-                  setSettingsState((prev) => ({ ...prev, email: !current } as SettingsModel));
-                }
+                updatePreference("email", !preferences.email);
               }}
             />
           </Box>

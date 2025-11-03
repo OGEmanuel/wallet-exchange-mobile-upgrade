@@ -3,6 +3,11 @@ import { createTheme } from "@shopify/restyle";
 const COLOR_PALLET = {
   primaryColor: "#6045FF",
   fadedPrimary: "#A0BDF9",
+  placeholderTextColor: "#A7A7AF",
+  usernamePlaceholderTextColor: "#60617D",
+  secondaryColor: "#C7E64D",
+  modalBackgroundColor: "#1F232D",
+
   mainBackgroundColor: "#FFFFFF",
   secondaryBackgroundColor: "#F9F9F9",
   headerTextColor: "#121212",
@@ -24,10 +29,6 @@ const COLOR_PALLET = {
   warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
-  placeholderTextColor: "#A7A7AF",
-  usernamePlaceholderTextColor: "#60617D",
-  secondaryColor: "#C7E64D",
-  modalBackgroundColor: "#1F232D",
   pendingColor: "#EDB118",
   // Portfolio colors
   portfolioLabelColor: "rgba(255,255,255,0.7)",
@@ -48,6 +49,11 @@ const COLOR_PALLET = {
 const DARK_COLOR_PALLET = {
   primaryColor: "#6045FF",
   fadedPrimary: "#A0BDF9",
+  placeholderTextColor: "#A7A7AF",
+  usernamePlaceholderTextColor: "#60617D",
+  secondaryColor: "#C7E64D",
+  modalBackgroundColor: "#1F232D",
+
   mainBackgroundColor: "#131722",
   secondaryBackgroundColor: "#2F333D",
   headerTextColor: "#FBFBFB",
@@ -69,10 +75,6 @@ const DARK_COLOR_PALLET = {
   warningBackgroundColor: "#57522033",
   tabBarActiveColor: "#C7E64D",
   fadedPrimaryColor: "#CFD1FF",
-  placeholderTextColor: "#A7A7AF",
-  usernamePlaceholderTextColor: "#60617D",
-  secondaryColor: "#C7E64D",
-  modalBackgroundColor: "#1F232D",
   pendingColor: "#EDB118",
   // Portfolio colors
   portfolioLabelColor: "rgba(255,255,255,0.7)",
