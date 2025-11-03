@@ -9,8 +9,6 @@ import {
   disable2FACodeEndpoint,
   fetchNotificationPreferenceEndpoint,
   generate2FASecretDataEndpoint,
-  getActivityLogsEndpoint,
-  getAvatarsEndpoint,
   getFaqEndpoint,
   updateNotificationPreferenceEndpoint,
   updateUserDetailsEndpoint,
@@ -21,12 +19,12 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
+import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AccountModel } from "../../domain/entities/models/Account-model";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
 import { ActivityLogModel } from "../../domain/entities/models/activity-log-model";
-import { IAvatar } from "../../domain/entities/models/avatar-model";
 import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
 import { CountryModel } from "../../domain/entities/models/country-model";
@@ -48,26 +46,39 @@ import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-
 import { SettingsRemoteDataSource } from "./settings-remote-datasource";
 
 export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
+  private sdk = zapSDKService.getSDK();
   async activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
   ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
-    const response = await httpClient.get(
-      getActivityLogsEndpoint(payload?.params?.user),
-      {
-        page: payload?.params?.page,
-        limit: payload?.params?.limit,
-      }
-    );
+    // const response = await httpClient.get(
+    //   getActivityLogsEndpoint(payload?.params?.user),
+    //   {
+    //     page: payload?.params?.page,
+    //     limit: payload?.params?.limit,
+    //   }
+    // );
+
+    const response = await this.sdk.exchangeActivities.getUserActivities({
+      userId: payload.params?.user?._id,
+    });
 
     return response.data as GeneralResponseModel<ActivityLogModel[]>;
   }
 
   async getAvatars(
     payload: GeneralRequestModel<unknown, unknown, unknown>
-  ): Promise<GeneralResponseModel<IAvatar[]>> {
-    const response = await httpClient.get(getAvatarsEndpoint);
-
-    return response.data as GeneralResponseModel<IAvatar[]>;
+  ): Promise<GeneralResponseModel<any[]>> {
+    const response = await this.sdk.avatars.getAll();
+    console.log(response);
+    const res: GeneralResponseModel<any[]> = {
+      data: response,
+      token: "",
+      refreshToken: "",
+      message: "",
+      error: "",
+      success: true,
+    };
+    return res as GeneralResponseModel<any[]>;
   }
 
   async updateUser(
@@ -159,13 +170,16 @@ export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
+  ): Promise<
+    GeneralResponseModel<{ currencies: CurrencyModel[]; totalCount: number }>
+  > {
     const response = await httpClient.get(currenciesEndpoint, {
       limit: payload.params?.limit,
       offset: payload.params?.offset,
     });
     return response.data as GeneralResponseModel<{
       currencies: CurrencyModel[];
+      totalCount: number;
     }>;
   }
 

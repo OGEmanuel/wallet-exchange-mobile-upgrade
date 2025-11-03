@@ -1,13 +1,13 @@
-import { Theme } from '@/theme';
-import { useTheme } from '@shopify/restyle';
-import { WifiOff } from 'lucide-react-native';
-import React from 'react';
-import { Dimensions } from 'react-native';
-import { Box } from './Box';
-import { CustomButton } from './CustomButton';
-import { CustomText } from './CustomText';
+import { Theme } from "@/theme";
+import { useTheme } from "@shopify/restyle";
+import { WifiOff } from "lucide-react-native";
+import React from "react";
+import { Dimensions } from "react-native";
+import Box from "./Box";
+import CustomButton from "./CustomButton";
+import CustomText from "./CustomText";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 interface InternetConnectionModalProps {
   visible: boolean;
@@ -31,10 +31,12 @@ export default function InternetConnectionModal({
       left={0}
       right={0}
       bottom={0}
-      backgroundColor="rgba(0, 0, 0, 0.8)"
       justifyContent="center"
       alignItems="center"
       zIndex={9999}
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+      }}
     >
       <Box
         backgroundColor="modalBackgroundColor"
@@ -83,7 +85,7 @@ export default function InternetConnectionModal({
           lineHeight={22}
           marginBottom="xl"
         >
-          You are not connected to the internet.{'\n'}
+          You are not connected to the internet.{"\n"}
           Reconnect and try again
         </CustomText>
 
@@ -100,7 +102,7 @@ export default function InternetConnectionModal({
               color="white"
             />
           )}
-          
+
           {onDismiss && (
             <CustomButton
               text="Dismiss"

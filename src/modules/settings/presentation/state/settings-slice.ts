@@ -1,3 +1,4 @@
+import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AppRootState } from "@/state";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
@@ -15,6 +16,7 @@ interface SettingsState {
   activeBank: BankModel | null;
   activeCurrency: string | null;
   settings: SettingsModel | null;
+  selectedCurrency: CurrencyModel | null;
 }
 
 const initialState: SettingsState = {
@@ -28,6 +30,7 @@ const initialState: SettingsState = {
   activeBank: null,
   activeCurrency: null,
   settings: null,
+  selectedCurrency: null,
 };
 
 const settingsSlice = createSlice({
@@ -50,6 +53,9 @@ const settingsSlice = createSlice({
     setSettings: (state, action: PayloadAction<SettingsModel>) => {
       state.settings = action.payload;
     },
+    setDefaultCurrency: (state, action: PayloadAction<CurrencyModel>) => {
+      state.selectedCurrency = action.payload;
+    },
     // Add your reducers here
     // Example:
     // setData: (state, action: PayloadAction<unknown[]>) => {
@@ -70,6 +76,7 @@ export const {
   setActiveBank,
   setActiveCurrency,
   setSettings,
+  setDefaultCurrency,
 } = settingsSlice.actions;
 export const selectBiometricEnabled = (state: AppRootState) =>
   state.settings.biometricEnabled;

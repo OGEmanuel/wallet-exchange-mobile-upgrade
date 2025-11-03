@@ -17,8 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface WalletPinSetupStepProps {
-  walletData: WalletFlowData;
-  isLoading: boolean;
+  walletData?: WalletFlowData;
+  isLoading?: boolean;
   onBack?: () => void;
   onContinue: () => void;
   onUpdateData: (data: Partial<WalletFlowData>) => void;
@@ -93,8 +93,9 @@ export const WalletPinSetupStep: React.FC<WalletPinSetupStepProps> = ({
 
     // If we're in confirm mode, check if PINs match
     const actualConfirmPin = currentConfirmPin || confirmPin;
-    const doPinsMatch = pin === actualConfirmPin && actualConfirmPin.length === 4;
-    
+    const doPinsMatch =
+      pin === actualConfirmPin && actualConfirmPin.length === 4;
+
     if (!doPinsMatch) {
       setPinError("PINs do not match");
       return;

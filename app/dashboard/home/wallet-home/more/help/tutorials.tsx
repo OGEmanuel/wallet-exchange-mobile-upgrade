@@ -1,24 +1,61 @@
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { Box, CustomText, PageWrapper } from "@/components/general";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback, useState } from "react";
+import { Alert } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import YoutubePlayer from "react-native-youtube-iframe";
 
-const ItemCards = () => {
+interface IProps {
+  youtubeLink: string;
+  title: string;
+}
+
+const items: IProps[] = [
+  {
+    youtubeLink: "s4_-SofCty4",
+    title: "Swapping crypto to crypto",
+  },
+  {
+    youtubeLink: "0_SujHiw690",
+    title: "Swapping any crypto for naira using zap",
+  },
+  {
+    youtubeLink: "1ae3dIsv4Bo",
+    title: "Swapping your naira for crypto using zap",
+  },
+];
+
+const ItemCards = ({ youtubeLink, title }: IProps) => {
+  const [playing, setPlaying] = useState(false);
+
+  const onStateChange = useCallback((state: any) => {
+    if (state === "ended") {
+      setPlaying(false);
+      Alert.alert("video has finished playing!");
+    }
+  }, []);
+
+  const togglePlaying = useCallback(() => {
+    setPlaying((prev) => !prev);
+  }, []);
   return (
-    <Box width={"100%"} mb="m">
+    <Box width={"100%"} mb="2xl">
       <Box
-        height={160}
+        height={220}
         borderRadius={12}
         bg="secondaryBackgroundColor"
         width={"100%"}
-        justifyContent="center"
-        alignItems="center"
       >
-        <Box height={60} width={60} borderRadius={50} bg="borderColor" />
+        <YoutubePlayer
+          height={"100%"}
+          play={playing}
+          videoId={youtubeLink} // Replace with the actual YouTube video ID
+          onChangeState={onStateChange}
+        />
       </Box>
       <CustomText variant="medium" fontSize={16} mt="s">
-        How to get onbaord zap wallet
+        {title}
       </CustomText>
     </Box>
   );
@@ -29,9 +66,9 @@ const Tutorials = () => {
     <PageWrapper>
       <SettingsHeader title="Tutorials" onBackPress={() => router.back()} />
       <Box flex={1} backgroundColor="mainBackgroundColor">
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          {Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9]).map((item) => (
-            <ItemCards key={item} />
+        <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 150 }}>
+          {items.map((item, index) => (
+            <ItemCards key={index.toString()} {...item} />
           ))}
         </ScrollView>
       </Box>

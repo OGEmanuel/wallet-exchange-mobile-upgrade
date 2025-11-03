@@ -1,25 +1,63 @@
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomText } from "@/components/general";
-import { currencies } from "@/data";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { PinInputRef } from "@pakenfit/react-native-pin-input";
 import { useTheme } from "@shopify/restyle";
+import { CurrencyModel } from "@zap/blockchain-sdk";
 import { TickCircle } from "iconsax-react-nativejs";
+import { uniq } from "lodash";
 import { Search } from "lucide-react-native";
-import React, { forwardRef, useCallback, useState } from "react";
-import { Dimensions, Pressable } from "react-native";
-import { ScrollView } from "react-native-gesture-handler";
+import React, { forwardRef, useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Dimensions, Pressable } from "react-native";
+import { FlatList } from "react-native-gesture-handler";
 
 const { height: HEIGHT } = Dimensions.get("screen");
 
 const ChangeCurrencyBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const [activeCurrency, setActiveCurrency] = useState(currencies[0]);
   const theme = useTheme<Theme>();
-  const pinref = React.useRef<PinInputRef>(null);
+  const [currenciesList, setCurrenciesList] = useState<CurrencyModel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [offset, setOffset] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+
+  const { getCurrencies, defaultCurrency, setDefaultCurrenct } = useSettings();
+
+  const fetchCurrencies = useCallback(async () => {
+    if (isLoading || !hasMore) return;
+    try {
+      setIsLoading(true);
+      const data = await getCurrencies({
+        params: { limit: 470, offset: 1 },
+      });
+
+      const newCurrencies = data?.data?.currencies ?? [];
+      const totalCount = data?.data?.totalCount ?? 0;
+
+      setCurrenciesList((prev) => {
+        const updated = uniq([...prev, ...newCurrencies]);
+        setHasMore(updated.length < totalCount);
+        return updated;
+      });
+
+      setTotal(totalCount);
+      setIsLoading(false);
+    } catch (error) {
+      console.log("Fetch error:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, hasMore, getCurrencies]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCurrencies();
+  }, []);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -36,12 +74,10 @@ const ChangeCurrencyBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["80%", "60%"]}
+      snapPoints={["90%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
-      style={{
-        backgroundColor: theme.colors.mainBackgroundColor,
-      }}
+      style={{ backgroundColor: theme.colors.mainBackgroundColor }}
       handleComponent={() => (
         <Box
           height={20}
@@ -62,67 +98,96 @@ const ChangeCurrencyBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         style={{
           flex: 1,
           width: "100%",
-          height: "100%",
+          height: "90%",
           backgroundColor: theme.colors.mainBackgroundColor,
           paddingHorizontal: 20,
           paddingTop: 20,
           paddingBottom: 40,
         }}
       >
-        <CustomText variant="subheader" textAlign="center" fontSize={24}>
+        <CustomText variant="subheader" textAlign="center" fontSize={24} mb="l">
           Currency
         </CustomText>
-        <Box height={30}></Box>
         <CustomInputWithoutForm
-          value=""
-          onChange={() => {}}
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name"
           iconLeft={<Search color={theme.colors.bodyTextColor} size={24} />}
-          boxStyle={{
-            borderWidth: 0,
-          }}
+          editable={currenciesList.length > 0}
+          boxStyle={{ borderWidth: 0 }}
         />
-        <Box height={30}></Box>
         <Box
-          width={"100%"}
-          height={HEIGHT * 0.5}
+          width="100%"
+          height="80%"
           flexDirection="column"
           justifyContent="center"
           alignItems="center"
           backgroundColor="secondaryBackgroundColor"
-          borderWidth={0}
-          borderColor="borderColor"
           borderRadius={12}
+          mt="l"
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20 }}
-          >
-            {currencies.map((item, index) => (
+          <FlatList
+            style={{ width: "100%", height: "100%" }}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingVertical: 10,
+            }}
+            data={
+              search
+                ? currenciesList.filter(
+                    (item) =>
+                      item?.name
+                        ?.toLowerCase()
+                        .includes(search.toLowerCase()) ||
+                      item?.code?.toLowerCase().includes(search.toLowerCase())
+                  )
+                : currenciesList
+            }
+            keyExtractor={(_, index) => index.toString()}
+            renderItem={({ item }) => (
               <Pressable
-                key={index.toString()}
-                onPress={() => setActiveCurrency(item)}
+                onPress={() => setDefaultCurrenct(item)}
                 style={{
                   width: "100%",
                   height: 50,
                   justifyContent: "space-between",
                   alignItems: "center",
                   flexDirection: "row",
+                  marginBottom: 20,
                 }}
               >
-                <Box flexDirection="row" alignItems="center">
-                  <CustomText variant="body" fontSize={16}>
-                    {item.flag} {item.code}
+                <Box>
+                  <CustomText variant="subheader" fontSize={16}>
+                    {item.code}
                   </CustomText>
+                  <CustomText>{item.name}</CustomText>
                 </Box>
-                {item.code === activeCurrency.code && (
+                {item.code === defaultCurrency?.code && (
                   <TickCircle
                     variant="Bold"
                     color={theme.colors.tabBarActiveColor}
                   />
                 )}
               </Pressable>
-            ))}
-          </ScrollView>
+            )}
+            ListFooterComponent={() => (
+              <>
+                {isLoading ? (
+                  <Box
+                    width="100%"
+                    height={50}
+                    justifyContent="center"
+                    alignItems="center"
+                  >
+                    <ActivityIndicator
+                      animating
+                      color={theme.colors.tabBarActiveColor}
+                    />
+                  </Box>
+                ) : null}
+              </>
+            )}
+          />
         </Box>
       </BottomSheetView>
     </BottomSheet>
