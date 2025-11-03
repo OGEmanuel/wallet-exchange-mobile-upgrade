@@ -136,6 +136,8 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
   const handleToggleToken = async (assetId: string, currentStatus: string) => {
     const newStatus = currentStatus === "ENABLED" ? "HIDDEN" : "ENABLED";
 
+    console.log("Toggling token:", assetId, newStatus);
+
     // Add to toggling set for loading state
     setTogglingTokens((prev) => new Set(prev).add(assetId));
 

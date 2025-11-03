@@ -70,7 +70,7 @@ const Swap = () => {
   const orderDetailsSheetRef = useRef<OrderDetailsSheetRef>(null);
   const progressSheetRef = useRef<any>(null);
   const [shouldShake, setShouldShake] = useState(false);
-  
+
   // Order status tracking
   const {
     currentOrder,
@@ -107,7 +107,7 @@ const Swap = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🔹 Supported currencies context for refresh
-  const { refreshSupportedCurrencies } = useSupportedCurrencies();
+  const { refreshSupportedCurrenciesForSwap } = useSupportedCurrencies();
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
 
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
@@ -189,7 +189,7 @@ const Swap = () => {
 
     try {
       // Refresh supported currencies first
-      await refreshSupportedCurrencies();
+      await refreshSupportedCurrenciesForSwap();
 
       // Then refresh rates if we have both currencies selected
       if (baseCurrency && targetCurrency && baseAmount > 0) {
@@ -209,7 +209,7 @@ const Swap = () => {
     targetCurrency,
     baseAmount,
     fetchMarketRate,
-    refreshSupportedCurrencies,
+    refreshSupportedCurrenciesForSwap,
     fetchBankAccounts,
   ]);
 
@@ -283,10 +283,10 @@ const Swap = () => {
         !isCrypto ? bankAccountSelected?._id : undefined
       );
 
-      if (orderResult) {
+    if (orderResult) {
         setCreatedOrder(orderResult);
         setTimeout(() => {
-          orderDetailsSheetRef.current?.open();
+      orderDetailsSheetRef.current?.open();
         }, 100);
       } else {
         setCreateOrderError("Failed to create order");
@@ -374,23 +374,23 @@ const Swap = () => {
           />
         }
       >
-        <Box flex={1} p="m">
+      <Box flex={1} p="m">
           <CustomText variant="medium" textAlign="center" mb="m">
-            Swap
-          </CustomText>
+          Swap
+        </CustomText>
 
           <ActivityTabar activeTab="EXCHANGE" onPress={() => {}} />
 
-          {createOrderError && (
+        {createOrderError && (
             <Box bg="error" p="s" borderRadius={8} marginVertical="s">
-              <CustomText variant="body" color="bodyTextColor">
-                {createOrderError}
-              </CustomText>
-            </Box>
-          )}
-          <Box style={{ marginTop: 16 }}>
-            <TokenInputCard
-              amount={handleBaseAmountFormat()}
+            <CustomText variant="body" color="bodyTextColor">
+              {createOrderError}
+            </CustomText>
+          </Box>
+        )}
+        <Box style={{ marginTop: 16 }}>
+          <TokenInputCard
+            amount={handleBaseAmountFormat()}
               tokenCode={(baseCurrency?.currencyId as Partial<ICurrency>)?.code}
               tokenSymbol={
                 (baseCurrency?.currencyId as Partial<ICurrency>)?.symbol ||
@@ -409,11 +409,11 @@ const Swap = () => {
               }
               onToggleUSDValueShowing={toggleUSDInput}
               isUSDValueShowing={isInputtingUSD}
-              showBalance
-              showMaxButton
+            showBalance
+            showMaxButton
               onFocus={handleBaseAmountFocus}
               onTokenSelect={openBaseTokenSelector}
-              onAmountChange={handleBaseAmountChange}
+            onAmountChange={handleBaseAmountChange}
               animatedStyle={[
                 sellContainerStyle,
                 shouldShake && {
@@ -439,14 +439,14 @@ const Swap = () => {
                     }`
                   : `${formatCurrency(baseAmountUSD, "USD")}`
               }
-              isReceive={false}
+            isReceive={false}
               isCrypto={
                 (baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
               hasError={!!error}
               errorColor={theme.colors.error}
-            />
-          </Box>
+          />
+        </Box>
 
           {error && (
             <Box
@@ -462,9 +462,9 @@ const Swap = () => {
             </Box>
           )}
 
-          <Box position="relative" style={{ marginTop: 5, marginBottom: 16 }}>
-            <TokenInputCard
-              amount={handleTargetAmountFormat()}
+        <Box position="relative" style={{ marginTop: 5, marginBottom: 16 }}>
+          <TokenInputCard
+            amount={handleTargetAmountFormat()}
               tokenCode={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.code
               }
@@ -472,25 +472,25 @@ const Swap = () => {
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.symbol ||
                 "Select"
               }
-              tokenImage={
+            tokenImage={
                 targetCurrency?.image ||
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.logo
-              }
-              animatedStyle={receiveContainerStyle}
-              isReceive
+            }
+            animatedStyle={receiveContainerStyle}
+            isReceive
               onTokenSelect={openTargetTokenSelector}
-              onAmountChange={handleTargetAmountChange}
+            onAmountChange={handleTargetAmountChange}
               onFocus={handleTargetAmountFocus}
               isCrypto={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
-            />
-            <SwapButton
-              onPress={handleSwapButtonPress}
-              animatedStyle={swapButtonStyle}
-              disabled={isAnimating || !baseCurrency || !targetCurrency}
-            />
-          </Box>
+          />
+          <SwapButton
+            onPress={handleSwapButtonPress}
+            animatedStyle={swapButtonStyle}
+            disabled={isAnimating || !baseCurrency || !targetCurrency}
+          />
+        </Box>
           {(targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto ? (
             <>
               <CustomText
@@ -499,11 +499,11 @@ const Swap = () => {
                 color="bodyTextColor"
                 mb="s"
               >
-                Receiving Address
-              </CustomText>
-              <View
-                style={[
-                  styles.inputContainer,
+              Receiving Address
+            </CustomText>
+            <View
+              style={[
+                styles.inputContainer,
                   {
                     backgroundColor: theme.colors.surfaceContainer,
                     borderColor: addressError
@@ -511,16 +511,16 @@ const Swap = () => {
                       : theme.colors.borderColor,
                     borderWidth: addressError ? 1 : 0,
                   },
-                ]}
-              >
-                <TextInput
-                  style={{
-                    height: "100%",
-                    width: "80%",
-                    color: theme.colors.bodyTextColor,
-                  }}
+              ]}
+            >
+              <TextInput
+                style={{
+                  height: "100%",
+                  width: "80%",
+                  color: theme.colors.bodyTextColor,
+                }}
                   placeholder="Enter receiving address"
-                  value={cryptoAddress}
+                value={cryptoAddress}
                   onChangeText={(text) => {
                     setCryptoAddress(text);
                     validateCryptoAddress(text);
@@ -528,31 +528,31 @@ const Swap = () => {
                   autoCapitalize="none"
                   autoCorrect={false}
                   ref={addressRef}
-                />
-                <TouchableOpacity
-                  style={{
-                    height: 24,
-                    width: 24,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    borderWidth: 1,
-                    borderColor: theme.colors.borderColor,
-                    borderRadius: 4,
-                  }}
+              />
+              <TouchableOpacity
+                style={{
+                  height: 24,
+                  width: 24,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: theme.colors.borderColor,
+                  borderRadius: 4,
+                }}
                   onPress={async () => {
                     // Paste address from clipboard
                     const text = await Clipboard.getStringAsync();
                     setCryptoAddress(text);
                     validateCryptoAddress(text);
-                  }}
-                >
-                  <Image
-                    source={icons.copy}
-                    tintColor={theme.colors.bodyTextColor}
-                    style={{ width: 12, height: 12 }}
-                  />
-                </TouchableOpacity>
-              </View>
+                }}
+              >
+                <Image
+                  source={icons.copy}
+                  tintColor={theme.colors.bodyTextColor}
+                  style={{ width: 12, height: 12 }}
+                />
+              </TouchableOpacity>
+            </View>
               {addressError && (
                 <CustomText variant="body" color="error" mt="s">
                   {addressError}
@@ -624,8 +624,8 @@ const Swap = () => {
                   </TouchableOpacity>
                 </View>
               )}
-            </>
-          )}
+          </>
+        )}
 
           {rateDetails && (
             <SwapDetailsCard
@@ -643,26 +643,26 @@ const Swap = () => {
           )}
 
           <Box mt="l">
-            <CustomButton
+        <CustomButton
               text={"Zap Now"}
               isLoading={isCreatingOrder}
-              fontSize={14}
-              width="100%"
-              height={56}
-              borderRadius={56}
-              bgColor={theme.colors.primaryColor}
-              onPress={handleContinue}
-              disabled={
-                isLoading ||
-                isCreatingOrder ||
-                !baseCurrency ||
-                !targetCurrency ||
-                baseAmount <= 0 ||
+          fontSize={14}
+          width="100%"
+          height={56}
+          borderRadius={56}
+          bgColor={theme.colors.primaryColor}
+          onPress={handleContinue}
+          disabled={
+            isLoading ||
+            isCreatingOrder ||
+            !baseCurrency ||
+            !targetCurrency ||
+            baseAmount <= 0 ||
                 ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
                   (!cryptoAddress.trim() || !!addressError))
-              }
-            />
-          </Box>
+          }
+        />
+      </Box>
         </Box>
       </ScrollView>
 

@@ -1,43 +1,19 @@
 /**
- * Chains Context - Chain Data Management
+ * Chains Context - IChain Data Management
  *
  * Provides centralized chain state management and caching
  * for wallet chains throughout the app.
  */
 
-import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useState
-} from "react";
+import { IChain } from "@zap/blockchain-sdk";
+import React, { createContext, ReactNode, useContext, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
-
-export interface Chain {
-  _id: string;
-  name: string;
-  symbol: string;
-  chainId: number;
-  isEVM: boolean;
-  isWalletActive: boolean;
-  rpcUrl: string;
-  explorerUrl: string;
-  nativeCurrencySymbol: string;
-  nativeCurrencyId: {
-    _id: string;
-    name: string;
-    symbol: string;
-    logo: string;
-    code: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface ChainsContextType {
   // State
-  chains: Chain[];
-  walletChains: Chain[];
+  chains: IChain[];
+  walletChains: IChain[];
+  chainsMap: Map<string, IChain>;
   isLoading: boolean;
   error: string | null;
   lastFetched: Date | null;
@@ -45,10 +21,10 @@ interface ChainsContextType {
   // Actions
   refreshChains: () => Promise<void>;
   loadChainsNow: () => void;
-  getChainBySymbol: (symbol: string) => Chain | undefined;
-  getChainById: (id: string) => Chain | undefined;
-  getEVMChains: () => Chain[];
-  getNonEVMChains: () => Chain[];
+  getChainBySymbol: (symbol: string) => IChain | undefined;
+  getChainById: (id: string) => IChain | undefined;
+  getEVMChains: () => IChain[];
+  getNonEVMChains: () => IChain[];
   getNumericChainId: (chainIdString: string) => number | null;
 }
 
@@ -59,8 +35,14 @@ interface ChainsProviderProps {
 }
 
 export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
-  const [chains, setChains] = useState<Chain[]>([]);
-  const [walletChains, setWalletChains] = useState<Chain[]>([]);
+  const [chains, setChains] = useState<IChain[]>([]);
+  const [walletChains, setWalletChains] = useState<IChain[]>([]);
+  const [chainsMap, setChainsMap] = useState<Map<string, IChain>>(new Map());
+  React.useEffect(() => {
+    setChainsMap(
+      new Map(walletChains.map((chain) => [chain._id || "", chain]))
+    );
+  }, [chains]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -91,20 +73,20 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     refreshChains();
   };
 
-  const getChainBySymbol = (symbol: string): Chain | undefined => {
+  const getChainBySymbol = (symbol: string): IChain | undefined => {
     return walletChains.find((chain) => chain.symbol === symbol);
   };
 
-  const getChainById = (id: string): Chain | undefined => {
+  const getChainById = (id: string): IChain | undefined => {
     return walletChains.find((chain) => chain._id === id);
   };
 
-  const getEVMChains = (): Chain[] => {
-    return walletChains.filter((chain) => chain.isEVM);
+  const getEVMChains = (): IChain[] => {
+    return walletChains.filter((chain) => (chain as any).isEVM);
   };
 
-  const getNonEVMChains = (): Chain[] => {
-    return walletChains.filter((chain) => !chain.isEVM);
+  const getNonEVMChains = (): IChain[] => {
+    return walletChains.filter((chain) => !(chain as any).isEVM);
   };
 
   const getNumericChainId = (chainIdString: string): number | null => {
@@ -117,13 +99,13 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     // Try to find by chain symbol
     const chainBySymbol = getChainBySymbol(chainIdString);
     if (chainBySymbol) {
-      return chainBySymbol.chainId;
+      return chainBySymbol.chainId || null;
     }
 
     // Try to find by chain ID (if it's a MongoDB ObjectId)
     const chainById = getChainById(chainIdString);
     if (chainById) {
-      return chainById.chainId;
+      return chainById.chainId || null;
     }
 
     console.warn(`Could not find chain for: ${chainIdString}`);
@@ -133,6 +115,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const contextValue: ChainsContextType = {
     chains,
     walletChains,
+    chainsMap,
     isLoading,
     error,
     lastFetched,

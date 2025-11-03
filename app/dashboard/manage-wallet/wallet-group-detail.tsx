@@ -32,6 +32,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
     setIsCreatingWallet,
     removeWalletGroup,
     mainUserWalletGroup,
+    switchWallet,
   } = useWallet();
 
   const { getWalletBalance, getWalletGroupBalance, getEnhancedWalletGroups } =
@@ -145,14 +146,27 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   };
 
   const handleRemoveWalletGroup = () => {
+    console.log("🔄 handleRemoveWalletGroup: User clicked 'Remove Wallet Group' - opening confirmation modal");
+    // Ensure PIN modal is closed when opening remove modal
+    // This prevents any auto-triggering if PIN modal was previously open
+    setShowPinModal(false);
     setShowRemoveModal(true);
   };
 
   const handleConfirmRemove = () => {
+    console.log("🔄 handleConfirmRemove: User clicked 'Yes, remove' - showing PIN modal for confirmation");
+    // User has explicitly confirmed by clicking "Yes, remove" button
+    // Now show PIN modal (or proceed if no PIN required)
     setShowPinModal(true);
   };
 
   const handlePinSuccess = async (pin: string) => {
+    console.log("🔄 handlePinSuccess: PIN verified (or not required), proceeding with wallet removal");
+    // This is only called after:
+    // 1. User clicked "Remove Wallet Group" button (opens modal)
+    // 2. User clicked "Yes, remove" button on modal (calls handleConfirmRemove)
+    // 3. PIN was entered/verified (or auto-proceeded if no PIN)
+    // So it's safe to proceed with deletion
     try {
       await removeWalletGroup(
         userWalletGroup.walletGroupId._id,
@@ -267,16 +281,30 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
 
       // Close modal and show success
       setShowAddWalletModal(false);
-      Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+      
+      // Reset context flag
+      setIsCreatingWallet(false);
 
-      // Refresh wallet groups and portfolio to show new wallet
+      // Refresh wallet groups to get the new wallet
       await refreshUserWalletGroups();
-      await refreshPortfolio();
+      
+      // Small delay to ensure wallet credential storage is fully written
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Switch to the new wallet (this will navigate to portfolio page)
+      // retryPendingWallets will be called automatically in home.tsx after navigation
+      if (result.userWalletGroupId) {
+        console.log("🔄 Switching to newly created wallet:", result.userWalletGroupId);
+        await switchWallet(result.userWalletGroupId, undefined, true); // forceRefresh=true
+        Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+      } else {
+        Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+        await refreshPortfolio();
+      }
     } catch (error) {
       console.error("❌ Failed to create wallet:", error);
       Alert.alert("Error", "Failed to create wallet. Please try again.");
-    } finally {
-      setIsCreatingWallet(false); // Reset context flag
+      setIsCreatingWallet(false); // Reset context flag on error too
     }
   };
 
@@ -628,7 +656,12 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       {/* Remove Wallet Modal */}
       <RemoveWalletModal
         visible={showRemoveModal}
-        onClose={() => setShowRemoveModal(false)}
+        onClose={() => {
+          console.log("🔄 RemoveWalletModal onClose: Closing remove modal and PIN modal");
+          // Ensure PIN modal is also closed when remove modal closes
+          setShowPinModal(false);
+          setShowRemoveModal(false);
+        }}
         onConfirm={handleConfirmRemove}
         walletName={userWalletGroup.walletGroupId.name || "wallet group"}
         showPinModal={showPinModal}

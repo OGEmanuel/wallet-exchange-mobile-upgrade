@@ -6,7 +6,7 @@ import BottomSheet, {
   SCREEN_HEIGHT,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { Bank, SupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
+import { Bank, ISupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import { ArrowDown2 } from "iconsax-react-nativejs";
 import { AlertCircle, Check, Search, X } from "lucide-react-native";
 import React, {
@@ -38,7 +38,7 @@ interface BankAccountsBottomSheetProps {
   onBankAccountSelect?: (bankAccount: UserBankAccount | null) => void;
   onClose?: () => void;
   onContinue?: () => void;
-  targetCurrency: SupportedCurrency | null;
+  targetCurrency: ISupportedCurrency | null;
 }
 
 const BankAccountsBottomSheet = forwardRef<

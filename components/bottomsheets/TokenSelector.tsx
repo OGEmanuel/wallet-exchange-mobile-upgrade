@@ -82,9 +82,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
 
   // Supported currencies for swap mode
   const {
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     isLoading: isSupportedCurrenciesLoading,
-    searchSupportedCurrencies,
+    searchSupportedCurrenciesForSwap,
   } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
@@ -123,7 +123,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     // Use different data source based on mode
     if (mode === "swap") {
       filtered =
-        supportedCurrencies
+        supportedCurrenciesForSwap
           .sort((a, b) =>
             (a.currencyId as Partial<ICurrency>)?.isCrypto ? 1 : -1
           )
@@ -143,7 +143,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       if (mode === "swap") {
-        filtered = searchSupportedCurrencies(query);
+        filtered = searchSupportedCurrenciesForSwap(query);
       } else {
         filtered = filtered.filter((token: any) => {
           const symbol = token.symbol;
@@ -165,7 +165,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     }
 
     return filtered;
-  }, [mode, allTokens, supportedCurrencies, searchQuery, selectedChain]);
+  }, [mode, allTokens, supportedCurrenciesForSwap, searchQuery, selectedChain]);
 
   const handleTokenPress = (token: ProcessedAsset) => {
     if (mode === "receive") {

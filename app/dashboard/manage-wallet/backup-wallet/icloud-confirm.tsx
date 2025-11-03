@@ -7,13 +7,20 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Check, Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ICloudConfirmScreen = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { originalPassword, walletGroupId } = useLocalSearchParams<{ 
+  const { originalPassword, walletGroupId } = useLocalSearchParams<{
     originalPassword: string;
     walletGroupId: string;
   }>();
@@ -30,7 +37,9 @@ const ICloudConfirmScreen = () => {
   const handlePasswordChange = (text: string) => {
     setPassword(text);
     // Compare with the original password from the previous screen
-    const decodedOriginalPassword = originalPassword ? decodeURIComponent(originalPassword) : "";
+    const decodedOriginalPassword = originalPassword
+      ? decodeURIComponent(originalPassword)
+      : "";
     setIsPasswordMatch(text === decodedOriginalPassword && text.length > 0);
   };
 
@@ -39,24 +48,27 @@ const ICloudConfirmScreen = () => {
 
     try {
       setIsBackingUp(true);
-      
+
       // Find any wallet that belongs to this wallet group
-      const walletInGroup = userWalletGroups.find(wallet => wallet.walletGroupId?._id === walletGroupId);
+      const walletInGroup = userWalletGroups.find(
+        (wallet) => wallet.walletGroupId?._id === walletGroupId
+      );
       if (!walletInGroup) {
         Alert.alert("Error", "Wallet group not found");
         return;
       }
 
       // Get wallets in this group
-      const walletsInGroup = userWalletGroups.filter(wallet => 
-        wallet.walletGroupId?._id === walletGroupId
+      const walletsInGroup = userWalletGroups.filter(
+        (wallet) => wallet.walletGroupId?._id === walletGroupId
       );
 
       // Prepare wallet data for backup
-      const walletData = walletsInGroup.map(wallet => ({
+      const walletData = walletsInGroup.map((wallet) => ({
         id: wallet._id,
-        name: wallet.name || `Wallet ${wallet.address?.slice(0, 6) || 'Unknown'}`,
-        address: wallet.address || 'Unknown',
+        name:
+          wallet.name || `Wallet ${wallet.address?.slice(0, 6) || "Unknown"}`,
+        address: wallet.address || "Unknown",
         chain: wallet.chainId?.name || "Unknown",
         seedPhrase: wallet.seedPhrase,
         privateKey: wallet.privateKey,
@@ -73,10 +85,15 @@ const ICloudConfirmScreen = () => {
       if (success) {
         // Refresh portfolio to update backup status
         await refreshPortfolio();
-        
+
         // Navigate to success screen
-        console.log("🔍 iCloud Confirm - Navigating to backup complete with walletGroupId:", walletGroupId);
-        router.push(`/dashboard/manage-wallet/backup-wallet/backup-complete?walletGroupId=${walletGroupId}`);
+        console.log(
+          "🔍 iCloud Confirm - Navigating to backup complete with walletGroupId:",
+          walletGroupId
+        );
+        router.push(
+          `/dashboard/manage-wallet/backup-wallet/backup-complete?walletGroupId=${walletGroupId}`
+        );
       } else {
         Alert.alert("Error", "Failed to create backup. Please try again.");
       }
@@ -210,7 +227,11 @@ const ICloudConfirmScreen = () => {
         {/* Complete Backup Button */}
         <Box paddingHorizontal="l" paddingBottom="xl">
           <CustomButton
-            bgColor={isPasswordMatch ? theme.colors.primaryColor : "rgba(255, 255, 255, 0.2)"}
+            bgColor={
+              isPasswordMatch
+                ? theme.colors.primaryColor
+                : "rgba(255, 255, 255, 0.2)"
+            }
             text={isBackingUp ? "Creating Backup..." : "Complete Back up"}
             onPress={handleCompleteBackup}
             width="100%"

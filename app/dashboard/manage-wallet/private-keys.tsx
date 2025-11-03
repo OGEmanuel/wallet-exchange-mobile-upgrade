@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { InteractionManager, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface PrivateKeysProps {}
@@ -22,7 +22,7 @@ interface PrivateKeysProps {}
 const PrivateKeys: React.FC<PrivateKeysProps> = () => {
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
-  const { userWalletGroups, getSDK, setIsAccountDeriving } = useWallet();
+  const { userWalletGroups, getSDK, setIsAccountDeriving, isAccountDeriving } = useWallet();
   const {
     walletChains,
     isLoading: chainsLoading,
@@ -100,6 +100,31 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
       return;
     }
 
+    // Check if derivation is already in progress
+    if (isAccountDeriving) {
+      console.log("⏳ Account derivation already in progress, skipping duplicate derivation");
+      // Wait a bit and check for stored keys
+      setTimeout(async () => {
+        const storedPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
+          userWalletGroup._id
+        );
+        if (storedPrivateKeys && storedPrivateKeys.length > 0) {
+          const keys = storedPrivateKeys.map((storedKey) => ({
+            chain: storedKey.chainName,
+            symbol: storedKey.chainSymbol,
+            privateKey: storedKey.privateKey,
+            chainId: storedKey.chainId,
+            logoUrl: storedKey.logoUrl,
+            isEVM: storedKey.isEVM,
+            currency: undefined,
+          }));
+          setPrivateKeys(keys);
+          setIsLoading(false);
+        }
+      }, 1000);
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -131,6 +156,29 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
         console.log("ℹ️ No stored private keys found, will derive them");
       }
 
+      // Add a small delay to allow for async storage operations from other components
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      
+      // Check again after delay (retryPendingWallets might have completed)
+      const retryStoredPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
+        userWalletGroup._id
+      );
+      if (retryStoredPrivateKeys && retryStoredPrivateKeys.length > 0) {
+        console.log("✅ Found stored private keys after delay:", retryStoredPrivateKeys.length);
+        const keys = retryStoredPrivateKeys.map((storedKey) => ({
+          chain: storedKey.chainName,
+          symbol: storedKey.chainSymbol,
+          privateKey: storedKey.privateKey,
+          chainId: storedKey.chainId,
+          logoUrl: storedKey.logoUrl,
+          isEVM: storedKey.isEVM,
+          currency: undefined,
+        }));
+        setPrivateKeys(keys);
+        setIsLoading(false);
+        return;
+      }
+
       setIsAccountDeriving(true);
       // Get stored credentials to access seed phrase
       console.log("🔍 Debug - userWalletGroup._id:", userWalletGroup._id);
@@ -159,11 +207,24 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
       console.log("🔍 Deriving all addresses once...");
       console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
 
+      // Use InteractionManager to defer heavy computation and allow UI to remain responsive
+      // This prevents the app from freezing during crypto derivation
       let derivedResult: any;
-      derivedResult = await zapSDKService.deriveMultiChainAddresses(
-        storedCredentials.credential, // seed phrase
-        wallet.walletDepth || 0
-      );
+      derivedResult = await new Promise<any>((resolve, reject) => {
+        InteractionManager.runAfterInteractions(() => {
+          setTimeout(async () => {
+            try {
+              const result = await zapSDKService.deriveMultiChainAddresses(
+                storedCredentials.credential, // seed phrase
+                wallet.walletDepth || 0
+              );
+              resolve(result);
+            } catch (error) {
+              reject(error);
+            }
+          }, 100); // Small delay to ensure UI thread is free
+        });
+      });
       setIsAccountDeriving(false);
       console.log("🔍 Derived result:", derivedResult);
 

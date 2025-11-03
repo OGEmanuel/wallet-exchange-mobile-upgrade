@@ -8,7 +8,7 @@
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatNumber } from "@/src/core/utils/format-utils";
-import { CreateOrderRequest, IChain, ICurrency, SupportedCurrency } from "@zap/blockchain-sdk";
+import { CreateOrderRequest, IChain, ICurrency, ISupportedCurrency } from "@zap/blockchain-sdk";
 // import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useCallback, useEffect, useState } from "react";
 
@@ -38,8 +38,8 @@ export interface SwapState {
   isInputtingUSD: boolean;
 
   // Currency states
-  baseCurrency: SupportedCurrency | null;
-  targetCurrency: SupportedCurrency | null;
+  baseCurrency: ISupportedCurrency | null;
+  targetCurrency: ISupportedCurrency | null;
 
   // Rate and loading states
   marketRate: SwapRate | null;
@@ -54,7 +54,7 @@ export interface SwapState {
 }
 
 export const useSwapSDK = () => {
-  const { supportedCurrencies, isLoading: currenciesLoading } = useSupportedCurrencies();
+  const { supportedCurrenciesForSwap, isLoading: currenciesLoading } = useSupportedCurrencies();
 
   // Local state (replacing Redux)
   const [state, setState] = useState<SwapState>({
@@ -76,11 +76,11 @@ export const useSwapSDK = () => {
 
   // Set default currencies when supported currencies load
   useEffect(() => {
-    if (currenciesLoading || !supportedCurrencies.length || state.baseCurrency) return;
+    if (currenciesLoading || !supportedCurrenciesForSwap.length || state.baseCurrency) return;
 
-    const btc = supportedCurrencies.find((c) => (c.chainId as Partial<IChain>)?.symbol === "BTC");
-    const eth = supportedCurrencies.find((c) => (c.chainId as Partial<IChain>)?.symbol === "ETH" && (c.currencyId as Partial<ICurrency>)?.symbol === "ETH");
-    const ngn = supportedCurrencies.find((c) => (c.currencyId as Partial<ICurrency>)?.code === "NGN");
+    const btc = supportedCurrenciesForSwap.find((c) => (c.chainId as Partial<IChain>)?.symbol === "BTC");
+    const eth = supportedCurrenciesForSwap.find((c) => (c.chainId as Partial<IChain>)?.symbol === "ETH" && (c.currencyId as Partial<ICurrency>)?.symbol === "ETH");
+    const ngn = supportedCurrenciesForSwap.find((c) => (c.currencyId as Partial<ICurrency>)?.code === "NGN");
 
     let defaultAmount = 0;
 
@@ -88,7 +88,7 @@ export const useSwapSDK = () => {
       defaultAmount = btc ? 0.0025 : 0.1;
       setState(prev => ({
         ...prev,
-        baseCurrency: (btc || eth) as SupportedCurrency,
+        baseCurrency: (btc || eth) as ISupportedCurrency,
         baseAmount: defaultAmount,
         baseAmountInput: defaultAmount.toString(),
       }));
@@ -102,8 +102,8 @@ export const useSwapSDK = () => {
     }
 
     // Fetch initial market rate
-    fetchMarketRate(btc as SupportedCurrency, ngn as SupportedCurrency, defaultAmount);
-  }, [supportedCurrencies, currenciesLoading, state.baseCurrency]);
+    fetchMarketRate(btc as ISupportedCurrency, ngn as ISupportedCurrency, defaultAmount);
+  }, [supportedCurrenciesForSwap, currenciesLoading, state.baseCurrency]);
 
   // Update target amount when market rate changes
   useEffect(() => {
@@ -170,8 +170,8 @@ export const useSwapSDK = () => {
 
   // Fetch market rate using SDK
   const fetchMarketRate = useCallback(async (
-    baseCurrency: SupportedCurrency,
-    targetCurrency: SupportedCurrency,
+    baseCurrency: ISupportedCurrency,
+    targetCurrency: ISupportedCurrency,
     amount: number,
     isBuyAmount: boolean = true
   ): Promise<SwapRate | null> => {
@@ -272,7 +272,7 @@ export const useSwapSDK = () => {
 
   // Debounced rate fetching
   const debouncedFetchRate = useCallback(
-    (baseCurrency: SupportedCurrency, targetCurrency: SupportedCurrency, amount: number, isBuyAmount: boolean = true) => {
+    (baseCurrency: ISupportedCurrency, targetCurrency: ISupportedCurrency, amount: number, isBuyAmount: boolean = true) => {
       const timeoutId = setTimeout(() => {
         fetchMarketRate(baseCurrency, targetCurrency, amount, isBuyAmount);
       }, 500);
@@ -350,7 +350,7 @@ export const useSwapSDK = () => {
   }, [state.baseCurrency, state.targetCurrency, state.marketRate, debouncedFetchRate]);
 
   // Currency change handlers
-  const setBaseCurrency = useCallback((currency: SupportedCurrency) => {
+  const setBaseCurrency = useCallback((currency: ISupportedCurrency) => {
     setState(prev => ({ ...prev, baseCurrency: currency, error: null }));
 
     // Fetch rate if we have target currency and amount
@@ -360,7 +360,7 @@ export const useSwapSDK = () => {
     }
   }, [state.targetCurrency, state.baseAmount, debouncedFetchRate]);
 
-  const setTargetCurrency = useCallback((currency: SupportedCurrency) => {
+  const setTargetCurrency = useCallback((currency: ISupportedCurrency) => {
     setState(prev => ({ ...prev, targetCurrency: currency, error: null }));
 
     // Fetch rate if we have base currency and amount
@@ -542,7 +542,7 @@ export const useSwapSDK = () => {
   return {
     // State
     ...state,
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     currenciesLoading,
     setError: (error: string | null) => setState(prev => ({ ...prev, error })),
 

@@ -24,8 +24,8 @@ import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import {
+  selectAssetBySupportedCurrencyId,
   selectProcessedPortfolio,
-  selectTokenBySupportedCurrencyId,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { createErrorModalProps } from "@/utils/error-handler";
@@ -73,84 +73,6 @@ import { useSelector } from "react-redux";
 //   tokenDecimals?: number;
 // }
 
-// Prepare unified transaction parameters
-const prepareUnifiedTransactionParams = (
-  baseParams: any,
-  token: ProcessedAsset,
-  unifiedChain: string
-): any => {
-  console.log("🔍 Preparing unified transaction parameters:", {
-    unifiedChain,
-    tokenSymbol: token.symbol,
-    tokenAddress: token.tokenAddress,
-  });
-
-  const params = { ...baseParams };
-
-  // Set the unified chain identifier
-  params.chain = unifiedChain;
-
-  // Check if it's a native token (no token address)
-  const isNativeToken =
-    !token.tokenAddress ||
-    token.tokenAddress === "" ||
-    token.tokenAddress === "0x0000000000000000000000000000000000000000";
-
-  // Add chain-specific parameters based on unified chain
-  switch (unifiedChain) {
-    case "ethereum":
-      console.log("🔧 Configuring for Ethereum/EVM transaction");
-      if (!isNativeToken) {
-        params.tokenAddress = token.tokenAddress;
-      }
-      // RPC URL for Ethereum (optional, SDK will use default if not provided)
-      params.rpcUrl =
-        "https://eth-mainnet.g.alchemy.com/v2/VnmQ0ryoowBx4cpgS3BtEqu_6USkQlik";
-      break;
-
-    case "bitcoin":
-      console.log("🔧 Configuring for Bitcoin transaction");
-      // UTXOs will be fetched automatically by SDK if not provided
-      params.utxos = [];
-      break;
-
-    case "solana":
-      console.log("🔧 Configuring for Solana transaction");
-      if (!isNativeToken) {
-        params.tokenMintAddress = token.tokenAddress;
-      }
-      // RPC URL for Solana (optional, SDK will use default if not provided)
-      params.rpcUrl = "https://api.mainnet-beta.solana.com";
-      break;
-
-    case "tron":
-      console.log("🔧 Configuring for Tron transaction");
-      if (!isNativeToken) {
-        params.tokenAddress = token.tokenAddress;
-      }
-      // RPC URL for Tron (optional, SDK will use default if not provided)
-      params.rpcUrl = "https://api.trongrid.io";
-      break;
-
-    default:
-      console.warn(
-        "⚠️ Unknown unified chain, using default parameters:",
-        unifiedChain
-      );
-      break;
-  }
-
-  console.log("✅ Final unified transaction parameters:", {
-    chain: params.chain,
-    hasTokenAddress: !!params.tokenAddress,
-    hasTokenMintAddress: !!params.tokenMintAddress,
-    hasUtxos: !!params.utxos,
-    hasRpcUrl: !!params.rpcUrl,
-  });
-
-  return params;
-};
-
 enum FeeSpeed {
   Standard = "Standard",
   Fast = "Fast",
@@ -159,7 +81,6 @@ enum FeeSpeed {
 
 const SendToken = () => {
   const { tokenId: rawTokenId } = useLocalSearchParams();
-  const { getChainBySymbol } = useChains();
 
   // Handle different tokenId formats (same as other pages)
   let tokenId: string;
@@ -187,7 +108,7 @@ const SendToken = () => {
 
   // Also try to get token using Redux selector
   const reduxToken = useSelector((state: any) =>
-    selectTokenBySupportedCurrencyId(state, tokenId)
+    selectAssetBySupportedCurrencyId(state, tokenId)
   );
   const [showRecentTransfers, setShowRecentTransfers] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
@@ -221,7 +142,7 @@ const SendToken = () => {
   >(null);
   const [isValidatingBalance, setIsValidatingBalance] = useState(false);
 
-  const { getNumericChainId } = useChains();
+  const { chainsMap } = useChains();
 
   // Error modal state
   const [errorModal, setErrorModal] = useState<{
@@ -667,7 +588,7 @@ const SendToken = () => {
       // Ensure uppercase format as SDK expects uppercase chain symbols
       chainSymbol = chainSymbol.toUpperCase();
 
-      const chain = getChainBySymbol(chainSymbol);
+      const chain = chainsMap.get(selectedToken?.chainId || "");
 
       // Prepare base transaction parameters
       let baseParams: SendTransactionRequest = {
@@ -679,7 +600,7 @@ const SendToken = () => {
         chainSymbol: chainSymbol,
       };
 
-      if (chain?.isEVM) {
+      if ((chain as any).isEVM) {
         baseParams = {
           ...baseParams,
           tokenAddress: selectedToken!.tokenAddress || undefined,
@@ -840,7 +761,7 @@ const SendToken = () => {
           (await getAddress(chainSymbol, mainUserWalletGroup?._id)) || "";
 
         console.log("🔍 Address:", address);
-        console.log(amount)
+        console.log(amount);
         // Calculate fees
         const gasEstimate = await zapSDKService.estimateTransactionCost(
           address,
@@ -857,8 +778,11 @@ const SendToken = () => {
         );
 
         console.log("🔍 Gas estimate:", gasEstimate);
+        const chainToUse = chainsMap.get(selectedToken.chainId);
 
-        const chainToUse = getChainBySymbol(chainSymbol);
+        if (!chainToUse) {
+          throw new Error("Chain not found");
+        }
         let feeData = {
           fee: 0,
           feeInUSD: 0,
@@ -872,14 +796,14 @@ const SendToken = () => {
           (asset: ProcessedAsset) => {
             return (
               asset.symbol.toUpperCase() ===
-                chainToUse?.nativeCurrencySymbol.toUpperCase() &&
+                (chainToUse?.nativeCurrencyId as any)?.symbol.toUpperCase() &&
               asset.chainSymbol.toUpperCase() ===
                 chainToUse?.symbol.toUpperCase()
             );
           }
         )?.price;
 
-        if (chainToUse?.isEVM) {
+        if ((chainToUse as any).isEVM) {
           feeData.fee = parseFloat(
             ethers.formatEther(
               BigInt(gasEstimate.gasPrice * gasEstimate.gasLimit)
@@ -1868,7 +1792,7 @@ const SendToken = () => {
                     >
                       {selectedToken?.image ? (
                         <SvgUri
-                          uri={selectedToken.image}
+                          uri={selectedToken.chainImage}
                           width={18}
                           height={18}
                         />

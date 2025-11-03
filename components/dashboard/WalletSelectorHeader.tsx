@@ -43,9 +43,11 @@ const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
     }
 
     try {
-      // Switch to the selected wallet
-      await switchWallet(selectedUserWalletGroup._id);
+      // Close modal first to prevent flickering
       setShowWalletSelector(false);
+      
+      // Switch to the selected wallet (this may take a moment)
+      await switchWallet(selectedUserWalletGroup._id);
     } catch (error) {
       console.error("Failed to switch wallet:", error);
       Alert.alert("Error", "Failed to switch wallet. Please try again.");

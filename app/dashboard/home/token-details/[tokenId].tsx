@@ -5,29 +5,29 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Bell, SendHorizonal, Star } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  Image,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
+    Animated,
+    Dimensions,
+    Easing,
+    Image,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
 } from "react-native";
 import { useSelector } from "react-redux";
 
 import TokenGraph from "@/components/dashboard/market/TokenGraph";
 import {
-  calculatePriceChange,
-  formatLargeNumber,
-  getAvailablePeriods,
-  getLatestMarketData,
-  getLatestRate,
+    calculatePriceChange,
+    formatLargeNumber,
+    getAvailablePeriods,
+    getLatestMarketData,
+    getLatestRate,
 } from "@/lib/utils/market/chartHelpers";
 
 import {
-  ThemedQrCodeIcon,
-  ThemedSwapIcon,
+    ThemedQrCodeIcon,
+    ThemedSwapIcon,
 } from "@/assets/svg/wallet-icons-components";
 import ThemedGlassIcon from "@/assets/svg/wallet-icons-components/ThemedGlassIcon";
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
@@ -48,9 +48,9 @@ import { formatCurrency, formatDate } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import {
-  selectAllSupportedTokens,
-  selectProcessedPortfolio,
-  selectTokenBySupportedCurrencyId,
+    selectAllSupportedTokens,
+    selectAssetBySupportedCurrencyId,
+    selectProcessedPortfolio,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -113,7 +113,7 @@ const TokenDetails = () => {
   // Redux state
   const processedPortfolio = useSelector(selectProcessedPortfolio);
   const selectedToken = useSelector((state: AppRootState) =>
-    selectTokenBySupportedCurrencyId(state, tokenId as string)
+    selectAssetBySupportedCurrencyId(state, tokenId as string)
   );
 
   // Fallback: manually find token if selector doesn't work

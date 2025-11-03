@@ -17,7 +17,7 @@ import { useLocalSearchParams } from "expo-router";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Copy, QrCode } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView } from "react-native";
+import { Alert, InteractionManager, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface WalletAddressesProps {
@@ -33,6 +33,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
     getAddresses,
     getAddress,
     setIsAccountDeriving,
+    isAccountDeriving,
   } = useWallet();
   const {
     walletChains,
@@ -120,10 +121,22 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
         return;
       }
 
+      // Check if derivation is already in progress in wallet context
+      // This prevents multiple simultaneous derivations
+      if (isAccountDeriving) {
+        console.log("⏳ Account derivation already in progress, waiting...");
+        // Wait a bit and retry - derivation might complete soon
+        const retryTimer = setTimeout(() => {
+          getWalletAddresses();
+        }, 1000);
+        return () => clearTimeout(retryTimer);
+      }
+
       try {
         setIsLoading(true);
 
         // First, check if we have stored addresses using centralized function
+        // Add a small delay for newly created wallets to allow async storage to complete
         const storedAddresses = await getAddresses(userWalletGroup._id);
         if (storedAddresses && storedAddresses.length > 0) {
           console.log("✅ Using stored addresses:", storedAddresses.length);
@@ -132,8 +145,25 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           return;
         }
 
+        // If no stored addresses, wait a bit more before deriving (might still be storing)
+        // This gives time for retryPendingWallets to complete derivation and storage
         console.log(
-          "ℹ️ No stored addresses found, deriving them...",
+          "ℹ️ No stored addresses found, waiting briefly before deriving...",
+          userWalletGroup._id
+        );
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        
+        // Check again after delay
+        const retryStoredAddresses = await getAddresses(userWalletGroup._id);
+        if (retryStoredAddresses && retryStoredAddresses.length > 0) {
+          console.log("✅ Found stored addresses after delay:", retryStoredAddresses.length);
+          setWalletAddresses(retryStoredAddresses);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log(
+          "ℹ️ Still no stored addresses, deriving them...",
           userWalletGroup._id
         );
 
@@ -163,10 +193,25 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
         console.log("🔍 Deriving all addresses once...");
         console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
         setIsAccountDeriving(true);
-        const derivedResult = await zapSDKService.deriveMultiChainAddresses(
-          storedCredentials.credential, // seed phrase
-          wallet.walletDepth || 0
-        );
+        
+        // Use InteractionManager to defer heavy computation and allow UI to remain responsive
+        // This prevents the app from freezing during crypto derivation
+        const derivedResult = await new Promise<any>((resolve, reject) => {
+          InteractionManager.runAfterInteractions(() => {
+            setTimeout(async () => {
+              try {
+                const result = await zapSDKService.deriveMultiChainAddresses(
+                  storedCredentials.credential, // seed phrase
+                  wallet.walletDepth || 0
+                );
+                resolve(result);
+              } catch (error) {
+                reject(error);
+              }
+            }, 100); // Small delay to ensure UI thread is free
+          });
+        });
+        
         setIsAccountDeriving(false);
         console.log("🔍 Derived result:", derivedResult);
 
@@ -255,7 +300,7 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
     };
 
     getWalletAddresses();
-  }, [wallet, userWalletGroup, walletChains, chainsLoading, getSDK]);
+  }, [wallet, userWalletGroup, walletChains, chainsLoading, getSDK, isAccountDeriving]);
 
   if (!wallet) {
     return (

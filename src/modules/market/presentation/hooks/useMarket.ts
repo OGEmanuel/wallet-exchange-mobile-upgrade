@@ -16,6 +16,7 @@ const useMarket = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const [marketTokens, setMarketTokens] = useState<MarketData[] | null>([]);
+  const [marketTokensMap, setMarketTokensMap] = useState<Map<string, MarketData>>(new Map());
   const [isMarketTokensLoading, setIsMarketTokensLoading] = useState(false);
 
   const refreshMarketTokens = useCallback(async () => {
@@ -26,6 +27,7 @@ const useMarket = () => {
 
       if (response && Array.isArray(response)) {
         setMarketTokens(response);
+        setMarketTokensMap(new Map(response.map((token) => [token.currencyId, token])));
       } else {
         setMarketTokens([]);
       }
@@ -46,6 +48,7 @@ const useMarket = () => {
     marketTokens,
     isMarketTokensLoading,
     refreshMarketTokens,
+    marketTokensMap,
 
     fetchMarketTokens: async (payload: GeneralRequestModel<unknown, unknown, unknown>) => {
       const response = await marketUsecases.fetchMarketTokens(payload);

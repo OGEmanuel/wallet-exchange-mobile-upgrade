@@ -5,7 +5,11 @@
  * for all supported currencies throughout the app.
  */
 
-import { IChain, ICurrency, SupportedCurrency } from "@zap/blockchain-sdk";
+import {
+  IChain,
+  ICurrency,
+  ISupportedCurrency,
+} from "@zap/blockchain-sdk";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
 
@@ -28,27 +32,27 @@ export interface IBank {
 
 interface SupportedCurrenciesContextType {
   // State
-  supportedCurrencies: SupportedCurrency[];
-  defaultTokens: SupportedCurrency[];
+  supportedCurrenciesForSwap: ISupportedCurrency[];
+  defaultTokens: ISupportedCurrency[];
   lastFetchedWallet: Date | null;
   isLoading: boolean;
   error: string | null;
   lastFetched: Date | null;
 
   // Actions
-  refreshSupportedCurrencies: () => Promise<void>;
+  refreshSupportedCurrenciesForSwap: () => Promise<void>;
   refreshDefaultTokens: () => Promise<void>;
-  getSupportedCurrencyById: (id: string) => SupportedCurrency | undefined;
+  getSupportedCurrencyById: (id: string) => ISupportedCurrency | undefined;
   getSupportedCurrencyBySymbol: (
     symbol: string
-  ) => SupportedCurrency | undefined;
-  getSupportedCurrenciesByChain: (chainId: string) => SupportedCurrency[];
+  ) => ISupportedCurrency | undefined;
+  getSupportedCurrenciesByChain: (chainId: string) => ISupportedCurrency[];
   getSupportedCurrenciesByChainSymbol: (
     chainSymbol: string
-  ) => SupportedCurrency[];
-  getStableCurrencies: () => SupportedCurrency[];
-  getNonStableCurrencies: () => SupportedCurrency[];
-  searchSupportedCurrencies: (query: string) => SupportedCurrency[];
+  ) => ISupportedCurrency[];
+  getStableCurrenciesForSwap: () => ISupportedCurrency[];
+  getNonStableCurrenciesForSwap: () => ISupportedCurrency[];
+  searchSupportedCurrenciesForSwap: (query: string) => ISupportedCurrency[];
 }
 
 const SupportedCurrenciesContext = createContext<
@@ -62,16 +66,16 @@ interface SupportedCurrenciesProviderProps {
 export const SupportedCurrenciesProvider: React.FC<
   SupportedCurrenciesProviderProps
 > = ({ children }) => {
-  const [supportedCurrencies, setSupportedCurrencies] = useState<
-    SupportedCurrency[]
+  const [supportedCurrenciesForSwap, setSupportedCurrenciesForSwap] = useState<
+    ISupportedCurrency[]
   >([]);
-  const [defaultTokens, setDefaultTokens] = useState<SupportedCurrency[]>([]);
+  const [defaultTokens, setDefaultTokens] = useState<ISupportedCurrency[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [lastFetchedWallet, setLastFetchedWallet] = useState<Date | null>(null);
 
-  const refreshSupportedCurrencies = async () => {
+  const refreshSupportedCurrenciesForSwap = async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -91,7 +95,7 @@ export const SupportedCurrenciesProvider: React.FC<
       );
 
       console.log("✅ Supported currencies fetched:", currencies.length);
-      setSupportedCurrencies(currencies);
+      setSupportedCurrenciesForSwap(currencies);
       setLastFetched(new Date());
     } catch (err: any) {
       console.error("❌ Failed to fetch supported currencies:", err);
@@ -132,53 +136,53 @@ export const SupportedCurrenciesProvider: React.FC<
 
   const getSupportedCurrencyById = (
     id: string
-  ): SupportedCurrency | undefined => {
-    return supportedCurrencies.find((currency) => currency._id === id);
+  ): ISupportedCurrency | undefined => {
+    return supportedCurrenciesForSwap.find((currency) => currency._id === id);
   };
 
   const getSupportedCurrencyBySymbol = (
     symbol: string
-  ): SupportedCurrency | undefined => {
-    return supportedCurrencies.find(
+  ): ISupportedCurrency | undefined => {
+    return supportedCurrenciesForSwap.find(
       (currency) => currency.symbol?.toLowerCase() === symbol.toLowerCase()
     );
   };
 
   const getSupportedCurrenciesByChain = (
     chainId: string
-  ): SupportedCurrency[] => {
-    return supportedCurrencies.filter(
+  ): ISupportedCurrency[] => {
+    return supportedCurrenciesForSwap.filter(
       (currency) => (currency.chainId as Partial<IChain>)?._id === chainId
     );
   };
 
   const getSupportedCurrenciesByChainSymbol = (
     chainSymbol: string
-  ): SupportedCurrency[] => {
-    return supportedCurrencies.filter(
+  ): ISupportedCurrency[] => {
+    return supportedCurrenciesForSwap.filter(
       (currency) =>
         (currency.chainId as Partial<IChain>)?.symbol?.toLowerCase() ===
         chainSymbol.toLowerCase()
     );
   };
 
-  const getStableCurrencies = (): SupportedCurrency[] => {
-    return supportedCurrencies.filter(
+  const getStableCurrenciesForSwap = (): ISupportedCurrency[] => {
+    return supportedCurrenciesForSwap.filter(
       (currency) => (currency.currencyId as unknown as ICurrency)?.isStable
     );
   };
 
-  const getNonStableCurrencies = (): SupportedCurrency[] => {
-    return supportedCurrencies.filter(
+  const getNonStableCurrenciesForSwap = (): ISupportedCurrency[] => {
+    return supportedCurrenciesForSwap.filter(
       (currency) => !(currency.currencyId as unknown as ICurrency)?.isStable
     );
   };
 
-  const searchSupportedCurrencies = (query: string): SupportedCurrency[] => {
-    if (!query.trim()) return supportedCurrencies;
+  const searchSupportedCurrenciesForSwap = (query: string): ISupportedCurrency[] => {
+    if (!query.trim()) return supportedCurrenciesForSwap;
 
     const searchTerm = query.toLowerCase();
-    return supportedCurrencies.filter(
+    return supportedCurrenciesForSwap.filter(
       (currency) =>
         currency.name?.toLowerCase().includes(searchTerm) ||
         currency.symbol?.toLowerCase().includes(searchTerm) ||
@@ -190,7 +194,7 @@ export const SupportedCurrenciesProvider: React.FC<
 
   const contextValue: SupportedCurrenciesContextType = {
     // State
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     defaultTokens,
     lastFetchedWallet,
     isLoading,
@@ -198,15 +202,15 @@ export const SupportedCurrenciesProvider: React.FC<
     lastFetched,
 
     // Actions
-    refreshSupportedCurrencies,
+    refreshSupportedCurrenciesForSwap,
     refreshDefaultTokens,
     getSupportedCurrencyById,
     getSupportedCurrencyBySymbol,
     getSupportedCurrenciesByChain,
     getSupportedCurrenciesByChainSymbol,
-    getStableCurrencies,
-    getNonStableCurrencies,
-    searchSupportedCurrencies,
+    getStableCurrenciesForSwap,
+    getNonStableCurrenciesForSwap,
+    searchSupportedCurrenciesForSwap,
   };
 
   return (
