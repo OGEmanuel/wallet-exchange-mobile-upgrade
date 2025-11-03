@@ -851,16 +851,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // Device token is the IMEI or something else that is unique to the device
-      const deviceToken =
+      const deviceToken: string =
         Device.osInternalBuildId ||
         Device.modelId ||
         `unknown-${uniqueId("supaaa-unique-id")}`;
-
-      console.log(
-        deviceToken,
-        deviceFingerprint,
-        "___DEVICE TOKEN AND FINGERPRINT___"
-      );
 
       // Attempt device-based login
       const success = await walletLogin(
@@ -896,12 +890,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       if (existingFingerprint) {
         console.log("📱 Using existing device fingerprint");
-        return existingFingerprint;
+        return JSON.parse(existingFingerprint);
       }
 
       // Create new persistent fingerprint
       console.log("🔧 Creating new persistent device fingerprint");
-      const fingerprint =
+      const fingerprint: string =
         Device.osBuildFingerprint ||
         Device.osInternalBuildId ||
         Device.modelId ||
@@ -913,7 +907,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       await SecureStore.setItemAsync("device_fingerprint", fingerprintString);
 
       console.log("✅ New device fingerprint created and stored", fingerprint);
-      return fingerprintString;
+      return fingerprint;
     } catch (error) {
       console.error("Failed to get/create device fingerprint:", error);
 
@@ -1079,10 +1073,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // Extract userId from data and use it, or fall back to currentExchangeUser
       const userId = data.userId || currentExchangeUser;
-      
+
       // Remove userId from data object before passing to SDK
       const { userId: _, ...onboardingData } = data;
-      
+
       const result = await zapSDKService.completeOnboarding(
         userId,
         onboardingData

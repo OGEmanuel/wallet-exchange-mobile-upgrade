@@ -365,7 +365,7 @@ const AssetsSection = ({
         />
       </Box>
       {enabledAssets.map((asset, index) => {
-        return <AssetCard key={asset.id} asset={asset} />;
+        return asset && <AssetCard key={`${index}-${asset.id}`} asset={asset} />;
       })}
     </Box>
   );

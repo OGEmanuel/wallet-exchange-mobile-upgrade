@@ -56,7 +56,8 @@
             "enableProguardInReleaseBuilds": false,
             "extraGradleProperties": {
               "android.defaultConfig.missingDimensionStrategy": "react-native-camera, general"
-            }
+            },
+            "enableMinifyInReleaseBuilds": false
           }
         }
       ]
@@ -64,6 +65,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "024a9f16-05df-4af1-8688-c9552b3b89e8"
+      }
     }
   }
 }

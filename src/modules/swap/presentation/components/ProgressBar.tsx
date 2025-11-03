@@ -103,7 +103,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
 
       <View style={styles.stepsRow}>
         {steps.map((step, index) => (
-          <View key={step.id} style={styles.stepContainer}>
+          <View key={`${index}-${step.id}`} style={styles.stepContainer}>
             <View
               style={[
                 styles.stepCircle,
@@ -115,7 +115,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       </View>
       <View style={styles.stepsRow}>
         {steps.map((step, index) => (
-          <Text style={{ color: theme.colors.bodyTextColor }}>
+          <Text key={`${index}-${step.id}`} style={{ color: theme.colors.bodyTextColor }}>
             {step.label}
           </Text>
         ))}
