@@ -241,7 +241,7 @@ export default function IdentityVerification({
       </CustomText>
       <CustomText variant="body" style={styles.subtitle}>
         Before you can buy BTC we will need to verify who you are. Be sure your
-        data is saf
+        data is safe
       </CustomText>
 
       <Select

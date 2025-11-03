@@ -98,11 +98,8 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       countryCode: payload?.body?.countryCode || null,
       isWhatsApp: payload?.body?.isWhatsApp || false,
     }
-    console.log("Data from authPhoneNumber:", data);
 
     const result = await sdk.exchangeAuth.updatePhoneNumber(data);
-
-    console.log("Resultsss from authPhoneNumber:", result);
 
     if (result.success) {
       return Promise.resolve({
