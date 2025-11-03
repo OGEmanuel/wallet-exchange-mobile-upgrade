@@ -23,6 +23,8 @@ import { useSelector } from "react-redux";
 
 // import { useAuth } from "./useAuth";
 import { EmailVerification, EnterUsername, LoginToZap } from "@/components";
+import PhoneNumber from "@/components/kyc/PhoneNumber";
+import PhoneVerification from "@/components/kyc/PhoneVerification";
 import UsernameSuccess from "@/components/onboarding/UsernameSuccess";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
@@ -37,8 +39,8 @@ const onboardingSteps: {
   [Onboarding.AuthOtp]: <EmailVerification key={Onboarding.AuthOtp} />,
   [Onboarding.Referral]: <EnterUsername key={Onboarding.Referral} />,
   [Onboarding.AuthVerificationIntro]: <UsernameSuccess key={Onboarding.AuthVerificationIntro} />,
-  [Onboarding.AuthPhoneNumberInput]: <></>,
-  [Onboarding.AuthPhoneNumberOtpVerification]: <></>,
+  [Onboarding.AuthPhoneNumberInput]: <PhoneNumber key={Onboarding.AuthPhoneNumberInput} />,
+  [Onboarding.AuthPhoneNumberOtpVerification]: <PhoneVerification key={Onboarding.AuthPhoneNumberOtpVerification} onOTPVerified={() => {}} />,
   [Onboarding.AuthIdentityVerificationOverview]: <></>,
   [Onboarding.AuthBvnVerificationInput]: <></>,
   [Onboarding.AuthBvnVerificationSuccess]: <></>,

@@ -1,5 +1,7 @@
 import { ThemedBackIcon } from "@/assets/svg/wallet-icons-components";
 import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
@@ -11,6 +13,7 @@ import { useSelector } from "react-redux";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import { Box, CustomButton, CustomText } from "../general";
 import Select from "../Select";
+import SumsubVerification from "./SumsubVerification";
 
 interface IDVerificationProps {
   userData: any;
@@ -68,21 +71,44 @@ export default function IDVerification({
 
   const isFormValid = firstName.trim() && lastName.trim() && documentType;
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  const { fetchDocumentTypes } = useUtilities();
+  const { fetchDocumentTypes, fetchVerifiedCountries } = useUtilities();
+  const { updateUser } = useKyc();
+  const [selectedCountry, setSelectedCountry] = useState<
+    VerifiedCountryModel | null | undefined
+  >(user?.metaData?.documentVerification?.selectedVerifiedCountry || null);
+  const { verifiedCountries } = useSelector(
+    (state: AppRootState) => state.utilities
+  );
 
   useEffect(() => {
-    fetchDocumentTypes({
-      body:
-        user?.metaData?.documentVerification?.selectedVerifiedCountry || null,
+    if (user?.metaData?.documentVerification?.selectedVerifiedCountry) {
+      setSelectedCountry(user.metaData.documentVerification.selectedVerifiedCountry);
+    }
+  }, [user?.metaData?.documentVerification?.selectedVerifiedCountry]);
+
+  useEffect(() => {
+    fetchVerifiedCountries({
+      body: {},
       params: {},
       extra: {},
-    }).then((response) => {
-      if (response?.data) {
-        setDocumentTypes(response.data || null);
-      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (selectedCountry) {
+      fetchDocumentTypes({
+        body: selectedCountry || null,
+        params: {},
+        extra: {},
+      }).then((response) => {
+        if (response?.data) {
+          setDocumentTypes(response.data || null);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry]);
 
   const handleContinue = () => {
     if (isFormValid) {
@@ -120,6 +146,34 @@ export default function IDVerification({
       </View>
 
       <Select
+        label="Country"
+        options={
+          (verifiedCountries || []).map((country) => ({
+            label: country.name || "",
+            value: country,
+          })) || []
+        }
+        disabled={!!user?.countryId?._id}
+        searchable
+        value={selectedCountry}
+        selectedLabel={selectedCountry?.name || ""}
+        onSelect={(value) => {
+          if (!Array.isArray(value)) {
+            setSelectedCountry(value);
+            updateUser({
+              metaData: {
+                ...user?.metaData,
+                documentVerification: {
+                  ...user?.metaData?.documentVerification,
+                  selectedVerifiedCountry: value,
+                },
+              },
+            });
+          }
+        }}
+      />
+
+      <Select
         label="Select document type"
         placeholder="Select document type"
         options={
@@ -140,12 +194,27 @@ export default function IDVerification({
         }}
         value={documentType}
       />
-      {/* documentType.isExternal?.token ? <AuthSumSubVerification documentType={documentType} /> : */}
 
       {documentType?.isExternal?.token ? (
-        <Box>
-          <CustomText>External</CustomText>
-        </Box>
+        <SumsubVerification
+          documentType={documentType}
+          onVerificationComplete={(result) => {
+            console.log("Sumsub verification completed:", result);
+            // Handle verification completion
+            // You can call onDocumentSelected with the verification result
+            if (result?.status === "approved" || result?.status === "pending") {
+              onDocumentSelected({
+                firstName: userData?.firstName || user?.firstName || "",
+                lastName: userData?.lastName || user?.lastName || "",
+                documentType,
+                documentId: result?.applicantId || "",
+                dateOfBirth: userData?.dateOfBirth || "",
+                sumsubResult: result,
+              });
+            }
+          }}
+          onBack={onBack}
+        />
       ) : (
         <Box flex={1}>
           <View style={styles.formContainer}>

@@ -31,6 +31,7 @@
     "@reduxjs/toolkit": "^2.9.0",
     "@shopify/react-native-skia": "^2.2.19",
     "@shopify/restyle": "^2.4.5",
+    "@sumsub/react-native-mobilesdk-module": "^1.38.1",
     "@tanstack/react-query": "^5.87.4",
     "@tradle/react-native-http": "^2.0.1",
     "@zap/blockchain-sdk": "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git",

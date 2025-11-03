@@ -10,6 +10,7 @@ import { InternetConnectionProvider } from "@/context/InternetConnectionContext"
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
+import { OnboardingProvider } from "@/src/core/contexts/onboarding";
 import { SupportedCurrenciesProvider } from "@/src/core/supported-currencies/supported-currencies-context";
 import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
 import { WebSocketProvider } from "@/src/core/websocket/WebSocketProvider";
@@ -177,24 +178,26 @@ export default function RootLayout() {
                       <SupportedCurrenciesProvider>
                         <WalletProvider>
                           <WebSocketProvider>
-                            <BottomSheetProvider>
-                      <StatusBar
-                        barStyle={
-                          colorTheme === "dark"
-                            ? "light-content"
-                            : "dark-content"
-                        }
-                      />
-                      {/* <PinGuard /> */}
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen
-                          name="index"
-                          options={{ title: "Home" }}
+                            <OnboardingProvider>
+                              <BottomSheetProvider>
+                        <StatusBar
+                          barStyle={
+                            colorTheme === "dark"
+                              ? "light-content"
+                              : "dark-content"
+                          }
                         />
-                      </Stack>
-                      <BottomSheetManager />
-                      <AppLoadingModal />
-                            </BottomSheetProvider>
+                        {/* <PinGuard /> */}
+                        <Stack screenOptions={{ headerShown: false }}>
+                          <Stack.Screen
+                            name="index"
+                            options={{ title: "Home" }}
+                          />
+                        </Stack>
+                        <BottomSheetManager />
+                        <AppLoadingModal />
+                              </BottomSheetProvider>
+                            </OnboardingProvider>
                           </WebSocketProvider>
                         </WalletProvider>
                       </SupportedCurrenciesProvider>

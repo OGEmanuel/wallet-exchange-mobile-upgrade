@@ -1,15 +1,16 @@
 import { CountryData } from "@/src/core/utils/countryData";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSelector } from "react-redux";
 import { CustomButton, CustomText } from "../general";
 import CountryPhoneInput from "./CountryPhoneInput";
 import CountrySelect from "./CountrySelect";
-import PhoneVerification from "./PhoneVerification";
 
 interface PhoneNumberProps {
   onPhoneVerified?: (phone: string, countryCode: string) => void;
@@ -22,17 +23,29 @@ export default function PhoneNumber({
   onSkip,
   onBack,
 }: PhoneNumberProps) {
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { updateUser, authPhoneNumber } = useKyc();
+  
+  // Initialize from user state if available
+  const initialCountry = user?.metaData?.userPhoneNumberData?.countryData;
   const [selectedCountry, setSelectedCountry] = useState<
     CountryData | undefined
-  >(undefined);
+  >(initialCountry);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [showOTP, setShowOTP] = useState(false);
   const [verified, setVerified] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const theme = useTheme<Theme>();
-  const { authPhoneNumber } = useKyc();
   const [verifyPhoneNumberLoading, setVerifyPhoneNumberLoading] =
     useState(false);
+
+  // Load phone number from user state if available
+  useEffect(() => {
+    if (user?.phone && !phoneNumber) {
+      // Extract phone number and country code from user.phone if it exists
+      // Format might be "+1234567890" or similar
+      setPhoneNumber(user.phone.replace(/^\+\d{1,4}/, "")); // Remove country code prefix
+    }
+  }, [user?.phone, phoneNumber]);
 
   const handleCountrySelect = (country: CountryData) => {
     setSelectedCountry(country);
@@ -45,52 +58,57 @@ export default function PhoneNumber({
     setIsValid(cleanPhone.length >= 7 && cleanPhone.length <= 15);
   };
 
-  const handleVerify = () => {
-    if (isValid && phoneNumber && selectedCountry) {
-      setShowOTP(true);
-    }
-  };
-
-  const handleOTPVerified = () => {
-    setVerified(true);
-    setShowOTP(false);
-    onPhoneVerified?.(
-      phoneNumber,
-      selectedCountry?.phoneCode.replaceAll("+", "") || ""
-    );
-  };
-
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedCountry && phoneNumber && isValid) {
       setVerifyPhoneNumberLoading(true);
 
-      authPhoneNumber({
-        phone: phoneNumber,
-        countryCode: selectedCountry?.phoneCode.replaceAll("+", "") || null,
-        isWhatsApp: false,
-      })
-        .then(() => {
-          setShowOTP(true);
-        })
-        .catch((error) => {
-          // console.log(error);
-        })
-        .finally(() => {
-          setVerifyPhoneNumberLoading(false);
+      try {
+        await authPhoneNumber({
+          phone: phoneNumber,
+          countryCode: selectedCountry?.phoneCode.replaceAll("+", "") || null,
+          isWhatsApp: false,
         });
+
+        // Update user metadata to indicate phone input has been shown
+        // This will trigger the onboarding context to move to OTP step
+        updateUser({
+          ...user,
+          metaData: {
+            ...user?.metaData,
+            userPhoneNumberData: {
+              ...user?.metaData?.userPhoneNumberData,
+              countryData: selectedCountry,
+              shownPhoneNumberOnboardingIntro: true,
+              shownPhoneNumberInput: true,
+            },
+          },
+        });
+
+        onPhoneVerified?.(phoneNumber, selectedCountry?.phoneCode.replaceAll("+", "") || "");
+      } catch (error) {
+        console.error("Failed to send phone verification:", error);
+      } finally {
+        setVerifyPhoneNumberLoading(false);
+      }
     }
   };
 
-  if (showOTP) {
-    return (
-      <PhoneVerification
-        phoneNumber={phoneNumber}
-        countryCode={selectedCountry?.phoneCode || ""}
-        onOTPVerified={handleOTPVerified}
-        onBack={() => setShowOTP(false)}
-      />
-    );
-  }
+  const handleSkip = () => {
+    // Update user metadata to indicate phone verification was skipped
+    updateUser({
+      ...user,
+      metaData: {
+        ...user?.metaData,
+        userPhoneNumberData: {
+          ...user?.metaData?.userPhoneNumberData,
+          userskippedPhoneNumberOnboarding: true,
+          shownPhoneNumberOnboardingIntro: true,
+        },
+      },
+    });
+
+    onSkip?.();
+  };
 
   return (
     <>
@@ -137,7 +155,7 @@ export default function PhoneNumber({
         <View style={styles.buttonsRow}>
           <CustomButton
             text="Skip"
-            onPress={() => onSkip?.()}
+            onPress={handleSkip}
             width="48%"
             height={56}
             borderRadius={56}
