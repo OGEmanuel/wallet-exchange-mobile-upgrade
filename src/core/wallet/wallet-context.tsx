@@ -193,6 +193,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
 
   const checkAuthenticationAndRoute = async (shouldRoute: boolean = true) => {
+    if (!currentExchangeUser || !exchangeUserData) {
+      return null;
+    }
+    
     const startTime = Date.now();
     console.log("🚀 Starting authentication and routing check");
 

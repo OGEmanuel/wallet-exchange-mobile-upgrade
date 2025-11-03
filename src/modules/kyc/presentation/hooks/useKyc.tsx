@@ -29,7 +29,12 @@ const useKyc = () => {
 
   const fetchUserById = async (
     payload: UserModel | null
-  ): Promise<GeneralResponseModel<UserModel>> => {
+  ): Promise<GeneralResponseModel<UserModel> | null> => {
+    console.log("UseKyc fetchUserById payload ", payload);
+    if (!user?._id) {
+      return null
+    }
+
     setFetchingUserDetails(true);
     const usecase = new KycUsecases();
     const response = await usecase.executeFetchUserById({
@@ -128,7 +133,7 @@ const useKyc = () => {
 
       if (user?._id || !user?.isGuest || !fetchingUserDetails) {
         fetchUserById(updatedUser).then((response) => {
-          if (response.data) {
+          if (response?.data) {
             const fetchedUserData = {
               ...userDataWithoutTheMetaData,
               ...response.data,
