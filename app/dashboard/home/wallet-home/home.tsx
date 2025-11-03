@@ -227,7 +227,7 @@ const Home = () => {
       setIsRefreshing(true);
       const currentWalletId = mainUserWalletGroup?._id;
       if (currentWalletId) {
-        await refreshPortfolio(currentWalletId);
+        await refreshPortfolio(currentWalletId, true);
       }
       // Portfolio processing will happen automatically when portfolio data changes
     } catch (error) {

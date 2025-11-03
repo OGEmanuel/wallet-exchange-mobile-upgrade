@@ -581,14 +581,6 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
             `⏱️ Scheduled background sync (ID: ${syncTimeoutId}), will execute in 10 seconds`
           );
 
-          // Optional: Refresh after a longer delay (5 seconds) to ensure backend has processed
-          // But don't do this immediately as it can overwrite the optimistic update
-          // if (props.onRefreshPortfolio) {
-          //   setTimeout(() => {
-          //     console.log("🔄 Refreshing portfolio after token toggle to sync with backend...");
-          //     props.onRefreshPortfolio?.();
-          //   }, 5000); // Longer delay to ensure backend has processed
-          // }
         } catch (backendError: any) {
           console.error("❌ Failed to toggle token on backend:", backendError);
           console.error("   Error type:", typeof backendError);

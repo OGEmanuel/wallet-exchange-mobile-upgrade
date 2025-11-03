@@ -6,7 +6,7 @@ import {
   ThemedHelpIcon,
   ThemedShieldFillIcon,
   ThemedSignOutIcon,
-  ThemedStarFillIcon
+  ThemedStarFillIcon,
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
@@ -22,7 +22,13 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Link, Setting4 } from "iconsax-react-nativejs";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
@@ -38,13 +44,16 @@ const Sidebar = () => {
   const theme = useTheme<Theme>();
   const { logoutFromExchange } = useWallet();
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
-  
+
   const [hasHardware, setHasHardware] = useState(false);
-  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] = useState(false);
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
+    useState(false);
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"logout" | "changePin" | null>(null);
+  const [pendingAction, setPendingAction] = useState<
+    "logout" | "changePin" | null
+  >(null);
 
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
@@ -55,7 +64,9 @@ const Sidebar = () => {
   useEffect(() => {
     const loadBiometricPreference = async () => {
       try {
-        const stored = await SecureStore.getItemAsync(StorageKeys.BIOMETRIC_ENABLED);
+        const stored = await SecureStore.getItemAsync(
+          StorageKeys.BIOMETRIC_ENABLED
+        );
         setIsBiometricEnabled(stored === "true");
       } catch (error) {
         console.error("Failed to load biometric preference:", error);
@@ -70,7 +81,8 @@ const Sidebar = () => {
       try {
         const has = await LocalAuthentication.hasHardwareAsync();
         if (has) {
-          const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+          const types =
+            await LocalAuthentication.supportedAuthenticationTypesAsync();
           // Check if device supports biometric authentication
           const hasBiometric = types.length > 0;
           setHasHardware(hasBiometric);
@@ -102,7 +114,6 @@ const Sidebar = () => {
     }
   }, [logoutFromExchange]);
 
-
   const handleBiometricEnabled = useCallback(async () => {
     const newValue = !isBiometricEnabled;
     setIsBiometricEnabled(newValue);
@@ -129,10 +140,13 @@ const Sidebar = () => {
   };
 
   // Protected action handler - requires PIN verification
-  const handleProtectedAction = async (action: "logout" | "changePin", callback: () => void) => {
+  const handleProtectedAction = async (
+    action: "logout" | "changePin",
+    callback: () => void
+  ) => {
     try {
       const hasPin = await pinStorageService.hasPin();
-      
+
       if (hasPin) {
         // PIN exists, show PIN entry modal
         setPendingAction(action);
@@ -149,16 +163,19 @@ const Sidebar = () => {
   };
 
   // Handle PIN verification success
-  const handlePinSuccess = useCallback(async (pin: string) => {
-    setShowPinEntry(false);
-    
-    if (pendingAction === "changePin") {
-      // Show PIN setup modal to create new PIN
-      setShowPinSetup(true);
-    }
-    
-    setPendingAction(null);
-  }, [pendingAction]);
+  const handlePinSuccess = useCallback(
+    async (pin: string) => {
+      setShowPinEntry(false);
+
+      if (pendingAction === "changePin") {
+        // Show PIN setup modal to create new PIN
+        setShowPinSetup(true);
+      }
+
+      setPendingAction(null);
+    },
+    [pendingAction]
+  );
 
   // Handle PIN modal close
   const handlePinClose = useCallback(() => {
@@ -177,70 +194,77 @@ const Sidebar = () => {
       setShowPinSetup(true);
     });
   }, []);
-  
+
   const handlePinSetupComplete = useCallback(() => {
     setShowPinSetup(false);
     console.log("✅ PIN changed successfully");
   }, []);
-  
+
   const handlePinSetupClose = useCallback(() => {
     setShowPinSetup(false);
   }, []);
 
   // Sidebar data
-  const SIDEBAR_DATA: ISidebarItem[] = useMemo(() => [
-    ...(isExchangeAuthenticated ? [{
-      icon: (
-        <ThemedBankAccountIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Bank Accounts",
-      link: "/dashboard/home/wallet-home/more/bank",
-      isActive: false,
-    }] : []),
-    {
-      icon: (
-        <ThemedAddressBookIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Address book",
-      link: "/dashboard/home/address-book",
-      isActive: false,
-    },
-    {
-      icon: (
-        <ThemedChartIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Markets",
-      link: "/dashboard/home/market",
-      isActive: false,
-    },
-    {
-      icon: (
-        <Setting4
-          color={theme.colors.bodyTextColor}
-          size={20}
-          variant="Outline"
-        />
-      ),
-      title: "Preferences",
-      link: "/dashboard/home/wallet-home/more/preferences",
-      isActive: false,
-    },
-  ], [theme.colors.bodyTextColor, isExchangeAuthenticated]);
+  const SIDEBAR_DATA: ISidebarItem[] = useMemo(
+    () => [
+      ...(isExchangeAuthenticated
+        ? [
+            {
+              icon: (
+                <ThemedBankAccountIcon
+                  width={20}
+                  height={20}
+                  darkModeColor={theme.colors.bodyTextColor}
+                  lightModeColor={theme.colors.bodyTextColor}
+                />
+              ),
+              title: "Bank Accounts",
+              link: "/dashboard/home/wallet-home/more/bank",
+              isActive: false,
+            },
+          ]
+        : []),
+      {
+        icon: (
+          <ThemedAddressBookIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Address book",
+        link: "/dashboard/home/address-book",
+        isActive: false,
+      },
+      {
+        icon: (
+          <ThemedChartIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Markets",
+        link: "/dashboard/home/market",
+        isActive: false,
+      },
+      {
+        icon: (
+          <Setting4
+            color={theme.colors.bodyTextColor}
+            size={20}
+            variant="Outline"
+          />
+        ),
+        title: "Preferences",
+        link: "/dashboard/home/wallet-home/more/preferences",
+        isActive: false,
+      },
+    ],
+    [theme.colors.bodyTextColor, isExchangeAuthenticated]
+  );
 
   const SIDEBAR_SECURITY_DATA: ISidebarItem[] = useMemo(() => {
     const baseData: ISidebarItem[] = [
@@ -289,49 +313,62 @@ const Sidebar = () => {
     }
 
     return baseData;
-  }, [hasHardware, isBiometricEnabled, theme.colors.bodyTextColor, theme.colors.primaryColor, handleBiometricEnabled, handleChangePin]);
+  }, [
+    hasHardware,
+    isBiometricEnabled,
+    theme.colors.bodyTextColor,
+    theme.colors.primaryColor,
+    handleBiometricEnabled,
+    handleChangePin,
+  ]);
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(() => [
-    {
-      icon: (
-        <ThemedShieldFillIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Terms of Service",
-      link: "/dashboard/home/wallet-home/more/legal",
-      isActive: false,
-    },
-    {
-      icon: (
-        <ThemedHelpIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Help & Support",
-      link: "/dashboard/home/wallet-home/more/help",
-      isActive: false,
-    },
-    {
-      icon: (
-        <ThemedStarFillIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "About Zap Wallet",
-      link: "/dashboard/home/wallet-home/more/help",
-      isActive: false,
-    },
-    {
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(
+    () => [
+      {
+        icon: (
+          <ThemedShieldFillIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Terms of Service",
+        link: "/dashboard/home/wallet-home/more/legal",
+        isActive: false,
+      },
+      {
+        icon: (
+          <ThemedHelpIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Help & Support",
+        link: "/dashboard/home/wallet-home/more/help",
+        isActive: false,
+      },
+      {
+        icon: (
+          <ThemedStarFillIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "About Zap Wallet",
+        link: "/dashboard/home/wallet-home/more/help",
+        isActive: false,
+      },
+    ],
+    [theme.colors.bodyTextColor, handleLogout, isExchangeAuthenticated]
+  );
+
+  if (isExchangeAuthenticated) {
+    SIDEBAR_ABOUT_DATA.push({
       icon: (
         <ThemedSignOutIcon
           width={20}
@@ -345,14 +382,8 @@ const Sidebar = () => {
       isActive: false,
       onPress: handleLogout,
       disablClick: false,
-    },
-  ].filter((item) => {
-    // Only show Logout if exchange is authenticated
-    if (item.title === "Logout") {
-      return isExchangeAuthenticated;
-    }
-    return true;
-  }), [theme.colors.bodyTextColor, handleLogout, isExchangeAuthenticated]);
+    });
+  }
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -462,7 +493,10 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_DATA.map((item, index) => (
-                <SidebarItemCard key={item.title || index.toString()} {...item} />
+                <SidebarItemCard
+                  key={item.title || index.toString()}
+                  {...item}
+                />
               ))}
             </Box>
           </Box>
@@ -486,12 +520,15 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                <SidebarItemCard key={item.title || index.toString()} {...item} />
+                <SidebarItemCard
+                  key={item.title || index.toString()}
+                  {...item}
+                />
               ))}
             </Box>
           </Box>
 
-          <Box paddingHorizontal="m" marginTop="l">
+          <Box paddingHorizontal="m" marginTop="l" mb="3xl">
             <CustomText
               variant="bodySubheader"
               fontSize={14}
@@ -510,7 +547,10 @@ const Sidebar = () => {
               borderRadius={12}
             >
               {SIDEBAR_ABOUT_DATA.map((item, index) => (
-                <SidebarItemCard key={item.title || index.toString()} {...item} />
+                <SidebarItemCard
+                  key={item.title || index.toString()}
+                  {...item}
+                />
               ))}
             </Box>
           </Box>
@@ -538,6 +578,7 @@ const Sidebar = () => {
         ref={zapLinkBottomSheetRef}
       />
       <PinEntryModal
+        type="VERIFY"
         visible={showPinEntry}
         onSuccess={handlePinSuccess}
         onClose={handlePinClose}

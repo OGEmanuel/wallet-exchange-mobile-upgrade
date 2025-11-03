@@ -195,7 +195,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       console.log("✅ Token imported successfully");
 
       // Refresh the portfolio to show the new token
-      await refreshPortfolio();
+      await refreshPortfolio(mainUserWalletGroup?._id);
 
       // Close the modal
       setShowImportModal(false);

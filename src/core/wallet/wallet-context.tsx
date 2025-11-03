@@ -310,7 +310,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Cache management for wallet groups - Smart caching strategy
   const CACHE_DURATION = {
-    SHORT: 30 * 60 * 1000, // 30 minutes - for active users
+    SHORT: 2 * 60 * 1000, // 5 minutes - for active users
     MEDIUM: 24 * 60 * 60 * 1000, // 24 hours - for daily users
     LONG: 7 * 24 * 60 * 60 * 1000, // 7 days - for weekly users
     MAX: 30 * 24 * 60 * 60 * 1000, // 30 days - maximum cache age
@@ -948,7 +948,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsWalletAuthenticated(true);
         setCurrentWalletUser(result.userId);
         await checkAuthenticationAndRoute(!!exchangeUserData?.username);
-        // await checkAuthenticationAndRoute(false);
         return true;
       } else {
         setError(result || "Login failed");
@@ -2280,6 +2279,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
             // If cache is stale, refresh in background
             if (cacheStatus.shouldRefreshInBackground) {
+              console.log("refreshing portfolio in background");
               refreshPortfolio(walletIdToRefresh, true);
             } else {
               setIsRefreshingPortfolio(false);
@@ -2409,10 +2409,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         }
 
         // STEP 4: Extract tokens from portfolio and fetch batch balances
-        if (
-          addressesByChain.size > 0 &&
-          (portfolioData as UserPortfolioData).userTokenList
-        ) {
+        if (addressesByChain.size > 0 && portfolioData.userTokenList) {
           try {
             const tokens = BatchBalanceService.extractTokensFromPortfolio(
               portfolioData,

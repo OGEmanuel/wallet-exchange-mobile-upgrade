@@ -5,7 +5,7 @@ import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image, StyleSheet, View } from "react-native";
-import { Confetti, ConfettiMethods } from "react-native-fast-confetti";
+import { ConfettiMethods } from "react-native-fast-confetti";
 import EmailVerification from "../onboarding/EmailVerification";
 import EnterUsername from "../onboarding/EnterUsername";
 import LoginToZap from "../onboarding/LoginToZap";
@@ -28,7 +28,7 @@ export default function ZapperSiginBottomSheet({
   onContinue,
   onClose,
 }: {
-  ref: React.RefObject<AnimatedGradientBottomSheetRef | null>;
+  ref?: React.RefObject<AnimatedGradientBottomSheetRef | null>;
   onContinue?: () => void;
   onClose?: () => void;
 }) {
@@ -134,7 +134,7 @@ export default function ZapperSiginBottomSheet({
 
   return (
     <>
-      <Confetti ref={confettiRef} />
+      {/* <Confetti ref={confettiRef} /> */}
       <AnimatedGradientBottomSheet
         ref={ref}
         snapPoints={["90%"]}
