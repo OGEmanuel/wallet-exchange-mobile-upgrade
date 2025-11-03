@@ -72,9 +72,6 @@ export default function PhoneNumber({
         .then(() => {
           setShowOTP(true);
         })
-        .catch((error) => {
-          // console.log(error);
-        })
         .finally(() => {
           setVerifyPhoneNumberLoading(false);
         });
@@ -88,6 +85,7 @@ export default function PhoneNumber({
         countryCode={selectedCountry?.phoneCode || ""}
         onOTPVerified={handleOTPVerified}
         onBack={() => setShowOTP(false)}
+        onSkip={onSkip}
       />
     );
   }

@@ -1,5 +1,5 @@
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
-import { Theme } from "@/theme";
+import theme, { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
@@ -12,12 +12,14 @@ interface PhoneVerificationProps {
   countryCode: string;
   onOTPVerified: () => void;
   onBack?: () => void;
+  onSkip?: () => void;
 }
 
 export default function PhoneVerification({
   phoneNumber,
   countryCode,
   onOTPVerified,
+  onSkip,
 }: PhoneVerificationProps) {
   const { colors } = useTheme<Theme>();
   const [otp, setOtp] = useState("");
@@ -119,19 +121,30 @@ export default function PhoneVerification({
       {/* Verify button */}
       <View style={styles.buttonContainer}>
         <CustomButton
-          text="Verify"
-          onPress={handleVerify}
-          width="100%"
-          height={56}
-          borderRadius={56}
-          bgColor={colors.primaryColor}
-          color={colors.white}
-          variant="bodySubheader"
-          isLoading={isVerifying}
-          fontSize={16}
-          disabled={otp.length !== 6 || isResendDisabled}
-          disabledColor={colors.borderColor}
-        />
+            text="Skip"
+            onPress={() => onSkip?.()}
+            // width="48%"
+            height={56}
+            borderRadius={56}
+            bgColor={theme.colors.secondaryBackgroundColor}
+            color={theme.colors.bodyTextColor}
+            variant="bodySubheader"
+            fontSize={16}
+          />
+          <CustomButton
+            text="Verify"
+            onPress={handleVerify}
+            // width="100%"
+            height={56}
+            borderRadius={56}
+            bgColor={colors.primaryColor}
+            color={colors.white}
+            variant="bodySubheader"
+            isLoading={isVerifying}
+            fontSize={16}
+            disabled={otp.length !== 6 || isResendDisabled}
+            disabledColor={colors.borderColor}
+          />
       </View>
     </View>
   );
@@ -172,7 +185,10 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH * 0.9,
   },
   buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     position: "absolute",
+    gap: 12,
     bottom: 150,
     width: SCREEN_WIDTH * 0.9,
     alignSelf: "center",
