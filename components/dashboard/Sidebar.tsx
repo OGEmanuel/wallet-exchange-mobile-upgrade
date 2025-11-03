@@ -8,16 +8,17 @@ import {
   ThemedStarFillIcon,
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { StorageKeys } from "@/src/core/api/models";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import {
   selectBiometricEnabled,
   toggleBiometric,
 } from "@/src/modules/settings/presentation/state/settings-slice";
-import { selectUser } from "@/state/reducers/kyc-reducer";
+import { kycActions } from "@/state/reducers/kyc-reducer";
 import {
   selectWalletConnected,
   selectWalletUser,
@@ -26,56 +27,58 @@ import {
 } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
-import { logoutUser } from "@/utils/clear-device-data";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { UserModel } from "@zap/blockchain-sdk";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link, Setting4 } from "iconsax-react-nativejs";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Image, Platform, Pressable } from "react-native";
+import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useDispatch, useSelector } from "react-redux";
+import LogoutModal from "../Modals/LogoutModal";
+import { PinEntryModal } from "../Modals/PinEntryModal";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
-import ChangePinBottomSheet from "../bottomsheets/preference/ChangePinBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
+import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
+  const [showPinModal, setShowPinModal] = React.useState(false);
   const isConnect = useSelector(selectWalletConnected);
   const dispatch = useDispatch();
   const { setBiometricEnabled } = useSettings();
   const { logoutFromExchange } = useWallet();
-  const user = useSelector(selectUser);
   const isBiometricEnabled = useSelector(selectBiometricEnabled);
   const theme = useTheme<Theme>();
-  const { changePinRef } = useBottomSheetRefs();
   const [hasHardware, setHasHardware] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = React.useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
   const walletUser = useSelector(selectWalletUser);
 
   const OS = Platform.OS;
-  const { currentWalletUser, getExchangeUser } = useWallet();
+  const { getExchangeUser } = useWallet();
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const { fetchUserById, updateUser } = useKyc();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
   React.useEffect(() => {
-    if (currentWalletUser) {
+    if (isExchangeAuthenticated) {
       (async function () {
-        console.log("CURRENT WALLET USER", currentWalletUser);
-        const usr = await getExchangeUser();
-        dispatch(setWalletUser(exchangeUserData as UserModel));
-        console.log("EXCHANGE USER", exchangeUserData);
+        const val = await getExchangeUser();
+        const userDetails = await fetchUserById(val);
+        updateUser(userDetails.data);
+        dispatch(kycActions.setUser(userDetails.data as UserModel));
+        dispatch(setWalletUser(userDetails.data as UserModel));
       })();
     }
-  }, [currentWalletUser, exchangeUserData]);
+  }, []);
 
   const handleConnectZapExchange = useCallback(() => {
     zapLinkBottomSheetRef.current?.close();
@@ -130,54 +133,12 @@ const Sidebar = () => {
   };
 
   const handleCheck = () => {
-    if (!currentWalletUser) {
+    if (!isExchangeAuthenticated) {
       setIsZapperBottomSheetVisible(true);
       zapperBottomSheetRef.current?.snapToIndex(0);
     } else {
       router.push("/dashboard/home/wallet-home/more/profile");
     }
-  };
-
-  const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout? You will need to sign in again to access your account.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              // Logout from exchange
-              await logoutFromExchange();
-
-              // Clear user data
-              const success = await logoutUser();
-
-              if (success) {
-                // Route to select track screen
-                router.replace("/select-track");
-              } else {
-                Alert.alert(
-                  "Error",
-                  "Failed to logout completely. Please try again."
-                );
-              }
-            } catch (error) {
-              console.error("Logout error:", error);
-              Alert.alert(
-                "Error",
-                "An error occurred during logout. Please try again."
-              );
-            }
-          },
-        },
-      ]
-    );
   };
 
   // adding the data hear
@@ -274,7 +235,9 @@ const Sidebar = () => {
       title: "Change Zap PIN",
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
-      onPress: () => changePinRef.current?.snapToIndex(1),
+      onPress: () => {
+        setShowPinModal(true);
+      },
       disablClick: false,
     },
   ];
@@ -346,7 +309,10 @@ const Sidebar = () => {
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
     },
-    {
+  ];
+
+  if (isExchangeAuthenticated) {
+    SIDEBAR_ABOUT_DATA.push({
       icon: (
         <ThemedSignOutIcon
           width={20}
@@ -358,10 +324,10 @@ const Sidebar = () => {
       title: "Logout",
       link: "/dashboard/home/wallet-home/more/about",
       isActive: false,
-      onPress: handleLogout,
+      onPress: () => setShowLogoutModal(true),
       disablClick: false,
-    },
-  ];
+    });
+  }
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -395,7 +361,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {currentWalletUser && (
+            {isExchangeAuthenticated && (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -420,7 +386,7 @@ const Sidebar = () => {
                 )}
               </Pressable>
             )}
-            {!currentWalletUser && (
+            {!isExchangeAuthenticated && (
               <Image
                 source={require("@/assets/images/personplaceholder.png")}
                 style={{ width: 40, height: 40, borderRadius: 20 }}
@@ -428,7 +394,7 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {currentWalletUser && (
+            {isExchangeAuthenticated && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
                   {walletUser?.username || "anonymous.zap"}
@@ -440,7 +406,7 @@ const Sidebar = () => {
                 </Box>
               </>
             )}
-            {!currentWalletUser && (
+            {!isExchangeAuthenticated && (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
                   anonymous.zap
@@ -462,74 +428,81 @@ const Sidebar = () => {
       </LinearGradient>
       <Box flex={1}>
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          <Box
-            width="100%"
-            height={70}
-            flexDirection="row"
-            justifyContent="space-between"
-            alignItems="center"
-            paddingHorizontal="m"
-          >
-            <Box>
-              <CustomText variant="bodySubheader" fontSize={16}>
-                Simple mode
-              </CustomText>
-              <CustomText fontSize={12}>
-                Provide easy use for beginners
-              </CustomText>
-            </Box>
-            <Box justifyContent="center">
-              <Switch
-                value={isConnect}
-                onValueChange={() => handleConnect()}
-                trackColor={{
-                  false: theme.colors.primaryColor,
-                  true: theme.colors.primaryColor,
-                }}
-              />
-            </Box>
-          </Box>
-          <Box paddingHorizontal="m">
+          {isExchangeAuthenticated && (
             <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
-              borderColor="borderColor"
-              borderRadius={12}
+              width="100%"
+              height={70}
+              flexDirection="row"
+              justifyContent="space-between"
+              alignItems="center"
+              paddingHorizontal="m"
             >
-              {SIDEBAR_DATA.map((item, index) => (
-                <SidebarItemCard key={index.toString()} {...item} />
-              ))}
+              <Box>
+                <CustomText variant="bodySubheader" fontSize={16}>
+                  Simple mode
+                </CustomText>
+                <CustomText fontSize={12}>
+                  Provide easy use for beginners
+                </CustomText>
+              </Box>
+              <Box justifyContent="center">
+                <Switch
+                  value={isConnect}
+                  onValueChange={() => handleConnect()}
+                  trackColor={{
+                    false: theme.colors.primaryColor,
+                    true: theme.colors.primaryColor,
+                  }}
+                />
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          <Box paddingHorizontal="m" marginTop="l">
-            <CustomText
-              variant="bodySubheader"
-              fontSize={14}
-              color="disabledTextColor"
-              marginBottom="m"
-            >
-              SECURITY
-            </CustomText>
-            <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
-              borderColor="borderColor"
-              borderRadius={12}
-            >
-              {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                <SidebarItemCard key={index.toString()} {...item} />
-              ))}
+          {isExchangeAuthenticated && (
+            <Box paddingHorizontal="m">
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="secondaryBackgroundColor"
+                borderWidth={1}
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_DATA.map((item, index) => (
+                  <SidebarItemCard key={index.toString()} {...item} />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          <Box paddingHorizontal="m" marginTop="l">
+          {isExchangeAuthenticated && (
+            <Box paddingHorizontal="m" marginTop="l">
+              <CustomText
+                variant="bodySubheader"
+                fontSize={14}
+                color="disabledTextColor"
+                marginBottom="m"
+              >
+                SECURITY
+              </CustomText>
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="secondaryBackgroundColor"
+                borderWidth={1}
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_SECURITY_DATA.map((item, index) => (
+                  <SidebarItemCard key={index.toString()} {...item} />
+                ))}
+              </Box>
+            </Box>
+          )}
+
+          <Box paddingHorizontal="m" marginTop="l" mb="3xl">
             <CustomText
               variant="bodySubheader"
               fontSize={14}
@@ -552,26 +525,37 @@ const Sidebar = () => {
               ))}
             </Box>
           </Box>
+          <Box
+            width="100%"
+            height={170}
+            borderTopWidth={1}
+            borderTopColor="borderColor"
+          >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ padding: 20 }}
+            >
+              <LearnWithZapCards />
+              <LearnWithZapCards />
+              <LearnWithZapCards />
+              <LearnWithZapCards />
+            </ScrollView>
+          </Box>
         </ScrollView>
       </Box>
-      {/* <Box
-        width="100%"
-        height={170}
-        borderTopWidth={1}
-        borderTopColor="borderColor"
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20 }}
-        >
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-          <LearnWithZapCards />
-        </ScrollView>
-      </Box> */}
-      <ChangePinBottomSheet ref={changePinRef} />
+
+      <PinEntryModal
+        visible={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        onSuccess={() => setShowPinModal(false)}
+        type="SETUP"
+      />
+      <LogoutModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+      />
+      {/* <ChangePinBottomSheet ref={changePinRef} /> */}
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
           key="zapper-bottom-sheet"

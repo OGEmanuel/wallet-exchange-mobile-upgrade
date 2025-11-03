@@ -7,7 +7,7 @@ import {
   Dimensions,
   ImageBackground,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import ThemedText from "@/components/general/ThemedText";
@@ -141,7 +141,7 @@ export default function HomeScreen() {
 
         <DirectionButton
           color="#6045FF"
-          onPress={() => router.push("/select-track")}
+          onPress={() => router.push("/select-track") as any}
         />
       </ImageBackground>
     </LinearGradient>

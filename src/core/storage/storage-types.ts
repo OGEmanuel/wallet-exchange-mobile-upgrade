@@ -50,6 +50,7 @@ export const StorageKeys = {
   THEME_MODE: "themeMode", // "system" | "light" | "dark"
   HAPTICS_ENABLED: "hapticsEnabled", // "true" | "false"
   ANIMATIONS_ENABLED: "animationsEnabled", // "true" | "false"
+  SELECTED_CURRENCY: "selected_Currency", // Selected currency for display
   // Note: Exchange user data is not cached locally; SDK caches it internally
 } as const;
 

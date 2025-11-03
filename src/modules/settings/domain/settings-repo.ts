@@ -78,7 +78,9 @@ export abstract class SettingsRepo {
 
   abstract getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>>;
+  ): Promise<
+    GeneralResponseModel<{ currencies: CurrencyModel[]; totalCount: number }>
+  >;
 
   abstract getCountry(
     payload: GeneralRequestModel<unknown, GetCountryParam, unknown>

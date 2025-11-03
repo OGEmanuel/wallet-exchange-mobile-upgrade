@@ -116,7 +116,9 @@ export class SettingsUsecases {
 
   async getCurrencies(
     payload: GeneralRequestModel<unknown, GetCurrencyParam, unknown>
-  ): Promise<GeneralResponseModel<{ currencies: CurrencyModel[] }>> {
+  ): Promise<
+    GeneralResponseModel<{ currencies: CurrencyModel[]; totalCount: number }>
+  > {
     return this.repo.getCurrencies(payload);
   }
 
