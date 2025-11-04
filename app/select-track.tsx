@@ -3,16 +3,18 @@ import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
-import { useWallet } from "@/src/core/wallet/wallet-context";
+import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useEffect } from "react";
+import React, { PropsWithChildren, useCallback, useEffect } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
   const { colorTheme } = useActiveTheme();
@@ -97,15 +99,22 @@ const SelectTrack = () => {
 
   // Get exchange authentication state from wallet context
   const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
 
   // Check if user is exchange authenticated
   const isUserLoggedIn = isExchangeAuthenticated;
 
+  const triggerFetchUserData = useCallback(() => {
+    if (user?._id || currentExchangeUser) {
+      fetchUserById({
+        _id: currentExchangeUser || user?._id || undefined
+      });
+    }
+  }, [user?._id, currentExchangeUser]);
+
   useEffect(() => {
-    fetchUserById({
-      _id: currentExchangeUser || undefined
-    });
-  }, [currentExchangeUser, fetchUserById]);
+    triggerFetchUserData();
+  }, [triggerFetchUserData]);
 
   const theme = useTheme<Theme>();
 

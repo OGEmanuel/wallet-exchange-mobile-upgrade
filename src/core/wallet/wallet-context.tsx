@@ -3049,6 +3049,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     exchangeLogin,
     exchangeValidateOtp,
     getExchangeUser,
+    setCurrentExchangeUser,
+    setExchangeUserData,
+    setIsExchangeAuthenticated,
     completeOnboarding,
 
     // Wallet Operations

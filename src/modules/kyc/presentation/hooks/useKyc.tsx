@@ -25,7 +25,14 @@ const useKyc = () => {
   const [fetchingUserDetails, setFetchingUserDetails] =
     useState<boolean>(false);
 
-  const { currentExchangeUser } = useWallet();
+  const { 
+    currentExchangeUser, 
+    exchangeUserData,
+    isExchangeAuthenticated,
+    setCurrentExchangeUser,
+    setExchangeUserData,
+    setIsExchangeAuthenticated 
+  } = useWallet();
 
   const fetchUserById = async (
     payload: UserModel | null
@@ -46,13 +53,22 @@ const useKyc = () => {
     });
 
     if (response.data) {
-      dispatch(kycActions.setUser({
+      const updatedUser = {
         ...user,
         ...response.data,
         metaData: { 
           ...user?.metaData,
         },
-      }));
+      };
+      
+      dispatch(kycActions.setUser(updatedUser));
+      
+      // Update wallet context to keep exchange user data in sync
+      if (response.data._id) {
+        setCurrentExchangeUser(response.data._id);
+        setIsExchangeAuthenticated(true);
+      }
+      setExchangeUserData(updatedUser);
     }
 
     setFetchingUserDetails(false);
