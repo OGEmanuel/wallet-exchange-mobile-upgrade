@@ -1,3 +1,4 @@
+import icons from "@/assets/icons";
 import images from "@/assets/images";
 import CurrencyTab from "@/components/dashboard/market/CurrencyTab";
 import EmptyState from "@/components/dashboard/market/EmptyState";
@@ -17,7 +18,7 @@ import { AppRootState } from "@/state";
 import { MarketData } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView } from "react-native";
+import { Image, Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 const Explore = () => {
@@ -79,45 +80,25 @@ const Explore = () => {
       // setIsError(false);
       setErrorMessage(null);
 
-      await fetchMarketTokens({
-        body: {},
-        params: {},
-        extra: {},
-      });
+      await fetchMarketTokens();
     } catch (error) {
-      // setIsError(true);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "An unexpected error occurred. Please try again."
+          : "An unexpected error occurred while loading market tokens. Please try again."
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchMarketTokens]);
 
-  const loadCurrencies = useCallback(async () => {
-    await fetchCurrencies({
-      body: {},
-      params: {},
-      extra: {},
-    }).then(() => {
-      retrieveNairaCurrency();
-      retrieveUsdCurrency();
-    });
-  }, []);
-
-  // Function to fetch watchlist tokens
+  // Function to fetch watchlist tokens with proper error handling
   const loadWatchlistTokens = useCallback(async () => {
     try {
       setIsLoading(true);
       setErrorMessage(null);
 
-      await fetchWatchlistTokens({
-        body: {},
-        params: {},
-        extra: user,
-      });
+      await fetchWatchlistTokens();
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -127,7 +108,16 @@ const Explore = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchWatchlistTokens, user]);
+  }, [fetchWatchlistTokens]);
+
+  // Function to fetch currencies
+  const loadCurrencies = useCallback(async () => {
+    try {
+      await fetchCurrencies();
+    } catch (error) {
+      console.error("Failed to load currencies:", error);
+    }
+  }, [fetchCurrencies]);
 
   useEffect(() => {
     if (currencies && currencies.length > 0) {
@@ -155,6 +145,9 @@ const Explore = () => {
 
   const categories = ["All", "Top Gainers", "Top Losers"];
 
+  const getTokenChange = (token: MarketData) =>
+    (token as { change24h?: number }).change24h;
+
   // Filter market tokens based on selected category
   const filteredMarketTokens = React.useMemo(() => {
     if (!marketTokens) return null;
@@ -162,13 +155,23 @@ const Explore = () => {
     switch (selectedCategory) {
       case "Top Gainers":
         return [...marketTokens]
-          .filter((token) => token.change24h && token.change24h > 0)
-          .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change > 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(b) || 0) - (getTokenChange(a) || 0)
+          );
 
       case "Top Losers":
         return [...marketTokens]
-          .filter((token) => token.change24h && token.change24h < 0)
-          .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change < 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(a) || 0) - (getTokenChange(b) || 0)
+          );
 
       case "All":
       default:
@@ -180,7 +183,6 @@ const Explore = () => {
   const filteredWatchlistTokens = React.useMemo(() => {
     if (!watchlistTokens) return null;
 
-    // Extract market data from watchlist items
     const watchlistMarketData = watchlistTokens
       .map((item) => item.marketData)
       .filter(Boolean) as MarketData[];
@@ -190,13 +192,23 @@ const Explore = () => {
     switch (selectedCategory) {
       case "Top Gainers":
         return [...watchlistMarketData]
-          .filter((token) => token.change24h && token.change24h > 0)
-          .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change > 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(b) || 0) - (getTokenChange(a) || 0)
+          );
 
       case "Top Losers":
         return [...watchlistMarketData]
-          .filter((token) => token.change24h && token.change24h < 0)
-          .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change < 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(a) || 0) - (getTokenChange(b) || 0)
+          );
 
       case "All":
       default:
@@ -219,6 +231,42 @@ const Explore = () => {
   // const isWatchlistEmpty =
   //   !isTokens && watchlistTokens && watchlistTokens.length === 0;
 
+  const openWatchlistModal = useCallback(() => {
+    router.push("/(modal)/select-watchlist");
+  }, [router]);
+
+  const renderFloatingActionButton = () => (
+    <Pressable
+      onPress={openWatchlistModal}
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "#6366F1",
+        justifyContent: "center",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }}
+      hitSlop={12}
+    >
+      <Image
+        source={icons.edit}
+        style={{
+          width: 20,
+          height: 20,
+          tintColor: "white",
+        }}
+      />
+    </Pressable>
+  );
+
   const watchlistEmptyState = (
     <Box
       flex={1}
@@ -233,6 +281,10 @@ const Explore = () => {
         hasNoBtn={true}
         source={images.glass}
       />
+
+      <Box position="absolute" bottom={40} right={24}>
+        {renderFloatingActionButton()}
+      </Box>
     </Box>
   );
 
@@ -295,6 +347,7 @@ const Explore = () => {
           borderRadius={8}
           marginTop="s"
           marginHorizontal="m"
+          position="relative"
         >
           <TableHeader />
 
@@ -315,6 +368,47 @@ const Explore = () => {
               />
             ))}
           </ScrollView>
+
+          {/* Floating Edit Icon - display only on Watchlist tab */}
+          {!isTokens && (
+            <Box
+              position="absolute"
+              bottom={20}
+              right={20}
+              zIndex={10}
+            >
+              <Pressable
+                onPress={() => {
+                  router.push("/(modal)/select-watchlist");
+                }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: "#6366F1",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 2,
+                  },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 3.84,
+                  elevation: 5,
+                }}
+              >
+                <Image
+                  source={icons.edit}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    tintColor: "white",
+                  }}
+                />
+              </Pressable>
+            </Box>
+          )}
         </Box>
       </LoaderWrapper>
       <Loader visible={currentLoading} />
