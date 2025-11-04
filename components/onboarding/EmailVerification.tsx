@@ -105,7 +105,7 @@ export default function EmailVerification({
           }
 
           const userResponse = await fetchUserById(userData as UserModel);
-          exchangeUser = userResponse.data;
+          exchangeUser = userResponse?.data ?? null;
 
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
