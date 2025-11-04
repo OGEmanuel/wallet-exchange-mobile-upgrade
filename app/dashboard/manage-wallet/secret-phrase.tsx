@@ -1,4 +1,5 @@
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import PrivateKeyGuardScreen from "@/components/guards/PrivateKeyGuardScreen";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
@@ -7,7 +8,6 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Copy } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView } from "react-native";
@@ -60,9 +60,9 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
         <Box style={{ paddingTop: insets.top }}>
-          <AppBar
+          <SettingsHeader
             title="Secret phrase"
-            leading={<ArrowLeft2 size={24} color={theme.colors.headerTextColor} />}
+            onBackPress={() => router.back()}
           />
         </Box>
         <Box flex={1} justifyContent="center" alignItems="center">
@@ -110,9 +110,9 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+        <SettingsHeader
           title="Secret phrase"
-          leading={<Pressable onPress={handleBack}><ArrowLeft2 size={24} color={theme.colors.headerTextColor} /></Pressable>}
+          onBackPress={() => router.back()}
         />
       </Box>
 

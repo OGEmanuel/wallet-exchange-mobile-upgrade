@@ -78,13 +78,13 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   const { isPortfolioLoading } = useSelector(
     (state: AppRootState) => state.portfolio
   );
-  const { walletChains } = useChains();
+  const { walletChains, getChainImage } = useChains();
 
   // Supported currencies for swap mode
   const {
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     isLoading: isSupportedCurrenciesLoading,
-    searchSupportedCurrencies,
+    searchSupportedCurrenciesForSwap,
   } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const chainBottomSheetRef = useRef<BottomSheet>(null);
@@ -107,8 +107,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       .map((chain) => ({
         symbol: chain.symbol,
         name: chain.name,
-        image: chain.nativeCurrencyId.logo,
-        chainImage: chain.nativeCurrencyId.logo,
+        image: getChainImage(chain._id || ""),
+        chainImage: getChainImage(chain._id || ""),
         chainSymbol: chain.symbol,
         chainName: chain.name,
       }));
@@ -123,7 +123,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     // Use different data source based on mode
     if (mode === "swap") {
       filtered =
-        supportedCurrencies
+        supportedCurrenciesForSwap
           .sort((a, b) =>
             (a.currencyId as Partial<ICurrency>)?.isCrypto ? 1 : -1
           )
@@ -143,7 +143,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       if (mode === "swap") {
-        filtered = searchSupportedCurrencies(query);
+        filtered = searchSupportedCurrenciesForSwap(query);
       } else {
         filtered = filtered.filter((token: any) => {
           const symbol = token.symbol;
@@ -165,7 +165,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     }
 
     return filtered;
-  }, [mode, allTokens, supportedCurrencies, searchQuery, selectedChain]);
+  }, [mode, allTokens, supportedCurrenciesForSwap, searchQuery, selectedChain]);
 
   const handleTokenPress = (token: ProcessedAsset) => {
     if (mode === "receive") {
@@ -195,7 +195,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       console.log("✅ Token imported successfully");
 
       // Refresh the portfolio to show the new token
-      await refreshPortfolio();
+      await refreshPortfolio(mainUserWalletGroup?._id);
 
       // Close the modal
       setShowImportModal(false);

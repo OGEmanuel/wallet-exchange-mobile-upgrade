@@ -42,14 +42,14 @@ const useActiveTheme = () => {
     // Mark as user-set so it won't follow system changes
     await SecureStore.setItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET, "true");
   };
-
+  
   const setTheme = async (theme: "light" | "dark") => {
     setColorTheme(theme);
     await SecureStore.setItemAsync(STORAGE_KEYS.COLOR_THEME, theme);
     await SecureStore.setItemAsync(STORAGE_KEYS.THEME_MODE, theme);
     setThemeModeState(theme);
     // Mark as user-set so it won't follow system changes
-    await SecureStore.setItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET, "true");
+    await SecureStore.setItemAsync(STORAGE_KEYS.COLOR_THEME_USER_SET, 'true');
   };
 
   const setSystemTheme = async () => {

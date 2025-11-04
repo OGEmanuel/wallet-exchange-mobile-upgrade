@@ -1,31 +1,31 @@
-import { useTheme } from '@shopify/restyle';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, TextInput } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useTheme } from "@shopify/restyle";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Pressable, ScrollView, TextInput } from "react-native";
+import { useSelector } from "react-redux";
 
-import Box from '@/components/general/Box';
-import CustomButton from '@/components/general/CustomButton';
-import CustomText from '@/components/general/CustomText';
-import PageWrapper from '@/components/general/PageWrapper';
-import ZapLoader from '@/components/general/ZapLoader';
-import useTokenList from '@/hooks/useTokenList';
-import { ProcessedAsset } from '@/interfaces/portfolio.interface';
-import { AppRootState } from '@/state';
-import { selectTokensBySearch } from '@/state/selectors/portfolio.selectors';
-import { Theme } from '@/theme';
-import { ArrowLeft, Search } from 'lucide-react-native';
+import Box from "@/components/general/Box";
+import CustomButton from "@/components/general/CustomButton";
+import CustomText from "@/components/general/CustomText";
+import PageWrapper from "@/components/general/PageWrapper";
+import ZapLoader from "@/components/general/ZapLoader";
+import useTokenList from "@/hooks/useTokenList";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
+import { AppRootState } from "@/state";
+import { selectAssetsBySearch } from "@/state/selectors/portfolio.selectors";
+import { Theme } from "@/theme";
+import { ArrowLeft, Search } from "lucide-react-native";
 
 const TokenListScreen = () => {
   const router = useRouter();
   const theme = useTheme<Theme>();
-  const [searchTerm, setSearchTerm] = useState('');
-  
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Redux state
-  const allSupportedTokens = useSelector((state: AppRootState) => 
-    selectTokensBySearch(state, searchTerm)
+  const allSupportedTokens = useSelector((state: AppRootState) =>
+    selectAssetsBySearch(state, searchTerm)
   );
-  
+
   // Token list hook
   const { isLoading, error, refetch } = useTokenList();
 
@@ -90,16 +90,14 @@ const TokenListScreen = () => {
 
         {/* Status Badge */}
         <Box
-          backgroundColor={token.status === 'ENABLED' ? 'success' : 'disabledTextColor'}
+          backgroundColor={
+            token.status === "ENABLED" ? "success" : "disabledTextColor"
+          }
           paddingHorizontal="s"
-          paddingVertical="xs"
+          paddingVertical="s"
           borderRadius={8}
         >
-          <CustomText 
-            fontSize={10} 
-            color="white" 
-            fontWeight="bold"
-          >
+          <CustomText fontSize={10} color="white" fontWeight="bold">
             {token.status}
           </CustomText>
         </Box>
@@ -112,7 +110,12 @@ const TokenListScreen = () => {
       <PageWrapper>
         <Box flex={1} justifyContent="center" alignItems="center">
           <ZapLoader size={100} showText={false} />
-          <CustomText variant="body" fontSize={16} color="bodyTextColor" marginTop="m">
+          <CustomText
+            variant="body"
+            fontSize={16}
+            color="bodyTextColor"
+            marginTop="m"
+          >
             Loading tokens...
           </CustomText>
         </Box>
@@ -124,10 +127,21 @@ const TokenListScreen = () => {
     return (
       <PageWrapper>
         <Box flex={1} justifyContent="center" alignItems="center" padding="xl">
-          <CustomText variant="bodyBold" fontSize={18} color="error" marginBottom="m">
+          <CustomText
+            variant="bodyBold"
+            fontSize={18}
+            color="error"
+            marginBottom="m"
+          >
             Failed to load tokens
           </CustomText>
-          <CustomText variant="body" fontSize={14} color="bodyTextColor" marginBottom="l" textAlign="center">
+          <CustomText
+            variant="body"
+            fontSize={14}
+            color="bodyTextColor"
+            marginBottom="l"
+            textAlign="center"
+          >
             {error}
           </CustomText>
           <CustomButton
@@ -156,11 +170,11 @@ const TokenListScreen = () => {
         <Pressable onPress={handleBack}>
           <ArrowLeft size={24} color={theme.colors.headerTextColor} />
         </Pressable>
-        
+
         <CustomText variant="header" fontSize={18} color="headerTextColor">
           All Tokens
         </CustomText>
-        
+
         <Box width={24} />
       </Box>
 
@@ -210,17 +224,35 @@ const TokenListScreen = () => {
             alignItems="center"
             padding="xl"
           >
-            <CustomText variant="bodyBold" fontSize={16} color="headerTextColor" marginBottom="s">
+            <CustomText
+              variant="bodyBold"
+              fontSize={16}
+              color="headerTextColor"
+              marginBottom="s"
+            >
               No tokens found
             </CustomText>
-            <CustomText variant="body" fontSize={14} color="bodyTextColor" textAlign="center">
-              {searchTerm ? 'Try a different search term' : 'No tokens available'}
+            <CustomText
+              variant="body"
+              fontSize={14}
+              color="bodyTextColor"
+              textAlign="center"
+            >
+              {searchTerm
+                ? "Try a different search term"
+                : "No tokens available"}
             </CustomText>
           </Box>
         ) : (
           <>
-            <CustomText variant="body" fontSize={14} color="bodyTextColor" marginBottom="m">
-              {allSupportedTokens.length} token{allSupportedTokens.length !== 1 ? 's' : ''} found
+            <CustomText
+              variant="body"
+              fontSize={14}
+              color="bodyTextColor"
+              marginBottom="m"
+            >
+              {allSupportedTokens.length} token
+              {allSupportedTokens.length !== 1 ? "s" : ""} found
             </CustomText>
             {allSupportedTokens.map(renderTokenItem)}
           </>

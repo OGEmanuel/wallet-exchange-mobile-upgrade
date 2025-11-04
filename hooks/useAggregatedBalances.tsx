@@ -10,7 +10,7 @@ import { PortfolioService } from "@/services/portfolio.service";
 import { StorageKeys } from "@/src/core/storage/storage-types";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -147,21 +147,41 @@ export const useAggregatedBalances = () => {
   };
 
   // Calculate balances for ALL user wallet groups using the main portfolio data
+  // If current portfolio is null, will load from cache for all wallets
   const calculateAllBalances = async () => {
-    if (!portfolio || !userWalletGroups || !isWalletAuthenticated) {
+    if (!userWalletGroups || !isWalletAuthenticated) {
       return;
     }
+    
+    // If portfolio is null, we'll still calculate balances for other wallets from cache
+    // This prevents balances going to 0 during wallet switching
 
     try {
       setIsLoading(true);
       setError(null);
 
       // Use the existing PortfolioService.calculateAggregatedBalances function
-      // which works with the main portfolio data
-      const { walletBalances, walletGroupBalances, totalPortfolioValue } =
-        PortfolioService.calculateAggregatedBalances(portfolio);
+      // which works with the main portfolio data (if available)
+      let walletBalances = new Map<string, number>();
+      let walletGroupBalances = new Map<string, number>();
+      let totalPortfolioValue = 0;
+      
+      if (portfolio) {
+        const calculated = PortfolioService.calculateAggregatedBalances(portfolio);
+        walletBalances = calculated.walletBalances;
+        walletGroupBalances = calculated.walletGroupBalances;
+        totalPortfolioValue = calculated.totalPortfolioValue;
+      }
 
-      const newBalanceCache = new Map<string, any>();
+      // CRITICAL: Initialize with existing balanceCache to preserve balances during wallet switching
+      // This ensures balances don't go to 0 when switching wallets
+      const newBalanceCache = new Map<string, any>(balanceCache);
+      console.log(`📊 calculateAllBalances: Starting with ${balanceCache.size} wallets in balanceCache`);
+      if (balanceCache.size > 0) {
+        Array.from(balanceCache.entries()).forEach(([id, data]) => {
+          console.log(`  - Wallet ${id}: $${data?.walletBalance || 0}`);
+        });
+      }
 
       // Process each user wallet group and get their balances
       for (const userWalletGroup of userWalletGroups) {
@@ -171,15 +191,24 @@ export const useAggregatedBalances = () => {
         const isMainWalletGroup =
           userWalletGroupId === mainUserWalletGroup?._id;
 
+        // Check if we already have a balance for this wallet in the preserved cache
+        const existingBalanceData = newBalanceCache.get(userWalletGroupId);
+        
         let walletBalance = 0;
         let walletGroupBalance = 0;
 
-        if (isMainWalletGroup) {
-          // For the main wallet group, use the current portfolio data
+        if (isMainWalletGroup && portfolio) {
+          // For the main wallet group, always recalculate from current portfolio data
           walletBalance = walletBalances.get(walletId) || 0;
           walletGroupBalance = walletGroupBalances.get(walletGroupId) || 0;
+        } else if (existingBalanceData && existingBalanceData.walletBalance > 0) {
+          // If we already have a valid balance in cache, preserve it (only for non-main wallets)
+          // This prevents balances from going to 0 during wallet switching
+          walletBalance = existingBalanceData.walletBalance || 0;
+          walletGroupBalance = existingBalanceData.walletGroupBalance || 0;
+          console.log(`💰 Preserving cached balance for wallet ${userWalletGroupId}: $${walletBalance}`);
         } else {
-          // For other wallet groups, try to get from cache
+          // For other wallet groups OR if no cached balance, try to load from portfolio cache
           try {
             // Load cached portfolio data using the same cache functions as wallet context
             const cachedPortfolio = await loadPortfolioFromCache(
@@ -196,15 +225,16 @@ export const useAggregatedBalances = () => {
               walletBalance = cachedWalletBalances.get(walletId) || 0;
               walletGroupBalance =
                 cachedWalletGroupBalances.get(walletGroupId) || 0;
+              console.log(`📦 Loaded balance from portfolio cache for wallet ${userWalletGroupId}: $${walletBalance}`);
             } else {
-              // Trigger portfolio fetch for this wallet group
-              await fetchPortfolioForWalletGroup(userWalletGroupId);
-              walletBalance = 0;
-              walletGroupBalance = 0;
+              // No cache available, keep existing balance if it exists, otherwise 0
+              walletBalance = existingBalanceData?.walletBalance || 0;
+              walletGroupBalance = existingBalanceData?.walletGroupBalance || 0;
             }
-          } catch (error) {
-            walletBalance = 0;
-            walletGroupBalance = 0;
+          } catch (err) {
+            // On error, preserve existing balance if it exists
+            walletBalance = existingBalanceData?.walletBalance || 0;
+            walletGroupBalance = existingBalanceData?.walletGroupBalance || 0;
           }
         }
 
@@ -224,6 +254,10 @@ export const useAggregatedBalances = () => {
 
       // Update the balance cache
       setBalanceCache(newBalanceCache);
+      console.log(`✅ calculateAllBalances: Updated balanceCache with ${newBalanceCache.size} wallets`);
+      Array.from(newBalanceCache.entries()).forEach(([id, data]) => {
+        console.log(`  - Wallet ${id}: $${data?.walletBalance || 0}`);
+      });
 
       // Create enhanced wallet groups with their specific balances
       const enhancedWalletGroups = userWalletGroups.map((userWalletGroup) => {
@@ -236,6 +270,8 @@ export const useAggregatedBalances = () => {
           walletGroupAggregatedBalance: balanceData?.walletGroupBalance || 0,
         };
       });
+      
+      console.log(`📋 calculateAllBalances: Created ${enhancedWalletGroups.length} enhanced wallet groups`);
 
       // Calculate total portfolio value from all wallet balances
       const calculatedTotalPortfolioValue = Array.from(
@@ -258,22 +294,52 @@ export const useAggregatedBalances = () => {
     }
   };
 
-  // Calculate balances when portfolio or userWalletGroups changes
+  // Clear balance cache when main wallet group changes
+  // Use a ref to track the previous wallet ID to detect actual changes
+  const prevWalletIdRef = React.useRef<string | undefined>(mainUserWalletGroup?._id);
+  
   useEffect(() => {
-    if (portfolio && userWalletGroups) {
+    const currentWalletId = mainUserWalletGroup?._id;
+    const prevWalletId = prevWalletIdRef.current;
+    
+    // Only clear if wallet actually changed (not just on mount)
+    if (currentWalletId && prevWalletId && currentWalletId !== prevWalletId) {
+      console.log(`🔄 Wallet changed from ${prevWalletId} to ${currentWalletId} - preserving other wallet balances`);
+      
+      // DON'T clear the entire balance cache - preserve balances for other wallets
+      // Only clear the balance for the wallet being switched FROM
+      // This ensures other wallets retain their balances in the wallet selector
+      setBalanceCache((prevCache) => {
+        const newCache = new Map(prevCache);
+        // Remove only the previous wallet's balance
+        if (prevWalletId) {
+          newCache.delete(prevWalletId);
+        }
+        return newCache;
+      });
+      
+      // Recalculate balances for all wallets (will load from cache for non-current wallets)
+      // Don't set balances to 0 - preserve existing balances and recalculate
+      if (userWalletGroups && userWalletGroups.length > 0) {
+        // Trigger recalculation which will preserve cached balances for other wallets
+        calculateAllBalances();
+      }
+    }
+    
+    // Update ref to current wallet ID
+    prevWalletIdRef.current = currentWalletId;
+  }, [mainUserWalletGroup?._id, userWalletGroups]);
+
+  // Calculate balances when portfolio or userWalletGroups changes
+  // Calculate for all wallets even if current portfolio is null (uses cache for non-current wallets)
+  useEffect(() => {
+    if (userWalletGroups && userWalletGroups.length > 0 && isWalletAuthenticated) {
+      // Always recalculate - it will use current portfolio if available, otherwise use cache
       calculateAllBalances();
     }
-  }, [portfolio, userWalletGroups]);
-
-  // CACHE DISABLED - Not clearing cache on logout
-  // useEffect(() => {
-  //   if (!isWalletAuthenticated) {
-  //     clearCache();
-  //     setAggregatedBalances(null);
-  //   }
-  // }, [isWalletAuthenticated]);
-
-  // Comprehensive balance getter functions - THE SINGLE SOURCE OF TRUTH
+    // Don't clear aggregatedBalances when portfolio becomes null during wallet switching
+    // This prevents the wallet list from disappearing temporarily and balances going to 0
+  }, [portfolio, userWalletGroups, isWalletAuthenticated]);
 
   // Get balance for a specific account
   const getAccountBalance = (
@@ -302,8 +368,29 @@ export const useAggregatedBalances = () => {
   };
 
   // Get enhanced wallet groups with their specific balances
+  // Always return something - either from aggregatedBalances or create from userWalletGroups
   const getEnhancedWalletGroups = () => {
-    return aggregatedBalances?.enhancedWalletGroups || [];
+    // If we have aggregated balances with enhanced groups, use them
+    if (aggregatedBalances?.enhancedWalletGroups && aggregatedBalances.enhancedWalletGroups.length > 0) {
+      console.log(`📱 getEnhancedWalletGroups: Returning ${aggregatedBalances.enhancedWalletGroups.length} wallets from aggregatedBalances`);
+      aggregatedBalances.enhancedWalletGroups.forEach((wg: any) => {
+        console.log(`  - ${wg.name || wg._id}: $${wg.aggregatedBalance || 0}`);
+      });
+      return aggregatedBalances.enhancedWalletGroups;
+    }
+    
+    // Otherwise, create a basic structure from userWalletGroups to ensure wallets are always visible
+    if (userWalletGroups && userWalletGroups.length > 0) {
+      console.log(`⚠️ getEnhancedWalletGroups: aggregatedBalances empty, creating basic structure with ${userWalletGroups.length} wallets (all $0)`);
+      return userWalletGroups.map((group: any) => ({
+        ...group,
+        aggregatedBalance: 0, // Will be calculated later
+        walletGroupAggregatedBalance: 0,
+      }));
+    }
+    
+    console.log(`❌ getEnhancedWalletGroups: No wallet groups available`);
+    return [];
   };
 
   // Get balance data for a specific user wallet group
@@ -331,6 +418,12 @@ export const useAggregatedBalances = () => {
 
   // Get balance for only ENABLED tokens in the current wallet
   const getCurrentWalletEnabledBalance = (): number => {
+    // IMPORTANT: Only use processed portfolio if portfolio exists and matches current wallet
+    // This prevents showing stale balances when switching wallets
+    if (!portfolio || !mainUserWalletGroup?._id) {
+      return 0;
+    }
+    
     // Use the processed portfolio data which has enabledAssets
     if (processedPortfolio?.enabledAssets) {
       console.log(

@@ -1,10 +1,6 @@
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomButton, CustomText } from "@/components/general";
-import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { IUpdateUserDetailsParams } from "@/src/modules/settings/domain/entities/params/update-user-details-params";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { kycActions, selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -12,15 +8,8 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { forwardRef, useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
 
 const EditUsernameBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const user = useSelector(selectUser);
-  const [username, setUsername] = React.useState(user?.username || "");
-  const [isLoading, setIsLoading] = React.useState(false);
-  const { updateUser } = useSettings();
-  const dispatch = useDispatch();
-
   const theme = useTheme<Theme>();
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -31,25 +20,6 @@ const EditUsernameBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
       />
     ),
     []
-  );
-
-  const handleUpdateUser = useCallback(
-    async (payload: Partial<IUpdateUserDetailsParams>) => {
-      try {
-        if (username === "") {
-          alert("Your avatar is required");
-          return;
-        }
-        setIsLoading(true);
-        const response = await updateUser(payload, user as UserModel);
-        dispatch(kycActions.setUser(response.data as UserModel));
-        console.log(response.data);
-        setIsLoading(false);
-      } catch (error) {
-        console.log(error);
-      }
-    },
-    [updateUser, user]
   );
 
   return (
@@ -96,8 +66,8 @@ const EditUsernameBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           </CustomText>
 
           <CustomInputWithoutForm
-            value={username}
-            onChange={(text) => setUsername(text)}
+            value=""
+            onChange={() => {}}
             label="username"
             iconLeft={<CustomText color="disabledTextColor">@</CustomText>}
           />
@@ -107,16 +77,9 @@ const EditUsernameBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
           <CustomButton
             text="Set username"
+            onPress={() => {}}
             width={"100%"}
             borderRadius={50}
-            isLoading={isLoading}
-            disabled={username === ""}
-            disabledColor={theme.colors.disabledTextColor}
-            onPress={() =>
-              handleUpdateUser({
-                username,
-              })
-            }
           />
         </Box>
       </BottomSheetView>

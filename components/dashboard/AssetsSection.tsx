@@ -4,14 +4,16 @@ import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import {
   selectAllSupportedTokens,
-  selectEnabledPortfolioAssets,
+  selectEnabledPortfolioAssets
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -363,7 +365,7 @@ const AssetsSection = ({
         />
       </Box>
       {enabledAssets.map((asset, index) => {
-        return <AssetCard key={asset.id} asset={asset} />;
+        return asset && <AssetCard key={`${index}-${asset.id}`} asset={asset} />;
       })}
     </Box>
   );
@@ -375,6 +377,9 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
   );
   const [showManageModal, setShowManageModal] = useState(false);
 
+  // Get portfolio and setPortfolio from wallet context for optimistic updates
+  const { portfolio, setPortfolio } = useWallet();
+
   // Redux state for modal
   const allTokens = useSelector(selectAllSupportedTokens);
 
@@ -383,6 +388,12 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
   };
 
   const handleToggleToken = async (assetId: string, enabled: boolean) => {
+    console.log(`🎯 handleToggleToken called:`, { assetId, enabled });
+
+    // Store original portfolio state for potential rollback on error (function scope)
+    let originalPortfolio: typeof portfolio = null;
+    let optimisticUpdateApplied = false;
+
     try {
       const sdk = zapSDKService.getSDK();
       if (sdk && sdk.tokens) {
@@ -391,43 +402,281 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           console.error("No main user wallet group ID available");
           return;
         }
-        
+
         if (!assetId) {
           console.error("No asset ID provided for token toggle");
           return;
         }
 
-        console.log("Toggling token:", {
-          assetId,
-          enabled,
-          userWalletGroupId: props.mainUserWalletGroup._id
-        });
+        if (portfolio && setPortfolio) {
+          console.log(`✅ Conditions met for optimistic update, proceeding...`);
+          // Store original state for rollback
+          originalPortfolio = JSON.parse(JSON.stringify(portfolio));
+          // Deep clone to ensure React detects the change
+          const updatedPortfolio = JSON.parse(JSON.stringify(portfolio));
 
-        // Use SDK to toggle token status
-        if (enabled) {
-          await zapSDKService.enableToken({
-            userWalletGroupId: props.mainUserWalletGroup._id,
-            supportedCurrencyId: assetId,
+          // Extract and normalize userTokenList
+          let userTokenList = updatedPortfolio.userTokenList;
+          const hasDataWrapper =
+            (userTokenList as any)?.data &&
+            Array.isArray((userTokenList as any).data);
+
+          if (hasDataWrapper) {
+            userTokenList = [...(userTokenList as any).data]; // Create new array reference
+          } else if (Array.isArray(userTokenList)) {
+            userTokenList = [...userTokenList]; // Create new array reference
+          } else {
+            userTokenList = [];
+          }
+
+          // Find and update token status optimistically
+          const tokenIndex = userTokenList.findIndex((t: any) => {
+            const supportedCurrencyId =
+              typeof t.supportedCurrencyId === "string"
+                ? t.supportedCurrencyId
+                : t.supportedCurrencyId?._id;
+            return supportedCurrencyId === assetId;
           });
+
+          if (tokenIndex >= 0) {
+            const token = userTokenList[tokenIndex];
+            // When disabling, set to HIDDEN (not DISABLED)
+            // When enabling, set to ENABLED
+            const oldStatus = token.status;
+            const newStatus = enabled ? "ENABLED" : "HIDDEN";
+
+            // Create a new token object with updated status (immutable update)
+            userTokenList[tokenIndex] = {
+              ...token,
+              status: newStatus,
+            };
+
+            console.log(
+              `🔄 Optimistic update: Token ${assetId} status changed from ${oldStatus} to ${newStatus}`
+            );
+
+            // Ensure userTokenList is properly structured in portfolio (new array reference)
+            if (hasDataWrapper) {
+              updatedPortfolio.userTokenList = {
+                ...(updatedPortfolio.userTokenList as any),
+                data: userTokenList, // New array reference
+              };
+            } else {
+              updatedPortfolio.userTokenList = userTokenList; // New array reference
+            }
+
+            // Debug: Log what we're updating
+            const enabledCount = userTokenList.filter(
+              (t: any) => t.status === "ENABLED"
+            ).length;
+            console.log(`🔄 Optimistic update - Before setPortfolio:`, {
+              tokenId: assetId,
+              oldStatus,
+              newStatus,
+              enabledTokenCount: enabledCount,
+              totalTokenCount: userTokenList.length,
+              portfolioReference:
+                portfolio === updatedPortfolio ? "SAME (ERROR!)" : "NEW (GOOD)",
+            });
+
+            // Update portfolio state - this should trigger useEffect in home.tsx
+            setPortfolio(updatedPortfolio);
+            optimisticUpdateApplied = true;
+
+            console.log(
+              `✅ Portfolio state updated optimistically - useEffect should trigger`
+            );
+          } else {
+            console.warn(
+              `⚠️ Token ${assetId} not found in userTokenList for optimistic update`
+            );
+            console.warn(
+              `   Available token IDs:`,
+              userTokenList.slice(0, 5).map((t: any) => ({
+                id:
+                  typeof t.supportedCurrencyId === "string"
+                    ? t.supportedCurrencyId
+                    : t.supportedCurrencyId?._id,
+                status: t.status,
+              }))
+            );
+          }
         } else {
-          await zapSDKService.disableToken({
-            userWalletGroupId: props.mainUserWalletGroup._id,
-            supportedCurrencyId: assetId,
-          });
+          console.warn(
+            `⚠️ Cannot perform optimistic update - conditions not met:`,
+            {
+              hasPortfolio: !!portfolio,
+              hasSetPortfolio: !!setPortfolio,
+              portfolioType: portfolio ? typeof portfolio : "null",
+              setPortfolioType: setPortfolio
+                ? typeof setPortfolio
+                : "undefined",
+            }
+          );
         }
-        console.log("Token toggled successfully:", assetId, enabled);
 
-        // Refresh portfolio to update the UI
-        if (props.onRefreshPortfolio) {
-          console.log("Refreshing portfolio after token toggle...");
-          props.onRefreshPortfolio();
+        // Use SDK to toggle token status on backend
+        try {
+          console.log(
+            `🔄 Calling SDK ${enabled ? "enableToken" : "disableToken"}...`
+          );
+          const startTime = Date.now();
+
+          let result;
+          if (enabled) {
+            result = await zapSDKService.enableToken({
+              userWalletGroupId: props.mainUserWalletGroup._id,
+              supportedCurrencyId: assetId,
+            });
+            console.log("✅ Token enabled successfully on backend:", {
+              assetId,
+              result,
+              responseTime: `${Date.now() - startTime}ms`,
+            });
+          } else {
+            // Disable sets status to HIDDEN on backend
+            result = await zapSDKService.disableToken({
+              userWalletGroupId: props.mainUserWalletGroup._id,
+              supportedCurrencyId: assetId,
+            });
+            console.log("✅ Token disabled successfully on backend:", {
+              assetId,
+              result,
+              responseTime: `${Date.now() - startTime}ms`,
+            });
+          }
+
+          // Schedule a delayed refresh (10 seconds) to eventually sync with backend
+          // This gives the backend cache time to expire/update
+          // If backend still returns stale data, the optimistic update state will be preserved
+          const syncTimeoutId = setTimeout(async () => {
+            console.log(
+              "🔄 Syncing portfolio with backend after token toggle (10s delay)..."
+            );
+            try {
+              const { StorageKeys } = await import(
+                "@/src/core/storage/storage-types"
+              );
+              const walletId = props.mainUserWalletGroup._id;
+              const dataKey = `${StorageKeys.PORTFOLIO_DATA}_${walletId}`;
+              const timestampKey = `${StorageKeys.PORTFOLIO_TIMESTAMP}_${walletId}`;
+
+              // Clear local cache to force fresh fetch
+              await SecureStore.deleteItemAsync(dataKey);
+              await SecureStore.deleteItemAsync(timestampKey);
+
+              // Only refresh if user hasn't manually refreshed already
+              // The optimistic update state is already correct, so this is just for eventual consistency
+              if (props.onRefreshPortfolio) {
+                console.log("   Triggering background sync with backend...");
+                props.onRefreshPortfolio();
+              }
+            } catch (error) {
+              console.warn("⚠️ Failed to sync portfolio with backend:", error);
+              // Non-critical - optimistic update is already applied
+            }
+          }, 10000); // 10 second delay to allow backend cache to expire
+
+          console.log(
+            `⏱️ Scheduled background sync (ID: ${syncTimeoutId}), will execute in 10 seconds`
+          );
+
+        } catch (backendError: any) {
+          console.error("❌ Failed to toggle token on backend:", backendError);
+          console.error("   Error type:", typeof backendError);
+          console.error("   Error constructor:", backendError?.constructor?.name);
+          console.error("   Full error object:", JSON.stringify(backendError, Object.getOwnPropertyNames(backendError), 2));
+
+          // Revert optimistic update on error
+          if (optimisticUpdateApplied && originalPortfolio && setPortfolio) {
+            console.log(
+              "🔄 Reverting optimistic update due to backend error..."
+            );
+            console.log("   Original portfolio state:", {
+              enabledCount: originalPortfolio.userTokenList 
+                ? (Array.isArray(originalPortfolio.userTokenList) 
+                    ? originalPortfolio.userTokenList.filter((t: any) => t.status === 'ENABLED').length
+                    : (originalPortfolio.userTokenList as any)?.data?.filter((t: any) => t.status === 'ENABLED').length || 0
+                  )
+                : 0,
+            });
+            setPortfolio(originalPortfolio);
+            optimisticUpdateApplied = false;
+            console.log("✅ Optimistic update reverted - UI should show original state");
+          } else {
+            console.warn("⚠️ Cannot revert optimistic update:", {
+              optimisticUpdateApplied,
+              hasOriginalPortfolio: !!originalPortfolio,
+              hasSetPortfolio: !!setPortfolio,
+            });
+          }
+
+          // Determine error type and provide appropriate feedback
+          const errorStatus =
+            backendError?.status ||
+            backendError?.response?.status ||
+            backendError?.code;
+          const isRetryable =
+            errorStatus >= 500 ||
+            errorStatus === 429 ||
+            backendError?.isRetryable;
+
+          if (errorStatus === 502) {
+            console.error(
+              "❌ Backend gateway error (502) - server may be temporarily unavailable"
+            );
+            // SDK should retry automatically, but if it fails after retries, user will see the reverted state
+          } else if (errorStatus === 500) {
+            console.error(
+              "❌ Backend server error (500) - internal server error, operation failed after retries"
+            );
+          } else if (isRetryable) {
+            console.error(
+              `❌ Server error (${errorStatus}) - operation failed after retries`
+            );
+          } else {
+            console.error(
+              `❌ Client error (${errorStatus}) - operation failed`
+            );
+          }
+
+          // Don't refresh portfolio if backend is down - it will fail too
+          // The optimistic update has been reverted, so UI is correct
+          if (!isRetryable && props.onRefreshPortfolio) {
+            // Only refresh on non-retryable errors (client errors like 400, 401, 403)
+            // This will sync the UI with backend state
+            console.log("   Refreshing portfolio to sync with backend state...");
+            props.onRefreshPortfolio();
+          } else {
+            console.log("   Skipping portfolio refresh - backend may be down or error is retryable");
+          }
+
+          throw backendError; // Re-throw to let caller handle the error
         }
       } else {
         console.error("SDK not available for token toggle");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to toggle token:", error);
-      // You might want to show a user-friendly error message here
+
+      // Revert optimistic update on error (if not already reverted)
+      if (optimisticUpdateApplied && originalPortfolio && setPortfolio) {
+        console.log("🔄 Reverting optimistic update due to error...");
+        setPortfolio(originalPortfolio);
+        optimisticUpdateApplied = false;
+      }
+
+      // Determine if we should refresh on error
+      const errorStatus =
+        error?.status || error?.response?.status || error?.code;
+      const isRetryable =
+        errorStatus >= 500 || errorStatus === 429 || error?.isRetryable;
+
+      // Only refresh on non-retryable errors (when backend is likely working)
+      // For retryable errors (502, 503, etc.), don't refresh as it may also fail
+      if (!isRetryable && props.onRefreshPortfolio) {
+        props.onRefreshPortfolio();
+      }
     }
   };
 
@@ -444,7 +693,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
         mainUserWalletGroup={props.mainUserWalletGroup}
         visible={showManageModal}
         onClose={() => setShowManageModal(false)}
-        allTokens={allTokens || []}
+        allTokens={allTokens}
         onToggleToken={handleToggleToken}
         isLoading={isPortfolioLoading || false}
         onImportToken={handleImportToken}

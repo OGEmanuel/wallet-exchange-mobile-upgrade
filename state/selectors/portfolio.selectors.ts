@@ -8,23 +8,18 @@ export const selectProcessedPortfolio = (state: AppRootState) => state.portfolio
 export const selectPortfolioLoading = (state: AppRootState) => state.portfolio.isPortfolioLoading;
 export const selectPortfolioError = (state: AppRootState) => state.portfolio.portfolioError;
 
-// Token list selectors - using processed token list with balances and chain info
-export const selectRawTokenList = (state: AppRootState) => state.portfolio.rawTokenList;
-export const selectProcessedTokenList = (state: AppRootState) => state.portfolio.processedTokenList;
 export const selectAllSupportedTokens = createSelector(
-  [(state: AppRootState) => state.portfolio.processedTokenList],
-  (tokens) => tokens || []
+  [(state: AppRootState) => state.portfolio.processedPortfolio],
+  (portfolio) => portfolio?.assets || []
 );
-export const selectTokenListLoading = (state: AppRootState) => state.portfolio.isTokenListLoading;
-export const selectTokenListError = (state: AppRootState) => state.portfolio.tokenListError;
 
 // Derived selectors
 export const selectEnabledPortfolioAssets = createSelector(
   [selectProcessedPortfolio],
   (portfolio): ProcessedAsset[] => {
     if (!portfolio?.assets) return [];
-    
-    return portfolio.assets.filter(asset => 
+
+    return portfolio.assets.filter(asset =>
       asset.status === 'ENABLED'
     );
   }
@@ -35,27 +30,27 @@ export const selectPortfolioAssetsByChain = createSelector(
   (assets, chainId) => assets.filter(asset => asset.chainId === chainId)
 );
 
-export const selectTokenBySupportedCurrencyId = createSelector(
+export const selectAssetBySupportedCurrencyId = createSelector(
   [selectAllSupportedTokens, (state: AppRootState, supportedCurrencyId: string) => supportedCurrencyId],
-  (tokens, supportedCurrencyId): ProcessedAsset | null => {
-    if (!tokens) return null;
-    
-    return tokens.find(token => {
-      const matchesId = token.id === supportedCurrencyId;
-      const matchesSupportedId = token.supportedCurrencyId?._id === supportedCurrencyId;
-      const matchesSupportedIdString = token.supportedCurrencyId?._id?.toString() === supportedCurrencyId;
-      const matchesIdString = token.id?.toString() === supportedCurrencyId;
-      
+  (assets, supportedCurrencyId): ProcessedAsset | null => {
+    if (!assets) return null;
+
+    return assets.find(asset => {
+      const matchesId = asset.id === supportedCurrencyId;
+      const matchesSupportedId = asset.supportedCurrencyId?._id === supportedCurrencyId;
+      const matchesSupportedIdString = asset.supportedCurrencyId?._id?.toString() === supportedCurrencyId;
+      const matchesIdString = asset.id?.toString() === supportedCurrencyId;
+
       return matchesId || matchesSupportedId || matchesSupportedIdString || matchesIdString;
     }) || null;
   }
 );
 
-export const selectTokenByCurrencyId = createSelector(
+export const selectAssetByCurrencyId = createSelector(
   [selectProcessedPortfolio, (state: AppRootState, currencyId: string) => currencyId],
   (portfolio, currencyId): ProcessedAsset | null => {
     if (!portfolio?.assets) return null;
-    
+
     return portfolio.assets.find(asset => asset.currencyId === currencyId) || null;
   }
 );
@@ -67,34 +62,32 @@ export const selectTotalPortfolioValue = createSelector(
 );
 
 export const selectAssetBalance = createSelector(
-  [selectTokenBySupportedCurrencyId],
+  [selectAssetBySupportedCurrencyId],
   (asset): number => asset?.balance || 0
 );
 
 export const selectAssetUsdValue = createSelector(
-  [selectTokenBySupportedCurrencyId],
+  [selectAssetBySupportedCurrencyId],
   (asset): number => asset?.totalUsdValue || 0
 );
 
 
 
 // Filter tokens by chain
-export const selectTokensByChain = createSelector(
+export const selectAssetsByChain = createSelector(
   [selectAllSupportedTokens, (state: AppRootState, chainId: string) => chainId],
   (tokens, chainId) => (tokens || []).filter(token => token.chainId === chainId)
 );
 
 // Filter tokens by search term
-export const selectTokensBySearch = createSelector(
+export const selectAssetsBySearch = createSelector(
   [selectAllSupportedTokens, (state: AppRootState, searchTerm: string) => searchTerm],
-  (tokens, searchTerm) => {
-    const tokenList = tokens || [];
-    if (!searchTerm) return tokenList;
+  (assets, searchTerm) => {
+    if (!searchTerm) return assets;
     const term = searchTerm.toLowerCase();
-    return tokenList.filter(token => 
-      token.name?.toLowerCase().includes(term) ||
-      token.symbol?.toLowerCase().includes(term) ||
-      token.currencyId?.symbol?.toLowerCase().includes(term)
+    return assets.filter(asset =>
+      asset.name?.toLowerCase().includes(term) ||
+      asset.symbol?.toLowerCase().includes(term)
     );
   }
 );

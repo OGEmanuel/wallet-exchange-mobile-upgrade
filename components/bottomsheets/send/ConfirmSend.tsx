@@ -1,6 +1,7 @@
 import { ThemedFaceIDIcon } from "@/assets/svg/wallet-icons-components";
 import NetworkFeeCard from "@/components/dashboard/NetworkFeeCard";
 import { CustomButton, CustomText } from "@/components/general";
+import CryptoIcon from "@/components/general/CrptoIcon";
 import { PinEntryModal } from "@/components/Modals/PinEntryModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { formatNumberWithCommas } from "@/react-native-swap/utils/formatUtils";
@@ -280,10 +281,9 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
                 alignItems="center"
               >
                 {selectedToken.chainImage ? (
-                  <SvgUri
-                    uri={selectedToken.chainImage}
-                    width={30}
-                    height={30}
+                  <CryptoIcon
+                    image={selectedToken.chainImage}
+                    size={30}
                   />
                 ) : (
                   <Box width={30} height={30} bg="secondaryBackgroundColor" />

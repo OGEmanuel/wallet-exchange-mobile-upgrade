@@ -1,19 +1,19 @@
 // DEPRECATED: This hook is no longer needed
 // Token list now comes directly from portfolio API via userTokenList
-// Use Redux selectors instead: selectAllSupportedTokens, selectTokensBySearch, etc.
+// Use Redux selectors instead: selectAllSupportedTokens, selectAssetsBySearch, etc.
 
 import {
   selectAllSupportedTokens,
-  selectTokenListError,
-  selectTokenListLoading,
+  selectPortfolioError,
+  selectPortfolioLoading,
 } from "@/state/selectors/portfolio.selectors";
 import { useSelector } from "react-redux";
 
 export const useTokenList = () => {
   // Redux state - tokens come from portfolio API
   const allSupportedTokens = useSelector(selectAllSupportedTokens);
-  const isLoading = useSelector(selectTokenListLoading);
-  const error = useSelector(selectTokenListError);
+  const isLoading = useSelector(selectPortfolioLoading);
+  const error = useSelector(selectPortfolioError);
 
   return {
     allSupportedTokens,

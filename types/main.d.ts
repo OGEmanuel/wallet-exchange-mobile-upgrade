@@ -1,4 +1,4 @@
-import { UserModel } from "@zap/blockchain-sdk";
+import { UserModel, UserPortfolioData } from "@zap/blockchain-sdk";
 
 export interface WalletContextType {
   // State
@@ -12,7 +12,8 @@ export interface WalletContextType {
   userWalletGroups: IUserWalletGroup[];
   isUserWalletGroups: boolean;
   mainUserWalletGroup: IUserWalletGroup | null;
-  portfolio: any | null;
+  portfolio: UserPortfolioData | null;
+  setPortfolio?: (portfolio: any | null) => void; // Optional for optimistic updates
   transactions: any[];
   isLoading: boolean;
   error: string | null;
@@ -41,6 +42,7 @@ export interface WalletContextType {
     username?: string | null;
     userSource?: string | null;
     referralCode?: string | null;
+    userId?: string | null;
   }) => Promise<{
     success: boolean;
     message: string;
@@ -66,7 +68,7 @@ export interface WalletContextType {
   }) => Promise<any | null>;
 
   // Portfolio
-  refreshPortfolio: () => Promise<void>;
+  refreshPortfolio: (explicitWalletId?: string, bypassCache?: boolean) => Promise<void>;
   getWalletPortfolio: (userWalletGroupId: string) => Promise<any>;
 
   // Wallet Groups
@@ -82,7 +84,7 @@ export interface WalletContextType {
   getSDK: () => ZapSDK | null;
 
   // Account Management
-  retryPendingWallets: () => Promise<void>;
+  retryPendingWallets: (force?: boolean) => Promise<void>;
   isCreatingWallet: boolean;
   setIsCreatingWallet: (creating: boolean) => void;
 
@@ -91,12 +93,10 @@ export interface WalletContextType {
   isAuthenticating: boolean;
   isRefreshingPortfolio: boolean;
   isSendingTransaction: boolean;
-  isBackgroundWalletGroupsRefresh: boolean;
-  isBackgroundPortfolioRefresh: boolean;
   isRetryingPendingWallets: boolean;
 
   // Wallet Switching
-  switchWallet: (userWalletGroupId: string) => Promise<void>;
+  switchWallet: (userWalletGroupId: string, walletGroupsToUse?: any[], forceRefresh?: boolean) => Promise<void>;
   removeWalletGroup: (
     walletGroupId: string,
     userWalletGroupId: string

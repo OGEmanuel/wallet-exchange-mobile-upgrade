@@ -411,6 +411,12 @@ class ZapSDKService {
     context: string = "SDK operation"
   ): Promise<T> {
     try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for ${context}, auto-initializing...`);
+        await this.initialize();
+      }
+
       // Check if auth circuit breaker is open
       if (this.isAuthCircuitBreakerOpen()) {
         console.warn(
@@ -476,6 +482,12 @@ class ZapSDKService {
     context: string = "SDK operation"
   ): Promise<T> {
     try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for ${context}, auto-initializing...`);
+        await this.initialize();
+      }
+
       console.log(`🔄 Executing SDK call (no auth check): ${context}`);
       return await operation();
     } catch (error: any) {
@@ -566,10 +578,23 @@ class ZapSDKService {
 
   // Token Operations
   public async enableToken(params: EnableTokenRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().tokens.enableToken(params),
-      "enableToken"
-    );
+    try {
+      console.log("✅ Attempting to enable token:", params);
+      const result = await this.executeWithNetworkHandling(
+        () => this.getSDK().tokens.enableToken(params),
+        "enableToken"
+      );
+      console.log("✅ Token enabled successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to enable token:", error);
+      console.error("   Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        params,
+      });
+      throw error;
+    }
   }
 
   public async disableToken(params: DisableTokenRequest) {
@@ -828,7 +853,12 @@ class ZapSDKService {
     );
   }
 
-  public generateSeedPhrase() {
+  public async generateSeedPhrase() {
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for generateSeedPhrase, auto-initializing...`);
+      await this.initialize();
+    }
     return this.getSDK().generateSeedPhrase();
   }
 
@@ -920,10 +950,12 @@ class ZapSDKService {
    * Reconnect WebSocket
    */
   public async reconnectWebSocket(): Promise<void> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for reconnectWebSocket, auto-initializing...`);
+      await this.initialize();
     }
-    await this.sdk.reconnectWebSocket();
+    await this.sdk!.reconnectWebSocket();
   }
 
   /**
@@ -1187,40 +1219,48 @@ class ZapSDKService {
    * Get all chains
    */
   public async getChains(): Promise<any[]> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChains, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.listAll();
+    return await this.sdk!.chains.listAll();
   }
 
   /**
    * Get wallet chains (chains that support wallet operations)
    */
   public async getWalletChains(): Promise<any[]> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getWalletChains, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getWalletChains();
+    return await this.sdk!.chains.getWalletChains();
   }
 
   /**
    * Get chain by ID
    */
   public async getChainById(chainId: string): Promise<any> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChainById, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getById(chainId);
+    return await this.sdk!.chains.getById(chainId);
   }
 
   /**
    * Get chain by symbol
    */
   public async getChainBySymbol(symbol: string): Promise<any> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChainBySymbol, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getBySymbol(symbol);
+    return await this.sdk!.chains.getBySymbol(symbol);
   }
 
   /**
@@ -1230,8 +1270,10 @@ class ZapSDKService {
     privateKey: string,
     chainSymbol: string
   ): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for validatePrivateKey, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
@@ -1247,7 +1289,7 @@ class ZapSDKService {
       });
 
       // Check if the SDK method exists
-      if (typeof this.sdk.validatePrivateKey !== "function") {
+      if (typeof this.sdk!.validatePrivateKey !== "function") {
         console.log(
           "⚠️ SDK validatePrivateKey method not available, using basic validation"
         );
@@ -1259,7 +1301,7 @@ class ZapSDKService {
       }
 
       // Use SDK validation directly
-      const isValid = await this.sdk.validatePrivateKey(
+      const isValid = await this.sdk!.validatePrivateKey(
         cleanPrivateKey,
         chainSymbol
       );
@@ -1302,8 +1344,10 @@ class ZapSDKService {
     address: string,
     chainSymbol: string
   ): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for validateAddress, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
@@ -1318,7 +1362,7 @@ class ZapSDKService {
       });
 
       // Check if the SDK method exists (for debugging/fallback)
-      if (typeof this.sdk.validateAddress !== "function") {
+      if (typeof this.sdk!.validateAddress !== "function") {
         console.log(
           "⚠️ SDK validateAddress method not available, using basic validation"
         );
@@ -1336,7 +1380,7 @@ class ZapSDKService {
       }
 
       // Use SDK validation directly
-      const isValid = await this.sdk.validateAddress(cleanAddress, chainSymbol);
+      const isValid = await this.sdk!.validateAddress(cleanAddress, chainSymbol);
       if (isValid) {
         console.log("✅ SDK address validation passed");
         return { isValid: true };
@@ -1373,8 +1417,10 @@ class ZapSDKService {
     derivationIndex?: number;
     error?: string;
   }> {
-    if (!this.sdk) {
-      throw new Error("SDK not initialized");
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for createWalletInGroup, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
@@ -1385,7 +1431,7 @@ class ZapSDKService {
       });
 
       // Add wallet to wallet group
-      const addWalletResponse = await this.sdk.wallets.addWalletToWalletGroup({
+      const addWalletResponse = await this.sdk!.wallets.addWalletToWalletGroup({
         walletGroupId: params.walletGroupId,
         name: params.name,
         seedPhrase: params.seedPhrase,
@@ -1408,8 +1454,33 @@ class ZapSDKService {
           addWalletResponse.userWalletGroupId
         );
         console.log(
-          "✅ Wallet marked as created, account creation will be handled by retryPendingWallets"
+          "✅ Wallet marked as created:",
+          {
+            walletStorageId,
+            userWalletGroupId: addWalletResponse.userWalletGroupId,
+            name: params.name,
+          }
         );
+        
+        // Verify the wallet is now in accounts pending wallets
+        const accountsPending = await WalletCredentialsStorage.getAccountsPendingWallets();
+        const thisWallet = accountsPending.find(
+          w => w.userWalletGroupId === addWalletResponse.userWalletGroupId
+        );
+        if (thisWallet) {
+          console.log(
+            "✅ Verified: Wallet is in accounts pending wallets, ready for retryPendingWallets"
+          );
+        } else {
+          console.error(
+            "❌ WARNING: Wallet NOT found in accounts pending wallets!",
+            {
+              expectedUserWalletGroupId: addWalletResponse.userWalletGroupId,
+              accountsPendingCount: accountsPending.length,
+              accountsPendingIds: accountsPending.map(w => w.userWalletGroupId),
+            }
+          );
+        }
       }
 
       if (!addWalletResponse.userWalletGroupId) {
@@ -1418,9 +1489,13 @@ class ZapSDKService {
         );
       }
 
-      // Account creation will be handled by retryPendingWallets in useEffect
+      // Account creation will be handled by retryPendingWallets
       console.log(
-        "✅ Wallet created, account creation will be handled by retryPendingWallets"
+        "✅ Wallet created, account creation will be handled by retryPendingWallets",
+        {
+          userWalletGroupId: addWalletResponse.userWalletGroupId,
+          walletId: addWalletResponse.walletId,
+        }
       );
 
       return {
@@ -1446,8 +1521,10 @@ class ZapSDKService {
     chainSymbol: string
   ): Promise<{ address: string; privateKey: string }> {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for derivePrivateKey, auto-initializing...`);
+        await this.initialize();
       }
       return await WalletUtils.importAccountFromPrivateKey(
         privateKey,
@@ -1461,10 +1538,12 @@ class ZapSDKService {
 
   public async getNotificationPreferences({ userId }: { userId: string }) {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for getNotificationPreferences, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.users.getNotificationPreferences(userId, {
+      return await this.sdk!.users.getNotificationPreferences(userId, {
         bypassCache: true,
       });
     } catch (error) {
@@ -1481,10 +1560,12 @@ class ZapSDKService {
     notificationPreferences: UpdateSettingsBody;
   }) {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for updateNotificationPreferences, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.users.updateNotificationPreferences(
+      return await this.sdk!.users.updateNotificationPreferences(
         userId,
         notificationPreferences
       );
@@ -1496,10 +1577,12 @@ class ZapSDKService {
 
   public async getTwoFaStatus() {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for getTwoFaStatus, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.twoFA.getStatus({ bypassCache: true });
+      return await this.sdk!.twoFA.getStatus({ bypassCache: true });
     } catch (error) {
       console.error("❌ Failed to update notification preferences:", error);
       return null;
@@ -1508,10 +1591,12 @@ class ZapSDKService {
 
   public async enableTwoFa({ userId }: { userId: string }) {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for enableTwoFa, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.twoFA.generate();
+      return await this.sdk!.twoFA.generate();
     } catch (error) {
       console.error("❌ Failed to enable two factor authentication:", error);
       return null;
@@ -1520,10 +1605,12 @@ class ZapSDKService {
 
   public async verifyTwoFa({ code, secret }: { code: string; secret: string }) {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for verifyTwoFa, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.twoFA.verify(code, secret);
+      return await this.sdk!.twoFA.verify(code, secret);
     } catch (error) {
       console.error("❌ Failed to verify two factor authentication:", error);
       return null;
@@ -1532,10 +1619,12 @@ class ZapSDKService {
 
   public async disableTwoFa({ code }: { code: string }) {
     try {
-      if (!this.sdk) {
-        throw new Error("SDK not initialized");
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for disableTwoFa, auto-initializing...`);
+        await this.initialize();
       }
-      return await this.sdk.twoFA.disable(code);
+      return await this.sdk!.twoFA.disable(code);
     } catch (error) {
       console.error("❌ Failed to disable two factor authentication:", error);
       return null;

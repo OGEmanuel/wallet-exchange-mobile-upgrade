@@ -27,6 +27,7 @@ export default function DocumentCapure({
   const theme = useTheme<Theme>();
   const [isConsentChecked, setIsConsentChecked] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [capturedImageAsset, setCapturedImageAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -41,6 +42,21 @@ export default function DocumentCapure({
       default:
         return "ID Document";
     }
+  };
+
+  const createFormDataFromAsset = (asset: ImagePicker.ImagePickerAsset): FormData => {
+    const formData = new FormData();
+    
+    // Create a file object from the asset
+    const file = {
+      uri: asset.uri,
+      type: asset.mimeType || 'image/jpeg',
+      name: asset.fileName || `image_${Date.now()}.jpg`,
+    } as any;
+
+    formData.append('file', file);
+    
+    return formData;
   };
 
   const requestCameraPermission = async () => {
@@ -97,6 +113,7 @@ export default function DocumentCapure({
 
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
+        setCapturedImageAsset(result.assets[0]);
         setShowCamera(false);
         console.log("Image captured:", result.assets[0]);
       }
@@ -122,6 +139,7 @@ export default function DocumentCapure({
 
       if (!result.canceled && result.assets[0]) {
         setCapturedImage(result.assets[0].uri);
+        setCapturedImageAsset(result.assets[0]);
         console.log("Image uploaded:", result.assets[0]);
       }
     } catch {

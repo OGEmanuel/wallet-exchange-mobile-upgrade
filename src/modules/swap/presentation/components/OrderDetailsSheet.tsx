@@ -59,7 +59,7 @@ const OrderDetailsSheet = forwardRef<
   const theme = useTheme<Theme>();
   const [activeTab, setActiveTab] = useState<"summary" | "details">("summary");
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const { getChainBySymbol } = useChains();
+  const { getChainBySymbol, getChainImage } = useChains();
 
   useImperativeHandle(ref, () => ({
     open: () => bottomSheetRef.current?.snapToIndex(0),
@@ -296,7 +296,7 @@ const OrderDetailsSheet = forwardRef<
                     <Image
                       source={
                         isBuyCrypto
-                          ? buyChain?.nativeCurrencyId?.logo || ""
+                          ? getChainImage(buyChain?._id || "")
                           : orderDetails?.depositAccount?.bankId?.icon || ""
                       }
                       style={{ width: 20, height: 20, marginRight: 10 }}
