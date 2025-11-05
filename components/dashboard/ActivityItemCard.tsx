@@ -3,10 +3,10 @@ import { exchangeActions } from "@/src/modules/exchange/presentation/state/excha
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
 import React, { useState } from "react";
-import { Image, Pressable } from "react-native";
-import { SvgUri } from "react-native-svg";
+import { Pressable } from "react-native";
 import { useDispatch } from "react-redux";
 import { Box, CustomText } from "../general";
+import SmartImage from "../general/SmartImage";
 
 interface IProps {
   activity?: ExchangeActivityModel;
@@ -129,7 +129,6 @@ const ActivityItemCard = ({
   // const currencyImage = activity?.buyCurrency?.image || activity?.sellCurrency?.image;
   const currencyImage = activity?.sellCurrency?.currencyId?.isCrypto ? activity?.sellCurrency.currencyId.logo : activity?.withdrawalAccount?.bankId?.icon;
   const [imageError, setImageError] = useState(false);
-  const isSvg = currencyImage?.toLowerCase().endsWith(".svg");
 
   return (
     <Pressable
@@ -154,31 +153,17 @@ const ActivityItemCard = ({
           overflow="hidden"
         >
           {currencyImage && !imageError ? (
-            isSvg ? (
-              <SvgUri
-                uri={currencyImage}
-                width={24}
-                height={24}
-                onError={() => {
-                  console.log("Failed to load currency image:", currencyImage);
-                  setImageError(true);
-                }}
-              />
-            ) : (
-              <Image
-                source={{ uri: currencyImage }}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                }}
-                resizeMode="cover"
-                onError={() => {
-                  console.log("Failed to load currency image:", currencyImage);
-                  setImageError(true);
-                }}
-              />
-            )
+            <SmartImage
+              source={{ uri: currencyImage }}
+              width={24}
+              height={24}
+              borderRadius={12}
+              resizeMode="cover"
+              onError={() => {
+                console.log("Failed to load currency image:", currencyImage);
+                setImageError(true);
+              }}
+            />
           ) : currencyImage && imageError ? (
             <CustomText fontSize={10} color="white" fontWeight="bold">
               {displayCurrency?.charAt(0) || "?"}

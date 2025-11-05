@@ -3,6 +3,7 @@ import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import TokenCardSkeleton from "@/components/dashboard/TokenCardSkeleton";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
+import SmartImage from "@/components/general/SmartImage";
 import ImportTokenModal from "@/components/Modals/ImportTokenModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
@@ -13,7 +14,8 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { selectStage, setStage } from "@/state/reducers/recievePage.reducer";
 import { selectAllSupportedTokens } from "@/state/selectors/portfolio.selectors";
-import theme, { Theme } from "@/theme";
+import { Theme } from "@/theme";
+import { shortenChainName } from "@/utils/chainFiltering";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
@@ -21,7 +23,6 @@ import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput } from "react-native";
-import { SvgUri } from "react-native-svg";
 import { useDispatch, useSelector } from "react-redux";
 import ReceiveQRCode from "./recieve/ReceiveQRCode";
 import SelectChainBottomSheet from "./SelectChainBottomSheet";
@@ -39,16 +40,13 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
       alignItems="center"
     >
       {image ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={30}
           height={30}
+          borderRadius={20}
           onError={() => {
             console.log("Failed to load token image:", image);
-          }}
-          style={{
-            borderRadius: 20,
-            backgroundColor: theme.colors.secondaryBackgroundColor,
           }}
         />
       ) : (
@@ -308,8 +306,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     overflow="hidden"
                   >
                     {chain.chainImage ? (
-                      <SvgUri
-                        uri={chain.chainImage}
+                      <SmartImage
+                        source={{ uri: chain.chainImage }}
                         width={28}
                         height={28}
                         onError={() => {
@@ -409,7 +407,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               const tokenImage = isSwap
                 ? token.image || token.currencyId?.logo
                 : token.image;
-              const chainName = isSwap ? token.chainId?.name : token.chainName;
+              const rawChainName = isSwap ? token.chainId?.name : token.chainName;
+              const chainName = rawChainName ? shortenChainName(rawChainName) : rawChainName;
               const balance = isSwap ? 0 : token.balance || 0;
               const usdValue = isSwap ? 0 : token.totalUsdValue || 0;
 

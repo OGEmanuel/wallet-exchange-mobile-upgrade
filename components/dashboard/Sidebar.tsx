@@ -29,13 +29,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Image, Platform, Pressable } from "react-native";
+import { Keyboard, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
+import SmartImage from "../general/SmartImage";
 import { PinEntryModal } from "../Modals/PinEntryModal";
 import { PinSetupModal } from "../Modals/PinSetupModal";
 import SidebarItemCard from "./SidebarItemCard";
@@ -59,6 +60,11 @@ const Sidebar = () => {
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
   const OS = Platform.OS;
+
+  // Dismiss keyboard when component mounts to prevent auto-focus issues
+  useEffect(() => {
+    Keyboard.dismiss();
+  }, []);
 
   // Load biometric preference from SecureStore
   useEffect(() => {
@@ -432,19 +438,21 @@ const Sidebar = () => {
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
-                  <Image
+                  <SmartImage
                     source={{ uri: exchangeUserData?.avatar?.url }}
-                    style={[
-                      { width: 40, height: 40, borderRadius: 20 },
-                      pressed && { opacity: 0.7 },
-                    ]}
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    style={pressed ? { opacity: 0.7 } : undefined}
                   />
                 )}
               </Pressable>
             ) : (
-              <Image
+              <SmartImage
                 source={require("@/assets/images/personplaceholder.png")}
-                style={{ width: 40, height: 40, borderRadius: 20 }}
+                width={40}
+                height={40}
+                borderRadius={20}
               />
             )}
           </Box>
@@ -481,7 +489,11 @@ const Sidebar = () => {
         </Pressable>
       </LinearGradient>
       <Box flex={1}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 100 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
           <Box paddingHorizontal="m" paddingTop="l">
             <Box
               width={"100%"}

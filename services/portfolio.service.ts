@@ -436,28 +436,41 @@ export class PortfolioService {
   /**
    * Format balance with smart decimal handling and comma separators
    */
-  static formatBalance(balance: number, decimals: number = 8): string {
-    if (balance === 0) return '0';
+  static formatBalance(balance: number | string, decimals: number = 8): string {
+    // Handle undefined, null, or invalid values
+    if (balance === undefined || balance === null) {
+      return '0';
+    }
+
+    // Convert string to number if needed
+    const numBalance = typeof balance === 'string' ? parseFloat(balance) : balance;
+    
+    // Check if conversion resulted in invalid number
+    if (isNaN(numBalance)) {
+      return '0';
+    }
+
+    if (numBalance === 0) return '0';
 
     // Smart decimal formatting based on value size
-    if (balance < 0.000001) {
+    if (numBalance < 0.000001) {
       // Very small values: show up to 8 decimal places
-      return balance.toFixed(8).replace(/\.?0+$/, '');
-    } else if (balance < 0.001) {
+      return numBalance.toFixed(8).replace(/\.?0+$/, '');
+    } else if (numBalance < 0.001) {
       // Small values: show up to 6 decimal places
-      return balance.toFixed(6).replace(/\.?0+$/, '');
-    } else if (balance < 1) {
+      return numBalance.toFixed(6).replace(/\.?0+$/, '');
+    } else if (numBalance < 1) {
       // Medium values: show up to 4 decimal places
-      return balance.toFixed(4).replace(/\.?0+$/, '');
-    } else if (balance < 1000) {
+      return numBalance.toFixed(4).replace(/\.?0+$/, '');
+    } else if (numBalance < 1000) {
       // Large values: show up to 2 decimal places
-      return balance.toFixed(2).replace(/\.?0+$/, '');
+      return numBalance.toFixed(2).replace(/\.?0+$/, '');
     } else {
       // Very large values: use comma formatting with 2 decimal places
       return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      }).format(balance);
+      }).format(numBalance);
     }
   }
 

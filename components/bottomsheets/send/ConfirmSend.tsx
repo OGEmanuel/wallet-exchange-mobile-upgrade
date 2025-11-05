@@ -4,7 +4,6 @@ import { CustomButton, CustomText } from "@/components/general";
 import CryptoIcon from "@/components/general/CrptoIcon";
 import { PinEntryModal } from "@/components/Modals/PinEntryModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
-import { formatNumberWithCommas } from "@/react-native-swap/utils/formatUtils";
 import { PortfolioService } from "@/services/portfolio.service";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -227,7 +226,7 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
                   fontSize={22}
                   style={{ marginVertical: 4 }}
                 >
-                  {formatNumberWithCommas(amount)} {selectedToken.symbol}
+                  {PortfolioService.formatBalance(amount)} {selectedToken.symbol}
                 </CustomText>
                 <CustomText>
                   {PortfolioService.formatCurrency(usdValue)}

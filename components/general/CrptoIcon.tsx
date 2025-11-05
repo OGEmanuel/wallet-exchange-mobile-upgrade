@@ -1,7 +1,7 @@
 import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import Box from "@/components/general/Box";
+import SmartImage from "@/components/general/SmartImage";
 import { useState } from "react";
-import { SvgUri } from "react-native-svg";
 import { CustomText } from ".";
 
 
@@ -28,11 +28,11 @@ const CryptoIcon = ({
       borderWidth={0}
     >
       {image && !imageError ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={size}
           height={size}
-          onError={() => {
+          onError={(error) => {
             console.log("Failed to load token image:", image);
             setImageError(true);
           }}

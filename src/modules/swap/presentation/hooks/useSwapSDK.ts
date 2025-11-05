@@ -256,16 +256,83 @@ export const useSwapSDK = () => {
         sellRate: rateResponse?.data?.sellRate || 0,
       };
 
-      setState(prev => ({ ...prev, marketRate: swapRate, isRateLoading: false }));
+      setState(prev => ({ ...prev, marketRate: swapRate, isRateLoading: false, error: null }));
       return swapRate;
     } catch (error) {
       console.error("Failed to fetch market rate:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch rate";
-      setState(prev => ({
-        ...prev,
-        error: errorMessage,
-        isRateLoading: false
-      }));
+      
+      // On error, preserve the last known rate and scale amounts accordingly
+      setState(prev => {
+        const lastRate = prev.marketRate;
+        
+        // If we have a last known rate, use it to recalculate amounts
+        if (lastRate && lastRate.rate > 0) {
+          // Recalculate based on isBuyAmount flag (which determines calculation direction)
+          if (prev.isBuyAmount && prev.baseAmount > 0) {
+            // User is buying - base amount is input, recalculate target amount
+            const newTargetAmount = prev.baseAmount * lastRate.rate;
+            const newBaseAmountUSD = prev.baseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              targetAmount: newTargetAmount,
+              targetAmountInput: newTargetAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          } else if (!prev.isBuyAmount && prev.targetAmount > 0) {
+            // User is selling - target amount is input, recalculate base amount
+            const calculatedBaseAmount = prev.targetAmount / lastRate.rate;
+            const newBaseAmountUSD = calculatedBaseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              baseAmount: calculatedBaseAmount,
+              baseAmountInput: calculatedBaseAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          }
+          
+          // Fallback: if amounts exist but direction is unclear, recalculate based on last edited field
+          if (prev.lastEditedField === "baseAmount" && prev.baseAmount > 0) {
+            const newTargetAmount = prev.baseAmount * lastRate.rate;
+            const newBaseAmountUSD = prev.baseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              targetAmount: newTargetAmount,
+              targetAmountInput: newTargetAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          } else if (prev.lastEditedField === "targetAmount" && prev.targetAmount > 0) {
+            const calculatedBaseAmount = prev.targetAmount / lastRate.rate;
+            const newBaseAmountUSD = calculatedBaseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              baseAmount: calculatedBaseAmount,
+              baseAmountInput: calculatedBaseAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          }
+        }
+        
+        // No last rate available - just set error
+        return {
+          ...prev,
+          error: errorMessage,
+          isRateLoading: false
+        };
+      });
+      
       return null;
     }
   }, []);
@@ -286,6 +353,7 @@ export const useSwapSDK = () => {
     setState(prev => {
       if (prev.isInputtingUSD) {
         // When in USD mode, remove $ symbol and parse the number
+        console.log("handleBaseAmountChange called", amount);
         const cleanAmount = amount.replace(/[$,]/g, '');
         const numAmount = parseFloat(cleanAmount) || 0;
 
@@ -449,21 +517,20 @@ export const useSwapSDK = () => {
 
   // Format helpers - format with commas but preserve decimal points during typing
   const handleBaseAmountFormat = useCallback(() => {
+    // If input ends with decimal point, preserve it
+    if (state.baseAmountInput.endsWith('.')) {
+      return state.baseAmountInput;
+    }
+
+    // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
+    // This prevents formatNumber from truncating very small numbers during typing
+    if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.endsWith('0')) {
+      return state.baseAmountInput;
+    }
     if (state.isInputtingUSD) {
       if (!state.baseAmountUSD || state.baseAmountUSD === 0) return formatNumber(0, 2);
       return formatNumber(state.baseAmountUSD, 2);
     } else {
-      // If input ends with decimal point, preserve it
-      if (state.baseAmountInput.endsWith('.')) {
-        return state.baseAmountInput;
-      }
-
-      // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
-      // This prevents formatNumber from truncating very small numbers during typing
-      if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.includes('00')) {
-        return state.baseAmountInput;
-      }
-
       const isCrypto = (state.baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
       return formatNumber(state.baseAmount, isCrypto ? 8 : 2);
     }
@@ -480,7 +547,7 @@ export const useSwapSDK = () => {
 
     // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
     // This prevents formatNumber from truncating very small numbers during typing
-    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.includes('00')) {
+    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.endsWith('0')) {
       return state.targetAmountInput;
     }
 

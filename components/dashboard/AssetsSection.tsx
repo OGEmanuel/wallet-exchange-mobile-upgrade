@@ -17,11 +17,11 @@ import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SvgUri } from "react-native-svg";
 import { useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
+import SmartImage from "../general/SmartImage";
 import ManageTokensModal from "../Modals/ManageTokensModal";
 import AssetCardSkeleton from "./AssetCardSkeleton";
 import PortfolioErrorState from "./PortfolioErrorState";
@@ -43,16 +43,14 @@ const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
       }}
     >
       {image && !imageError ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={25}
           height={25}
-          onError={() => {
+          borderRadius={20}
+          onError={(error) => {
             console.log("Failed to load token image:", image);
             setImageError(true);
-          }}
-          style={{
-            borderRadius: 20,
           }}
         />
       ) : symbol ? (

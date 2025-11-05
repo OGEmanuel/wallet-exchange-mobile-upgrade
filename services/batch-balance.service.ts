@@ -164,12 +164,6 @@ export class BatchBalanceService {
       });
     });
 
-    if (tokens.length > 0) {
-      console.log(
-        `✅ Batch Balance: Extracted ${tokens.length} tokens (${matchedAccounts} matched to accounts, ${skippedNoTokenAddress} native tokens skipped)`
-      );
-    }
-
     return tokens;
   }
 
@@ -421,11 +415,6 @@ export class BatchBalanceService {
         });
       }
 
-      if (priceMap.size > 0) {
-        console.log(`💰 Extracted ${priceMap.size} prices from userTokenList (IUserPortfolio.price)`);
-      } else {
-        console.warn('⚠️ No prices found in userTokenList - will use market fallback');
-      }
     };
 
     // Helper function to check if an account is a native token (ETH, SOL, BTC, etc.)
@@ -503,7 +492,7 @@ export class BatchBalanceService {
     // Helper function to get price from portfolio data or market fallback
     // Prices come from the SDK on IUserPortfolio - we stored them in priceMap before clearing
     // If not found, fallback to market prices
-    const getPriceFromPortfolio = (account: any, debug: boolean = false): number => {
+    const getPriceFromPortfolio = (account: any): number => {
       // First check the priceMap (extracted from original portfolio data)
       const priceFromMap = priceMap.get(account._id);
       if (priceFromMap && priceFromMap > 0) {
@@ -560,21 +549,7 @@ export class BatchBalanceService {
               const chainIdObj = typeof chainId === 'object' ? chainId : null;
               if (chainIdObj?.nativeCurrencyId) {
                 currencyIdValue = extractCurrencyId(chainIdObj.nativeCurrencyId);
-                if (debug && currencyIdValue) {
-                  console.log(`🔍 Native token - extracted currencyId from chain.nativeCurrencyId: ${currencyIdValue}`);
-                }
-              } else if (debug) {
-                console.log(`⚠️ Native token but no nativeCurrencyId found in chainId:`, {
-                  hasChainId: !!chainId,
-                  chainIdType: typeof chainId,
-                  chainIdKeys: chainIdObj ? Object.keys(chainIdObj).slice(0, 10) : null,
-                });
               }
-            } else if (debug) {
-              console.log(`⚠️ Native token but no chainId found on account:`, {
-                hasAccountChainId: !!account.chainId,
-                hasSupportedCurrencyChainId: !!account.supportedCurrencyId?.chainId,
-              });
             }
           }
         }
@@ -597,73 +572,9 @@ export class BatchBalanceService {
           }
 
           if (marketPrice && marketPrice > 0) {
-            if (debug || updatedCount < 5) {
-              const isNative = isNativeTokenAccount(account);
-              const source = isNative ? 'chain.nativeCurrencyId' :
-                (account.currencyId ? 'account.currencyId' : 'supportedCurrency.currencyId');
-              console.log(`💰 Using market price fallback for account ${account._id}: ${marketPrice} (currencyId: ${currencyIdValue}, source: ${source})`);
-            }
             return marketPrice;
-          } else if (debug) {
-            console.log(`⚠️ Market price not found for currencyId: ${currencyIdValue}, available currencyIds: ${Array.from(marketTokensMap.keys()).slice(0, 5).join(', ')}...`);
           }
-        } else if (debug) {
-          const chainId = account.chainId || account.supportedCurrencyId?.chainId;
-          const chainIdObj = chainId && typeof chainId === 'object' ? chainId : null;
-
-          console.log(`⚠️ Could not extract currencyId from account ${account._id}:`, {
-            hasAccountCurrencyId: !!account.currencyId,
-            accountCurrencyId: account.currencyId,
-            hasSupportedCurrency: !!account.supportedCurrencyId,
-            supportedCurrencyCurrencyId: account.supportedCurrencyId?.currencyId,
-            isNative: isNativeTokenAccount(account),
-            hasChainId: !!chainId,
-            chainIdType: typeof chainId,
-            chainNativeCurrencyId: chainIdObj?.nativeCurrencyId,
-          });
         }
-      }
-
-      if (debug) {
-        const supportedCurrency = account.supportedCurrencyId;
-        const isSupportedCurrencyObject = supportedCurrency && typeof supportedCurrency === 'object' && supportedCurrency !== null;
-        const currencyId = isSupportedCurrencyObject ? supportedCurrency.currencyId : null;
-        const isNative = isNativeTokenAccount(account);
-        const chainId = account.chainId || account.supportedCurrencyId?.chainId;
-        const chainIdObj = chainId && typeof chainId === 'object' ? chainId : null;
-
-        console.log('🔍 No price found for account:', {
-          accountId: account._id,
-          accountBalance: account.balance,
-          isNative,
-          priceFromMap,
-          priceFromAccount,
-          hasMarketPrices: marketTokensMap && marketTokensMap.size > 0,
-          accountCurrencyId: account.currencyId,
-          accountCurrencyIdType: typeof account.currencyId,
-          supportedCurrencyIsObject: isSupportedCurrencyObject,
-          supportedCurrencyCurrencyId: isSupportedCurrencyObject ? (typeof currencyId === 'string' ? currencyId : currencyId?._id) : null,
-          hasChainId: !!chainId,
-          chainIdType: typeof chainId,
-          chainNativeCurrencyId: chainIdObj?.nativeCurrencyId,
-          chainNativeCurrencyIdType: typeof chainIdObj?.nativeCurrencyId,
-          // Try to see what we would get
-          attemptedCurrencyId: (() => {
-            if (account.currencyId) {
-              const extracted = typeof account.currencyId === 'string' ? account.currencyId : (account.currencyId._id || account.currencyId.id);
-              return extracted;
-            }
-            if (supportedCurrency && typeof supportedCurrency === 'object' && supportedCurrency.currencyId) {
-              const extracted = typeof supportedCurrency.currencyId === 'string' ? supportedCurrency.currencyId : (supportedCurrency.currencyId._id || supportedCurrency.currencyId.id);
-              return extracted;
-            }
-            if (isNative && chainIdObj?.nativeCurrencyId) {
-              const extracted = typeof chainIdObj.nativeCurrencyId === 'string' ? chainIdObj.nativeCurrencyId : (chainIdObj.nativeCurrencyId._id || chainIdObj.nativeCurrencyId.id);
-              return extracted;
-            }
-            return null;
-          })(),
-        });
       }
 
       return 0;
@@ -676,12 +587,7 @@ export class BatchBalanceService {
       account.balanceUpdatedAt = new Date().toISOString();
 
       // Get price from portfolio data (comes from SDK on IUserPortfolio)
-      // Enable debug for first few calls to find where prices are
-      // Also enable debug if balance > 0 but we're still getting 0 price
-      // Especially important for native tokens
-      const isNative = isNativeTokenAccount(account);
-      const shouldDebug = updatedCount < 5 || (balance > 0 && updatedCount < 15) || (isNative && balance > 0);
-      const price = getPriceFromPortfolio(account, shouldDebug);
+      const price = getPriceFromPortfolio(account);
 
       // Calculate totalUsdValue using price from portfolio
       if (price > 0 && balance > 0) {
@@ -697,35 +603,17 @@ export class BatchBalanceService {
       }
 
       updatedCount++;
-
-      // Debug: Log first few updates to verify balances are set
-      if (updatedCount <= 3) {
-        console.log(
-          `🔍 Batch Balance Update: accountId=${account._id}, balance=${balance}, price=${price}, totalUsdValue=${account.totalUsdValue}, symbol=${account.supportedCurrencyId?.symbol || account.supportedCurrencyId?.currencyId?.symbol || 'unknown'}`
-        );
-      }
     };
 
     // STEP 0: Extract prices from original portfolio data BEFORE clearing
     extractPricesFromOriginalPortfolio();
 
-    // Debug: Log balances BEFORE clearing
-    const accountsBeforeClear = updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
-    const accountsWithBalanceBefore = accountsBeforeClear.filter((acc: any) => acc.balance > 0);
-    console.log(`🧹 BEFORE clearing: ${accountsWithBalanceBefore.length}/${accountsBeforeClear.length} accounts have balance > 0`);
-
     // STEP 1: Clear all backend balances first (ALL balances - including native tokens)
     clearAllBackendBalances();
-
-    // Debug: Log balances AFTER clearing
-    const accountsAfterClear = updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
-    const accountsWithBalanceAfter = accountsAfterClear.filter((acc: any) => acc.balance > 0);
-    console.log(`🧹 AFTER clearing: ${accountsWithBalanceAfter.length}/${accountsAfterClear.length} accounts have balance > 0 (should be 0)`);
 
     // Update account balances in mainWalletGroupPortfolio
     // The balanceResults map is keyed by assetId (which is account._id)
     // We match accounts by their _id to update their balances
-    console.log(`📊 Starting account balance updates: ${balanceResults.size} batch results, ${nativeBalances?.size || 0} native balances`);
 
     let contractTokensUpdated = 0;
     let nativeTokensUpdated = 0;
@@ -754,17 +642,13 @@ export class BatchBalanceService {
               const balance = nativeBalance.balance || 0;
 
               if (balance > 0) {
-                const shouldDebug = updatedCount < 5 || (balance > 0 && updatedCount < 15);
-                const price = getPriceFromPortfolio(account, shouldDebug);
+                const price = getPriceFromPortfolio(account);
 
                 account.balance = balance;
                 if (price > 0) {
                   account.totalUsdValue = balance * price;
                   updatedCount++;
                   nativeTokensUpdated++;
-                  if (shouldDebug) {
-                    console.log(`💰 Native token from SDK: accountId=${account._id}, chainSymbol=${chainSymbol}, balance=${balance}, price=${price}, totalUsdValue=${account.totalUsdValue}`);
-                  }
                 } else {
                   account.totalUsdValue = 0;
                   updatedCount++;
@@ -777,12 +661,7 @@ export class BatchBalanceService {
           // Accounts without batch results already have balance = 0 from clearAllBackendBalances
         }
       );
-
-      console.log(`📊 Main wallet portfolio: ${contractTokensUpdated} contract tokens, ${nativeTokensUpdated} native tokens updated`);
     }
-
-    // Final summary log after processing all accounts
-    console.log(`📊 Final summary: ${contractTokensUpdated} contract tokens, ${nativeTokensUpdated} native tokens updated, ${updatedCount} total accounts updated`);
 
     // Update account balances in walletGroupPortfolios
     // Same logic - match by account._id which is the assetId we used
@@ -810,17 +689,13 @@ export class BatchBalanceService {
                     const balance = nativeBalance.balance || 0;
 
                     if (balance > 0) {
-                      const shouldDebug = updatedCount < 5 || (balance > 0 && updatedCount < 15);
-                      const price = getPriceFromPortfolio(account, shouldDebug);
+                      const price = getPriceFromPortfolio(account);
 
                       account.balance = balance;
                       if (price > 0) {
                         account.totalUsdValue = balance * price;
                         updatedCount++;
                         nativeTokensUpdated++;
-                        if (shouldDebug) {
-                          console.log(`💰 Native token from SDK: accountId=${account._id}, chainSymbol=${chainSymbol}, balance=${balance}, price=${price}, totalUsdValue=${account.totalUsdValue}`);
-                        }
                       } else {
                         account.totalUsdValue = 0;
                         updatedCount++;
@@ -874,41 +749,10 @@ export class BatchBalanceService {
         ) {
           userToken.status = 'ENABLED';
           autoEnabledCount++;
-          console.log(
-            `✨ Auto-enabled token with balance: ${userToken.supportedCurrencyId?.symbol || supportedCurrencyId} (balance: ${account.balance})`
-          );
         }
       });
     }
 
-    if (updatedCount > 0) {
-      console.log(`✅ Updated ${updatedCount} account balances via batch fetching`);
-
-      // Debug: Verify balances are actually set in the portfolio
-      const accountsWithBalances = (
-        updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || []
-      ).filter((acc: any) => acc.balance > 0);
-      console.log(
-        `🔍 Verified: ${accountsWithBalances.length} accounts have balance > 0 after update`
-      );
-      if (accountsWithBalances.length > 0) {
-        console.log(
-          `🔍 Sample updated account:`,
-          accountsWithBalances.slice(0, 2).map((acc: any) => ({
-            id: acc._id,
-            balance: acc.balance,
-            totalUsdValue: acc.totalUsdValue,
-            symbol: acc.supportedCurrencyId?.symbol || acc.symbol,
-          }))
-        );
-      }
-    }
-    if (autoEnabledCount > 0) {
-      console.log(`✨ Auto-enabled ${autoEnabledCount} token(s) with balances`);
-    }
-    if (clearedCount > 0) {
-      console.log(`🧹 Cleared backend balance data for ${clearedCount} accounts (will use batch results only)`);
-    }
 
     return updatedPortfolio;
   }

@@ -244,8 +244,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const exchangeUserId = exchangeUser?._id;
       const isExchangeAuth = await zapSDKService.isExchangeAuthenticated();
 
-      console.log(isExchangeAuth, exchangeUserId, exchangeUser, "yeahhh");
-
       if (isExchangeAuth && exchangeUserId) {
         result = setExchangeAndRoute(
           exchangeUserId,
@@ -2383,6 +2381,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
         // STEP 2: Get wallet addresses for all chains
         const addressesByChain = new Map<string, string>();
+
+        if (!walletChains || walletChains.length === 0) {
+          await loadChainsNow();
+
+          if (!walletChains || walletChains.length === 0) {
+            // Set Timeout to retry in 1 second
+            await setTimeout(async () => {}, 500);
+          }
+        }
+
         if (walletChains && walletChains.length > 0) {
           console.log(
             `📍 Getting addresses for wallet: ${walletIdToRefresh} (captured wallet ID)`

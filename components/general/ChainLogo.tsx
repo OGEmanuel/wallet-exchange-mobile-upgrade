@@ -8,8 +8,8 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
-import { Image, Text, View } from "react-native";
-import { SvgUri } from "react-native-svg";
+import { Text, View } from "react-native";
+import SmartImage from "./SmartImage";
 
 interface ChainLogoProps {
   symbol: string;
@@ -37,64 +37,20 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
   onLoadEnd,
 }) => {
   const theme = useTheme<Theme>();
-  const [loading, setLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
-  const handleSvgError = (error: any) => {
-    console.log("❌ SVG load error:", error);
+  const handleError = (error: any) => {
+    console.log("❌ Image load error:", error);
     setImageError(true);
-    setLoading(false);
     onError?.(error);
   };
 
-  const handleSvgLoad = () => {
-    setLoading(false);
+  const handleLoad = () => {
     onLoad?.();
   };
 
-  // Try to render SVG if URL is provided and no error occurred
-  if (logoUrl && logoUrl.endsWith(".svg") && !imageError) {
-    return (
-      <View
-        style={[
-          {
-            width,
-            height,
-            borderRadius: width / 2,
-            overflow: "hidden",
-            backgroundColor: "transparent", // Remove background
-            justifyContent: "center",
-            alignItems: "center",
-          },
-          style,
-        ]}
-      >
-        <SvgUri
-          uri={logoUrl}
-          onError={handleSvgError}
-          onLoad={handleSvgLoad}
-          width={!loading ? width - 4 : 0}
-          height={!loading ? height - 4 : 0}
-        />
-        {loading && (
-          <View
-            style={{
-              width: width - 4,
-              height: height - 4,
-              backgroundColor: "#8B5CF6",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "white", fontSize: 10 }}>...</Text>
-          </View>
-        )}
-      </View>
-    );
-  }
-
-  // Try to load regular image if URL is provided and no error occurred
-  if (logoUrl && !logoUrl.endsWith(".svg")) {
+  // Try to render image if URL is provided
+  if (logoUrl && !imageError) {
     return (
       <View
         style={[
@@ -117,14 +73,16 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
           style,
         ]}
       >
-        <Image
+        <SmartImage
           source={{ uri: logoUrl }}
-          style={{
-            width: width - 4, // Account for border
-            height: height - 4,
-            borderRadius: (width - 4) / 2,
-          }}
+          width={width - 4}
+          height={height - 4}
+          borderRadius={(width - 4) / 2}
           resizeMode="cover"
+          onError={handleError}
+          onLoad={handleLoad}
+          onLoadStart={onLoadStart}
+          onLoadEnd={onLoadEnd}
         />
       </View>
     );
