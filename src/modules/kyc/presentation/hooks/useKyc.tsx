@@ -7,12 +7,13 @@ import { storageService } from "@/src/core/storage/app-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
-import { SubmitVerificationParams, TokenData } from "@zap/blockchain-sdk";
+import { SubmitVerificationParams } from "@zap/blockchain-sdk";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
+import { AuthGuestUserParams } from "../../domain/entities/params/auth-guest-user-params";
 import { AuthPhoneNumberParams } from "../../domain/entities/params/auth-phone-number-params";
 import { CreditDocumentDataParam } from "../../domain/entities/params/credit-document-data-param";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
@@ -199,25 +200,25 @@ const useKyc = () => {
         extra: null,
       });
 
-      const authVerificationData = response.data;
+      // const authVerificationData = response.data;
 
-      if (authVerificationData) {
-        try {
-          // const responseData = response.data as any;
-          const tokenData: TokenData = {
-            token: authVerificationData?.token || null,
-            refreshToken: authVerificationData?.refreshToken || null,
-            expiresAt: null,
-          };
-          await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
-          console.log("Tokens stored successfully after email verification");
-        } catch (error) {
-          console.error(
-            "Failed to store tokens after email verification:",
-            error
-          );
-        }
-      }
+      // if (authVerificationData) {
+      //   try {
+      //     // const responseData = response.data as any;
+      //     const tokenData: TokenData = {
+      //       token: authVerificationData?.token || null,
+      //       refreshToken: authVerificationData?.refreshToken || null,
+      //       expiresAt: null,
+      //     };
+      //     await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+      //     console.log("Tokens stored successfully after email verification");
+      //   } catch (error) {
+      //     console.error(
+      //       "Failed to store tokens after email verification:",
+      //       error
+      //     );
+      //   }
+      // }
 
       return response;
     },
@@ -292,6 +293,67 @@ const useKyc = () => {
     ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeUploadIdentityDocument(payload);
+      return response;
+    },
+
+    loginAsGuest: async (
+      payload: AuthGuestUserParams
+    ): Promise<GeneralResponseModel<UserModel>> => {
+      const usecase = new KycUsecases();
+      const response = await usecase.executeLoginAsGuest({
+        body: payload,
+        params: null,
+        extra: null,
+      });
+
+      // const authVerificationData = response.data;
+
+      // if (authVerificationData) {
+      //   try {
+      //     const tokenData: TokenData = {
+      //       token: authVerificationData?.token || null,
+      //       refreshToken: authVerificationData?.refreshToken || null,
+      //       expiresAt: null,
+      //     };
+      //     await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+      //     console.log("Tokens stored successfully after guest login");
+
+      //     // Update user state if user data is returned
+      //     if (authVerificationData?.user) {
+      //       const guestUser = authVerificationData.user as UserModel;
+      //       dispatch(kycActions.setUser(guestUser));
+            
+      //       // Update wallet context
+      //       if (guestUser._id) {
+      //         setCurrentExchangeUser(guestUser._id);
+      //         setIsExchangeAuthenticated(true);
+      //       }
+      //       setExchangeUserData(guestUser);
+
+      //       // Persist user data
+      //       try {
+      //         await storageService.save(StorageKeys.USER_PROFILE, guestUser);
+      //       } catch (error) {
+      //         console.error("Failed to persist guest user data:", error);
+      //       }
+      //     }
+      //   } catch (error) {
+      //     console.error("Failed to store tokens after guest login:", error);
+      //   }
+      // }
+
+      if (response.success && response.data) {
+        try {
+          await storageService.save(StorageKeys.USER_PROFILE, response.data);
+          dispatch(kycActions.setUser(response.data));
+          setCurrentExchangeUser(response.data._id || null);
+          setIsExchangeAuthenticated(true);
+          setExchangeUserData(response.data);
+        } catch (error) {
+          console.error("Failed to persist guest user data:", error);
+        }
+      }
+
       return response;
     },
   };
