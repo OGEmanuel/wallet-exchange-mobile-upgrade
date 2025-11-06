@@ -66,9 +66,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -459,9 +459,6 @@ export default function SelectWatchlist() {
         console.error("Failed to refresh watchlist tokens:", refreshError);
       }
 
-  hasUserInteractedRef.current = false;
-  setSelectedCurrencyIds(new Set());
-
       const hadFailures =
         failedAddCurrencyIds.length > 0 || failedRemovalIds.length > 0;
 
@@ -470,21 +467,10 @@ export default function SelectWatchlist() {
       if (hadFailures) {
         successMessage =
           "Watchlist updated with some issues. Please retry failed tokens.";
-      } else if (
-        successfulAddCurrencyIds.length > 0 &&
-        successfulRemovalIds.length > 0
-      ) {
-        successMessage = "Watchlist updated";
-      } else if (successfulAddCurrencyIds.length > 0) {
-        successMessage =
-          successfulAddCurrencyIds.length === 1
-            ? "Token added to watchlist"
-            : "Tokens added to watchlist";
+      } else if (hasExistingWatchlist) {
+        successMessage = "Watchlist updated successfully";
       } else {
-        successMessage =
-          successfulRemovalIds.length === 1
-            ? "Token removed from watchlist"
-            : "Tokens removed from watchlist";
+        successMessage = "Watchlist created successfully";
       }
 
       showSuccessToast(successMessage);
@@ -528,16 +514,6 @@ export default function SelectWatchlist() {
                   backgroundColor: pressed
                     ? theme.colors.secondaryBackgroundColor
                     : theme.colors.surfaceContainer,
-                  borderWidth: isSelected
-                    ? 1
-                    : isInWatchlist
-                    ? StyleSheet.hairlineWidth
-                    : 0,
-                  borderColor: isSelected
-                    ? theme.colors.primaryColor
-                    : isInWatchlist
-                    ? theme.colors.borderColor
-                    : "transparent",
                 },
               ]}
             >
@@ -546,10 +522,10 @@ export default function SelectWatchlist() {
                   styles.checkbox,
                   {
                     marginRight: 12,
-                    borderWidth: 2,
+                    borderWidth: 1.5,
                     borderColor: isSelected
                       ? "#6366F1"
-                      : "#4C4C54",
+                      : "#52525B",
                     backgroundColor: isSelected
                       ? "#6366F1"
                       : "transparent",

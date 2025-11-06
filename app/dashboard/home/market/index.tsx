@@ -94,11 +94,20 @@ const Explore = () => {
 
   // Function to fetch watchlist tokens with proper error handling
   const loadWatchlistTokens = useCallback(async () => {
+    if (!user) {
+      console.log("No user available for watchlist fetch");
+      return;
+    }
+
     try {
       setIsLoading(true);
       setErrorMessage(null);
 
-      await fetchWatchlistTokens();
+      await fetchWatchlistTokens({
+        body: null,
+        params: null,
+        extra: user,
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -108,7 +117,7 @@ const Explore = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchWatchlistTokens]);
+  }, [fetchWatchlistTokens, user]);
 
   // Function to fetch currencies
   const loadCurrencies = useCallback(async () => {
@@ -134,14 +143,18 @@ const Explore = () => {
   useEffect(() => {
     loadCurrencies();
     loadMarketTokens();
+    // Load watchlist on initial mount if user exists
+    if (user) {
+      loadWatchlistTokens();
+    }
   }, []);
 
-  // Load watchlist when switching to watchlist tab
+  // Load watchlist when switching to watchlist tab or when user changes
   useEffect(() => {
     if (!isTokens && user) {
       loadWatchlistTokens();
     }
-  }, [isTokens, user, loadWatchlistTokens]);
+  }, [isTokens, user]);
 
   const categories = ["All", "Top Gainers", "Top Losers"];
 
@@ -334,12 +347,13 @@ const Explore = () => {
         errorMessage={errorMessage}
         onRetry={isTokens ? loadMarketTokens : loadWatchlistTokens}
         isEmpty={
+          !isTokens &&
           !currentLoading &&
           !currentError &&
           (!currentData || currentData?.length === 0)
         }
         emptyComponent={watchlistEmptyState}
-        existingData={!currentData}
+        existingData={!!currentData && currentData.length > 0}
       >
         <Box
           // bg="modalBackgroundColor"
