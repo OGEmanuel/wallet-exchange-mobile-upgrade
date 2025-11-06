@@ -542,7 +542,7 @@ const Home = () => {
             onRefreshPortfolio={() => {
               const currentWalletId = mainUserWalletGroup?._id;
               if (currentWalletId) {
-                refreshPortfolio(currentWalletId);
+                refreshPortfolio(currentWalletId, true);
               }
             }}
             onManagePress={() => {
@@ -553,7 +553,7 @@ const Home = () => {
                 dispatch(setPortfolioError(null));
                 const currentWalletId = mainUserWalletGroup?._id;
                 if (currentWalletId) {
-                  await refreshPortfolio(currentWalletId);
+                  await refreshPortfolio(currentWalletId, true);
                 }
               } catch (err) {
                 console.error("Failed to retry portfolio:", err);

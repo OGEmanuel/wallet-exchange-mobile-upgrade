@@ -327,9 +327,9 @@ export const useSwapSDK = () => {
         
         // No last rate available - just set error
         return {
-          ...prev,
-          error: errorMessage,
-          isRateLoading: false
+        ...prev,
+        error: errorMessage,
+        isRateLoading: false
         };
       });
       

@@ -133,7 +133,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       }
 
       setIsEditingName(false);
-      await refreshPortfolio(); // Refresh to get updated data
+      await refreshPortfolio(userWalletGroup?._id, true);
     } catch (error) {
       console.error("Failed to update wallet group name:", error);
       Alert.alert("Error", "Failed to update wallet group name");
@@ -302,7 +302,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
         Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
       } else {
         Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
-        await refreshPortfolio();
+        await refreshPortfolio(result.userWalletGroupId, true);
       }
     } catch (error) {
       console.error("❌ Failed to create wallet:", error);

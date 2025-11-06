@@ -138,7 +138,13 @@ export type IWalletGroup = {
   updatedAt: string;
 };
 
-export type IWallet = {};
+export type IWallet = {
+  id: string;
+  name: string;
+  balance: string;
+  groupId: string;
+  userWalletGroupId: string;
+};
 
 export type IWalletUser = {
   _id: string;

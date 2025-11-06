@@ -155,15 +155,15 @@ const ActivityItemCard = ({
           {currencyImage && !imageError ? (
             <SmartImage
               source={{ uri: currencyImage }}
-              width={24}
-              height={24}
+                width={24}
+                height={24}
               borderRadius={12}
-              resizeMode="cover"
-              onError={() => {
-                console.log("Failed to load currency image:", currencyImage);
-                setImageError(true);
-              }}
-            />
+                resizeMode="cover"
+                onError={() => {
+                  console.log("Failed to load currency image:", currencyImage);
+                  setImageError(true);
+                }}
+              />
           ) : currencyImage && imageError ? (
             <CustomText fontSize={10} color="white" fontWeight="bold">
               {displayCurrency?.charAt(0) || "?"}

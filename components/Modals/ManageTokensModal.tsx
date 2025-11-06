@@ -145,7 +145,6 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 
     try {
       await onToggleToken(assetId, newStatus === "ENABLED");
-      console.log(`Token ${newStatus.toLowerCase()} successfully:`, assetId);
     } catch (error) {
       console.error("Failed to toggle token:", error);
       // Revert optimistic update on error

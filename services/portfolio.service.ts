@@ -173,7 +173,7 @@ export class PortfolioService {
       const { supportedCurrenciesMap, accountMap } = this.extractTokenData(normalizedTokenList, accounts, supportedCurrencies);
 
       // Map accounts to ProcessedAssets
-      const assets: ProcessedAsset[] = normalizedTokenList.map((token: IUserPortfolio) => {
+      const assets: ProcessedAsset[] = normalizedTokenList.map((token) => {
         try {
           const supportedCurrencyId = (token.supportedCurrencyId as unknown as ISupportedCurrency)._id ? (token.supportedCurrencyId as unknown as ISupportedCurrency)._id : token.supportedCurrencyId;
           const supportedCurrency = supportedCurrenciesMap.get(supportedCurrencyId);
@@ -190,14 +190,15 @@ export class PortfolioService {
           const isStable = typeof supportedCurrency?.isStable === 'boolean'
             ? supportedCurrency?.isStable
             : (supportedCurrency?.currencyId as ICurrency)?.isStable || false;
+          const balance = token?.balance || account?.balance || 0;
 
           return {
             id: token._id || supportedCurrency?._id || 'unknown',
             accountId: account?._id || 'unknown',
-            symbol: currency?.symbol || '',
-            name: currency?.name || '',
-            balance: account?.balance || 0,
-            totalUsdValue: account?.balance && token.price ? account?.balance * token.price : 0,
+            symbol: currency?.symbol || supportedCurrency?.symbol || '',
+            name: currency?.name || supportedCurrency?.name || '',
+            balance,
+            totalUsdValue: balance && token.price ? balance * token.price : 0,
             price: token.price || 0,
             change: 0,
             changeType: 'positive' as const,
@@ -444,7 +445,7 @@ export class PortfolioService {
 
     // Convert string to number if needed
     const numBalance = typeof balance === 'string' ? parseFloat(balance) : balance;
-    
+
     // Check if conversion resulted in invalid number
     if (isNaN(numBalance)) {
       return '0';

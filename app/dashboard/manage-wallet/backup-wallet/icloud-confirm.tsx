@@ -102,7 +102,7 @@ const ICloudConfirmScreen = () => {
 
       if (success) {
         // Refresh portfolio to update backup status
-        await refreshPortfolio();
+        await refreshPortfolio(walletInGroup._id, true);
 
         // Navigate to success screen
         console.log(
