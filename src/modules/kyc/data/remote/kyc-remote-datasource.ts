@@ -6,6 +6,7 @@ import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParam
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
+import { AuthGuestUserParams } from "../../domain/entities/params/auth-guest-user-params";
 import { ResendAuthPhoneNumberOtpParams } from "../../domain/entities/params/resend-auth-phone-number-otp-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 
@@ -41,5 +42,8 @@ export abstract class KycRemoteDatasource {
   abstract updateUserDetails(
     payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>,
     user: UserModel
+  ): Promise<GeneralResponseModel<unknown>>;
+  abstract loginAsGuest(
+    payload: GeneralRequestModel<AuthGuestUserParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>>;
 }

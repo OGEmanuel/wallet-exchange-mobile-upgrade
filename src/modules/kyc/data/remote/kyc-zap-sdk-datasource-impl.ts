@@ -14,6 +14,7 @@ import { AuthVerificationModel } from "../../domain/entities/models/auth-verific
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
+import { AuthGuestUserParams } from "../../domain/entities/params/auth-guest-user-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
@@ -260,6 +261,42 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     else {
       showErrorToast(result.message || "Username update failed");
 
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
+  }
+
+  async loginAsGuest(
+    payload: GeneralRequestModel<AuthGuestUserParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
+    const sdk = zapSDKService.getSDK();
+    const params = {
+      ip: payload.body?.ip || "",
+      platform: payload.body?.platform || "",
+      userAgent: payload.body?.userAgent || "",
+      location: payload.body?.location || "",
+    };
+
+    const result = await sdk.exchangeAuth.loginAsGuest(params);
+
+    console.log("Guest login resultsss:", result);
+
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: result.data.user,
+        token: result.data.token,
+        refreshToken: result.data.refreshToken,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "Login as guest failed");
       return Promise.reject({
         message: result.message,
         errors: result.errors,
