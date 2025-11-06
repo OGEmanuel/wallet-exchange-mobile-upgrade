@@ -6,7 +6,6 @@ import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParam
 import { UserModel } from "../domain/entities/models/user-model";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
-import { UpdateUsernameParams } from "../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../domain/entities/params/verify-email-params";
 import { KycRepo } from "../domain/kyc-repo";
 import { KycZapSdkDataSourceImpl } from "./remote/kyc-zap-sdk-datasource-impl";
@@ -58,7 +57,7 @@ export class KycRepoImpl implements KycRepo {
   }
 
   async updateUserDetails(
-    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
+    payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>,
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>> {
     return this.remoteDatasource.updateUserDetails(payload, user);

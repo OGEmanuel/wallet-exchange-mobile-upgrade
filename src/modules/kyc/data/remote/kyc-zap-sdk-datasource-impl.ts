@@ -14,7 +14,6 @@ import { AuthVerificationModel } from "../../domain/entities/models/auth-verific
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
-import { UpdateUsernameParams } from "../../domain/entities/params/update-username-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
@@ -240,7 +239,7 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   }
 
   async updateUserDetails(
-    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
+    payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>,
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();

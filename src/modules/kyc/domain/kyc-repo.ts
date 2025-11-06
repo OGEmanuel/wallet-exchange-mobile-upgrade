@@ -6,7 +6,6 @@ import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParam
 import { UserModel } from "./entities/models/user-model";
 import { AddUsernameParams } from "./entities/params/add-username-params";
 import { AuthEmailParams } from "./entities/params/auth-email-params";
-import { UpdateUsernameParams } from "./entities/params/update-username-params";
 import { VerifyEmailParams } from "./entities/params/verify-email-params";
 
 
@@ -33,7 +32,7 @@ export abstract class KycRepo {
     payload: GeneralRequestModel<SubmitVerificationParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>>;
   abstract updateUserDetails(
-    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
+    payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>,
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>>;
 }
