@@ -3,6 +3,7 @@ import ThemedText from "@/components/general/ThemedText";
 import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
+import { getDeviceIpAndLocation } from "@/src/core/utils/device-info-utils";
 import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
@@ -11,14 +12,14 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useCallback, useEffect } from "react";
+import React, { PropsWithChildren, useCallback, useEffect, useRef } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
   const { colorTheme } = useActiveTheme();
-
+  
   if (colorTheme === "dark") {
     return (
       <Box flex={1} bg="mainBackgroundColor">
@@ -53,16 +54,16 @@ const Card = ({
   const { colors } = useTheme<Theme>();
   return (
     <Box
-      width={"100%"}
-      height={131}
-      borderRadius={10}
-      borderWidth={colorTheme === "dark" ? 0.5 : 0}
-      borderColor="cardBorder"
-      flexDirection="row"
-      p="m"
-      alignItems="center"
-      mb="l"
-      bg="surfaceContainer"
+    width={"100%"}
+    height={131}
+    borderRadius={10}
+    borderWidth={colorTheme === "dark" ? 0.5 : 0}
+    borderColor="cardBorder"
+    flexDirection="row"
+    p="m"
+    alignItems="center"
+    mb="l"
+    bg="surfaceContainer"
     >
       <Box justifyContent="center" width={75}>
         {image}
@@ -72,14 +73,14 @@ const Card = ({
           style={{ marginBottom: 4 }}
           color={colors.bodyTextColor}
           type="subtitle"
-        >
+          >
           {title}
         </ThemedText>
         <ThemedText
           type="cardTitle"
           style={{ marginBottom: 24 }}
           color={colors.placeholderTextColor}
-        >
+          >
           {body}
         </ThemedText>
 
@@ -94,12 +95,15 @@ const Card = ({
 };
 
 const SelectTrack = () => {
-  const { fetchUserById } = useKyc();
+  const { fetchUserById, loginAsGuest } = useKyc();
   const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
-
+  
   // Get exchange authentication state from wallet context
   const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
   const { user } = useSelector((state: AppRootState) => state.kyc);
+  
+  // Ref to track if login has been initiated
+  const loginInitiatedRef = useRef<boolean>(false);
 
   // Check if user is exchange authenticated
   const isUserLoggedIn = isExchangeAuthenticated;
@@ -110,11 +114,49 @@ const SelectTrack = () => {
         _id: currentExchangeUser || user?._id || undefined
       });
     }
-  }, [user?._id, currentExchangeUser]);
+  }, [user?._id, currentExchangeUser, fetchUserById]);
 
   useEffect(() => {
-    triggerFetchUserData();
-  }, [triggerFetchUserData]);
+    // Skip if login has already been initiated
+    if (loginInitiatedRef.current) {
+      return;
+    }
+
+    const handleLoginAsGuest = async () => {
+      if (currentExchangeUser) {
+        triggerFetchUserData();
+        loginInitiatedRef.current = true;
+        return;
+      }
+
+      // Mark as initiated before making the call
+      loginInitiatedRef.current = true;
+
+      // Fetch device IP and location, then login as guest
+      try {
+        const { ip, location } = await getDeviceIpAndLocation();
+        await loginAsGuest({
+          ip: ip || undefined,
+          platform: "mobile",
+          location: location || undefined,
+        });
+      } catch (error) {
+        console.warn("Failed to fetch device IP and location, proceeding without it:", error);
+        // Proceed with login even if device info fetch fails
+        try {
+          await loginAsGuest({
+            platform: "mobile",
+          });
+        } catch (loginError) {
+          console.error("Failed to login as guest:", loginError);
+          // Reset flag on error so we can retry
+          loginInitiatedRef.current = false;
+        }
+      }
+    };
+
+    handleLoginAsGuest();
+  }, [currentExchangeUser, triggerFetchUserData, loginAsGuest]);
 
   const theme = useTheme<Theme>();
 
@@ -142,7 +184,11 @@ const SelectTrack = () => {
       onPress: async () => {
         if (isUserLoggedIn) {
           // Navigate to dashboard for exchange authenticated users
-          router.push("/dashboard/home/wallet-home/home");
+          if (user?.isGuest) {
+            router.push("/dashboard/home/wallet-home/swap");
+          } else {
+            router.push("/dashboard/home/wallet-home/home");
+          }
         } else {
           // Show exchange login bottom sheet for non-authenticated users
           showZapperSignBottomSheet({
