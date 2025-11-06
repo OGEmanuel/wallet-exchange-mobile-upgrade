@@ -403,8 +403,15 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 
                       <Pressable
                         onPress={() => {
-                          if (!togglingTokens.has(token.supportedCurrencyId)) {
-                            handleToggleToken(token.supportedCurrencyId, token.status);
+                          if (
+                            !togglingTokens.has(
+                              token.supportedCurrencyId as string
+                            )
+                          ) {
+                            handleToggleToken(
+                              token.supportedCurrencyId as string,
+                              token.status
+                            );
                           }
                         }}
                         style={({ pressed }) => ({
@@ -415,9 +422,12 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                       >
                         <Switch
                           value={
-                            optimisticTokenStates.has(token.supportedCurrencyId)
-                              ? optimisticTokenStates.get(token.supportedCurrencyId) ===
-                                "ENABLED"
+                            optimisticTokenStates.has(
+                              token.supportedCurrencyId as string
+                            )
+                              ? optimisticTokenStates.get(
+                                  token.supportedCurrencyId as string
+                                ) === "ENABLED"
                               : token.status === "ENABLED"
                           }
                           trackColor={{
@@ -425,13 +435,22 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                             true: "success",
                           }}
                           onValueChange={() => {
-                            if (!togglingTokens.has(token.supportedCurrencyId)) {
-                              const currentStatus = optimisticTokenStates.has(
-                                token.supportedCurrencyId
+                            if (
+                              !togglingTokens.has(
+                                token.supportedCurrencyId as string
                               )
-                                ? optimisticTokenStates.get(token.supportedCurrencyId)!
+                            ) {
+                              const currentStatus = optimisticTokenStates.has(
+                                token.supportedCurrencyId as string
+                              )
+                                ? optimisticTokenStates.get(
+                                    token.supportedCurrencyId as string
+                                  )!
                                 : token.status;
-                              handleToggleToken(token.supportedCurrencyId, currentStatus);
+                              handleToggleToken(
+                                token.supportedCurrencyId as string,
+                                currentStatus
+                              );
                             }
                           }}
                           disabled={togglingTokens.has(token.id)}

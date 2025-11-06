@@ -17,6 +17,7 @@ interface ChainsContextType {
   chains: IChain[];
   walletChains: IChain[];
   chainsMap: Map<string, IChain>;
+  setWalletChains: (chains: IChain[]) => void;
   isLoading: boolean;
   error: string | null;
   lastFetched: Date | null;
@@ -115,7 +116,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     const nativeCurrency = chain?.nativeCurrencyId as ICurrency;
     if (chain?.isEVM && nativeCurrency?.symbol !== chain?.symbol) {
       if (chain?.symbol?.toUpperCase() === "BASE") {
-        return "https://altcoinsbox.com/wp-content/uploads/2023/02/base-logo-in-blue.svg";
+        return "https://res.cloudinary.com/dbkwvangu/image/upload/v1762418105/currencies/logos/base.svg";
       }
       const currency = getSupportedCurrencyBySymbol(chain?.symbol);
 
@@ -220,6 +221,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const contextValue: ChainsContextType = {
     chains,
     walletChains,
+    setWalletChains,
     chainsMap,
     isLoading,
     error,

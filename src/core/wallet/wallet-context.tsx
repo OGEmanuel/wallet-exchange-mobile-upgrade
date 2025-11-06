@@ -7,6 +7,7 @@
 
 import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
 import { BatchBalanceService } from "@/services/batch-balance.service";
+import { setProcessedPortfolio } from "@/state/reducers/portfolio.reducer";
 import { IUserWalletGroup, WalletContextType } from "@/types/main";
 import {
   ExchangeValidateOtpResponse,
@@ -30,6 +31,7 @@ import React, {
   useState,
 } from "react";
 import { AppState, InteractionManager } from "react-native";
+import { useDispatch } from "react-redux";
 import { useChains } from "../chains/chains-context";
 import zapSDKService from "../sdk/zap-sdk.service";
 import AddressesStorage, { StoredAddress } from "../storage/addresses-storage";
@@ -48,14 +50,17 @@ interface WalletProviderProps {
 }
 
 export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
-  const { loadChainsNow, walletChains } = useChains();
+  const { loadChainsNow, walletChains, setWalletChains } = useChains();
   const {
     refreshDefaultTokens,
     defaultTokens,
     refreshSupportedCurrenciesForSwap,
     supportedCurrenciesForSwap,
     defaultTokensMap,
+    setDefaultTokens,
+    setSupportedCurrenciesForSwap,
   } = useSupportedCurrencies();
+  const dispatch = useDispatch();
   // State
   const [isInitialized, setIsInitialized] = useState(false);
   const [isWalletAuthenticated, setIsWalletAuthenticated] = useState(false);
@@ -121,7 +126,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         checkAuthenticationAndRoute();
       } else {
         // Fast check already ran, just verify with SDK (but don't re-route)
-        console.log("⚡ Fast auth check already completed, verifying with SDK silently");
+        console.log(
+          "⚡ Fast auth check already completed, verifying with SDK silently"
+        );
       }
       setupWebSocketListeners();
       setupAppStateListener();
@@ -133,31 +140,46 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     const loadCachedAuthIds = async () => {
       try {
         // Load wallet user ID
-        const cachedWalletUserId = await SecureStore.getItemAsync(StorageKeys.WALLET_USER_ID);
-        
+        const cachedWalletUserId = await SecureStore.getItemAsync(
+          StorageKeys.WALLET_USER_ID
+        );
+
         // Load exchange user ID
-        const cachedExchangeUserId = await SecureStore.getItemAsync(StorageKeys.EXCHANGE_USER_ID);
+        const cachedExchangeUserId = await SecureStore.getItemAsync(
+          StorageKeys.EXCHANGE_USER_ID
+        );
 
         // Set state immediately
         if (cachedWalletUserId) {
           setCurrentWalletUser(cachedWalletUserId);
           setIsWalletAuthenticated(true);
-          console.log("✅ Wallet user ID loaded from cache:", cachedWalletUserId);
+          console.log(
+            "✅ Wallet user ID loaded from cache:",
+            cachedWalletUserId
+          );
         }
 
         if (cachedExchangeUserId) {
           setCurrentExchangeUser(cachedExchangeUserId);
           setIsExchangeAuthenticated(true);
-          console.log("✅ Exchange user ID loaded from cache:", cachedExchangeUserId);
+          console.log(
+            "✅ Exchange user ID loaded from cache:",
+            cachedExchangeUserId
+          );
         }
 
         // If we have cached auth IDs, we can check authentication immediately
         // without waiting for SDK initialization
         // Pass cached values directly to avoid React state timing issues
         if (cachedWalletUserId || cachedExchangeUserId) {
-          console.log("🚀 Fast auth check: Using cached user IDs, routing without waiting for SDK");
+          console.log(
+            "🚀 Fast auth check: Using cached user IDs, routing without waiting for SDK"
+          );
           // Run immediately with cached values (don't wait for state updates)
-          await checkAuthenticationAndRouteFast(cachedWalletUserId, cachedExchangeUserId);
+          await checkAuthenticationAndRouteFast(
+            cachedWalletUserId,
+            cachedExchangeUserId
+          );
           fastAuthCheckCompleteRef.current = true;
         }
       } catch (error) {
@@ -165,7 +187,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     };
     loadCachedAuthIds();
-  }, []); // Run immediately on mount
+  }, []);
 
   // Load userWalletGroups from cache on mount if not already loaded
   useEffect(() => {
@@ -176,8 +198,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         if (cachedWalletGroups && cachedWalletGroups.length > 0) {
           setUserWalletGroups(cachedWalletGroups);
           setIsUserWalletGroups(true);
-          console.log("✅ User wallet groups loaded from cache on mount:", cachedWalletGroups.length);
-          
+          console.log(
+            "✅ User wallet groups loaded from cache on mount:",
+            cachedWalletGroups.length
+          );
+
           // Setup main wallet group from cached data
           await setupMainWalletGroup(cachedWalletGroups);
         }
@@ -315,7 +340,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const exchangeUserId = cachedExchangeUserId || currentExchangeUser;
       const isExchangeAuth = !!exchangeUserId;
 
-      console.log("⚡ Fast check - Wallet Auth:", isWalletAuth, walletUserId, "Exchange Auth:", isExchangeAuth, exchangeUserId);
+      console.log(
+        "⚡ Fast check - Wallet Auth:",
+        isWalletAuth,
+        walletUserId,
+        "Exchange Auth:",
+        isExchangeAuth,
+        exchangeUserId
+      );
 
       if (isExchangeAuth && exchangeUserId) {
         result = setExchangeAndRoute(
@@ -329,15 +361,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (isWalletAuth && walletUserId) {
         // For fast path, use cached wallet groups directly - skip all SDK/API calls
         const cachedWalletGroups = await loadWalletGroupsFromCache();
-        
+
         if (cachedWalletGroups && cachedWalletGroups.length > 0) {
           // Update state immediately so other parts of the app can use it
           setUserWalletGroups(cachedWalletGroups);
           setIsUserWalletGroups(true);
-          
+
           // Setup main wallet group from cached data
           await setupMainWalletGroup(cachedWalletGroups);
-          
+
           // We have cached wallet groups - route immediately without any SDK calls
           result = {
             ...result,
@@ -346,15 +378,19 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             userWalletGroups: cachedWalletGroups,
             isUserWalletGroups: true,
           };
-          
+
           if (shouldRoute && cachedWalletGroups.length > 0) {
-            console.log("✅ Fast path: Routing to wallet with cached wallet groups (no SDK calls)");
+            console.log(
+              "✅ Fast path: Routing to wallet with cached wallet groups (no SDK calls)"
+            );
             safeNavigateToWallet();
           }
         } else {
           // No cached wallet groups - this shouldn't happen if cache is working
           // But fall back gracefully (will wait for SDK)
-          console.log("⚠️ Fast path: No cached wallet groups found, will use normal flow when SDK is ready");
+          console.log(
+            "⚠️ Fast path: No cached wallet groups found, will use normal flow when SDK is ready"
+          );
           // Don't call setWalletAndRoute here - it will trigger API calls
           // Just set the result and let SDK-based check handle it later
           result = {
@@ -409,7 +445,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         isWalletAuth = !!walletUserId;
         // Save to cache if found
         if (walletUserId) {
-          await SecureStore.setItemAsync(StorageKeys.WALLET_USER_ID, walletUserId);
+          await SecureStore.setItemAsync(
+            StorageKeys.WALLET_USER_ID,
+            walletUserId
+          );
           setCurrentWalletUser(walletUserId);
           setIsWalletAuthenticated(true);
         }
@@ -421,7 +460,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         isExchangeAuth = !!exchangeUserId;
         // Save to cache if found
         if (exchangeUserId) {
-          await SecureStore.setItemAsync(StorageKeys.EXCHANGE_USER_ID, exchangeUserId);
+          await SecureStore.setItemAsync(
+            StorageKeys.EXCHANGE_USER_ID,
+            exchangeUserId
+          );
           setCurrentExchangeUser(exchangeUserId);
           setIsExchangeAuthenticated(true);
           if (exchangeUser) {
@@ -899,13 +941,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   ) => {
     const cachedWalletGroups: IUserWalletGroup[] | null =
       await loadWalletGroupsFromCache();
-    
+
     // For fast path, skip API calls and just return cached data
     if (skipApiCall) {
-      console.log("⚡ Fast path: Using cached wallet groups, skipping API call");
+      console.log(
+        "⚡ Fast path: Using cached wallet groups, skipping API call"
+      );
       return cachedWalletGroups as IUserWalletGroup[];
     }
-    
+
     // Normal path: fetch fresh data from API (but don't await it - return cached immediately)
     console.log("🔄 Fetching fresh wallet groups from API (cache disabled)");
     // Fire and forget - don't block on API call
@@ -914,10 +958,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isExchangeAuth,
       shouldRoute,
       result
-    ).catch(err => {
+    ).catch((err) => {
       console.warn("Background wallet groups fetch failed:", err);
     });
-    
+
     return cachedWalletGroups as IUserWalletGroup[];
   };
 
@@ -1073,7 +1117,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       // Attempt device-based login
       const success = await walletLogin(
         deviceToken,
-        deviceFingerprint,
+        JSON.stringify(deviceFingerprint),
         pushToken
       );
 
@@ -1103,7 +1147,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       );
 
       if (existingFingerprint) {
-        console.log("📱 Using existing device fingerprint");
+        console.log(
+          "📱 Using existing device fingerprint",
+          existingFingerprint
+        );
         return JSON.parse(existingFingerprint);
       }
 
@@ -1161,11 +1208,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (result.success) {
         setIsWalletAuthenticated(true);
         setCurrentWalletUser(result.userId);
-        
+
         // Save wallet user ID to cache for fast future access
-        await SecureStore.setItemAsync(StorageKeys.WALLET_USER_ID, result.userId);
+        await SecureStore.setItemAsync(
+          StorageKeys.WALLET_USER_ID,
+          result.userId
+        );
         console.log("✅ Wallet user ID saved to cache:", result.userId);
-        
+
         await checkAuthenticationAndRoute(!!exchangeUserData?.username);
         return true;
       } else {
@@ -1222,9 +1272,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
-      
+
       // Clear cached exchange user ID even on error
-      await SecureStore.deleteItemAsync(StorageKeys.EXCHANGE_USER_ID).catch(() => {});
+      await SecureStore.deleteItemAsync(StorageKeys.EXCHANGE_USER_ID).catch(
+        () => {}
+      );
     }
   };
 
@@ -1271,7 +1323,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
         // Save exchange user ID to cache for fast future access
         if (exchangeUserId) {
-          await SecureStore.setItemAsync(StorageKeys.EXCHANGE_USER_ID, exchangeUserId);
+          await SecureStore.setItemAsync(
+            StorageKeys.EXCHANGE_USER_ID,
+            exchangeUserId
+          );
           console.log("✅ Exchange user ID saved to cache:", exchangeUserId);
         }
 
@@ -1412,6 +1467,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       );
 
       const newUserWalletGroups = await refreshUserWalletGroups();
+
+      setPortfolio(null);
+      setLastUpdate(null);
+      setError(null);
 
       // Force refresh when switching to newly created wallet to ensure fresh data
       await switchWallet(result.userWalletGroupId, newUserWalletGroups, true);
@@ -3173,7 +3232,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
           // Clear stored main wallet group ID
           await SecureStore.deleteItemAsync(StorageKeys.MAIN_WALLET_GROUP_ID);
-          
+
           // Clear user wallet groups cache since there are none left
           await clearWalletGroupsCache();
 
@@ -3274,6 +3333,66 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
+  const loadAllDataFromCache = async () => {
+    const cachedWalletUserId = await SecureStore.getItemAsync(
+      StorageKeys.WALLET_USER_ID
+    );
+    setCurrentWalletUser(cachedWalletUserId);
+    const cachedExchangeUserId = await SecureStore.getItemAsync(
+      StorageKeys.EXCHANGE_USER_ID
+    );
+    setCurrentExchangeUser(cachedExchangeUserId);
+
+    const cachedDefaultTokens = await SecureStore.getItemAsync(
+      StorageKeys.DEFAULT_TOKENS
+    );
+    if (cachedDefaultTokens) {
+      setDefaultTokens(JSON.parse(cachedDefaultTokens));
+    }
+    const cachedSupportedCurrenciesForSwap = await SecureStore.getItemAsync(
+      StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP
+    );
+    if (cachedSupportedCurrenciesForSwap) {
+      setSupportedCurrenciesForSwap(
+        JSON.parse(cachedSupportedCurrenciesForSwap)
+      );
+    }
+    const cachedWalletChains = await SecureStore.getItemAsync(
+      StorageKeys.WALLET_CHAINS
+    );
+    if (cachedWalletChains) {
+      setWalletChains(JSON.parse(cachedWalletChains));
+    }
+    const cachedMainWalletGroupId = await SecureStore.getItemAsync(
+      StorageKeys.MAIN_WALLET_GROUP_ID
+    );
+    const cachedUserWalletGroups = await SecureStore.getItemAsync(
+      StorageKeys.USER_WALLET_GROUPS
+    );
+    if (cachedUserWalletGroups) {
+      setUserWalletGroups(JSON.parse(cachedUserWalletGroups));
+      setMainUserWalletGroup(
+        JSON.parse(cachedUserWalletGroups).find(
+          (group: any) => group._id === cachedMainWalletGroupId
+        )
+      );
+    }
+    if (cachedMainWalletGroupId) {
+      const cachedPortfolio = await loadPortfolioFromCache(
+        cachedMainWalletGroupId
+      );
+      setPortfolio(cachedPortfolio);
+      setLastUpdate(new Date());
+      setError(null);
+    }
+    const cachedProcessedPortfolio = await SecureStore.getItemAsync(
+      StorageKeys.PROCESSED_PORTFOLIO
+    );
+    if (cachedProcessedPortfolio) {
+      dispatch(setProcessedPortfolio(JSON.parse(cachedProcessedPortfolio)));
+    }
+  };
+
   const contextValue: WalletContextType = {
     // State
     isInitialized,
@@ -3295,6 +3414,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     isRefreshingPortfolio,
     isSendingTransaction,
     error,
+
+    loadAllDataFromCache,
 
     // Authentication
     walletLogin,

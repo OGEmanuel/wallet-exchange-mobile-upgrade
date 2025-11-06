@@ -59,11 +59,8 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
             height,
             borderRadius: width / 2,
             overflow: "hidden",
-            backgroundColor: "#8B5CF6", // Fallback background
             justifyContent: "center",
             alignItems: "center",
-            borderWidth: 2,
-            borderColor: "#FFFFFF",
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
@@ -75,9 +72,9 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
       >
         <SmartImage
           source={{ uri: logoUrl }}
-          width={width - 4}
-          height={height - 4}
-          borderRadius={(width - 4) / 2}
+          width={width}
+          height={height}
+          borderRadius={width / 2}
           resizeMode="cover"
           onError={handleError}
           onLoad={handleLoad}
@@ -96,11 +93,9 @@ const ChainLogo: React.FC<ChainLogoProps> = ({
           width,
           height,
           borderRadius: width / 2,
-          backgroundColor: "#8B5CF6", // Purple color as fallback
+          backgroundColor: "#8B5CF6",
           justifyContent: "center",
           alignItems: "center",
-          borderWidth: 2,
-          borderColor: "#FFFFFF",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.25,

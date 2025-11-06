@@ -345,6 +345,7 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
 
         {/* PIN Entry Modal */}
         <PinEntryModal
+          type="VERIFY"
           visible={showPinEntry}
           onSuccess={handlePinSuccess}
           onClose={handlePinClose}

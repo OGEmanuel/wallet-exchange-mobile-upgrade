@@ -10,8 +10,8 @@ import {
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import { StorageKeys } from "@/src/core/api/models";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
+import { StorageKeys } from "@/src/core/storage/storage-types";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
@@ -53,7 +53,7 @@ const Sidebar = () => {
   const [showPinEntry, setShowPinEntry] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pendingAction, setPendingAction] = useState<
-    "logout" | "changePin" | null
+    "logout" | "changePin" | "disableBiometric" | null
   >(null);
 
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
@@ -122,18 +122,92 @@ const Sidebar = () => {
 
   const handleBiometricEnabled = useCallback(async () => {
     const newValue = !isBiometricEnabled;
+
+    // If enabling biometrics, authenticate first to ensure it works
+    if (newValue && hasHardware) {
+      try {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Enable Face ID / Biometric authentication",
+          cancelLabel: "Cancel",
+          disableDeviceFallback: false,
+        });
+
+        if (!result.success) {
+          console.log("Biometric authentication cancelled or failed");
+          // Don't enable if authentication failed
+          return;
+        }
+      } catch (error) {
+        console.error("Biometric authentication error:", error);
+        // Don't enable on error
+        return;
+      }
+    }
+
+    // If disabling biometrics, require authentication (biometric or PIN)
+    if (!newValue) {
+      let authenticated = false;
+
+      // Try biometric first if it's currently enabled
+      if (isBiometricEnabled && hasHardware) {
+        try {
+          const result = await LocalAuthentication.authenticateAsync({
+            promptMessage: "Disable Face ID / Biometric authentication",
+            cancelLabel: "Cancel",
+            disableDeviceFallback: false,
+          });
+
+          if (result.success) {
+            authenticated = true;
+          } else {
+            console.log("Biometric authentication cancelled or failed");
+            // Fall through to PIN verification
+          }
+        } catch (error) {
+          console.error("Biometric authentication error:", error);
+          // Fall through to PIN verification
+        }
+      }
+
+      // If biometric didn't succeed, check for PIN
+      if (!authenticated) {
+        try {
+          const hasPin = await pinStorageService.hasPin();
+          if (hasPin) {
+            // Show PIN entry modal
+            setPendingAction("disableBiometric");
+            setShowPinEntry(true);
+            return; // Wait for PIN verification
+          } else {
+            // No PIN available, don't allow disabling
+            console.log("Cannot disable biometric: No PIN available");
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to check PIN status:", error);
+          // If we can't check PIN, don't allow disabling
+          return;
+        }
+      }
+      // If authenticated via biometric, continue to save preference below
+    }
+
+    // Save preference (only reached if authentication succeeded)
     setIsBiometricEnabled(newValue);
     try {
       await SecureStore.setItemAsync(
         StorageKeys.BIOMETRIC_ENABLED,
         newValue ? "true" : "false"
       );
+      console.log(
+        `✅ Biometric authentication ${newValue ? "enabled" : "disabled"}`
+      );
     } catch (error) {
       console.error("Failed to save biometric preference:", error);
       // Revert state on error
       setIsBiometricEnabled(!newValue);
     }
-  }, [isBiometricEnabled]);
+  }, [isBiometricEnabled, hasHardware]);
 
   const handleCheck = () => {
     if (!isExchangeAuthenticated || !exchangeUserData?.username) {
@@ -176,6 +250,20 @@ const Sidebar = () => {
       if (pendingAction === "changePin") {
         // Show PIN setup modal to create new PIN
         setShowPinSetup(true);
+      } else if (pendingAction === "disableBiometric") {
+        // Disable biometric after PIN verification
+        setIsBiometricEnabled(false);
+        try {
+          await SecureStore.setItemAsync(
+            StorageKeys.BIOMETRIC_ENABLED,
+            "false"
+          );
+          console.log("✅ Biometric authentication disabled");
+        } catch (error) {
+          console.error("Failed to save biometric preference:", error);
+          // Revert state on error
+          setIsBiometricEnabled(true);
+        }
       }
 
       setPendingAction(null);
@@ -439,7 +527,7 @@ const Sidebar = () => {
               >
                 {({ pressed }) => (
                   <SmartImage
-                    source={{ uri: exchangeUserData?.avatar?.url }}
+                    source={{ uri: exchangeUserData?.avatar?.url || "" }}
                     width={40}
                     height={40}
                     borderRadius={20}

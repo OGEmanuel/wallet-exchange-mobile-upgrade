@@ -24,6 +24,7 @@ import { MoreHorizontalIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import ChainLogo from "../general/ChainLogo";
 import ReceiveQRCode from "./recieve/ReceiveQRCode";
 import SelectChainBottomSheet from "./SelectChainBottomSheet";
 
@@ -306,16 +307,12 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     overflow="hidden"
                   >
                     {chain.chainImage ? (
-                      <SmartImage
-                        source={{ uri: chain.chainImage }}
+                      <ChainLogo
+                        symbol={chain.symbol}
+                        name={chain.name}
+                        logoUrl={chain.chainImage}
                         width={28}
                         height={28}
-                        onError={() => {
-                          console.log(
-                            "Failed to load chain image:",
-                            chain.chainSymbol
-                          );
-                        }}
                       />
                     ) : (
                       <CustomText

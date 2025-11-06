@@ -63,12 +63,6 @@ export const useAggregatedBalances = () => {
     new Map()
   );
 
-  useEffect(() => {
-    if (processedPortfolio) {
-      console.log("🔄 Processed portfolio loaded:", processedPortfolio);
-    }
-  }, [processedPortfolio]);
-
   // Check if aggregated balances cache is valid for the current main wallet group
   const isCacheValid = async (): Promise<boolean> => {
     try {
@@ -435,6 +429,7 @@ export const useAggregatedBalances = () => {
   return {
     // State
     aggregatedBalances,
+    setAggregatedBalances,
     balanceCache: Object.fromEntries(balanceCache),
     isLoading,
     error,

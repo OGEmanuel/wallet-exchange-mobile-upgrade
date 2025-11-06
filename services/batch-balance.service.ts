@@ -394,7 +394,7 @@ export class BatchBalanceService {
           }
           if (
             token &&
-            token.balance > 0 &&
+            token.balance! > 0 &&
             token.status === 'DISABLED'
           ) {
             token.status = 'ENABLED';

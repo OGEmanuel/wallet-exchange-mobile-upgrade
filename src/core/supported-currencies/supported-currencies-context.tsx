@@ -38,6 +38,8 @@ interface SupportedCurrenciesContextType {
   // State
   supportedCurrenciesForSwap: ISupportedCurrency[];
   defaultTokens: ISupportedCurrency[];
+  setDefaultTokens: (tokens: ISupportedCurrency[]) => void;
+  setSupportedCurrenciesForSwap: (currencies: ISupportedCurrency[]) => void;
   defaultTokensMap: Map<string, ISupportedCurrency>;
   lastFetchedWallet: Date | null;
   isLoading: boolean;
@@ -83,7 +85,7 @@ export const SupportedCurrenciesProvider: React.FC<
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [lastFetchedWallet, setLastFetchedWallet] = useState<Date | null>(null);
 
-  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
   // Load supported currencies for swap from cache
   const loadSupportedCurrenciesFromCache = async (): Promise<
@@ -208,10 +210,13 @@ export const SupportedCurrenciesProvider: React.FC<
         );
         // Refresh in background (non-blocking) - don't wait for SDK
         setTimeout(() => {
-          refreshSupportedCurrenciesForSwap().catch(err => {
-            console.warn("Background supported currencies refresh failed:", err);
+          refreshSupportedCurrenciesForSwap().catch((err) => {
+            console.warn(
+              "Background supported currencies refresh failed:",
+              err
+            );
           });
-        }, 0);
+        }, 100);
       }
 
       // Load default tokens
@@ -230,10 +235,10 @@ export const SupportedCurrenciesProvider: React.FC<
         console.log("✅ Default tokens loaded from cache on mount");
         // Refresh in background (non-blocking) - don't wait for SDK
         setTimeout(() => {
-          refreshDefaultTokens().catch(err => {
+          refreshDefaultTokens().catch((err) => {
             console.warn("Background default tokens refresh failed:", err);
           });
-        }, 0);
+        }, 100);
       }
     };
     loadFromCache();
@@ -390,6 +395,8 @@ export const SupportedCurrenciesProvider: React.FC<
     // State
     supportedCurrenciesForSwap,
     defaultTokens,
+    setDefaultTokens,
+    setSupportedCurrenciesForSwap,
     defaultTokensMap,
     lastFetchedWallet,
     isLoading,

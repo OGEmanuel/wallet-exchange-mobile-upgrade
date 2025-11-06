@@ -18,6 +18,9 @@ export interface WalletContextType {
   isLoading: boolean;
   error: string | null;
 
+  // Loading Data from Cache
+  loadAllDataFromCache: () => Promise<void>;
+
   // Account Derivation
   isAccountDeriving: boolean;
   setIsAccountDeriving: (deriving: boolean) => void;

@@ -32,7 +32,7 @@ import {
   setPortfolioLoading,
   setProcessedPortfolio,
   setRawPortfolio,
-  setRawTokenList
+  setRawTokenList,
 } from "@/state/reducers/portfolio.reducer";
 import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -46,6 +46,7 @@ const Home = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { chainsMap, getChainImage } = useChains();
   const { defaultTokens } = useSupportedCurrencies();
+  const { loadAllDataFromCache } = useWallet();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
@@ -63,6 +64,10 @@ const Home = () => {
   } = useWallet();
 
   const { getCurrentWalletEnabledBalance } = useAggregatedBalances();
+
+  useEffect(() => {
+    loadAllDataFromCache();
+  }, []);
 
   // Clear Redux portfolio state immediately when wallet changes
   // This ensures stale balance data doesn't show when switching wallets
@@ -128,11 +133,6 @@ const Home = () => {
           hasPendingAccounts = accountsPendingWallets.some(
             (w) => w.userWalletGroupId === currentWalletId
           );
-          console.log("🔍 Checked for pending accounts:", {
-            currentWalletId,
-            hasPendingAccounts,
-            pendingWalletsCount: accountsPendingWallets.length,
-          });
         } catch (error) {
           console.error("Failed to check pending accounts:", error);
         }
@@ -145,15 +145,6 @@ const Home = () => {
           !retryPendingWalletsCalledRef.current.has(currentWalletId);
 
         if (shouldCallRetry) {
-          console.log(
-            "🔄 Calling retryPendingWallets for wallet:",
-            currentWalletId,
-            {
-              hasPendingAccounts,
-              alreadyCalled:
-                retryPendingWalletsCalledRef.current.has(currentWalletId),
-            }
-          );
           retryPendingWalletsCalledRef.current.add(currentWalletId);
           // Force execution for newly created wallets to ensure accounts are added immediately
           await retryPendingWallets(hasPendingAccounts);
@@ -250,7 +241,12 @@ const Home = () => {
 
           dispatch(setRawTokenList(userTokenList));
 
-          const processed = PortfolioService.processPortfolioData(portfolio, chainsMap, defaultTokens, getChainImage);
+          const processed = PortfolioService.processPortfolioData(
+            portfolio,
+            chainsMap,
+            defaultTokens,
+            getChainImage
+          );
 
           if (!processed) {
             console.warn("⚠️ Portfolio processing was skipped or failed");
@@ -258,7 +254,9 @@ const Home = () => {
             return;
           }
 
-          console.log(processed.assets.filter(asset => asset.symbol === 'USDT'));
+          console.log(
+            processed.assets.filter((asset) => asset.symbol === "USDT")
+          );
 
           // Store in Redux
           dispatch(setRawPortfolio(portfolio));
@@ -288,8 +286,6 @@ const Home = () => {
       );
     }
   }, [portfolio, dispatch, defaultTokens, chainsMap]);
-
-  // Portfolio loading is now handled in the initialization useEffect above
 
   // Animation values for staggered card stack entrance
   const cardStackAnimations = useRef([

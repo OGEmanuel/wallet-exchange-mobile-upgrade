@@ -4,7 +4,7 @@ import {
 } from '@/interfaces/portfolio.interface';
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';
 // import { SupportedCurrency } from '@/src/core/supported-currencies/supported-currencies-context'; // Not used
-import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, IUserPortfolio, UserPortfolioData, WalletGroupPortfolioData } from '@zap/blockchain-sdk';
+import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, IUserPortfolio, UserPortfolioData } from '@zap/blockchain-sdk';
 
 export class PortfolioService {
   private static supportedCurrencies: ISupportedCurrency[] = [];
@@ -296,122 +296,6 @@ export class PortfolioService {
       enabledCount: 0,
       disabledCount: 0,
     };
-  }
-
-  /**
-   * Calculate aggregated balances for wallet groups
-   * This solves the issue where backend gives individual account balances
-   * but not aggregated wallet/wallet group totals
-   */
-  static calculateAggregatedBalances(portfolioData: UserPortfolioData): {
-    walletBalances: Map<string, number>;
-    walletGroupBalances: Map<string, number>;
-    totalPortfolioValue: number;
-  } {
-    const walletBalances = new Map<string, number>();
-    const walletGroupBalances = new Map<string, number>();
-    let totalPortfolioValue = 0;
-
-    try {
-      const { mainWalletGroupPortfolio, walletGroupPortfolios } = portfolioData;
-
-      // Process all wallet groups, not just the main one
-      const allWalletGroups = {
-        ...walletGroupPortfolios,
-        // Include main wallet group if it exists
-        ...(mainWalletGroupPortfolio?.walletGroup?._id && {
-          [mainWalletGroupPortfolio.walletGroup._id]: mainWalletGroupPortfolio
-        })
-      };
-
-      if (!allWalletGroups || Object.keys(allWalletGroups).length === 0) {
-        return { walletBalances, walletGroupBalances, totalPortfolioValue };
-      }
-
-      // Group accounts by wallet and wallet group
-      const walletMap = new Map<string, { accounts: AccountPortfolioData[], totalValue: number }>();
-      const walletGroupMap = new Map<string, { wallets: Set<string>, totalValue: number }>();
-
-      // Process each wallet group
-      // Note: walletGroupPortfolios is Record<string, number>, but mainWalletGroupPortfolio is WalletGroupPortfolioData
-      Object.entries(allWalletGroups).forEach(([groupId, walletGroupValue]) => {
-        // Skip if it's a number (from walletGroupPortfolios Record<string, number>)
-        if (typeof walletGroupValue === 'number') {
-          return;
-        }
-
-        const walletGroupPortfolio = walletGroupValue as WalletGroupPortfolioData;
-        if (!walletGroupPortfolio?.mainWalletPortfolio?.accounts) {
-          return;
-        }
-
-        const accounts = walletGroupPortfolio.mainWalletPortfolio.accounts;
-        const walletGroupId = walletGroupPortfolio.walletGroup?._id;
-        const walletId = walletGroupPortfolio.mainWalletPortfolio.walletId;
-
-        accounts.forEach((account: AccountPortfolioData) => {
-          const accountValue = account.totalUsdValue || 0;
-
-          // Aggregate by wallet
-          if (!walletMap.has(walletId)) {
-            walletMap.set(walletId, { accounts: [], totalValue: 0 });
-          }
-          const walletData = walletMap.get(walletId)!;
-          walletData.accounts.push(account);
-          walletData.totalValue += accountValue;
-
-          // Aggregate by wallet group
-          if (walletGroupId) {
-            if (!walletGroupMap.has(walletGroupId)) {
-              walletGroupMap.set(walletGroupId, { wallets: new Set(), totalValue: 0 });
-            }
-            const groupData = walletGroupMap.get(walletGroupId)!;
-            groupData.wallets.add(walletId);
-            groupData.totalValue += accountValue;
-          }
-        });
-      });
-
-      // Store wallet balances
-      walletMap.forEach((data, walletId) => {
-        walletBalances.set(walletId, data.totalValue);
-        totalPortfolioValue += data.totalValue;
-      });
-
-      // Store wallet group balances
-      walletGroupMap.forEach((data, walletGroupId) => {
-        walletGroupBalances.set(walletGroupId, data.totalValue);
-      });
-
-    } catch (error) {
-      console.error('Failed to calculate aggregated balances:', error);
-    }
-
-    return { walletBalances, walletGroupBalances, totalPortfolioValue };
-  }
-
-  /**
-   * Get cached aggregated balances for a specific wallet
-   */
-  static getWalletBalance(walletId: string, portfolioData: UserPortfolioData): number {
-    const { walletBalances } = this.calculateAggregatedBalances(portfolioData);
-    return walletBalances.get(walletId) || 0;
-  }
-
-  /**
-   * Get cached aggregated balances for a specific wallet group
-   */
-  static getWalletGroupBalance(walletGroupId: string, portfolioData: UserPortfolioData): number {
-    const { walletGroupBalances } = this.calculateAggregatedBalances(portfolioData);
-    return walletGroupBalances.get(walletGroupId) || 0;
-  }
-
-  /**
-   * Get total portfolio value from aggregated balances
-   */
-  static getTotalPortfolioValue(portfolioData: UserPortfolioData): number {
-    const { totalPortfolioValue } = this.calculateAggregatedBalances(portfolioData);
-    return totalPortfolioValue;
   }
 
   /**
