@@ -106,20 +106,8 @@ export default function EmailVerification({
             // exchangeUser = await getExchangeUser();
           }
 
-          // Only fetch user by ID if userData has an _id
-          if (userData?._id) {
-            try {
-              const userResponse = await fetchUserById(userData as UserModel);
-              exchangeUser = userResponse.data || userData;
-            } catch (fetchError) {
-              // If fetch fails, use the userData directly
-              console.warn("Failed to fetch user by ID, using provided userData:", fetchError);
-              exchangeUser = userData;
-            }
-          } else {
-            // If no user ID available, use the userData directly
-            exchangeUser = userData || exchangeUserData;
-          }
+          const userResponse = await fetchUserById(userData as UserModel);
+          exchangeUser = userResponse?.data ?? null;
 
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app

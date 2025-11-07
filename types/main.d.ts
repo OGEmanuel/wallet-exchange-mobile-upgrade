@@ -38,6 +38,9 @@ export interface WalletContextType {
     otp: string
   ) => Promise<ExchangeValidateOtpResponse | boolean>;
   getExchangeUser: () => Promise<UserModel | null>;
+  setCurrentExchangeUser: (userId: string | null) => void;
+  setExchangeUserData: (userData: UserModel | null) => void;
+  setIsExchangeAuthenticated: (isAuthenticated: boolean) => void;
   completeOnboarding: (data: {
     username?: string | null;
     userSource?: string | null;
