@@ -196,7 +196,7 @@ export const SupportedCurrenciesProvider: React.FC<
     }
   };
 
-  // Load from cache on mount
+  // Load from cache on mount, and fetch if cache is missing
   useEffect(() => {
     const loadFromCache = async () => {
       // Load supported currencies for swap
@@ -213,6 +213,17 @@ export const SupportedCurrenciesProvider: React.FC<
           refreshSupportedCurrenciesForSwap().catch((err) => {
             console.warn(
               "Background supported currencies refresh failed:",
+              err
+            );
+          });
+        }, 100);
+      } else {
+        // No cache - fetch immediately (but don't block UI)
+        console.log("⚠️ No cache found, fetching supported currencies for swap...");
+        setTimeout(() => {
+          refreshSupportedCurrenciesForSwap().catch((err) => {
+            console.warn(
+              "Failed to fetch supported currencies for swap:",
               err
             );
           });
@@ -239,6 +250,14 @@ export const SupportedCurrenciesProvider: React.FC<
             console.warn("Background default tokens refresh failed:", err);
           });
         }, 100);
+      } else {
+        // No cache - fetch immediately (but don't block UI)
+        console.log("⚠️ No cache found, fetching default tokens...");
+        setTimeout(() => {
+          refreshDefaultTokens().catch((err) => {
+            console.warn("Failed to fetch default tokens:", err);
+          });
+        }, 100);
       }
     };
     loadFromCache();
@@ -250,16 +269,19 @@ export const SupportedCurrenciesProvider: React.FC<
       setError(null);
 
       console.log("🔄 Fetching supported currencies...");
-      const sdk = zapSDKService.getSDK();
-
-      if (!sdk || !sdk.supportedCurrencies?.listAll) {
-        throw new Error(
-          "SDK not initialized or supportedCurrencies not available"
-        );
-      }
-
+      
+      // Use executeWithNetworkHandling which auto-initializes SDK if needed
+      // This ensures SDK is ready before making the call
       const currencies = await zapSDKService.executeWithNetworkHandling(
-        () => sdk.supportedCurrencies.listAll({ includeFiat: true }),
+        async () => {
+          const sdk = zapSDKService.getSDK();
+          if (!sdk || !sdk.supportedCurrencies?.listAll) {
+            throw new Error(
+              "SDK not initialized or supportedCurrencies not available"
+            );
+          }
+          return await sdk.supportedCurrencies.listAll({ includeFiat: true });
+        },
         "listAllSupportedCurrencies"
       );
 

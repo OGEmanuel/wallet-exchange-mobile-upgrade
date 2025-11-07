@@ -1,5 +1,5 @@
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';
-import { AccountPortfolioData, IChain, ISupportedCurrency, UserPortfolioData } from '@zap/blockchain-sdk';
+import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, UserPortfolioData } from '@zap/blockchain-sdk';
 import { PortfolioService } from './portfolio.service';
 
 // Define types based on the batch balance guide
@@ -310,13 +310,15 @@ export class BatchBalanceService {
     let clearedCount = 0;
 
     // Helper function to check if an account is a native token (ETH, SOL, BTC, etc.)
-    const isNativeTokenAccount = (supportedCurrency: ISupportedCurrency): boolean => {
-      if (!supportedCurrency.symbol) return false;
+    const isNativeTokenAccount = (supportedCurrency?: ISupportedCurrency): boolean => {
+      if (!supportedCurrency || (!supportedCurrency.symbol && !((supportedCurrency.currencyId as ICurrency)?.symbol))) return false;
 
       // Native tokens don't have a tokenAddress (or it's empty/null/zero address)
       const tokenAddress =
         supportedCurrency.tokenAddress ||
         '';
+
+      console.log('--- tokenAddress', tokenAddress);
 
       return (
         !tokenAddress ||
@@ -374,20 +376,20 @@ export class BatchBalanceService {
           const supportedCurrency = supportedCurrenciesMap?.get(supportedCurrencyId);
           const balanceResult = balanceResults.get(supportedCurrencyId);
 
-          if (balanceResult && !balanceResult.error) {
+
+          if (balanceResult && !balanceResult.error && !isNativeTokenAccount(supportedCurrency)) {
             // Contract tokens: update balance and price from batch results
             const balance = parseFloat(
               balanceResult.balanceFormatted || balanceResult.balance
             );
             updateAccountBalance(token, balance);
             contractTokensUpdated++;
-          } else if (isNativeTokenAccount(supportedCurrency!) && nativeBalances) {
+          } else if (isNativeTokenAccount(supportedCurrency) && nativeBalances) {
             // Native tokens: get balance from SDK nativeBalances (not from backend)
             const chainSymbol = this.getChainSymbol(supportedCurrency?.chainId as IChain, supportedCurrency);
             if (chainSymbol && nativeBalances.has(chainSymbol)) {
               const nativeBalance = nativeBalances.get(chainSymbol)!;
               const balance = nativeBalance.balance || 0;
-
               updateAccountBalance(token, balance);
               nativeTokensUpdated++;
             }

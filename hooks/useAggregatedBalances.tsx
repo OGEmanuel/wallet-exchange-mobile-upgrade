@@ -163,8 +163,14 @@ export const useAggregatedBalances = () => {
   // Calculate balances for ALL user wallet groups using the main portfolio data
   // We get the processed portfolio value and cache for all the other user wallet groups
   const calculateAllBalances = async () => {
-    if (!userWalletGroups || !isWalletAuthenticated || !processedPortfolio) {
+    if (!userWalletGroups || !isWalletAuthenticated) {
       return;
+    }
+    
+    // If we don't have processedPortfolio, we can still refresh balances from cache
+    // This is useful when wallet groups change but portfolio isn't loaded yet
+    if (!processedPortfolio) {
+      console.log("⚠️ calculateAllBalances: No processedPortfolio available, using cache only");
     }
 
     try {
@@ -200,7 +206,7 @@ export const useAggregatedBalances = () => {
         let walletBalance = 0;
         let walletGroupBalance = 0;
 
-        if (isMainWalletGroup && portfolio) {
+        if (isMainWalletGroup && portfolio && processedPortfolio) {
           // For the main wallet group, always recalculate from current portfolio data
           walletBalance = processedPortfolio.totalUsdValue || 0;
           walletGroupBalance =
@@ -331,6 +337,43 @@ export const useAggregatedBalances = () => {
       calculateAllBalances();
     }
   }, [processedPortfolio, userWalletGroups, isWalletAuthenticated]);
+
+  // Refresh balances when userWalletGroups changes (even if portfolio isn't ready)
+  // This ensures balances are recalculated when wallets are added/removed
+  const prevWalletGroupsLengthRef = React.useRef<number>(userWalletGroups?.length || 0);
+  const prevWalletGroupsIdsRef = React.useRef<string[]>(
+    userWalletGroups?.map((g: IUserWalletGroup) => g._id) || []
+  );
+
+  useEffect(() => {
+    const currentWalletGroupsLength = userWalletGroups?.length || 0;
+    const currentWalletGroupsIds = userWalletGroups?.map((g: IUserWalletGroup) => g._id) || [];
+    const prevLength = prevWalletGroupsLengthRef.current;
+    const prevIds = prevWalletGroupsIdsRef.current;
+
+    // Check if wallet groups actually changed (length or IDs)
+    const hasChanged = 
+      currentWalletGroupsLength !== prevLength ||
+      currentWalletGroupsIds.length !== prevIds.length ||
+      currentWalletGroupsIds.some((id, index) => id !== prevIds[index]);
+
+    if (
+      hasChanged &&
+      userWalletGroups &&
+      userWalletGroups.length > 0 &&
+      isWalletAuthenticated
+    ) {
+      console.log(
+        `🔄 Wallet groups changed (${prevLength} -> ${currentWalletGroupsLength}), refreshing aggregated balances`
+      );
+      // Refresh balances even if portfolio isn't ready - will use cache for non-main wallets
+      calculateAllBalances();
+    }
+
+    // Update refs
+    prevWalletGroupsLengthRef.current = currentWalletGroupsLength;
+    prevWalletGroupsIdsRef.current = currentWalletGroupsIds;
+  }, [userWalletGroups, isWalletAuthenticated]);
 
   // Get balance for a specific wallet (sum of all accounts in that wallet)
   const getWalletBalance = (userWalletGroupId: string): number => {

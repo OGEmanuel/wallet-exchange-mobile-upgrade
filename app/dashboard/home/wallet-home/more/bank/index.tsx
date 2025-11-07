@@ -105,7 +105,7 @@ const BankAccountsScreen = () => {
     setShowAddAccountBottomSheet(true);
     // Use setTimeout to ensure the component is mounted before calling snapToIndex
     setTimeout(() => {
-      bankAccountsBottomSheetRef.current?.snapToIndex(0);
+    bankAccountsBottomSheetRef.current?.snapToIndex(0);
     }, 100);
   };
 
@@ -242,23 +242,23 @@ const BankAccountsScreen = () => {
         )}
       </Box>
 
-      <BankAccountsBottomSheet
-        ref={bankAccountsBottomSheetRef}
-        targetCurrency={ngnCurrency}
+        <BankAccountsBottomSheet
+          ref={bankAccountsBottomSheetRef}
+          targetCurrency={ngnCurrency}
         initialView={showAddAccountBottomSheet ? "add" : "list"}
-        onBankAccountSelect={(account) => {
-          if (account) {
+          onBankAccountSelect={(account) => {
+            if (account) {
+              handleAccountAdded();
+            }
+          }}
+          onContinue={() => {
             handleAccountAdded();
-          }
-        }}
-        onContinue={() => {
-          handleAccountAdded();
-        }}
-        onClose={() => {
-          setShowAddAccountBottomSheet(false);
-          bankAccountsBottomSheetRef.current?.close();
-        }}
-      />
+          }}
+          onClose={() => {
+            setShowAddAccountBottomSheet(false);
+            bankAccountsBottomSheetRef.current?.close();
+          }}
+        />
     </PageWrapper>
   );
 };

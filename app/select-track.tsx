@@ -1,6 +1,5 @@
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
-import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
 import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
@@ -213,7 +212,7 @@ export default SelectTrack;
 
 const styles = StyleSheet.create({
   container: {
-    width: SIZES.width * 0.9,
+    width: "90%",
     alignSelf: "center",
     marginTop: 54,
   },

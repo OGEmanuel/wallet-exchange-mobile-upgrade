@@ -161,14 +161,14 @@ const ProfilePage = () => {
       onPress: () => {
         // Only show KYC flow if user is not verified
         if (!isVerificationComplete) {
-          showKYCBottomSheet({
-            onComplete: () => {
-              // Handle KYC completion if needed
-            },
-            onClose: () => {
-              // Handle close if needed
-            },
-          });
+        showKYCBottomSheet({
+          onComplete: () => {
+            // Handle KYC completion if needed
+          },
+          onClose: () => {
+            // Handle close if needed
+          },
+        });
         }
         // If verified, do nothing
       },

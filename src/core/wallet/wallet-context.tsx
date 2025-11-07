@@ -99,6 +99,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Track wallets currently being derived to prevent duplicate derivations
   const derivingWalletsRef = useRef<Set<string>>(new Set());
+  
+  // Track if exchange has already routed (to prevent wallet routing after exchange routes)
+  const hasNavigatedToExchangeRef = useRef<boolean>(false);
 
   // Other states
   const [error, setError] = useState<string | null>(null);
@@ -235,7 +238,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const setExchangeAndRoute = (
+  const setExchangeAndRoute = async (
     exchangeUserId: string,
     isExchangeAuth: boolean,
     shouldRoute: boolean,
@@ -260,15 +263,35 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     console.log("✅ Exchange authentication found, routing to exchange");
     result = { ...result, exchangeUserId, isExchangeAuth };
 
-    // Only route if user has completed onboarding (has username)
+    // Only route if user has completed onboarding (has username) and is not a guest
     if (shouldRoute) {
-      const user = exchangeUser || exchangeUserData;
-      if (user?.username) {
-        console.log("✅ User has username, routing to exchange screen");
+      let user = exchangeUser || exchangeUserData;
+      
+      // If we don't have user data, try to fetch it
+      if (!user) {
+        try {
+          user = await zapSDKService.getExchangeUser();
+          if (user) {
+            setExchangeUserData(user);
+          }
+        } catch (error) {
+          console.log("Could not fetch exchange user:", error);
+        }
+      }
+      
+      const isGuest = user?.isGuest || false;
+      if (user?.username && !isGuest) {
+        console.log("✅ User has username and is not a guest, routing to exchange screen");
+        hasNavigatedToExchangeRef.current = true;
         router.replace("/dashboard/home/wallet-home/swap");
+      } else if (isGuest) {
+        console.log(
+          "⚠️ User is a guest, skipping exchange routing"
+        );
       } else {
         console.log(
-          "⚠️ User doesn't have username yet, skipping routing to allow onboarding completion"
+          "⚠️ User doesn't have username yet, skipping routing to allow onboarding completion",
+          "User data:", user ? { hasUsername: !!user.username, isGuest: user.isGuest } : "no user data"
         );
       }
     }
@@ -350,16 +373,35 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         exchangeUserId
       );
 
+      // Try to get exchange user data if we have exchange auth but no user data
+      let exchangeUserForFastRouting: UserModel | null = exchangeUserData || null;
+      if (isExchangeAuth && exchangeUserId && !exchangeUserForFastRouting) {
+        // Try to get from storage or fetch if needed
+        try {
+          const storedUser = await SecureStore.getItemAsync(StorageKeys.USER_PROFILE);
+          if (storedUser) {
+            exchangeUserForFastRouting = JSON.parse(storedUser);
+          }
+        } catch (error) {
+          console.log("Could not load exchange user from storage:", error);
+        }
+      }
+
       if (isExchangeAuth && exchangeUserId) {
-        result = setExchangeAndRoute(
+        result = await setExchangeAndRoute(
           exchangeUserId,
           isExchangeAuth,
           shouldRoute,
           result,
-          exchangeUserData || null
+          exchangeUserForFastRouting || null
         );
       }
-      if (isWalletAuth && walletUserId) {
+      
+      // Only route to wallet if exchange hasn't already routed (unless exchange user is a guest)
+      const isExchangeGuest = exchangeUserForFastRouting?.isGuest || false;
+      const shouldRouteToWalletFast = !hasNavigatedToExchangeRef.current || isExchangeGuest;
+      
+      if (isWalletAuth && walletUserId && shouldRouteToWalletFast) {
         // For fast path, use cached wallet groups directly - skip all SDK/API calls
         const cachedWalletGroups = await loadWalletGroupsFromCache();
 
@@ -380,7 +422,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             isUserWalletGroups: true,
           };
 
-          if (shouldRoute && cachedWalletGroups.length > 0) {
+          if (shouldRoute && shouldRouteToWalletFast && cachedWalletGroups.length > 0) {
             console.log(
               "✅ Fast path: Routing to wallet with cached wallet groups (no SDK calls)"
             );
@@ -455,6 +497,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         }
       }
 
+      let exchangeUserForRouting: UserModel | null = null;
+
       if (!exchangeUserId) {
         const exchangeUser = await zapSDKService.getExchangeUser();
         exchangeUserId = exchangeUser?._id || null;
@@ -469,32 +513,50 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           setIsExchangeAuthenticated(true);
           if (exchangeUser) {
             setExchangeUserData(exchangeUser);
+            exchangeUserForRouting = exchangeUser;
           }
         }
       } else {
         // We have cached exchangeUserId, verify with SDK
         isExchangeAuth = await zapSDKService.isExchangeAuthenticated();
+        // Get fresh user data if we have cached ID
+        if (isExchangeAuth && !exchangeUserData) {
+          const exchangeUser = await zapSDKService.getExchangeUser();
+          if (exchangeUser) {
+            setExchangeUserData(exchangeUser);
+            exchangeUserForRouting = exchangeUser;
+          }
+        } else if (exchangeUserData) {
+          exchangeUserForRouting = exchangeUserData;
+        }
       }
 
+      // Check exchange auth first - exchange routing takes priority
       if (isExchangeAuth && exchangeUserId) {
-        result = setExchangeAndRoute(
+        result = await setExchangeAndRoute(
           exchangeUserId,
           isExchangeAuth,
           shouldRoute,
           result,
-          exchangeUserData || null
+          exchangeUserForRouting || null
         );
       }
-      if (isWalletAuth && walletUserId) {
+      
+      // Only route to wallet if exchange hasn't already routed (unless exchange user is a guest)
+      const isExchangeGuest = exchangeUserForRouting?.isGuest || false;
+      const shouldRouteToWallet = !hasNavigatedToExchangeRef.current || isExchangeGuest;
+      
+      if (isWalletAuth && walletUserId && shouldRouteToWallet) {
         // User has wallet authentication - check for wallet groups
         result = await setWalletAndRoute(
           walletUserId,
           isWalletAuth,
-          shouldRoute,
+          shouldRoute && shouldRouteToWallet, // Only route if exchange hasn't routed
           result,
           isExchangeAuth
         );
-      } else {
+      } else if (!hasNavigatedToExchangeRef.current) {
+        // Only attempt device login if exchange hasn't routed
         const deviceLoginSuccess = await attemptDeviceLogin();
         if (deviceLoginSuccess) {
           const routeResult = await routeToWallet(
@@ -909,12 +971,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     };
 
     // Route to wallet if wallet groups exist - wallet groups take priority
-    // This ensures users with wallets are routed to wallet screen even if they have exchange auth
+    // But don't route if exchange already routed (unless exchange user is a guest)
     if (shouldRoute && uWalletGroups.userWalletGroups.length > 0) {
+      // Check if exchange user is a guest - if so, allow wallet routing
+      const exchangeUser = exchangeUserData;
+      const isExchangeGuest = exchangeUser?.isGuest || false;
+      
+      // Don't route to wallet if exchange already routed (unless exchange user is a guest)
+      if (hasNavigatedToExchangeRef.current && !isExchangeGuest) {
+        console.log("⚠️ Exchange already routed (and not a guest), skipping wallet routing");
+      } else if (!isExchangeAuth || isExchangeGuest) {
       console.log(
         "✅ Wallet groups found, routing to wallet screen (wallet groups take priority)"
       );
       safeNavigateToWallet();
+      }
     }
 
     return updatedResult;
@@ -1024,11 +1095,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           };
           // Route to wallet if wallet groups found in cache
           // Wallet groups take priority over exchange auth
+          // But don't route if exchange already routed (unless exchange user is a guest)
           if (shouldRoute) {
+            // Check if exchange user is a guest - if so, allow wallet routing
+            const exchangeUser = exchangeUserData;
+            const isExchangeGuest = exchangeUser?.isGuest || false;
+            
+            // Don't route to wallet if exchange already routed (unless exchange user is a guest)
+            if (hasNavigatedToExchangeRef.current && !isExchangeGuest) {
+              console.log("⚠️ Exchange already routed (and not a guest), skipping wallet routing");
+            } else if (!hasExchangeAuth || isExchangeGuest) {
             console.log(
               "✅ Wallet groups found in cache, routing to wallet screen"
             );
             safeNavigateToWallet();
+            }
           }
         }
         return result;
@@ -1037,11 +1118,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
         // Route to wallet if wallet groups exist, regardless of exchange auth
         // Wallet groups take priority over exchange auth
+        // But don't route if exchange already routed (unless exchange user is a guest)
         if (shouldRoute && userWalletGroups.length > 0) {
+          // Check if exchange user is a guest - if so, allow wallet routing
+          const exchangeUser = exchangeUserData;
+          const isExchangeGuest = exchangeUser?.isGuest || false;
+          
+          // Don't route to wallet if exchange already routed (unless exchange user is a guest)
+          if (hasNavigatedToExchangeRef.current && !isExchangeGuest) {
+            console.log("⚠️ Exchange already routed (and not a guest), skipping wallet routing");
+          } else if (!hasExchangeAuth || isExchangeGuest) {
           console.log("✅ Wallet groups found, routing to wallet screen");
           safeNavigateToWallet();
-        } else if (!hasExchangeAuth && shouldRoute) {
-          // Only check exchange auth condition if no wallet groups
+          }
+        } else if (!hasExchangeAuth && shouldRoute && !hasNavigatedToExchangeRef.current) {
+          // Only check exchange auth condition if no wallet groups and exchange hasn't routed
           safeNavigateToWallet();
         }
         return result;
@@ -1261,6 +1352,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
+      
+      // Reset exchange routing ref
+      hasNavigatedToExchangeRef.current = false;
 
       // Clear exchange history/activities from Redux state
       dispatch(exchangeActions.clearExchangeActivities());
@@ -1277,6 +1371,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
+      
+      // Reset exchange routing ref
+      hasNavigatedToExchangeRef.current = false;
 
       // Clear exchange history/activities from Redux state even on error
       dispatch(exchangeActions.clearExchangeActivities());
