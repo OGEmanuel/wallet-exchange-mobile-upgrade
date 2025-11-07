@@ -21,10 +21,12 @@ const SidebarItemCard = ({
   return (
     <Pressable
       onPress={() => {
-        if (onPress) {
-          onPress();
-        } else {
-          router.push(link as any);
+        if (!disablClick) {
+          if (onPress) {
+            onPress();
+          } else {
+            router.push(link as any);
+          }
         }
       }}
       style={{

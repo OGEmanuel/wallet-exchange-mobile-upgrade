@@ -1,8 +1,8 @@
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { Check, Eye, EyeOff } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -60,16 +60,10 @@ const ICloudPasswordScreen = () => {
 
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
-      <Box style={{ paddingTop: insets.top }}>
-        <AppBar
+      <Box style={{ paddingTop: insets.top , paddingBottom: 20}}>
+        <SettingsHeader
           title="iCloud Backup"
-          leading={
-            <ArrowLeft2
-              onPress={handleBack}
-              size={24}
-              color={theme.colors.headerTextColor}
-            />
-          }
+          onBackPress={handleBack}
         />
       </Box>
 

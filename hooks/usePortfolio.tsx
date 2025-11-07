@@ -1,32 +1,18 @@
 import { ProcessedPortfolio } from "@/interfaces/portfolio.interface";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export const usePortfolio = () => {
   const {
-    portfolio,
     refreshPortfolio,
     isLoading,
     isWalletAuthenticated,
     currentWalletUser,
-    error: walletError,
   } = useWallet();
   const [processedPortfolio, setProcessedPortfolio] =
     useState<ProcessedPortfolio | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Portfolio processing is now handled centrally
-  // This hook should use Redux state instead of processing locally
-
-  // Check authentication status
-  useEffect(() => {
-    if (!isWalletAuthenticated || !currentWalletUser) {
-      setError("User not authenticated. Please log in to view portfolio.");
-    } else if (walletError) {
-      setError(walletError);
-    }
-  }, [isWalletAuthenticated, currentWalletUser, walletError]);
 
   const handleRefresh = async () => {
     try {

@@ -1,5 +1,4 @@
 import { Box, CustomText } from "@/components/general";
-import { supportedLanguages } from "@/data";
 import usePreferences from "@/hooks/usePreferences";
 import useActiveTheme from "@/hooks/useTheme";
 import { Theme } from "@/theme";
@@ -10,7 +9,7 @@ import BottomSheet, {
 import { useTheme } from "@shopify/restyle";
 import { Sparkles, VibrateIcon } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
-import { Image, Pressable, Switch } from "react-native";
+import { Pressable, Switch } from "react-native";
 
 const AppearanceCard = ({
   title,
@@ -94,11 +93,9 @@ const SwitchCards = ({
   );
 };
 
-const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const [language, setLanguage] = React.useState(supportedLanguages[0]);
+const AppearanceBottomSheet = forwardRef<BottomSheet, object>((props, ref) => {
   const theme = useTheme<Theme>();
-  const { toggleTheme, colorTheme, themeMode, setTheme, setSystemTheme } =
-    useActiveTheme();
+  const { themeMode, setTheme, setSystemTheme } = useActiveTheme();
   const { hapticsEnabled, animationsEnabled, toggleHaptics, toggleAnimations } =
     usePreferences();
 
@@ -168,27 +165,42 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           <AppearanceCard
             title="System"
             isActive={themeMode === "system"}
-            // onPress={() => setSystemTheme()}
-            onPress={() => {}}
+            onPress={() => setSystemTheme()}
             image={
-              <Image
-                source={require("@/assets/images/systemthemeimg.png")}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
-              />
+              <Box
+                width="100%"
+                height="100%"
+                flexDirection="row"
+                justifyContent="space-between"
+                alignItems="center"
+                padding="s"
+              >
+                <Box
+                  width="45%"
+                  height="100%"
+                  bg="mainBackgroundColor"
+                  borderRadius={8}
+                />
+                <Box
+                  width="45%"
+                  height="100%"
+                  bg="secondaryBackgroundColor"
+                  borderRadius={8}
+                />
+              </Box>
             }
           />
 
           <AppearanceCard
             title="Light"
             isActive={themeMode === "light"}
-            // onPress={() => setTheme("light")}
-            onPress={() => {}}
+            onPress={() => setTheme("light")}
             image={
-              <Image
-                source={require("@/assets/images/lightmodeimg.png")}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
+              <Box
+                width="100%"
+                height="100%"
+                bg="mainBackgroundColor"
+                borderRadius={12}
               />
             }
           />
@@ -198,10 +210,11 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
             isActive={themeMode === "dark"}
             onPress={() => setTheme("dark")}
             image={
-              <Image
-                source={require("@/assets/images/darkmodeimg.png")}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
+              <Box
+                width="100%"
+                height="100%"
+                bg="secondaryBackgroundColor"
+                borderRadius={12}
               />
             }
           />
@@ -233,5 +246,7 @@ const AppearanceBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+AppearanceBottomSheet.displayName = "AppearanceBottomSheet";
 
 export default AppearanceBottomSheet;

@@ -1,5 +1,5 @@
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "react-native";
 import { WalletPinEntryStep } from "../wallet/steps/WalletPinEntryStep";
 import { WalletPinSetupStep } from "../wallet/steps/WalletPinSetupStep";
@@ -21,12 +21,35 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   const [isChecking, setIsChecking] = useState(true);
   const [hasCheckedPin, setHasCheckedPin] = useState(false);
   const [hasStoredPin, setHasStoredPin] = useState(false);
+  const hasCalledOnSuccessRef = useRef(false); // Prevent multiple calls to onSuccess
 
   useEffect(() => {
-    if (!hasCheckedPin) {
+    // Only check PIN status when modal becomes visible
+    // Reset state when modal closes
+    if (visible && !hasCheckedPin) {
+      hasCalledOnSuccessRef.current = false; // Reset when modal opens
       checkPinStatus();
+    } else if (!visible) {
+      // Reset state when modal closes to prevent stale state
+      setHasCheckedPin(false);
+      setHasStoredPin(false);
+      hasCalledOnSuccessRef.current = false;
     }
-  }, [hasCheckedPin]);
+  }, [visible, hasCheckedPin]);
+  
+  // Handle auto-proceed when no PIN is stored
+  // This should only happen AFTER user has confirmed (e.g., clicked "Yes, remove")
+  useEffect(() => {
+    if (visible && !isChecking && hasCheckedPin && !hasStoredPin && !hasCalledOnSuccessRef.current) {
+      console.log("🔐 No PIN stored - auto-proceeding after user confirmation");
+      hasCalledOnSuccessRef.current = true; // Prevent multiple calls
+      // Small delay to ensure this happens after render
+      const timer = setTimeout(() => {
+        onSuccess('');
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, isChecking, hasCheckedPin, hasStoredPin, onSuccess]);
 
   const checkPinStatus = async () => {
     try {
@@ -52,10 +75,17 @@ export const PinEntryModal: React.FC<PinEntryModalProps> = ({
   //   return null;
   // }
 
-  // if (!isChecking && hasCheckedPin && !hasStoredPin) {
-  //   onSuccess("");
-  //   return null;
-  // }
+  // If no PIN is stored, don't render the PIN entry screen
+  // The useEffect above will handle calling onSuccess
+  if (visible && !isChecking && hasCheckedPin && !hasStoredPin) {
+    console.log("🔐 No PIN stored - not rendering PIN entry (will auto-proceed via useEffect)");
+    return null;
+  }
+  
+  // Don't render if modal is not visible
+  if (!visible) {
+    return null;
+  }
 
   return (
     <Modal

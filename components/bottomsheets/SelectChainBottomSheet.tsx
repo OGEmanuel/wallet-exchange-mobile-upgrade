@@ -5,6 +5,7 @@ import BottomSheet, {
   BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
+import { ICurrency } from "@zap/blockchain-sdk";
 import { Check, MoreHorizontalIcon, Search } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
 import { Pressable } from "react-native";
@@ -22,7 +23,7 @@ const SelectChainBottomSheet = forwardRef<
   SelectChainBottomSheetProps
 >(({ onChainSelect }, ref) => {
   const theme = useTheme<Theme>();
-  const { walletChains, isLoading } = useChains();
+  const { walletChains, isLoading, getChainImage } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
 
@@ -178,55 +179,64 @@ const SelectChainBottomSheet = forwardRef<
                     </Box>
                   )}
                 </Pressable>
-                {topChains.map((chain, index) => (
-                  <Pressable
-                    key={chain._id}
-                    style={{
-                      width: "100%",
-                      height: 60,
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                    onPress={() => handleChainSelect(chain.symbol)}
-                  >
-                    <Box flexDirection="row" alignItems="center">
-                      {/* Chain Icon */}
-                      <ChainLogo
-                        symbol={chain.symbol}
-                        name={chain.name}
-                        logoUrl={chain.nativeCurrencyId?.logo}
-                        width={32}
-                        height={32}
-                        style={{ marginRight: theme.spacing.m }}
-                      />
-                      <Box>
-                        <CustomText variant="body" fontSize={14} color="white">
-                          {chain.name}
-                        </CustomText>
-                        <CustomText
-                          variant="body"
-                          fontSize={12}
-                          color="bodyTextColor"
+                {topChains.map((chain, index) => {
+                  const chainImage = getChainImage
+                    ? getChainImage(chain._id || "")
+                    : (chain.nativeCurrencyId as ICurrency)?.logo;
+                  return (
+                    <Pressable
+                      key={chain._id}
+                      style={{
+                        width: "100%",
+                        height: 60,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                      onPress={() => handleChainSelect(chain.symbol)}
+                    >
+                      <Box flexDirection="row" alignItems="center">
+                        {/* Chain Icon */}
+                        <ChainLogo
+                          symbol={chain.symbol}
+                          name={chain.name}
+                          logoUrl={chainImage}
+                          width={32}
+                          height={32}
+                          style={{ marginRight: theme.spacing.m }}
+                        />
+                        <Box>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="white"
+                          >
+                            {chain.name}
+                          </CustomText>
+                          <CustomText
+                            variant="body"
+                            fontSize={12}
+                            color="bodyTextColor"
+                          >
+                            {chain.symbol}
+                          </CustomText>
+                        </Box>
+                      </Box>
+                      {activeChain === chain.symbol && (
+                        <Box
+                          width={28}
+                          height={28}
+                          borderRadius={28}
+                          backgroundColor="success"
+                          justifyContent="center"
+                          alignItems="center"
                         >
-                          {chain.symbol}
-                        </CustomText>
-                      </Box>
-                    </Box>
-                    {activeChain === chain.symbol && (
-                      <Box
-                        width={28}
-                        height={28}
-                        borderRadius={28}
-                        backgroundColor="success"
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <Check size={20} color="white" />
-                      </Box>
-                    )}
-                  </Pressable>
-                ))}
+                          <Check size={20} color="white" />
+                        </Box>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </Box>
             )}
 
@@ -240,55 +250,64 @@ const SelectChainBottomSheet = forwardRef<
                 paddingHorizontal="m"
                 mt="m"
               >
-                {otherChains.map((chain, index) => (
-                  <Pressable
-                    key={chain._id}
-                    style={{
-                      width: "100%",
-                      height: 60,
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                    onPress={() => handleChainSelect(chain.symbol)}
-                  >
-                    <Box flexDirection="row" alignItems="center">
-                      {/* Chain Icon */}
-                      <ChainLogo
-                        symbol={chain.symbol}
-                        name={chain.name}
-                        logoUrl={chain.nativeCurrencyId?.logo}
-                        width={32}
-                        height={32}
-                        style={{ marginRight: theme.spacing.m }}
-                      />
-                      <Box>
-                        <CustomText variant="body" fontSize={14} color="white">
-                          {chain.name}
-                        </CustomText>
-                        <CustomText
-                          variant="body"
-                          fontSize={12}
-                          color="bodyTextColor"
+                {otherChains.map((chain, index) => {
+                  const chainImage = getChainImage
+                    ? getChainImage(chain._id || "")
+                    : (chain.nativeCurrencyId as ICurrency)?.logo;
+                  return (
+                    <Pressable
+                      key={chain._id}
+                      style={{
+                        width: "100%",
+                        height: 60,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                      onPress={() => handleChainSelect(chain.symbol)}
+                    >
+                      <Box flexDirection="row" alignItems="center">
+                        {/* Chain Icon */}
+                        <ChainLogo
+                          symbol={chain.symbol}
+                          name={chain.name}
+                          logoUrl={chainImage}
+                          width={32}
+                          height={32}
+                          style={{ marginRight: theme.spacing.m }}
+                        />
+                        <Box>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="white"
+                          >
+                            {chain.name}
+                          </CustomText>
+                          <CustomText
+                            variant="body"
+                            fontSize={12}
+                            color="bodyTextColor"
+                          >
+                            {chain.symbol}
+                          </CustomText>
+                        </Box>
+                      </Box>
+                      {activeChain === chain.symbol && (
+                        <Box
+                          width={28}
+                          height={28}
+                          borderRadius={28}
+                          backgroundColor="success"
+                          justifyContent="center"
+                          alignItems="center"
                         >
-                          {chain.symbol}
-                        </CustomText>
-                      </Box>
-                    </Box>
-                    {activeChain === chain.symbol && (
-                      <Box
-                        width={28}
-                        height={28}
-                        borderRadius={28}
-                        backgroundColor="success"
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <Check size={20} color="white" />
-                      </Box>
-                    )}
-                  </Pressable>
-                ))}
+                          <Check size={20} color="white" />
+                        </Box>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </Box>
             )}
           </>

@@ -4,9 +4,10 @@ import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import {
   Bank,
-  CurrencyID,
+  ICurrency,
+  ISupportedCurrency,
   SupportedCurrency,
-  UserBankAccount,
+  UserBankAccount
 } from "@zap/blockchain-sdk";
 import { useEffect, useState } from "react";
 
@@ -96,7 +97,7 @@ export const useBankAccounts = () => {
   const createBankAccount = async (
     bankId: string,
     name: string,
-    supportedCurrency: SupportedCurrency | null,
+    supportedCurrency: ISupportedCurrency | null,
     number: string
   ) => {
     setIsCreatingBankAccount(true);
@@ -104,7 +105,7 @@ export const useBankAccounts = () => {
     try {
       if (
         !supportedCurrency ||
-        (supportedCurrency.currencyId as CurrencyID)?.isCrypto
+        (supportedCurrency.currencyId as Partial<ICurrency>)?.isCrypto
       ) {
         throw new Error("Supported currency must be fiat");
       }
@@ -112,7 +113,7 @@ export const useBankAccounts = () => {
       const newBankAccount = await zapSDKService.createBankAccount({
         bankId,
         name,
-        supportedCurrency,
+        supportedCurrency: supportedCurrency as unknown as SupportedCurrency,
         userId: currentExchangeUser || "",
         number,
       });

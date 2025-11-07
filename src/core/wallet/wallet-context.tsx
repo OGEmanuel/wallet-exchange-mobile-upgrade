@@ -6,8 +6,17 @@
  */
 
 import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
+import { BatchBalanceService } from "@/services/batch-balance.service";
+import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { IUserWalletGroup, WalletContextType } from "@/types/main";
-import { ExchangeValidateOtpResponse, UserModel, WalletUtils, ZapSDK } from "@zap/blockchain-sdk";
+import {
+  ExchangeValidateOtpResponse,
+  IUserPortfolio,
+  UserModel,
+  UserPortfolioData,
+  WalletUtils,
+  ZapSDK,
+} from "@zap/blockchain-sdk";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -18,9 +27,10 @@ import React, {
   ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, InteractionManager } from "react-native";
 import { useChains } from "../chains/chains-context";
 import zapSDKService from "../sdk/zap-sdk.service";
 import AddressesStorage, { StoredAddress } from "../storage/addresses-storage";
@@ -43,9 +53,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const {
     refreshDefaultTokens,
     defaultTokens,
-    refreshSupportedCurrencies,
-    supportedCurrencies,
+    refreshSupportedCurrenciesForSwap,
+    supportedCurrenciesForSwap,
   } = useSupportedCurrencies();
+  const { marketTokensMap } = useMarket();
   // State
   const [isInitialized, setIsInitialized] = useState(false);
   const [isWalletAuthenticated, setIsWalletAuthenticated] = useState(false);
@@ -81,10 +92,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const [isSendingTransaction, setIsSendingTransaction] = useState(false); // Transaction operations
   const [isRetryingPendingWallets, setIsRetryingPendingWallets] =
     useState(false);
-  const [isBackgroundWalletGroupsRefresh, setIsBackgroundWalletGroupsRefresh] =
-    useState(false);
-  const [isBackgroundPortfolioRefresh, setIsBackgroundPortfolioRefresh] =
-    useState(false);
+
+  // Track wallets currently being derived to prevent duplicate derivations
+  const derivingWalletsRef = useRef<Set<string>>(new Set());
 
   // Other states
   const [error, setError] = useState<string | null>(null);
@@ -144,19 +154,32 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isWalletAuth: boolean;
       userWalletGroups: any[] | null;
       isUserWalletGroups: boolean;
-    }
+    },
+    exchangeUser?: UserModel | null
   ) => {
-        setCurrentExchangeUser(exchangeUserId);
+    setCurrentExchangeUser(exchangeUserId);
     setIsExchangeAuthenticated(true);
-        console.log("✅ Exchange authentication found, routing to exchange");
-        result = { ...result, exchangeUserId, isExchangeAuth };
-        if (shouldRoute) {
-          // Moore I took this out because it keeps routing the user to the swap app even if they don't have username
-          // I believe you can add the username parameter to the conditions too in the SDK
-          router.replace("/dashboard/home/wallet-home/swap");
-          // if (exchangeUserData && exchangeUserData?.username) {
-          // }
-        }
+
+    // Set exchangeUserData if provided
+    if (exchangeUser) {
+      setExchangeUserData(exchangeUser);
+    }
+
+    console.log("✅ Exchange authentication found, routing to exchange");
+    result = { ...result, exchangeUserId, isExchangeAuth };
+
+    // Only route if user has completed onboarding (has username)
+    if (shouldRoute) {
+      const user = exchangeUser || exchangeUserData;
+      if (user?.username) {
+        console.log("✅ User has username, routing to exchange screen");
+        router.replace("/dashboard/home/wallet-home/swap");
+      } else {
+        console.log(
+          "⚠️ User doesn't have username yet, skipping routing to allow onboarding completion"
+        );
+      }
+    }
     return result;
   };
 
@@ -171,24 +194,26 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isWalletAuth: boolean;
       userWalletGroups: any[] | null;
       isUserWalletGroups: boolean;
-    }
+    },
+    isExchangeAuth?: boolean
   ) => {
-        console.log("Wallet is authenticated with wallet auth", isWalletAuth);
-        setCurrentWalletUser(walletUserId);
-        setIsWalletAuthenticated(true);
-        console.log("Wallet is authenticated with wallet auth", walletUserId);
+    console.log("Wallet is authenticated with wallet auth", isWalletAuth);
+    setCurrentWalletUser(walletUserId);
+    setIsWalletAuthenticated(true);
+    console.log("Wallet is authenticated with wallet auth", walletUserId);
 
-        result = { ...result, walletUserId, isWalletAuth: true };
-        const routeResult = await routeToWallet(
+    result = { ...result, walletUserId, isWalletAuth: true };
+    const routeResult = await routeToWallet(
       isWalletAuth,
-          walletUserId,
-          shouldRoute
-        );
-        result = {
-          ...result,
-          isUserWalletGroups: routeResult?.isUserWalletGroups,
-          userWalletGroups: routeResult?.userWalletGroups,
-        };
+      walletUserId,
+      shouldRoute,
+      isExchangeAuth || false
+    );
+    result = {
+      ...result,
+      isUserWalletGroups: routeResult?.isUserWalletGroups,
+      userWalletGroups: routeResult?.userWalletGroups,
+    };
     return result;
   };
 
@@ -226,7 +251,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           exchangeUserId,
           isExchangeAuth,
           shouldRoute,
-          result
+          result,
+          exchangeUser || null
         );
       }
       if (isWalletAuth) {
@@ -235,7 +261,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           walletUserId,
           isWalletAuth,
           shouldRoute,
-          result
+          result,
+          isExchangeAuth
         );
       } else {
         const deviceLoginSuccess = await attemptDeviceLogin();
@@ -271,7 +298,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       // Trigger chain loading now that user is authenticated
       if (!walletChains.length) loadChainsNow();
       if (!defaultTokens.length) refreshDefaultTokens();
-      if (!supportedCurrencies.length) refreshSupportedCurrencies();
+      if (!supportedCurrenciesForSwap.length)
+        refreshSupportedCurrenciesForSwap();
 
       // Log performance metrics
       const endTime = Date.now();
@@ -282,7 +310,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Cache management for wallet groups - Smart caching strategy
   const CACHE_DURATION = {
-    SHORT: 30 * 60 * 1000, // 30 minutes - for active users
+    SHORT: 2 * 60 * 1000, // 5 minutes - for active users
     MEDIUM: 24 * 60 * 60 * 1000, // 24 hours - for daily users
     LONG: 7 * 24 * 60 * 60 * 1000, // 7 days - for weekly users
     MAX: 30 * 24 * 60 * 60 * 1000, // 30 days - maximum cache age
@@ -385,34 +413,67 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   }> => {
     try {
       if (!userWalletGroupId) {
+        console.log("⚠️ isPortfolioCacheValid: No wallet ID provided");
         return { isValid: false, shouldRefreshInBackground: false };
       }
 
       const cacheKey = `${StorageKeys.PORTFOLIO_TIMESTAMP}_${userWalletGroupId}`;
+      const dataKey = `${StorageKeys.PORTFOLIO_DATA}_${userWalletGroupId}`;
+
+      console.log(`🔍 Checking cache validity for wallet ${userWalletGroupId}`);
+      console.log(`  - Timestamp key: ${cacheKey}`);
+      console.log(`  - Data key: ${dataKey}`);
+
       const timestamp = await SecureStore.getItemAsync(cacheKey);
-      if (!timestamp)
+      const dataExists = await SecureStore.getItemAsync(dataKey);
+
+      console.log(`  - Timestamp exists: ${!!timestamp}`);
+      console.log(`  - Data exists: ${!!dataExists}`);
+
+      if (!timestamp) {
+        console.log(`  ❌ No timestamp found - cache invalid`);
         return { isValid: false, shouldRefreshInBackground: false };
-      
+      }
+
       const cacheTime = parseInt(timestamp);
       const now = Date.now();
       const age = now - cacheTime;
-      
+      const ageMinutes = Math.floor(age / (60 * 1000));
+
       // Portfolio cache has shorter duration than wallet groups (more dynamic data)
       if (age < CACHE_DURATION.SHORT) {
         // Fresh portfolio cache - use immediately
-        return { isValid: true, shouldRefreshInBackground: true };
+        console.log(
+          `  ✅ Cache is FRESH (< ${CACHE_DURATION.SHORT / (60 * 1000)} min)`
+        );
+        return { isValid: true, shouldRefreshInBackground: false };
       } else if (age < CACHE_DURATION.MEDIUM) {
         // Portfolio cache is getting stale - use it but refresh in background
+        console.log(
+          `  ✅ Cache is STALE but valid (< ${
+            CACHE_DURATION.MEDIUM / (60 * 1000)
+          } min)`
+        );
         return { isValid: true, shouldRefreshInBackground: true };
       } else if (age < CACHE_DURATION.LONG) {
         // Old portfolio cache - use it but definitely refresh
+        console.log(
+          `  ✅ Cache is OLD but valid (< ${
+            CACHE_DURATION.LONG / (60 * 1000)
+          } min)`
+        );
         return { isValid: true, shouldRefreshInBackground: true };
       } else {
         // Portfolio cache is too old - invalidate
+        console.log(
+          `  ❌ Cache is TOO OLD (> ${
+            CACHE_DURATION.LONG / (60 * 1000)
+          } min) - invalid`
+        );
         return { isValid: false, shouldRefreshInBackground: false };
       }
     } catch (error) {
-      console.error("Error checking portfolio cache validity:", error);
+      console.error("❌ Error checking portfolio cache validity:", error);
       return { isValid: false, shouldRefreshInBackground: false };
     }
   };
@@ -425,7 +486,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const cacheKey = `${StorageKeys.PORTFOLIO_DATA}_${userWalletGroupId}`;
       const cachedData = await SecureStore.getItemAsync(cacheKey);
       if (!cachedData) return null;
-      
+
       const parsedData = JSON.parse(cachedData);
       console.log(
         `🚀 Loading portfolio from cache for wallet group: ${userWalletGroupId}`
@@ -445,14 +506,43 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       const cacheKey = `${StorageKeys.PORTFOLIO_DATA}_${userWalletGroupId}`;
       const timestampKey = `${StorageKeys.PORTFOLIO_TIMESTAMP}_${userWalletGroupId}`;
+      const timestamp = Date.now();
 
-      await SecureStore.setItemAsync(cacheKey, JSON.stringify(portfolioData));
-      await SecureStore.setItemAsync(timestampKey, Date.now().toString());
+      console.log(
+        `💾 Saving portfolio to cache for wallet ${userWalletGroupId}:`
+      );
+      console.log(`  - Data key: ${cacheKey}`);
+      console.log(`  - Timestamp key: ${timestampKey}`);
+      console.log(
+        `  - Timestamp: ${timestamp} (${new Date(timestamp).toISOString()})`
+      );
+      console.log(
+        `  - Has mainWalletGroupPortfolio: ${!!portfolioData?.mainWalletGroupPortfolio}`
+      );
+
+      const dataString = JSON.stringify(portfolioData);
+      console.log(`  - Data size: ${dataString.length} bytes`);
+
+      await SecureStore.setItemAsync(cacheKey, dataString);
+      await SecureStore.setItemAsync(timestampKey, timestamp.toString());
+
+      // Verify it was saved
+      const verifyTimestamp = await SecureStore.getItemAsync(timestampKey);
+      const verifyData = await SecureStore.getItemAsync(cacheKey);
+      console.log(`  ✅ Cache saved and verified:`);
+      console.log(`     - Timestamp exists: ${!!verifyTimestamp}`);
+      console.log(`     - Data exists: ${!!verifyData}`);
+
       console.log(
         `💾 Portfolio cached successfully for wallet group: ${userWalletGroupId}`
       );
     } catch (error) {
-      console.error("Error saving portfolio to cache:", error);
+      console.error("❌ Error saving portfolio to cache:", error);
+      // Log the error details
+      if (error instanceof Error) {
+        console.error("  - Error message:", error.message);
+        console.error("  - Error stack:", error.stack);
+      }
     }
   };
 
@@ -477,80 +567,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error("Error clearing portfolio cache:", error);
-    }
-  };
-
-  useEffect(() => {
-    // Clear all portfolio cache on app start to ensure fresh data
-    clearPortfolioCache(mainUserWalletGroup?.walletGroupId?._id);
-    clearPortfolioCache(mainUserWalletGroup?._id);
-  }, [mainUserWalletGroup]);
-
-  const refreshPortfolioInBackground = async (): Promise<void> => {
-    // Prevent multiple simultaneous background refreshes
-    if (
-      isBackgroundPortfolioRefresh ||
-      isRetryingPendingWallets ||
-      isAuthenticating ||
-      isSendingTransaction
-    ) {
-      console.log(
-        "⏸️ Background portfolio refresh already in progress or other operations running, skipping..."
-      );
-      return;
-    }
-
-    try {
-      if (
-        !isWalletAuthenticated ||
-        !currentWalletUser ||
-        !mainUserWalletGroup
-      ) {
-        return;
-      }
-
-      setIsBackgroundPortfolioRefresh(true);
-      console.log("🔄 Refreshing portfolio in background...");
-      const sdk = zapSDKService.getSDK();
-      
-      if (sdk && typeof sdk.portfolio?.getUserPortfolio === "function") {
-        const portfolioOptions = mainUserWalletGroup?._id
-          ? {
-              mainUserWalletGroupId: mainUserWalletGroup._id,
-              bypassCache: true,
-            }
-          : {};
-
-        const portfolioData = await zapSDKService.executeWithNetworkHandling(
-          () =>
-            sdk.portfolio.getUserPortfolio(currentWalletUser, portfolioOptions),
-          "getUserPortfolio"
-        );
-
-        console.log(
-          "🔍 Portfolio data:",
-          portfolioData.mainWalletGroupPortfolio.mainWalletPortfolio.accounts
-            .filter((account) => account.balance > 0)
-            .map((account) => [account.name, account.balance])
-        );
-
-        if (portfolioData) {
-          await savePortfolioToCache(
-            portfolioData,
-            portfolioOptions.mainUserWalletGroupId
-          );
-          
-          // Update state if user is still on the app
-          setPortfolio(portfolioData);
-          setLastUpdate(new Date());
-          console.log("✅ Background portfolio refresh completed");
-        }
-      }
-    } catch (error) {
-      console.error("❌ Background portfolio refresh failed:", error);
-      // Don't throw error - this is background operation
-    } finally {
-      setIsBackgroundPortfolioRefresh(false);
     }
   };
 
@@ -648,7 +664,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       isUserWalletGroups: true,
     };
 
-    if (!isExchangeAuth && shouldRoute) {
+    // Route to wallet if wallet groups exist - wallet groups take priority
+    // This ensures users with wallets are routed to wallet screen even if they have exchange auth
+    if (shouldRoute && uWalletGroups.userWalletGroups.length > 0) {
+      console.log(
+        "✅ Wallet groups found, routing to wallet screen (wallet groups take priority)"
+      );
       safeNavigateToWallet();
     }
 
@@ -722,7 +743,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   const routeToWallet = async (
     isExchangeAuth: boolean,
     walletUserId: string | null,
-    shouldRoute: boolean = true
+    shouldRoute: boolean = true,
+    hasExchangeAuth: boolean = false
   ) => {
     let result = createBaseResult();
 
@@ -735,18 +757,32 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           shouldRoute,
           result
         );
-        if (walletGroups) {
+        if (walletGroups && walletGroups.length > 0) {
           result = {
             ...result,
             userWalletGroups: [...walletGroups],
             isUserWalletGroups: true,
           };
+          // Route to wallet if wallet groups found in cache
+          // Wallet groups take priority over exchange auth
+          if (shouldRoute) {
+            console.log(
+              "✅ Wallet groups found in cache, routing to wallet screen"
+            );
+            safeNavigateToWallet();
+          }
         }
         return result;
       } else {
         result = { ...result, userWalletGroups, isUserWalletGroups: true };
 
-        if (!isExchangeAuth && shouldRoute) {
+        // Route to wallet if wallet groups exist, regardless of exchange auth
+        // Wallet groups take priority over exchange auth
+        if (shouldRoute && userWalletGroups.length > 0) {
+          console.log("✅ Wallet groups found, routing to wallet screen");
+          safeNavigateToWallet();
+        } else if (!hasExchangeAuth && shouldRoute) {
+          // Only check exchange auth condition if no wallet groups
           safeNavigateToWallet();
         }
         return result;
@@ -787,7 +823,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       // Get persistent device fingerprint (stable, doesn't change)
       const deviceFingerprint = await getPersistentDeviceFingerprint();
-      console.log("🔐 Using persistent device fingerprint for login");
+      console.log(
+        "🔐 Using persistent device fingerprint for login",
+        deviceFingerprint
+      );
 
       // Get push notification token (can change, so get fresh each time)
       let pushToken = "";
@@ -812,16 +851,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // Device token is the IMEI or something else that is unique to the device
-      const deviceToken =
+      const deviceToken: string =
         Device.osInternalBuildId ||
         Device.modelId ||
         `unknown-${uniqueId("supaaa-unique-id")}`;
-
-      console.log(
-        deviceToken,
-        deviceFingerprint,
-        "___DEVICE TOKEN AND FINGERPRINT___"
-      );
 
       // Attempt device-based login
       const success = await walletLogin(
@@ -857,12 +890,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       if (existingFingerprint) {
         console.log("📱 Using existing device fingerprint");
-        return existingFingerprint;
+        return JSON.parse(existingFingerprint);
       }
 
       // Create new persistent fingerprint
       console.log("🔧 Creating new persistent device fingerprint");
-      const fingerprint =
+      const fingerprint: string =
         Device.osBuildFingerprint ||
         Device.osInternalBuildId ||
         Device.modelId ||
@@ -915,7 +948,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsWalletAuthenticated(true);
         setCurrentWalletUser(result.userId);
         await checkAuthenticationAndRoute(!!exchangeUserData?.username);
-        // await checkAuthenticationAndRoute(false);
         return true;
       } else {
         setError(result || "Login failed");
@@ -1029,6 +1061,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     username?: string | null;
     userSource?: string | null;
     referralCode?: string | null;
+    userId?: string | null;
   }): Promise<{
     success: boolean;
     message: string;
@@ -1037,9 +1070,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsAuthenticating(true);
       setError(null);
 
+      // Extract userId from data and use it, or fall back to currentExchangeUser
+      const userId = data.userId || currentExchangeUser;
+
+      // Remove userId from data object before passing to SDK
+      const { userId: _, ...onboardingData } = data;
+
       const result = await zapSDKService.completeOnboarding(
-        currentExchangeUser,
-        data
+        userId,
+        onboardingData
       );
 
       // Prefer user in response if present; otherwise fetch current exchange user
@@ -1127,24 +1166,25 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       if (!result?.userWalletGroupId) {
-          await WalletCredentialsStorage.markWalletCreationAttempt(
-            walletStorageId,
-            false
-          );
+        await WalletCredentialsStorage.markWalletCreationAttempt(
+          walletStorageId,
+          false
+        );
         throw new Error("Failed to create wallet group");
       }
 
       await WalletCredentialsStorage.markWalletAsCreated(
-            walletStorageId,
+        walletStorageId,
         result.userWalletGroupId
       );
 
       const newUserWalletGroups = await refreshUserWalletGroups();
 
-      await switchWallet(result.userWalletGroupId, newUserWalletGroups);
+      // Force refresh when switching to newly created wallet to ensure fresh data
+      await switchWallet(result.userWalletGroupId, newUserWalletGroups, true);
 
-        return {
-          walletStorageId,
+      return {
+        walletStorageId,
         name,
         isCreated: true,
       };
@@ -1182,121 +1222,279 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         userWalletGroupId
       );
 
-      // Check if credentials are already stored
-      const existingCredentials =
-        await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+      // GUARD: Check if derivation is already in progress for this wallet
+      if (derivingWalletsRef.current.has(userWalletGroupId)) {
+        console.log(
+          `⏸️ Derivation already in progress for wallet ${userWalletGroupId}, waiting and checking storage...`
+        );
+        // Wait a bit and check storage - derivation might have completed
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const existingAddresses = await AddressesStorage.getAddresses(
+          userWalletGroupId
+        );
+        const existingPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
+          userWalletGroupId
+        );
+        if (existingAddresses && existingAddresses.length > 0) {
+          console.log(
+            `✅ Found addresses after waiting (derivation completed): ${existingAddresses.length} addresses`
+          );
+          return {
+            addresses: existingAddresses,
+            privateKeys: existingPrivateKeys || [],
+          };
+        }
+        // If still not found, proceed with derivation (original call might have failed)
+        console.log(
+          `⚠️ Still no addresses found after waiting, proceeding with derivation...`
+        );
+      }
+
+      // Mark this wallet as being derived
+      derivingWalletsRef.current.add(userWalletGroupId);
+
+      try {
+        // FIRST: Check if addresses and private keys are already stored
+        // If they exist, return them immediately without deriving again
+        console.log(
+          `🔍 Checking for existing stored addresses and private keys for wallet: ${userWalletGroupId}`
+        );
+        const existingAddresses = await AddressesStorage.getAddresses(
+          userWalletGroupId
+        );
+        const existingPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
           userWalletGroupId
         );
 
-      if (!existingCredentials) {
-        // Store credentials if not already stored
-        await WalletCredentialsStorage.storeWalletCredential({
-          name: `Wallet ${userWalletGroupId}`,
-          class: seedPhrase
-            ? WALLET_GROUP_CLASS.SEEDPHRASE
-            : privateKey
-            ? WALLET_GROUP_CLASS.PRIVATE_KEY
-            : WALLET_GROUP_CLASS.WATCH,
-          chain: searchChain,
-          credential: seedPhrase || privateKey || watchAddress || "",
-          derivationIndex,
-          userWalletGroupId,
+        console.log(`🔍 Storage check result:`, {
+          existingAddressesCount: existingAddresses?.length || 0,
+          existingPrivateKeysCount: existingPrivateKeys?.length || 0,
+          existingAddresses: existingAddresses ? "exists" : "null",
+          existingPrivateKeys: existingPrivateKeys ? "exists" : "null",
         });
-        console.log("✅ Credentials stored for wallet:", userWalletGroupId);
-      }
 
-      const addresses: StoredAddress[] = [];
-      const privateKeys: StoredPrivateKey[] = [];
+        if (
+          existingAddresses &&
+          existingAddresses.length > 0 &&
+          existingPrivateKeys &&
+          existingPrivateKeys.length > 0
+        ) {
+          console.log(
+            `✅ Found existing stored addresses (${existingAddresses.length}) and private keys (${existingPrivateKeys.length}) - skipping derivation`
+          );
+          return {
+            addresses: existingAddresses,
+            privateKeys: existingPrivateKeys,
+          };
+        } else if (existingAddresses && existingAddresses.length > 0) {
+          // If we have addresses but no private keys, log a warning but still return what we have
+          console.log(
+            `⚠️ Found existing addresses (${
+              existingAddresses.length
+            }) but no private keys (${
+              existingPrivateKeys?.length || 0
+            }). Returning addresses only.`
+          );
+          return {
+            addresses: existingAddresses,
+            privateKeys: existingPrivateKeys || [],
+          };
+        }
 
-      if (watchAddress && searchChain) {
-        const chainInfo = await getChainInfo(searchChain);
-        // For watch addresses, just store the address
-        console.log("📝 Storing watch address:", watchAddress);
-        const addressData = {
-          chainId: chainInfo.chainId,
-          chainSymbol: searchChain,
-          chainName: chainInfo.chainName,
-          address: watchAddress,
-          logoUrl: chainInfo.logoUrl,
-          isEVM: chainInfo.isEVM,
-          timestamp: Date.now(),
-        };
+        console.log(
+          "ℹ️ No existing addresses found - proceeding with derivation..."
+        );
 
-        await AddressesStorage.storeAddresses(userWalletGroupId, [addressData]);
-        addresses.push(addressData);
-        console.log("✅ Watch address stored");
-      } else if (privateKey && searchChain) {
-        const chainInfo = await getChainInfo(searchChain);
-
-        try {
-          const derivedResult = await zapSDKService.derivePrivateKey(
-            privateKey,
-            searchChain
+        // Check if credentials are already stored
+        const existingCredentials =
+          await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+            userWalletGroupId
           );
 
-          if (chainInfo.isEVM) {
-            const evmChains = [
-              "ETH",
-              "MATIC",
-              "ARB",
-              "OP",
-              "BASE",
-              "AVAX",
-              "BSC",
-              "FTM",
-              "SONIC",
-              "BLAST",
-              "PLS",
-              "BERA",
-              "GNO",
-            ];
+        if (!existingCredentials) {
+          // Store credentials if not already stored
+          await WalletCredentialsStorage.storeWalletCredential({
+            name: `Wallet ${userWalletGroupId}`,
+            class: seedPhrase
+              ? WALLET_GROUP_CLASS.SEEDPHRASE
+              : privateKey
+              ? WALLET_GROUP_CLASS.PRIVATE_KEY
+              : WALLET_GROUP_CLASS.WATCH,
+            chain: searchChain,
+            credential: seedPhrase || privateKey || watchAddress || "",
+            derivationIndex,
+            userWalletGroupId,
+          });
+          console.log("✅ Credentials stored for wallet:", userWalletGroupId);
+        }
 
-            for (const evmChain of evmChains) {
-              const chainInformation =
-                evmChain === searchChain
-                  ? chainInfo
-                  : await getChainInfo(evmChain);
+        const addresses: StoredAddress[] = [];
+        const privateKeys: StoredPrivateKey[] = [];
+
+        if (watchAddress && searchChain) {
+          const chainInfo = await getChainInfo(searchChain);
+          // For watch addresses, just store the address
+          console.log("📝 Storing watch address:", watchAddress);
+          const addressData = {
+            chainId: chainInfo.chainId,
+            chainSymbol: searchChain,
+            chainName: chainInfo.chainName,
+            address: watchAddress,
+            logoUrl: chainInfo.logoUrl,
+            isEVM: chainInfo.isEVM,
+            timestamp: Date.now(),
+          };
+
+          await AddressesStorage.storeAddresses(userWalletGroupId, [
+            addressData,
+          ]);
+          addresses.push(addressData);
+          console.log("✅ Watch address stored");
+        } else if (privateKey && searchChain) {
+          const chainInfo = await getChainInfo(searchChain);
+
+          try {
+            const derivedResult = await zapSDKService.derivePrivateKey(
+              privateKey,
+              searchChain
+            );
+
+            if (chainInfo.isEVM) {
+              const evmChains = [
+                "ETH",
+                "MATIC",
+                "ARB",
+                "OP",
+                "BASE",
+                "AVAX",
+                "BSC",
+                "FTM",
+                "SONIC",
+                "BLAST",
+                "PLS",
+                "BERA",
+                "GNO",
+              ];
+
+              for (const evmChain of evmChains) {
+                const chainInformation =
+                  evmChain === searchChain
+                    ? chainInfo
+                    : await getChainInfo(evmChain);
+                const addressData = {
+                  chainId: chainInformation.chainId,
+                  chainSymbol: evmChain,
+                  chainName: chainInformation.chainName,
+                  address: derivedResult.address,
+                  logoUrl: chainInformation.logoUrl,
+                  isEVM: true,
+                  timestamp: Date.now(),
+                };
+
+                const privateKeyData = {
+                  chainId: chainInformation.chainId,
+                  chainSymbol: evmChain,
+                  chainName: chainInformation.chainName,
+                  privateKey,
+                  logoUrl: chainInformation.logoUrl,
+                  isEVM: true,
+                  timestamp: Date.now(),
+                };
+
+                addresses.push(addressData);
+                privateKeys.push(privateKeyData);
+              }
+            } else {
               const addressData = {
-                chainId: chainInformation.chainId,
-                chainSymbol: evmChain,
-                chainName: chainInformation.chainName,
+                chainId: chainInfo.chainId,
+                chainSymbol: searchChain,
+                chainName: chainInfo.chainName,
                 address: derivedResult.address,
-                logoUrl: chainInformation.logoUrl,
-                isEVM: true,
+                logoUrl: chainInfo.logoUrl,
+                isEVM: false,
                 timestamp: Date.now(),
               };
 
               const privateKeyData = {
-                chainId: chainInformation.chainId,
-                chainSymbol: evmChain,
-                chainName: chainInformation.chainName,
+                chainId: chainInfo.chainId,
+                chainSymbol: searchChain,
+                chainName: chainInfo.chainName,
                 privateKey,
-                logoUrl: chainInformation.logoUrl,
-                isEVM: true,
+                logoUrl: chainInfo.logoUrl,
+                isEVM: false,
                 timestamp: Date.now(),
               };
 
               addresses.push(addressData);
               privateKeys.push(privateKeyData);
             }
-          } else {
+
+            await AddressesStorage.storeAddresses(userWalletGroupId, addresses);
+            await PrivateKeysStorage.storePrivateKeys(
+              userWalletGroupId,
+              privateKeys
+            );
+
+            console.log(
+              `✅ Private key and derived address stored for ${searchChain}`
+            );
+          } catch (error) {
+            console.warn(
+              `⚠️ Failed to derive ${searchChain} from private key:`,
+              error
+            );
+          }
+        } else if (seedPhrase) {
+          console.log("🌱 Deriving multi-chain credentials from seed phrase");
+
+          setIsAccountDeriving(true);
+          // Store Seedphrase in centralized storage
+          await SeedPhraseStorage.storeSeedPhrase(
+            userWalletGroupId,
+            seedPhrase
+          );
+
+          // Use InteractionManager to defer heavy computation and allow UI to remain responsive
+          // This prevents the app from freezing during crypto derivation
+          const derivedResult = await new Promise<any>((resolve, reject) => {
+            // Wait for any pending interactions to complete, then run derivation
+            InteractionManager.runAfterInteractions(() => {
+              // Further defer to next tick to ensure UI is fully responsive
+              setTimeout(async () => {
+                try {
+                  const result = await zapSDKService.deriveMultiChainAddresses(
+                    seedPhrase,
+                    derivationIndex
+                  );
+                  resolve(result);
+                } catch (error) {
+                  reject(error);
+                }
+              }, 100); // Small delay to ensure UI thread is free
+            });
+          });
+
+          setIsAccountDeriving(false);
+
+          for (const chainSymbol in derivedResult.addresses) {
+            const chainInfo = await getChainInfo(chainSymbol);
             const addressData = {
               chainId: chainInfo.chainId,
-              chainSymbol: searchChain,
+              chainSymbol: chainSymbol,
               chainName: chainInfo.chainName,
-              address: derivedResult.address,
+              address: derivedResult.addresses[chainSymbol],
               logoUrl: chainInfo.logoUrl,
-              isEVM: false,
+              isEVM: chainInfo.isEVM,
               timestamp: Date.now(),
             };
 
             const privateKeyData = {
               chainId: chainInfo.chainId,
-              chainSymbol: searchChain,
+              chainSymbol: chainSymbol,
               chainName: chainInfo.chainName,
-              privateKey,
+              privateKey: derivedResult.privateKeys[chainSymbol],
               logoUrl: chainInfo.logoUrl,
-              isEVM: false,
+              isEVM: chainInfo.isEVM,
               timestamp: Date.now(),
             };
 
@@ -1304,73 +1502,45 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             privateKeys.push(privateKeyData);
           }
 
+          console.log(
+            `💾 Storing ${addresses.length} addresses and ${privateKeys.length} private keys for wallet: ${userWalletGroupId}`
+          );
           await AddressesStorage.storeAddresses(userWalletGroupId, addresses);
           await PrivateKeysStorage.storePrivateKeys(
             userWalletGroupId,
             privateKeys
           );
 
-                  console.log(
-            `✅ Private key and derived address stored for ${searchChain}`
+          // Verify storage was successful
+          const verifyAddresses = await AddressesStorage.getAddresses(
+            userWalletGroupId
           );
-        } catch (error) {
-          console.warn(
-            `⚠️ Failed to derive ${searchChain} from private key:`,
-            error
+          const verifyPrivateKeys = await PrivateKeysStorage.getPrivateKeys(
+            userWalletGroupId
+          );
+          console.log(
+            `✅ Storage verification: ${
+              verifyAddresses?.length || 0
+            } addresses and ${
+              verifyPrivateKeys?.length || 0
+            } private keys stored for wallet: ${userWalletGroupId}`
           );
         }
-      } else if (seedPhrase) {
-        console.log("🌱 Deriving multi-chain credentials from seed phrase");
 
-        setIsAccountDeriving(true);
-        // Store Seedphrase in centralized storage
-        await SeedPhraseStorage.storeSeedPhrase(userWalletGroupId, seedPhrase);
-
-        const derivedResult = await zapSDKService.deriveMultiChainAddresses(
-          seedPhrase,
-          derivationIndex
-        );
-        setIsAccountDeriving(false);
-
-        for (const chainSymbol in derivedResult.addresses) {
-          const chainInfo = await getChainInfo(chainSymbol);
-          const addressData = {
-            chainId: chainInfo.chainId,
-            chainSymbol: chainSymbol,
-            chainName: chainInfo.chainName,
-            address: derivedResult.addresses[chainSymbol],
-            logoUrl: chainInfo.logoUrl,
-            isEVM: chainInfo.isEVM,
-            timestamp: Date.now(),
-          };
-
-          const privateKeyData = {
-            chainId: chainInfo.chainId,
-            chainSymbol: chainSymbol,
-            chainName: chainInfo.chainName,
-            privateKey: derivedResult.privateKeys[chainSymbol],
-            logoUrl: chainInfo.logoUrl,
-            isEVM: chainInfo.isEVM,
-            timestamp: Date.now(),
-          };
-
-          addresses.push(addressData);
-          privateKeys.push(privateKeyData);
-        }
-
-        await AddressesStorage.storeAddresses(userWalletGroupId, addresses);
-        await PrivateKeysStorage.storePrivateKeys(
-          userWalletGroupId,
-          privateKeys
-        );
+        console.log("✅ All credentials stored and derived successfully");
+        return { addresses, privateKeys };
+      } catch (innerError) {
+        console.error("❌ Error in derivation logic:", innerError);
+        throw innerError; // Re-throw to be caught by outer catch
       }
-
-      console.log("✅ All credentials stored and derived successfully");
-      return { addresses, privateKeys };
     } catch (error) {
       console.error("❌ Failed to store and derive credentials:", error);
       setIsAccountDeriving(false);
       return { addresses: [], privateKeys: [] };
+    } finally {
+      // Always remove from deriving set when done
+      derivingWalletsRef.current.delete(userWalletGroupId);
+      console.log(`✅ Removed wallet ${userWalletGroupId} from deriving set`);
     }
   };
 
@@ -1385,11 +1555,105 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         return null;
       }
 
-      const addresses = await AddressesStorage.getAddresses(walletId);
+      let addresses = await AddressesStorage.getAddresses(walletId);
 
-      if (!addresses) return null;
+      // If no addresses found, try to derive them on-demand
+      if (!addresses || addresses.length === 0) {
+        // Check if already deriving for this wallet to prevent duplicate derivations
+        if (derivingWalletsRef.current.has(walletId)) {
+          console.log(
+            "⏳ Address derivation already in progress for wallet:",
+            walletId
+          );
+          // Wait a bit and retry getting addresses
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          addresses = await AddressesStorage.getAddresses(walletId);
+          if (addresses && addresses.length > 0) {
+            return addresses;
+          }
+          return null;
+        }
 
-      return addresses;
+        console.log(
+          "⚠️ No stored addresses found, attempting to derive on-demand for wallet:",
+          walletId
+        );
+
+        // Check if we have credentials for this wallet
+        const walletCredentials =
+          await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+            walletId
+          );
+
+        if (walletCredentials && walletCredentials.credential) {
+          try {
+            // Mark wallet as being derived
+            derivingWalletsRef.current.add(walletId);
+
+            console.log(
+              "🔄 Deriving addresses on-demand for wallet:",
+              walletId
+            );
+            // Use InteractionManager to defer heavy computation and allow UI to remain responsive
+            // This prevents the app from freezing during crypto derivation
+            const derived = await new Promise<{
+              addresses: StoredAddress[];
+              privateKeys: any[];
+            }>((resolve, reject) => {
+              InteractionManager.runAfterInteractions(() => {
+                setTimeout(async () => {
+                  try {
+                    const result = await storeAndDeriveCredentials({
+                      userWalletGroupId: walletId,
+                      seedPhrase:
+                        walletCredentials.class ===
+                        WALLET_GROUP_CLASS.SEEDPHRASE
+                          ? walletCredentials.credential
+                          : undefined,
+                      privateKey:
+                        walletCredentials.class ===
+                        WALLET_GROUP_CLASS.PRIVATE_KEY
+                          ? walletCredentials.credential
+                          : undefined,
+                      watchAddress:
+                        walletCredentials.class === WALLET_GROUP_CLASS.WATCH
+                          ? walletCredentials.credential
+                          : undefined,
+                      derivationIndex: walletCredentials.derivationIndex,
+                    });
+                    resolve(result);
+                  } catch (error) {
+                    reject(error);
+                  }
+                }, 100); // Small delay to ensure UI thread is free
+              });
+            });
+
+            if (derived.addresses && derived.addresses.length > 0) {
+              console.log(
+                "✅ Successfully derived addresses on-demand:",
+                derived.addresses.length
+              );
+              addresses = derived.addresses;
+            }
+          } catch (deriveError) {
+            console.error(
+              "❌ Failed to derive addresses on-demand:",
+              deriveError
+            );
+          } finally {
+            // Remove from deriving set
+            derivingWalletsRef.current.delete(walletId);
+          }
+        } else {
+          console.warn(
+            "⚠️ No credentials found for wallet, cannot derive addresses:",
+            walletId
+          );
+        }
+      }
+
+      return addresses || null;
     } catch (error) {
       console.error("❌ Failed to get addresses:", error);
       return null;
@@ -1435,13 +1699,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         return null;
       }
 
-      console.log(chainSymbol, "chainSymbol");
+      console.log(
+        `📍 getAddress called for ${chainSymbol}, walletId: ${walletId}`
+      );
 
+      // getAddresses will now derive addresses on-demand if not found
       const addresses = await getAddresses(walletId);
       const filteredAddresses = addresses?.filter(
         (addr) => addr.chainSymbol.toLowerCase() === chainSymbol.toLowerCase()
       );
       if (filteredAddresses && filteredAddresses.length > 0) {
+        console.log(`✅ Found address for ${chainSymbol}`);
         return filteredAddresses[0].address;
       }
 
@@ -1468,13 +1736,19 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             timestamp: Date.now(),
           };
 
-          await AddressesStorage.storeAddresses(walletId, [addressData]);
+          // Get existing addresses and add the new one
+          const existingAddresses =
+            (await AddressesStorage.getAddresses(walletId)) || [];
+          const updatedAddresses = [...existingAddresses, addressData];
+          await AddressesStorage.storeAddresses(walletId, updatedAddresses);
           console.log(`✅ Reused ETH address for EVM chain ${chainSymbol}`);
           return ethAddress;
         }
       }
 
-      console.error("❌ Failed to get address for chain");
+      console.warn(
+        `⚠️ No address found for ${chainSymbol} (even after on-demand derivation attempt)`
+      );
       return null;
     } catch (error) {
       console.error("❌ Failed to get address for chain:", error);
@@ -1501,7 +1775,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // For EVM chains, try to get ETH private key first (since all EVM chains use same derivation)
       if (isEVMChain(chainSymbol) && chainSymbol.toUpperCase() !== "ETH") {
-      console.log(
+        console.log(
           `🔍 EVM chain ${chainSymbol} - checking for existing ETH private key first`
         );
         const ethPrivateKeys = await getPrivateKeys(walletId, "ETH");
@@ -1548,7 +1822,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       const storedSeedPhrase = await SeedPhraseStorage.getSeedPhrase(walletId);
 
       if (storedSeedPhrase?.seedPhrase) {
-                console.log(
+        console.log(
           "✅ Retrieved seed phrase from centralized storage for wallet:",
           walletId
         );
@@ -1556,7 +1830,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // If no stored seed phrase, get from credentials and store it
-                console.log(
+      console.log(
         "🔍 No stored seed phrase found, retrieving from credentials and storing..."
       );
       const credentials =
@@ -1577,7 +1851,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           credentials.derivationIndex
         );
 
-                  console.log(
+        console.log(
           "✅ Retrieved and stored seed phrase for wallet:",
           walletId
         );
@@ -1684,9 +1958,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     walletStorageId: string;
   }): Promise<{ success: boolean; error?: string; shouldRetry?: boolean }> => {
     try {
+      console.log("📝 createAccounts called:", {
+        userWalletGroupId,
+        walletStorageId,
+        hasSeedPhrase: !!seedPhrase,
+        hasPrivateKey: !!privateKey,
+        hasWatchAddress: !!watchAddress,
+        derivationIndex,
+      });
+
       const sdk = zapSDKService.getSDK();
+      if (!sdk) {
+        throw new Error("SDK not initialized");
+      }
 
       // Derive and store credentials using our centralized system
+      console.log("🔄 Step 1: Calling storeAndDeriveCredentials...");
       const accounts = await storeAndDeriveCredentials({
         userWalletGroupId,
         seedPhrase,
@@ -1696,6 +1983,27 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         derivationIndex,
       });
 
+      console.log("✅ Step 1 Complete: storeAndDeriveCredentials finished:", {
+        addressesCount: accounts.addresses.length,
+        privateKeysCount: accounts.privateKeys.length,
+        addresses: accounts.addresses.map((a) => ({
+          chain: a.chainSymbol,
+          address: a.address.substring(0, 10) + "...",
+        })),
+      });
+
+      if (accounts.addresses.length === 0) {
+        console.error(
+          "❌ Step 1 Failed: No addresses derived! Cannot add accounts to wallet."
+        );
+        return {
+          success: false,
+          error: "No addresses were derived",
+          shouldRetry: true,
+        };
+      }
+
+      console.log("🔄 Step 2: Preparing account data for SDK...");
       const addresses: Record<string, string> = {},
         hashedPrivateKeys: Record<string, string> = {};
 
@@ -1706,19 +2014,76 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           WalletUtils.hashPrivateKey(accounts.privateKeys[i].privateKey);
       }
 
-      await zapSDKService.executeWithNetworkHandling(
-        () =>
-          sdk.wallets.addAccountsToWallet({
+      const accountsToAdd = accounts.addresses.map((addr) => ({
+        walletAddress: addr.address,
+        chainSymbol: addr.chainSymbol,
+        hashedPrivateKey: hashedPrivateKeys[addr.chainSymbol] || "",
+      }));
+
+      console.log("🔄 Step 3: Preparing to call SDK addAccountsToWallet:", {
+        userWalletGroupId,
+        accountsCount: accountsToAdd.length,
+        chainSymbols: accountsToAdd.map((a) => a.chainSymbol),
+        accountDetails: accountsToAdd.map((a) => ({
+          chain: a.chainSymbol,
+          address: a.walletAddress.substring(0, 10) + "...",
+          hasHash: !!a.hashedPrivateKey,
+        })),
+      });
+
+      try {
+        console.log("🔄 Step 4: Calling SDK addAccountsToWallet NOW...");
+
+        // Add timeout to prevent hanging forever
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("addAccountsToWallet timed out after 30 seconds"));
+          }, 30000); // 30 second timeout
+        });
+
+        const sdkCallPromise = zapSDKService.executeWithNetworkHandling(() => {
+          console.log(
+            "🔄 Inside SDK executeWithNetworkHandling wrapper, calling sdk.wallets.addAccountsToWallet..."
+          );
+          const result = sdk.wallets.addAccountsToWallet({
             userWalletGroupId,
-            accounts: accounts.addresses.map((addr) => ({
-              walletAddress: addr.address,
-              chainSymbol: addr.chainSymbol,
-              hashedPrivateKey: hashedPrivateKeys[addr.chainSymbol] || "",
-            })),
-          }),
-        "addAccountsToWallet"
-      );
-      console.log("✅ Successfully added accounts to SDK without derivation");
+            accounts: accountsToAdd,
+          });
+          console.log("🔄 SDK call returned (may be promise):", typeof result);
+          return result;
+        }, "addAccountsToWallet");
+
+        console.log("⏳ Waiting for SDK call to complete...");
+        const addAccountsResult = (await Promise.race([
+          sdkCallPromise,
+          timeoutPromise,
+        ])) as any;
+
+        console.log("✅ Step 4 Complete: Successfully added accounts to SDK:", {
+          userWalletGroupId,
+          accountsCount: accountsToAdd.length,
+          result: addAccountsResult,
+          resultType: typeof addAccountsResult,
+        });
+      } catch (addAccountsError) {
+        console.error("❌ Step 4 Failed: Failed to add accounts to SDK:", {
+          error: addAccountsError,
+          message:
+            addAccountsError instanceof Error
+              ? addAccountsError.message
+              : String(addAccountsError),
+          stack:
+            addAccountsError instanceof Error
+              ? addAccountsError.stack
+              : undefined,
+          errorType: typeof addAccountsError,
+          errorKeys:
+            addAccountsError && typeof addAccountsError === "object"
+              ? Object.keys(addAccountsError)
+              : "not an object",
+        });
+        throw addAccountsError; // Re-throw to be caught by outer try-catch
+      }
 
       await WalletCredentialsStorage.markWalletAsAccountsCreated(
         walletStorageId,
@@ -1830,7 +2195,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (walletGroupsArray.length > 0) {
         await saveWalletGroupsToCache(walletGroupsArray);
       }
-      
+
       setUserWalletGroups(walletGroupsArray);
       return walletGroupsArray;
     } catch (error) {
@@ -1839,8 +2204,19 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
+  const normalizeUserTokenList = (
+    userTokenList: IUserPortfolio[] | { data: IUserPortfolio[] } | undefined
+  ): IUserPortfolio[] => {
+    return Array.isArray(userTokenList)
+      ? userTokenList
+      : (userTokenList as { data: IUserPortfolio[] })?.data || [];
+  };
+
   // Portfolio methods with smart caching
-  const refreshPortfolio = async (): Promise<void> => {
+  const refreshPortfolio = async (
+    explicitWalletId?: string,
+    bypassCache?: boolean
+  ): Promise<void> => {
     try {
       // Handle race condition when switching wallets quickly
       if (isRefreshingPortfolio && portfolioAbortController) {
@@ -1849,24 +2225,33 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsRefreshingPortfolio(false);
       }
 
+      setIsRefreshingPortfolio(true);
+
       // Check if user is authenticated before making portfolio request
       if (!isWalletAuthenticated || !currentWalletUser) {
         setError("Wallet User not authenticated");
+        setIsRefreshingPortfolio(false);
         return;
       }
 
-      console.log(
-        "🔍 Refreshing portfolio for wallet group:",
-        mainUserWalletGroup?._id
-      ),
-        mainUserWalletGroup?.name;
-      // Check if we have cached portfolio data for this wallet group
-      const cacheStatus = await isPortfolioCacheValid(mainUserWalletGroup?._id);
-      
-      if (cacheStatus.isValid) {
-        const cachedPortfolio = await loadPortfolioFromCache(
-          mainUserWalletGroup?._id
+      // IMPORTANT: Capture the current wallet ID at the start of the function
+      // This prevents race conditions where the wallet might change during execution
+      const walletIdToRefresh = explicitWalletId || mainUserWalletGroup?._id;
+
+      if (!walletIdToRefresh) {
+        console.warn(
+          "⚠️ No wallet ID available for portfolio refresh, skipping..."
         );
+        setError("No wallet ID available for portfolio refresh");
+        setIsRefreshingPortfolio(false);
+        return;
+      }
+
+      // Check if we have cached portfolio data for this wallet group
+      const cacheStatus = await isPortfolioCacheValid(walletIdToRefresh);
+
+      if (cacheStatus.isValid && !bypassCache) {
+        const cachedPortfolio = await loadPortfolioFromCache(walletIdToRefresh);
         console.log(
           "🔍 Cached portfolio:",
           cachedPortfolio.mainWalletGroupPortfolio
@@ -1877,15 +2262,15 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             cachedPortfolio?.mainWalletGroupPortfolio?.walletGroup?._id;
           const currentWalletGroupId = mainUserWalletGroup?.walletGroupId?._id;
 
-          console.log("🔍 Cached wallet group id:", cachedWalletGroupId);
-          console.log("🔍 Current wallet group id:", currentWalletGroupId);
-
           if (cachedWalletGroupId !== currentWalletGroupId) {
             // Ignore cached data and fetch fresh
+            console.log(
+              "⚠️ Cached wallet group ID doesn't match, fetching fresh"
+            );
           } else {
-          setPortfolio(cachedPortfolio);
-          setLastUpdate(new Date());
-          setError(null);
+            setPortfolio(cachedPortfolio);
+            setLastUpdate(new Date());
+            setError(null);
 
             console.log(
               "🔍 Portfolio cached successfully",
@@ -1893,16 +2278,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             );
 
             // If cache is stale, refresh in background
-          if (cacheStatus.shouldRefreshInBackground) {
-              refreshPortfolioInBackground();
-          }
-          return;
+            if (cacheStatus.shouldRefreshInBackground) {
+              console.log("refreshing portfolio in background");
+              refreshPortfolio(walletIdToRefresh, true);
+            } else {
+              setIsRefreshingPortfolio(false);
+            }
+            return;
           }
         }
       }
-
-      // If cache is invalid or empty, fetch from API
-      setIsRefreshingPortfolio(true);
 
       // Create new AbortController for this request
       const abortController = new AbortController();
@@ -1916,9 +2301,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         typeof sdk.portfolio.getUserPortfolio === "function"
       ) {
         // Always pass the mainUserWalletGroupId if it exists
-        const portfolioOptions = mainUserWalletGroup?._id
+        // Use the captured walletIdToRefresh to ensure we refresh the correct wallet
+        const portfolioOptions = walletIdToRefresh
           ? {
-              mainUserWalletGroupId: mainUserWalletGroup._id,
+              mainUserWalletGroupId: walletIdToRefresh,
               bypassCache: true,
             }
           : {};
@@ -1928,39 +2314,179 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           return;
         }
 
-        const portfolioData = await zapSDKService.executeWithNetworkHandling(
+        // STEP 1: Get portfolio data from backend (token list with metadata)
+        console.log(
+          `🔄 Calling getUserPortfolio with bypassCache: ${portfolioOptions.bypassCache}, walletId: ${walletIdToRefresh}`
+        );
+
+        let portfolioData = await zapSDKService.executeWithNetworkHandling(
           () =>
             sdk.portfolio.getUserPortfolio(currentWalletUser, portfolioOptions),
           "getUserPortfolio"
         );
 
+        if (!portfolioData) {
+          console.error(
+            "❌ getUserPortfolio returned null/undefined - cannot proceed"
+          );
+          setIsRefreshingPortfolio(false);
+          return;
+        }
+
         console.log(
-          "🔍 Portfolio data:",
-          portfolioData.mainWalletGroupPortfolio.mainWalletPortfolio.accounts
-            .filter((account) => account.balance > 0)
-            .map((account) => [account.name, account.balance])
+          `✅ getUserPortfolio completed - checking token statuses...`
         );
+
+        // Debug: Check token statuses in the fresh portfolio response
+        if (!portfolioData.userTokenList) {
+          console.warn("⚠️ portfolioData.userTokenList is missing or null");
+        } else {
+          const userTokenList = normalizeUserTokenList(
+            portfolioData.userTokenList
+          );
+
+          console.log(`🔍 Fresh portfolio response from backend:`, {
+            totalTokens: userTokenList.length,
+            enabledCount: userTokenList.filter(
+              (t: IUserPortfolio) => t.status === "ENABLED"
+            ).length,
+            disabledCount: userTokenList.filter(
+              (t: IUserPortfolio) => t.status === "DISABLED"
+            ).length,
+            hiddenCount: userTokenList.filter(
+              (t: IUserPortfolio) => t.status === "HIDDEN"
+            ).length,
+          });
+        }
+
+        // Check if wallet changed during the async operation
+        // If it did, abort this refresh to prevent showing wrong wallet's data
+        if (mainUserWalletGroup?._id !== walletIdToRefresh) {
+          console.log(
+            "⚠️ Wallet changed during portfolio fetch, aborting refresh...",
+            `Expected: ${walletIdToRefresh}, Got: ${mainUserWalletGroup?._id}`
+          );
+          setIsRefreshingPortfolio(false);
+          return;
+        }
 
         // Check if request was aborted after API call
         if (abortController.signal.aborted) {
           return;
         }
-        // Cache the portfolio data for this wallet group
-        if (portfolioData) {
-          await savePortfolioToCache(
-            portfolioData,
-            portfolioOptions.mainUserWalletGroupId
+
+        if (!portfolioData) {
+          setPortfolio(null);
+          setIsRefreshingPortfolio(false);
+          return;
+        }
+
+        // STEP 2: Get wallet addresses for all chains
+        const addressesByChain = new Map<string, string>();
+        if (walletChains && walletChains.length > 0) {
+          console.log(
+            `📍 Getting addresses for wallet: ${walletIdToRefresh} (captured wallet ID)`
+          );
+          for (const chain of walletChains) {
+            try {
+              // Pass explicit walletIdToRefresh to getAddress to avoid stale state
+              const address = await getAddress(chain.symbol, walletIdToRefresh);
+              if (address) {
+                addressesByChain.set(chain.symbol, address);
+              } else {
+                console.warn(`  ⚠️ No address found for ${chain.symbol}`);
+              }
+            } catch (error) {
+              console.warn(
+                `Failed to get address for chain ${chain.symbol}:`,
+                error
+              );
+            }
+          }
+          console.log(
+            `📍 Collected ${addressesByChain.size} addresses for wallet ${walletIdToRefresh}`
           );
         }
-        
-        setPortfolio(portfolioData);
+
+        // STEP 4: Extract tokens from portfolio and fetch batch balances
+        if (addressesByChain.size > 0 && portfolioData.userTokenList) {
+          try {
+            const tokens = BatchBalanceService.extractTokensFromPortfolio(
+              portfolioData,
+              addressesByChain
+            );
+
+            if (tokens.length > 0) {
+              // STEP 5: Group tokens by address
+              const addressGroups =
+                BatchBalanceService.groupTokensByAddress(tokens);
+
+              // STEP 6: Create batch requests for each address
+              const batchRequests =
+                BatchBalanceService.createBatchRequests(addressGroups);
+
+              // STEP 7: Fetch batch balances for all addresses in parallel
+              if (batchRequests.length > 0) {
+                console.log(
+                  `🔄 Fetching batch balances for ${batchRequests.length} address(es) with ${tokens.length} tokens`
+                );
+
+                const batchResponses =
+                  await BatchBalanceService.fetchBatchBalancesForAllAddresses(
+                    batchRequests
+                  );
+
+                // STEP 8: Merge all results (including native balances)
+                const { balanceResults, nativeBalances } =
+                  BatchBalanceService.mergeBatchResults(batchResponses);
+
+                // STEP 9: Update portfolio with batch balance results
+                portfolioData =
+                  BatchBalanceService.updatePortfolioWithBatchBalances(
+                    portfolioData,
+                    balanceResults,
+                    marketTokensMap,
+                    nativeBalances
+                  ) as UserPortfolioData;
+              }
+            }
+          } catch (batchError) {
+            console.warn(
+              "⚠️ Batch balance fetch failed, using portfolio balances:",
+              batchError
+            );
+          }
+        }
+
+        // Final check: Verify wallet hasn't changed before setting state
+        if (mainUserWalletGroup?._id !== walletIdToRefresh) {
+          console.log(
+            "⚠️ Wallet changed before setting portfolio state, aborting...",
+            `Expected: ${walletIdToRefresh}, Got: ${mainUserWalletGroup?._id}`
+          );
+          setIsRefreshingPortfolio(false);
+          return;
+        }
+
+        // STEP 9: Cache and set portfolio
+        if (portfolioData) {
+          // CRITICAL: Use the captured walletIdToRefresh to ensure we cache for the correct wallet
+          // This prevents race conditions where the wallet might change during the refresh
+          console.log(
+            `💾 Caching portfolio for wallet: ${walletIdToRefresh} (captured at start of refresh)`
+          );
+          await savePortfolioToCache(portfolioData, walletIdToRefresh);
+        }
+
+        // Cast to UserPortfolioData for setPortfolio (it accepts any)
+        setPortfolio(portfolioData as UserPortfolioData);
         setLastUpdate(new Date());
         setError(null);
       } else {
         setPortfolio(null);
       }
     } catch (error: any) {
-        setError(
+      setError(
         "Failed to refresh portfolio. Please check your authentication."
       );
     } finally {
@@ -1981,7 +2507,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         typeof sdk.portfolio.getUserPortfolio === "function"
       ) {
         return await sdk.portfolio.getUserPortfolio(currentWalletUser || "", {
-              mainUserWalletGroupId: userWalletGroupId || "",
+          mainUserWalletGroupId: userWalletGroupId || "",
         });
       } else {
         console.warn("Portfolio method not available on SDK");
@@ -2059,18 +2585,27 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   };
 
   // Retry creating pending wallets
-  const retryPendingWallets = async (): Promise<void> => {
+  const retryPendingWallets = async (force: boolean = false): Promise<void> => {
     // Skip retry if we're in the middle of creating a wallet or already retrying
+    // Unless force=true (e.g., explicitly called after wallet creation)
     if (
-      isCreatingWallet ||
-      isRetryingPendingWallets ||
-      isAuthenticating ||
-      isSendingTransaction
+      !force &&
+      (isCreatingWallet ||
+        isRetryingPendingWallets ||
+        isAuthenticating ||
+        isSendingTransaction)
     ) {
-      console.log("⏸️ Skipping retry - other operations in progress");
+      console.log("⏸️ Skipping retry - other operations in progress:", {
+        isCreatingWallet,
+        isRetryingPendingWallets,
+        isAuthenticating,
+        isSendingTransaction,
+        force,
+      });
       return;
     }
 
+    console.log("🔄 retryPendingWallets called - starting...", { force });
     setIsRetryingPendingWallets(true);
 
     try {
@@ -2085,6 +2620,40 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         accountsPendingWallets.length
       );
       console.log("❌ Failed wallets (won't retry):", failedWallets.length);
+
+      // If no accounts pending wallets, log all credentials to debug
+      if (accountsPendingWallets.length === 0) {
+        console.warn("⚠️ No accounts pending wallets found!");
+        const allCredentials =
+          await WalletCredentialsStorage.getAllCredentials();
+        console.log(
+          "📋 All stored wallet credentials:",
+          Object.values(allCredentials).map((w) => ({
+            id: w.id,
+            name: w.name,
+            userWalletGroupId: w.userWalletGroupId,
+            isCreated: w.isCreated,
+            areAccountsCreated: w.areAccountsCreated,
+            retryCount: w.retryCount,
+            isFailed: w.isFailed,
+          }))
+        );
+      }
+
+      // Debug: Log details of accounts pending wallets
+      if (accountsPendingWallets.length > 0) {
+        console.log(
+          "📋 Accounts pending wallets details:",
+          accountsPendingWallets.map((w) => ({
+            id: w.id,
+            name: w.name,
+            userWalletGroupId: w.userWalletGroupId,
+            isCreated: w.isCreated,
+            areAccountsCreated: w.areAccountsCreated,
+            hasCredential: !!w.credential,
+          }))
+        );
+      }
 
       if (failedWallets.length > 0) {
         console.log(
@@ -2164,11 +2733,32 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           userWalletGroupId: account.userWalletGroupId,
           isCreated: account.isCreated,
           areAccountsCreated: account.areAccountsCreated,
+          hasCredential: !!account.credential,
+          class: account.class,
         });
 
         try {
+          if (!account.userWalletGroupId) {
+            console.error("❌ No userWalletGroupId for account:", account.id);
+            continue;
+          }
+
+          if (!account.credential) {
+            console.error("❌ No credential for account:", account.id);
+            continue;
+          }
+
+          console.log("🔄 Calling createAccounts for wallet:", {
+            walletStorageId: account.id,
+            userWalletGroupId: account.userWalletGroupId,
+            name: account.name,
+            class: account.class,
+            hasCredential: !!account.credential,
+            derivationIndex: account.derivationIndex,
+          });
+
           const result = await createAccounts({
-            userWalletGroupId: account.userWalletGroupId || "",
+            userWalletGroupId: account.userWalletGroupId,
             seedPhrase:
               account.class === WALLET_GROUP_CLASS.SEEDPHRASE
                 ? account.credential
@@ -2182,6 +2772,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
                 ? account.credential
                 : undefined,
             derivationIndex: account.derivationIndex,
+            walletStorageId: account.id,
+          });
+
+          console.log("📊 createAccounts result:", {
+            success: result.success,
+            shouldRetry: result.shouldRetry,
+            error: result.error,
             walletStorageId: account.id,
           });
 
@@ -2203,7 +2800,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             // Will retry later
           }
         } catch (error) {
-          console.error("Failed to retry accounts pending wallets:", error);
+          console.error(
+            "❌ Failed to retry accounts pending wallets:",
+            account.id,
+            error
+          );
         }
       }
     } catch (error) {
@@ -2224,7 +2825,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     userWalletGroupId: string
   ): Promise<boolean> => {
     try {
-      console.log("🗑️ Removing wallet group:", walletGroupId);
+      console.log("🗑️ Removing wallet group:", {
+        walletGroupId,
+        userWalletGroupId,
+      });
 
       const sdk = zapSDKService.getSDK();
       if (!sdk) {
@@ -2232,8 +2836,48 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       // Remove from SDK
-      await zapSDKService.deleteWalletGroup(walletGroupId);
-      console.log("✅ Wallet group removed from SDK");
+      // If wallet group doesn't exist (404), continue with cleanup anyway
+      // This handles cases where the wallet group was already deleted
+      try {
+        await zapSDKService.deleteWalletGroup(walletGroupId);
+        console.log("✅ Wallet group removed from SDK");
+      } catch (deleteError: any) {
+        // Check for 404 "not found" error in multiple ways
+        // The error structure can vary depending on how it's wrapped
+        // Error can have: code="HTTP_ERROR", message="Wallet group not found"
+        // or status/statusCode=404, or response.status=404
+        const errorMessage = (deleteError?.message || "").toLowerCase();
+        const errorCode = deleteError?.code;
+        const errorStatus =
+          deleteError?.status ||
+          deleteError?.statusCode ||
+          deleteError?.response?.status;
+
+        const isNotFoundError =
+          errorMessage.includes("not found") ||
+          errorMessage.includes("wallet group not found") ||
+          errorStatus === 404 ||
+          (errorCode === "HTTP_ERROR" && errorMessage.includes("not found"));
+
+        if (isNotFoundError) {
+          console.warn(
+            "⚠️ Wallet group not found on backend (may already be deleted), continuing with local cleanup...",
+            {
+              errorCode: errorCode,
+              errorMessage: deleteError?.message,
+              errorStatus: errorStatus,
+            }
+          );
+          // Don't throw - continue with cleanup
+        } else {
+          // For other errors, re-throw
+          console.error(
+            "❌ Unexpected error deleting wallet group:",
+            deleteError
+          );
+          throw deleteError;
+        }
+      }
 
       // Remove credentials from storage
       await WalletCredentialsStorage.deleteCredentialsByUserWalletGroupId(
@@ -2303,7 +2947,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   // Wallet switching
   const switchWallet = async (
     userWalletGroupId: string,
-    walletGroupsToUse?: any[]
+    walletGroupsToUse?: any[],
+    forceRefresh: boolean = false
   ): Promise<void> => {
     const groupsToUse = walletGroupsToUse || userWalletGroups;
     try {
@@ -2321,30 +2966,57 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         throw new Error("Selected wallet group not found");
       }
 
-      // Update the main user wallet group state
+      // IMPORTANT: Update the main user wallet group state FIRST
       setMainUserWalletGroup(selectedGroup);
 
-      // Clear portfolio state to prevent stale data from previous wallet group
-      setPortfolio(null);
-      // Load portfolio from cache
-      const portfolio = await loadPortfolioFromCache(selectedGroup._id);
-      if (portfolio) setPortfolio(portfolio);
-      setLastUpdate(null);
-      setError(null);
       // Store the main wallet group ID in storage for persistence
       await SecureStore.setItemAsync(
         StorageKeys.MAIN_WALLET_GROUP_ID,
         userWalletGroupId
       );
+
       // Get credentials for the selected wallet group
       const credentials =
         await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
           userWalletGroupId
         );
-      if (credentials?.class === WALLET_GROUP_CLASS.SEEDPHRASE)
-      setCurrentSeedPhrase(credentials?.credential.toString() || null);
+      if (credentials?.class === WALLET_GROUP_CLASS.SEEDPHRASE) {
+        setCurrentSeedPhrase(credentials?.credential.toString() || null);
+      }
+
+      const cacheStatus = await isPortfolioCacheValid(userWalletGroupId);
+      console.log(`📋 Cache status for ${userWalletGroupId}:`, cacheStatus);
+
+      let cachedPortfolio = null;
+      if (cacheStatus.isValid) {
+        cachedPortfolio = await loadPortfolioFromCache(userWalletGroupId);
+      }
+
+      // If we have a valid cached portfolio, load it immediately to prevent UI clearing
+      if (
+        cachedPortfolio &&
+        cachedPortfolio?.mainWalletGroupPortfolio?.mainWalletPortfolio
+      ) {
+        // Set cached portfolio immediately - this prevents the asset list from clearing
+        setPortfolio(cachedPortfolio);
+        setLastUpdate(new Date());
+        setError(null);
+      } else {
+        // No valid cache - we need to refresh immediately
+        // Only set to null if forceRefresh is false (to show loading state)
+        if (!forceRefresh) {
+          setPortfolio(null);
+          setLastUpdate(null);
+          setError(null);
+        } else {
+          console.log(
+            `🔄 Force refresh requested for wallet ${userWalletGroupId} (no cache)`
+          );
+        }
+      }
     } catch (error) {
       console.error("Failed to switch wallet:", error);
+      setError("Failed to switch wallet");
       throw error;
     }
   };
@@ -2362,14 +3034,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     isUserWalletGroups,
     mainUserWalletGroup,
     portfolio,
+    setPortfolio, // Expose setPortfolio for optimistic updates
     transactions,
     isLoading,
     isInitializing,
     isAuthenticating,
     isRefreshingPortfolio,
     isSendingTransaction,
-    isBackgroundWalletGroupsRefresh,
-    isBackgroundPortfolioRefresh,
     error,
 
     // Authentication
@@ -2378,6 +3049,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     exchangeLogin,
     exchangeValidateOtp,
     getExchangeUser,
+    setCurrentExchangeUser,
+    setExchangeUserData,
+    setIsExchangeAuthenticated,
     completeOnboarding,
 
     // Wallet Operations

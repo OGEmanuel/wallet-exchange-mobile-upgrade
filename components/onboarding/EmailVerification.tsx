@@ -96,17 +96,19 @@ export default function EmailVerification({
           const userData = (response as ExchangeValidateOtpResponse)?.data
             ?.user;
 
-          await storageService.setItem(
-            StorageKeys.USER_PROFILE,
-            JSON.stringify(userData)
-          );
+          if (userData) {
+            await storageService.setItem(
+              StorageKeys.USER_PROFILE,
+              JSON.stringify(userData)
+            );
+          }
 
           if (!userData?.username) {
             // exchangeUser = await getExchangeUser();
           }
 
           const userResponse = await fetchUserById(userData as UserModel);
-          exchangeUser = userResponse.data;
+          exchangeUser = userResponse?.data ?? null;
 
           if (exchangeUser?.username) {
             // User has username, close bottom sheet and navigate to app
@@ -157,7 +159,8 @@ export default function EmailVerification({
         }
       } catch (error) {
         console.error("Email verification error:", error);
-        setError(error as string);
+        const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
+        setError(errorMessage);
         // Error handling is already done by the API service with toast notifications
       } finally {
         setIsVerifying(false);
