@@ -2,7 +2,7 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { StorageKeys, TokenData } from "@/src/core/api/models";
+import { StorageKeys } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppDispatch, AppRootState } from "@/state";
@@ -50,42 +50,33 @@ const useKyc = () => {
     }
 
     setFetchingUserDetails(true);
-    const usecase = new KycUsecases();
-    const response = await usecase.executeFetchUserById({
-      body: {
-        _id: payload?._id || currentExchangeUser || user?._id || undefined,
-      },
-      params: null,
-      extra: null,
-    });
-
-    if (response.data) {
-      const updatedUser = {
-        ...user,
-        ...response.data,
-        metaData: { 
-          ...user?.metaData,
+    try {
+      const usecase = new KycUsecases();
+      const response = await usecase.executeFetchUserById({
+        body: {
+          _id: payload?._id || currentExchangeUser || user?._id || undefined,
         },
-      };
-      
-      dispatch(kycActions.setUser(updatedUser));
-      
-      // Update wallet context to keep exchange user data in sync
-      if (response.data._id) {
-        setCurrentExchangeUser(response.data._id);
-        setIsExchangeAuthenticated(true);
-      }
-      setExchangeUserData(updatedUser);
-    }
+        params: null,
+        extra: null,
+      });
 
       if (response.data) {
-        dispatch(kycActions.setUser({
+        const updatedUser = {
           ...user,
           ...response.data,
           metaData: { 
             ...user?.metaData,
           },
-        }));
+        };
+        
+        dispatch(kycActions.setUser(updatedUser));
+        
+        // Update wallet context to keep exchange user data in sync
+        if (response.data._id) {
+          setCurrentExchangeUser(response.data._id);
+          setIsExchangeAuthenticated(true);
+        }
+        setExchangeUserData(updatedUser);
       }
 
       setFetchingUserDetails(false);
@@ -212,8 +203,7 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ) => {
-    // ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,

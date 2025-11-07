@@ -7,6 +7,7 @@
 
 import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
 import { BatchBalanceService } from "@/services/batch-balance.service";
+import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import { setProcessedPortfolio } from "@/state/reducers/portfolio.reducer";
 import { IUserWalletGroup, WalletContextType } from "@/types/main";
 import {
@@ -1261,6 +1262,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
 
+      // Clear exchange history/activities from Redux state
+      dispatch(exchangeActions.clearExchangeActivities());
+      console.log("✅ Exchange activities cleared from state");
+
       // Clear cached exchange user ID
       await SecureStore.deleteItemAsync(StorageKeys.EXCHANGE_USER_ID);
       console.log("✅ Exchange user ID cleared from cache");
@@ -1272,6 +1277,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
+
+      // Clear exchange history/activities from Redux state even on error
+      dispatch(exchangeActions.clearExchangeActivities());
+      console.log("✅ Exchange activities cleared from state (error path)");
 
       // Clear cached exchange user ID even on error
       await SecureStore.deleteItemAsync(StorageKeys.EXCHANGE_USER_ID).catch(

@@ -1,13 +1,10 @@
-import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import storageService from "@/src/core/storage/app-storage";
 import { StorageKeys } from "@/src/core/storage/storage-types";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { ExchangeValidateOtpResponse, UserModel } from "@zap/blockchain-sdk";
-import { router } from "expo-router";
+import { ExchangeValidateOtpResponse } from "@zap/blockchain-sdk";
 import React, { useEffect, useState } from "react";
 import { Keyboard, Pressable } from "react-native";
 import OTPInput from "../form/OTPInput";
@@ -16,7 +13,7 @@ import Box from "../general/Box";
 
 interface EmailVerificationProps {
   email?: string;
-  onVerify?: (code: string) => void;
+  onVerify?: (code: string, userData?: any) => void;
   onResend?: () => void;
   isLoading?: boolean;
   onCloseBottomSheet?: () => void;
@@ -35,10 +32,7 @@ export default function EmailVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme<Theme>();
-  const { hideAllBottomSheets } = useAppBottomSheet();
-  const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
-    useExchangeAuth();
-  const { fetchUserById } = useKyc();
+  const { handleExchangeValidateOtp } = useExchangeAuth();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -89,9 +83,6 @@ export default function EmailVerification({
             )
           );
 
-          // Check if user data has username
-          let exchangeUser = exchangeUserData;
-
           const userData = (response as ExchangeValidateOtpResponse)?.data
             ?.user;
 
@@ -102,24 +93,9 @@ export default function EmailVerification({
             );
           }
 
-          if (!userData?.username) {
-            // exchangeUser = await getExchangeUser();
-          }
-
-          const userResponse = await fetchUserById(userData as UserModel);
-          exchangeUser = userResponse?.data ?? null;
-
-          if (exchangeUser?.username) {
-            // User has username, close bottom sheet and navigate to app
-            console.log(
-              "User has username, closing bottom sheet and navigating to app"
-            );
-            hideAllBottomSheets();
-            router.push("/dashboard/home/wallet-home/swap");
-          } else {
-            // User doesn't have username, continue with normal flow
-            onVerify?.(code);
-          }
+          // Always call onVerify with user data to let parent component handle the flow
+          // The parent (ZapperSiginBottomSheet) will check for username and close if needed
+          onVerify?.(code, userData);
         } else {
           setError("Invalid OTP. Please try again.");
         }

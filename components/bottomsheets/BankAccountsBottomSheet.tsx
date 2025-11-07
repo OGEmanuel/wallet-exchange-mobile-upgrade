@@ -40,17 +40,18 @@ interface BankAccountsBottomSheetProps {
   onClose?: () => void;
   onContinue?: () => void;
   targetCurrency: ISupportedCurrency | null;
+  initialView?: "list" | "add"; // Control initial view: list or add account form
 }
 
 const BankAccountsBottomSheet = forwardRef<
   BottomSheet,
   BankAccountsBottomSheetProps
->(({ onBankAccountSelect, onClose, onContinue, targetCurrency }, ref) => {
+>(({ onBankAccountSelect, onClose, onContinue, targetCurrency, initialView = "list" }, ref) => {
   const theme = useTheme<Theme>();
   const [selectedAccount, setSelectedAccount] =
     useState<UserBankAccount | null>(null);
   const [accountsSearchQuery, setAccountsSearchQuery] = useState("");
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(initialView === "add");
   const [accountNumber, setAccountNumber] = useState("");
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [showBankSelector, setShowBankSelector] = useState(false);
@@ -58,6 +59,15 @@ const BankAccountsBottomSheet = forwardRef<
 
   // Animation for account name input glow
   const glowAnimation = useRef(new Animated.Value(0)).current;
+
+  // Update showAddAccountModal when initialView prop changes
+  useEffect(() => {
+    if (initialView === "add") {
+      setShowAddAccountModal(true);
+    } else {
+      setShowAddAccountModal(false);
+    }
+  }, [initialView]);
 
   const {
     bankAccounts,

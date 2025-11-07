@@ -203,7 +203,7 @@ export default function IdentityVerification({
   const userHasSubmittedIdentityDocument =
     userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
 
-  const steps = filteredVerificationClasses?.map((verificationClass) =>
+  const steps = (filteredVerificationClasses || []).map((verificationClass) =>
     verificationClass.toLocaleLowerCase() === "credit"
       ? {
           title: "Bank Verification",
@@ -232,7 +232,7 @@ export default function IdentityVerification({
           onPress: handleIdPress,
         }
       : {}
-  );
+  ).filter(step => step && Object.keys(step).length > 0); // Filter out empty objects
 
   return (
     <View style={styles.container}>

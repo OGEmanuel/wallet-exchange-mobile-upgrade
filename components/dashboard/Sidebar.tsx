@@ -13,6 +13,8 @@ import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { StorageKeys } from "@/src/core/storage/storage-types";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -31,6 +33,7 @@ import React, {
 } from "react";
 import { Keyboard, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
+import { useSelector } from "react-redux";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
@@ -43,8 +46,57 @@ import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
   const theme = useTheme<Theme>();
-  const { logoutFromExchange } = useWallet();
-  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const { logoutFromExchange, currentExchangeUser, getExchangeUser, setExchangeUserData } = useWallet();
+  const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } = useExchangeAuth();
+  const { user: kycUser } = useSelector((state: AppRootState) => state.kyc);
+  const { loadUserFromStorage, fetchUserById } = useKyc();
+  
+  // Use exchangeUserData if available, otherwise fall back to KYC user
+  const userData = exchangeUserData || kycUser;
+  const displayUsername = userData?.username;
+  const displayAvatar = userData?.avatar;
+  // User is logged in if they have a username OR if they have an exchange user ID
+
+  // Load user data from storage or fetch if we have a user ID but no user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      // If we have user data, no need to load
+      if (userData?.username || userData?._id) {
+        return;
+      }
+
+      // Try to load from storage first
+      if (!kycUser?._id && !kycUser?.username) {
+        const storedUser = await loadUserFromStorage();
+        if (storedUser) {
+          return; // User loaded from storage, will update Redux state
+        }
+      }
+
+      // If we have a user ID but no user data, try to fetch
+      if (currentExchangeUser && !exchangeUserData) {
+        try {
+          const user = await getExchangeUser();
+          if (user) {
+            setExchangeUserData(user);
+          }
+        } catch (error) {
+          console.error("Failed to fetch exchange user:", error);
+        }
+      }
+
+      // If we have KYC user ID but no username, try to fetch user by ID
+      if (kycUser?._id && !kycUser?.username && isExchangeAuthenticated) {
+        try {
+          await fetchUserById(kycUser);
+        } catch (error) {
+          console.error("Failed to fetch user by ID:", error);
+        }
+      }
+    };
+
+    loadUserData();
+  }, [currentExchangeUser, exchangeUserData, kycUser, isExchangeAuthenticated, loadUserFromStorage, getExchangeUser, setExchangeUserData, fetchUserById, userData]);
 
   const [hasHardware, setHasHardware] = useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
@@ -210,7 +262,7 @@ const Sidebar = () => {
   }, [isBiometricEnabled, hasHardware]);
 
   const handleCheck = () => {
-    if (!isExchangeAuthenticated || !exchangeUserData?.username) {
+    if (!isUserLoggedIn) {
       // Not connected - show connect modal
       zapLinkBottomSheetRef.current?.snapToIndex(0);
     } else {
@@ -301,7 +353,7 @@ const Sidebar = () => {
   // Sidebar data
   const SIDEBAR_DATA: ISidebarItem[] = useMemo(
     () => [
-      ...(isExchangeAuthenticated
+      ...(isUserLoggedIn
         ? [
             {
               icon: (
@@ -357,7 +409,7 @@ const Sidebar = () => {
         isActive: false,
       },
     ],
-    [theme.colors.bodyTextColor, isExchangeAuthenticated]
+    [theme.colors.bodyTextColor, isUserLoggedIn]
   );
 
   const SIDEBAR_SECURITY_DATA: ISidebarItem[] = useMemo(() => {
@@ -417,67 +469,72 @@ const Sidebar = () => {
   ]);
 
   const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(
-    () => [
-      {
-        icon: (
-          <ThemedShieldFillIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "Terms of Service",
-        link: "/dashboard/home/wallet-home/more/legal",
-        isActive: false,
-      },
-      {
-        icon: (
-          <ThemedHelpIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "Help & Support",
-        link: "/dashboard/home/wallet-home/more/help",
-        isActive: false,
-      },
-      {
-        icon: (
-          <ThemedStarFillIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "About Zap Wallet",
-        link: "/dashboard/home/wallet-home/more/help",
-        isActive: false,
-      },
-    ],
-    [theme.colors.bodyTextColor, handleLogout, isExchangeAuthenticated]
-  );
+    () => {
+      const baseData: ISidebarItem[] = [
+        {
+          icon: (
+            <ThemedShieldFillIcon
+              width={20}
+              height={20}
+              darkModeColor={theme.colors.bodyTextColor}
+              lightModeColor={theme.colors.bodyTextColor}
+            />
+          ),
+          title: "Terms of Service",
+          link: "/dashboard/home/wallet-home/more/legal",
+          isActive: false,
+        },
+        {
+          icon: (
+            <ThemedHelpIcon
+              width={20}
+              height={20}
+              darkModeColor={theme.colors.bodyTextColor}
+              lightModeColor={theme.colors.bodyTextColor}
+            />
+          ),
+          title: "Help & Support",
+          link: "/dashboard/home/wallet-home/more/help",
+          isActive: false,
+        },
+        {
+          icon: (
+            <ThemedStarFillIcon
+              width={20}
+              height={20}
+              darkModeColor={theme.colors.bodyTextColor}
+              lightModeColor={theme.colors.bodyTextColor}
+            />
+          ),
+          title: "About Zap Wallet",
+          link: "/dashboard/home/wallet-home/more/help",
+          isActive: false,
+        },
+      ];
 
-  if (isExchangeAuthenticated) {
-    SIDEBAR_ABOUT_DATA.push({
-      icon: (
-        <ThemedSignOutIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Logout",
-      link: "/dashboard/home/wallet-home/more/about",
-      isActive: false,
-      onPress: handleLogout,
-      disablClick: false,
-    });
-  }
+      // Add logout button only if authenticated (not guest)
+      if (isUserLoggedIn) {
+        baseData.push({
+          icon: (
+            <ThemedSignOutIcon
+              width={20}
+              height={20}
+              darkModeColor={theme.colors.bodyTextColor}
+              lightModeColor={theme.colors.bodyTextColor}
+            />
+          ),
+          title: "Logout",
+          link: "/dashboard/home/wallet-home/more/about",
+          isActive: false,
+          onPress: handleLogout,
+          disablClick: false,
+        });
+      }
+
+      return baseData;
+    },
+    [theme.colors.bodyTextColor, handleLogout, isUserLoggedIn]
+  );
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -511,7 +568,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {exchangeUserData?.avatar ? (
+            {displayAvatar ? (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -520,14 +577,14 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: exchangeUserData?.avatar?.backgroundColor,
+                  backgroundColor: displayAvatar?.backgroundColor,
                 }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
                   <SmartImage
-                    source={{ uri: exchangeUserData?.avatar?.url || "" }}
+                    source={{ uri: displayAvatar?.url || "" }}
                     width={40}
                     height={40}
                     borderRadius={20}
@@ -545,10 +602,10 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {exchangeUserData?.username ? (
+            {isUserLoggedIn ? (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  {exchangeUserData?.username || "anonymous.zap"}
+                  {displayUsername}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>
@@ -672,7 +729,7 @@ const Sidebar = () => {
       <ZapLinkBottomSheet
         onDisconnect={handleDisconnectZapExchange}
         onConnect={handleConnectZapExchange}
-        isZapLinked={isExchangeAuthenticated}
+        isZapLinked={isUserLoggedIn}
         username={exchangeUserData?.username}
         onClose={() => zapLinkBottomSheetRef.current?.close()}
         ref={zapLinkBottomSheetRef}

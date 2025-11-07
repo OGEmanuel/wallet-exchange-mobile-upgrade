@@ -18,6 +18,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -62,11 +63,28 @@ const OrderDetailsSheet = forwardRef<
   const { getChainBySymbol, getChainImage } = useChains();
 
   useImperativeHandle(ref, () => ({
-    open: () => bottomSheetRef.current?.snapToIndex(0),
-    close: () => bottomSheetRef.current?.close(),
+    open: () => {
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.snapToIndex(0);
+      }
+    },
+    close: () => {
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.close();
+      }
+    },
   }));
 
-  // Removed auto-close effect - let user manually close the sheet
+  // Auto-open when orderDetails is set
+  useEffect(() => {
+    if (orderDetails && bottomSheetRef.current) {
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        bottomSheetRef.current?.snapToIndex(0);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [orderDetails]);
 
   if (!orderDetails) return null;
 

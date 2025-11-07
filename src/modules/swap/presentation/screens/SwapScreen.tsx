@@ -28,8 +28,11 @@ import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
+import { getDeviceIpAndLocation } from "@/src/core/utils/device-info-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useExchange from "@/src/modules/exchange/presentation/hooks/useExchange";
 import { userHasAtleastOneDocumentApproved } from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { ArrowDown2 } from "iconsax-react-nativejs";
 import React, {
   useCallback,
@@ -111,8 +114,10 @@ const Swap = () => {
 
   // 🔹 Supported currencies context for refresh
   const { refreshSupportedCurrenciesForSwap } = useSupportedCurrencies();
-  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } = useExchangeAuth();
   const { showBottomSheet } = useAppBottomSheet();
+  const { fetchExchangeActivities } = useExchange();
+  const { loginAsGuest } = useKyc();
 
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
@@ -264,7 +269,9 @@ const Swap = () => {
     const isTargetCrypto =
       (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
     const involvesFiat = !isBaseCrypto || !isTargetCrypto;
+    const isCryptoToCrypto = isBaseCrypto && isTargetCrypto;
 
+    // If trade involves fiat and user is not logged in, require full authentication
     if (involvesFiat && !isExchangeAuthenticated) {
       // Show zapper login modal
       setIsZapperBottomSheetVisible(true);
@@ -272,6 +279,34 @@ const Swap = () => {
         zapperBottomSheetRef.current?.snapToIndex(0);
       }, 100);
       return;
+    }
+
+    // If crypto-to-crypto trade and user is not logged in, login as guest
+    if (isCryptoToCrypto && !isExchangeAuthenticated) {
+      try {
+        setIsCreatingOrder(true); // Show loading state
+        // Fetch device IP and location, then login as guest
+        try {
+          const { ip, location } = await getDeviceIpAndLocation();
+          await loginAsGuest({
+            ip: ip || undefined,
+            platform: "mobile",
+            location: location || undefined,
+          });
+        } catch (error) {
+          console.warn("Failed to fetch device IP and location, proceeding without it:", error);
+          // Proceed with login even if device info fetch fails
+          await loginAsGuest({
+            platform: "mobile",
+          });
+        }
+        // Guest login successful, continue with order creation
+      } catch (guestLoginError) {
+        console.error("Failed to login as guest:", guestLoginError);
+        setCreateOrderError("Failed to initialize guest session. Please try again.");
+        setIsCreatingOrder(false);
+        return;
+      }
     }
 
     const isCrypto = (targetCurrency?.currencyId as Partial<ICurrency>)
@@ -305,9 +340,27 @@ const Swap = () => {
 
       if (orderResult) {
         setCreatedOrder(orderResult);
+        
+        // Refresh exchange history after order creation
+        if (exchangeUserData?._id) {
+          try {
+            await fetchExchangeActivities({
+              user: exchangeUserData,
+              page: 1,
+              limit: 10,
+            });
+            console.log("✅ Exchange history refreshed after order creation");
+          } catch (error) {
+            console.error("Failed to refresh exchange history:", error);
+          }
+        }
+        
+        // Open order details modal
         setTimeout(() => {
-          orderDetailsSheetRef.current?.open();
-        }, 100);
+          if (orderDetailsSheetRef.current) {
+            orderDetailsSheetRef.current.open();
+          }
+        }, 300); // Increased timeout to ensure component is mounted
       } else {
         setCreateOrderError("Failed to create order");
       }
@@ -328,6 +381,9 @@ const Swap = () => {
     bankAccountSelected,
     isExchangeAuthenticated,
     baseCurrency,
+    exchangeUserData,
+    fetchExchangeActivities,
+    loginAsGuest,
   ]);
 
   const rateDetails = useMemo(() => {
@@ -583,7 +639,7 @@ const Swap = () => {
             </>
           ) : (
             <>
-              {isExchangeAuthenticated && (
+              {isUserLoggedIn && (
                 <View
                   style={[
                     styles.inputContainer,
@@ -692,7 +748,7 @@ const Swap = () => {
               onProviderPress={() =>
                 zapLinkBottomSheetRef.current?.snapToIndex(0)
               }
-              isZapLinked={isExchangeAuthenticated}
+              isZapLinked={isUserLoggedIn}
             />
           )}
 

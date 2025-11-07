@@ -187,26 +187,69 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>((prop
 
               {/* Main Transaction Card */}
               <Box 
-                flexDirection="row" 
                 alignItems="center" 
                 justifyContent="center"
                 marginBottom="s"
                 mb="xl"
               >
-                <CryptoIcon
-                  image={selectedActivity?.sellCurrency?.currencyId?.logo}
-                  size={32}
-                  symbol={selectedActivity?.sellCurrency?.currencyId?.code}
-                />
+                {/* Currency Icons - Side by Side */}
+                <Box flexDirection="row" alignItems="center" marginBottom="m">
+                  {/* Buy Currency Icon */}
+                  {selectedActivity?.buyCurrency && (
+                    <Box style={{ marginRight: selectedActivity?.sellCurrency ? -10 : 0 }} zIndex={1}>
+                      <CryptoIcon
+                        image={selectedActivity?.buyCurrency?.currencyId?.logo}
+                        size={40}
+                        symbol={selectedActivity?.buyCurrency?.currencyId?.code}
+                      />
+                    </Box>
+                  )}
+                  {/* Sell Currency Icon */}
+                  {selectedActivity?.sellCurrency && (
+                    <Box zIndex={2}>
+                      <CryptoIcon
+                        image={selectedActivity?.sellCurrency?.currencyId?.logo}
+                        size={40}
+                        symbol={selectedActivity?.sellCurrency?.currencyId?.code}
+                      />
+                    </Box>
+                  )}
+                </Box>
 
-                <CustomText
-                  variant="header"
-                  fontSize={32}
-                  color="headerTextColor"
-                  ml="s"
-                >
-                  {getApproximateAmount(getAmountToReceive(selectedActivity), selectedActivity?.sellCurrency?.currencyId?.isCrypto)} {selectedActivity?.sellCurrency?.currencyId?.code}
-                </CustomText>
+                {/* Amounts Display */}
+                <Box alignItems="center">
+                  {/* Buy Amount */}
+                  {selectedActivity?.buyAmount && selectedActivity?.buyCurrency && (
+                    <CustomText
+                      variant="header"
+                      fontSize={32}
+                      color="headerTextColor"
+                      style={{ marginBottom: 8 }}
+                    >
+                      +{getApproximateAmount(selectedActivity.buyAmount, selectedActivity.buyCurrency.currencyId?.isCrypto)} {selectedActivity.buyCurrency.currencyId?.code}
+                    </CustomText>
+                  )}
+                  {/* Sell Amount */}
+                  {selectedActivity?.sellAmount && selectedActivity?.sellCurrency && (
+                    <CustomText
+                      variant="body"
+                      fontSize={24}
+                      color="disabledTextColor"
+                    >
+                      -{getApproximateAmount(selectedActivity.sellAmount, selectedActivity.sellCurrency.currencyId?.isCrypto)} {selectedActivity.sellCurrency.currencyId?.code}
+                    </CustomText>
+                  )}
+                  {/* Fallback if amounts not available */}
+                  {!selectedActivity?.buyAmount && !selectedActivity?.sellAmount && selectedActivity?.amountToReceive && (
+                    <CustomText
+                      variant="header"
+                      fontSize={32}
+                      color="headerTextColor"
+                    >
+                      {getApproximateAmount(getAmountToReceive(selectedActivity), selectedActivity?.buyCurrency?.currencyId?.isCrypto || selectedActivity?.sellCurrency?.currencyId?.isCrypto)} {selectedActivity?.buyCurrency?.currencyId?.code || selectedActivity?.sellCurrency?.currencyId?.code || displayCurrency}
+                    </CustomText>
+                  )}
+                </Box>
               </Box>
 
               {/* Rate Display */}

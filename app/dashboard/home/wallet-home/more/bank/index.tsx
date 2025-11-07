@@ -103,7 +103,10 @@ const BankAccountsScreen = () => {
     
     // User is verified, show bank account bottom sheet
     setShowAddAccountBottomSheet(true);
-    bankAccountsBottomSheetRef.current?.snapToIndex(0);
+    // Use setTimeout to ensure the component is mounted before calling snapToIndex
+    setTimeout(() => {
+      bankAccountsBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
   };
 
   const handleAccountSelect = (account: UserBankAccount) => {
@@ -239,24 +242,23 @@ const BankAccountsScreen = () => {
         )}
       </Box>
 
-      {showAddAccountBottomSheet && (
-        <BankAccountsBottomSheet
-          ref={bankAccountsBottomSheetRef}
-          targetCurrency={ngnCurrency}
-          onBankAccountSelect={(account) => {
-            if (account) {
-              handleAccountAdded();
-            }
-          }}
-          onContinue={() => {
+      <BankAccountsBottomSheet
+        ref={bankAccountsBottomSheetRef}
+        targetCurrency={ngnCurrency}
+        initialView={showAddAccountBottomSheet ? "add" : "list"}
+        onBankAccountSelect={(account) => {
+          if (account) {
             handleAccountAdded();
-          }}
-          onClose={() => {
-            setShowAddAccountBottomSheet(false);
-            bankAccountsBottomSheetRef.current?.close();
-          }}
-        />
-      )}
+          }
+        }}
+        onContinue={() => {
+          handleAccountAdded();
+        }}
+        onClose={() => {
+          setShowAddAccountBottomSheet(false);
+          bankAccountsBottomSheetRef.current?.close();
+        }}
+      />
     </PageWrapper>
   );
 };

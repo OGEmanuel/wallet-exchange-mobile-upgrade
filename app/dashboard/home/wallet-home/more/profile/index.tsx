@@ -79,7 +79,7 @@ const ItemCard = ({
 const ProfilePage = () => {
   const theme = useTheme<Theme>();
   const { exchangeUserData, logoutFromExchange } = useWallet();
-  const { isExchangeAuthenticated } = useExchangeAuth();
+  const { isUserLoggedIn } = useExchangeAuth();
   const { showBottomSheet } = useAppBottomSheet();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
 
@@ -143,30 +143,34 @@ const ProfilePage = () => {
             Not Verified
           </CustomText>
         </Box>
-      ) : undefined,
-      completeBadge: isVerificationComplete ? (
+      ) : (
         <Box
-          width={100}
-          height={20}
-          borderRadius={40}
+          width={"auto"}
+          padding="s"
+          borderRadius={20}
+          bg="secondaryBackgroundColor"
           justifyContent="center"
           alignItems="center"
           style={{ backgroundColor: "#2E8B57" }}
         >
-          <CustomText fontSize={12} style={{ color: "#90EE90" }}>
+          <CustomText fontSize={10} style={{ color: "#FFFFFF" }}>
             Verified
           </CustomText>
         </Box>
-      ) : undefined,
+      ),
       onPress: () => {
-        showKYCBottomSheet({
-          onComplete: () => {
-            // Handle KYC completion if needed
-          },
-          onClose: () => {
-            // Handle close if needed
-          },
-        });
+        // Only show KYC flow if user is not verified
+        if (!isVerificationComplete) {
+          showKYCBottomSheet({
+            onComplete: () => {
+              // Handle KYC completion if needed
+            },
+            onClose: () => {
+              // Handle close if needed
+            },
+          });
+        }
+        // If verified, do nothing
       },
     },
     {
@@ -307,7 +311,7 @@ const ProfilePage = () => {
       </Box>
       <ZapLinkBottomSheet
         ref={zapLinkBottomSheetRef}
-        isZapLinked={isExchangeAuthenticated}
+        isZapLinked={isUserLoggedIn}
         username={exchangeUserData?.username}
         onDisconnect={async () => {
           try {
