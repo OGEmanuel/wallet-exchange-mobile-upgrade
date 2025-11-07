@@ -142,7 +142,7 @@ export default function ZapperSiginBottomSheet({
       {/* <Confetti ref={confettiRef} /> */}
       <AnimatedGradientBottomSheet
         ref={ref}
-        snapPoints={["100%"]}
+        snapPoints={["90%"]}
         enablePanDownToClose={true}
         showGradientHandle={true}
         gradientColors={[
