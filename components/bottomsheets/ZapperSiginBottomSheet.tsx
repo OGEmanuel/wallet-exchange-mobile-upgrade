@@ -4,7 +4,7 @@ import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Image, StyleSheet, View } from "react-native";
+import { Animated, Image, ScrollView, StyleSheet, View } from "react-native";
 import { ConfettiMethods } from "react-native-fast-confetti";
 import EmailVerification from "../onboarding/EmailVerification";
 import EnterUsername from "../onboarding/EnterUsername";
@@ -113,6 +113,11 @@ export default function ZapperSiginBottomSheet({
             onVerify={handleEmailVerificationSuccess}
             onResend={handleResendEmail}
             isLoading={isResending}
+            onCloseBottomSheet={() => {
+              if (onClose) {
+                onClose();
+              }
+            }}
           />
         );
       case "enterUsername":
@@ -137,7 +142,7 @@ export default function ZapperSiginBottomSheet({
       {/* <Confetti ref={confettiRef} /> */}
       <AnimatedGradientBottomSheet
         ref={ref}
-        snapPoints={["90%"]}
+        snapPoints={["100%"]}
         enablePanDownToClose={true}
         showGradientHandle={true}
         gradientColors={[
@@ -147,21 +152,28 @@ export default function ZapperSiginBottomSheet({
         ]}
         onClose={onClose}
       >
-        <View style={styles.handle} />
-        <View style={styles.backContainer}></View>
-        <Image
-          source={require("@/assets/images/zapLogoDark.png")}
-          style={{ height: 40, width: 120, alignSelf: "center", marginTop: 16 }}
-          resizeMode="contain"
-        />
-        <Animated.View
-          style={{
-            transform: [{ translateX: slideAnim }],
-            flex: 1,
-          }}
-        >
-          {renderCurrentScreen()}
-        </Animated.View>
+        <ScrollView>
+          <View style={styles.handle} />
+          <View style={styles.backContainer}></View>
+          <Image
+            source={require("@/assets/images/zapLogoDark.png")}
+            style={{
+              height: 40,
+              width: 120,
+              alignSelf: "center",
+              marginTop: 16,
+            }}
+            resizeMode="contain"
+          />
+          <Animated.View
+            style={{
+              transform: [{ translateX: slideAnim }],
+              flex: 1,
+            }}
+          >
+            {renderCurrentScreen()}
+          </Animated.View>
+        </ScrollView>
       </AnimatedGradientBottomSheet>
     </>
   );

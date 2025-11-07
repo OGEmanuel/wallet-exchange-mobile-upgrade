@@ -9,15 +9,12 @@ import {
 } from "@/assets/svg/wallet-icons-components";
 import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadIcon";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import { StorageKeys } from "@/src/core/api/models";
+import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import {
-  selectBiometricEnabled,
-  toggleBiometric,
-} from "@/src/modules/settings/presentation/state/settings-slice";
+import { selectBiometricEnabled } from "@/src/modules/settings/presentation/state/settings-slice";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import {
   selectWalletConnected,
@@ -33,6 +30,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import { Link, Setting4 } from "iconsax-react-nativejs";
+import { uniq } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
@@ -59,6 +57,9 @@ const Sidebar = () => {
   const [showLogoutModal, setShowLogoutModal] = React.useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
+  const [faceIdEnabled, setFaceIdEnabled] = React.useState(
+    pinStorageService.getFaceIdValue()
+  );
   const walletUser = useSelector(selectWalletUser);
 
   const OS = Platform.OS;
@@ -69,7 +70,7 @@ const Sidebar = () => {
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
   React.useEffect(() => {
-    if (isExchangeAuthenticated) {
+    if (isExchangeAuthenticated && !exchangeUserData) {
       (async function () {
         const val = await getExchangeUser();
         const userDetails = await fetchUserById(val);
@@ -125,11 +126,8 @@ const Sidebar = () => {
   };
 
   const handleBiometricEnabled = async () => {
-    dispatch(toggleBiometric());
-    setBiometricEnabled(
-      StorageKeys.BIOMETRIC_ENABLED,
-      isBiometricEnabled ? "false" : "true"
-    );
+    const isEnabled = await pinStorageService.toggleFaceId();
+    setFaceIdEnabled(isEnabled);
   };
 
   const handleCheck = () => {
@@ -258,7 +256,7 @@ const Sidebar = () => {
       disablClick: true,
       trailingItem: (
         <Switch
-          value={isBiometricEnabled}
+          value={faceIdEnabled}
           onValueChange={() => handleBiometricEnabled()}
           trackColor={{
             false: theme.colors.primaryColor,
@@ -268,7 +266,7 @@ const Sidebar = () => {
       ),
     });
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
+  let SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
     // {
     //   icon: (
     //     <ThemedShieldFillIcon
@@ -312,21 +310,25 @@ const Sidebar = () => {
   ];
 
   if (isExchangeAuthenticated) {
-    SIDEBAR_ABOUT_DATA.push({
-      icon: (
-        <ThemedSignOutIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Logout",
-      link: "/dashboard/home/wallet-home/more/about",
-      isActive: false,
-      onPress: () => setShowLogoutModal(true),
-      disablClick: false,
-    });
+    const items = uniq([
+      ...SIDEBAR_ABOUT_DATA,
+      {
+        icon: (
+          <ThemedSignOutIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Logout",
+        link: "/dashboard/home/wallet-home/more/about",
+        isActive: false,
+        onPress: () => setShowLogoutModal(true),
+        disablClick: false,
+      },
+    ]);
+    SIDEBAR_ABOUT_DATA = items;
   }
 
   return (
@@ -566,6 +568,8 @@ const Sidebar = () => {
           }}
           onClose={() => {
             setIsZapperBottomSheetVisible(false);
+            zapperBottomSheetRef.current?.close();
+            zapLinkBottomSheetRef.current?.close();
           }}
         />
       )}
