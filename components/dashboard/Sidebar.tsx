@@ -322,8 +322,8 @@ const Sidebar = () => {
     handleChangePin,
   ]);
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(
-    () => [
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(() => {
+    const items: ISidebarItem[] = [
       {
         icon: (
           <ThemedShieldFillIcon
@@ -363,27 +363,32 @@ const Sidebar = () => {
         link: "/dashboard/home/wallet-home/more/help",
         isActive: false,
       },
-    ],
-    [theme.colors.bodyTextColor, handleLogout, isExchangeAuthenticated]
-  );
+    ];
 
-  if (isExchangeAuthenticated) {
-    SIDEBAR_ABOUT_DATA.push({
-      icon: (
-        <ThemedSignOutIcon
-          width={20}
-          height={20}
-          darkModeColor={theme.colors.bodyTextColor}
-          lightModeColor={theme.colors.bodyTextColor}
-        />
-      ),
-      title: "Logout",
-      link: "/dashboard/home/wallet-home/more/about",
-      isActive: false,
-      onPress: handleLogout,
-      disablClick: false,
-    });
-  }
+    if (isExchangeAuthenticated) {
+      items.push({
+        icon: (
+          <ThemedSignOutIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Logout",
+        link: "/dashboard/home/wallet-home/more/about",
+        isActive: false,
+        onPress: handleLogout,
+        disablClick: false,
+      });
+    }
+
+    return items;
+  }, [
+    theme.colors.bodyTextColor,
+    isExchangeAuthenticated,
+    handleLogout,
+  ]);
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
