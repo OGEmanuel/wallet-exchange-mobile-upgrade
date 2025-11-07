@@ -2,12 +2,12 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { StorageKeys } from "@/src/core/api/models";
+import { StorageKeys, TokenData } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppDispatch, AppRootState } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
-import { SubmitVerificationParams, TokenData } from "@zap/blockchain-sdk";
+import { SubmitVerificationParams } from "@zap/blockchain-sdk";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { UserModel } from "../../domain/entities/models/user-model";
@@ -25,7 +25,7 @@ const useKyc = () => {
   const [fetchingUserDetails, setFetchingUserDetails] =
     useState<boolean>(false);
 
-  const { currentExchangeUser } = useWallet();
+  const { currentExchangeUser, isExchangeAuthenticated } = useWallet();
 
   const fetchUserById = async (
     payload: UserModel | null
@@ -35,29 +35,41 @@ const useKyc = () => {
       return null
     }
 
-    setFetchingUserDetails(true);
-    const usecase = new KycUsecases();
-    const response = await usecase.executeFetchUserById({
-      body: {
-        _id: payload?._id || currentExchangeUser || user?._id || undefined,
-      },
-      params: null,
-      extra: null,
-    });
-
-    if (response.data) {
-      dispatch(kycActions.setUser({
-        ...user,
-        ...response.data,
-        metaData: { 
-          ...user?.metaData,
-        },
-      }));
+    // Only fetch if exchange is authenticated (required for SDK call)
+    if (!isExchangeAuthenticated) {
+      console.log("⚠️ Exchange not authenticated, skipping fetchUserById");
+      return null;
     }
 
-    setFetchingUserDetails(false);
+    setFetchingUserDetails(true);
+    try {
+      const usecase = new KycUsecases();
+      const response = await usecase.executeFetchUserById({
+        body: {
+          _id: payload?._id || currentExchangeUser || user?._id || undefined,
+        },
+        params: null,
+        extra: null,
+      });
 
-    return response;
+      if (response.data) {
+        dispatch(kycActions.setUser({
+          ...user,
+          ...response.data,
+          metaData: { 
+            ...user?.metaData,
+          },
+        }));
+      }
+
+      setFetchingUserDetails(false);
+      return response;
+    } catch (error) {
+      console.error("Failed to fetch user by ID:", error);
+      setFetchingUserDetails(false);
+      // Return null on error to prevent breaking the flow
+      return null;
+    }
   };
 
   const loadUserFromStorage = async (): Promise<UserModel | null> => {
@@ -189,8 +201,8 @@ const useKyc = () => {
         try {
           // const responseData = response.data as any;
           const tokenData: TokenData = {
-            token: authVerificationData?.token || null,
-            refreshToken: authVerificationData?.refreshToken || null,
+            token: (authVerificationData as any)?.token || null,
+            refreshToken: (authVerificationData as any)?.refreshToken || null,
             expiresAt: null,
           };
           await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
