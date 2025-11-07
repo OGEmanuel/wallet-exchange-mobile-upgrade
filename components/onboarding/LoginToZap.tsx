@@ -60,11 +60,13 @@ export default function LoginToZap({ onLoginSuccess }: LoginToZapProps) {
       console.log("handleExchangeLogin response:", response);
       if (response) {
         onLoginSuccess?.(email);
+        setLoading(false);
       } else {
         setEmailError("Failed to send OTP. Please try again.");
+        setLoading(false);
       }
     } catch (error) {
-      console.log(error);
+      alert(JSON.stringify(error));
       setEmailError("Failed to send OTP. Please try again.");
     } finally {
       setLoading(false);

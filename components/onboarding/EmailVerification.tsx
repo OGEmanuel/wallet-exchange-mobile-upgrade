@@ -1,6 +1,7 @@
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import storageService from "@/src/core/storage/app-storage";
+import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { StorageKeys } from "@/src/core/storage/storage-types";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
@@ -9,7 +10,7 @@ import { useTheme } from "@shopify/restyle";
 import { ExchangeValidateOtpResponse, UserModel } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Keyboard, Pressable } from "react-native";
+import { Alert, Keyboard, Pressable } from "react-native";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
 import Box from "../general/Box";
@@ -115,7 +116,40 @@ export default function EmailVerification({
               "User has username, closing bottom sheet and navigating to app"
             );
             hideAllBottomSheets();
-            router.push("/dashboard/home/wallet-home/swap");
+            if (onCloseBottomSheet) {
+              onCloseBottomSheet();
+            }
+            // check if the user has faceId enabled
+            const faceIdEnabled = pinStorageService.getFaceIdValue();
+            if (!faceIdEnabled) {
+              router.push("/dashboard/home/wallet-home/swap");
+            } else {
+              // trigger the faceid scanning
+              const val = await pinStorageService.triggerFaceId();
+              if (val) {
+                router.push("/dashboard/home/wallet-home/swap");
+              } else {
+                Alert.alert("Error", "Face ID verification failed", [
+                  {
+                    isPreferred: true,
+                    onPress: async () => {
+                      const val = await pinStorageService.triggerFaceId();
+                      if (val) {
+                        router.push("/dashboard/home/wallet-home/swap");
+                      }
+                    },
+                    style: "default",
+                    text: "try again",
+                  },
+                  {
+                    isPreferred: true,
+                    onPress: () => router.push("/"),
+                    style: "default",
+                    text: "Cancel",
+                  },
+                ]);
+              }
+            }
           } else {
             // User doesn't have username, continue with normal flow
             onVerify?.(code);

@@ -13,6 +13,8 @@ import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { StorageKeys } from "@/src/core/api/models";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { setWalletUser } from "@/state/reducers/wallet.reducer";
 import { Theme } from "@/theme";
 import { ISidebarItem } from "@/types/SidebarItem";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -22,6 +24,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Link, Setting4 } from "iconsax-react-nativejs";
+import { uniq } from "lodash";
 import React, {
   useCallback,
   useEffect,
@@ -31,19 +34,27 @@ import React, {
 } from "react";
 import { Image, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
+import { useDispatch } from "react-redux";
+import LogoutModal from "../Modals/LogoutModal";
+import { PinEntryModal } from "../Modals/PinEntryModal";
+import { PinSetupModal } from "../Modals/PinSetupModal";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
-import { PinEntryModal } from "../Modals/PinEntryModal";
-import { PinSetupModal } from "../Modals/PinSetupModal";
+import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
   const theme = useTheme<Theme>();
-  const { logoutFromExchange } = useWallet();
-  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const {
+    logoutFromExchange,
+    getExchangeUser,
+    exchangeUserData,
+    setExchangeUserData,
+  } = useWallet();
+  const { isExchangeAuthenticated } = useExchangeAuth();
 
   const [hasHardware, setHasHardware] = useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
@@ -54,20 +65,32 @@ const Sidebar = () => {
   const [pendingAction, setPendingAction] = useState<
     "logout" | "changePin" | null
   >(null);
-
+  const [showLogoutModal, setShowLogoutModal] = React.useState(false);
+  const [user, setUser] = React.useState<UserModel | null>(null);
+  const dispatch = useDispatch();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
   const OS = Platform.OS;
 
+  React.useEffect(() => {
+    (async function () {
+      if (isExchangeAuthenticated && !user) {
+        const data = await getExchangeUser();
+        setUser(data);
+        dispatch(setWalletUser(data as UserModel));
+        console.log("USER DATA", data);
+        console.log("WALLET USER", user);
+      }
+    })();
+  }, [isExchangeAuthenticated]);
+
   // Load biometric preference from SecureStore
   useEffect(() => {
     const loadBiometricPreference = async () => {
       try {
-        const stored = await SecureStore.getItemAsync(
-          StorageKeys.BIOMETRIC_ENABLED
-        );
-        setIsBiometricEnabled(stored === "true");
+        const value = pinStorageService.getFaceIdValue();
+        setIsBiometricEnabled(value);
       } catch (error) {
         console.error("Failed to load biometric preference:", error);
       }
@@ -105,14 +128,15 @@ const Sidebar = () => {
     }, 100);
   }, []);
 
-  const handleDisconnectZapExchange = useCallback(async () => {
+  const handleDisconnectZapExchange = async () => {
     try {
-      await logoutFromExchange();
-      zapLinkBottomSheetRef.current?.close();
+      logoutFromExchange().then(() => {
+        zapLinkBottomSheetRef.current?.close();
+      });
     } catch (error) {
       console.error("Logout from exchange failed:", error);
     }
-  }, [logoutFromExchange]);
+  };
 
   const handleBiometricEnabled = useCallback(async () => {
     const newValue = !isBiometricEnabled;
@@ -132,7 +156,9 @@ const Sidebar = () => {
   const handleCheck = () => {
     if (!isExchangeAuthenticated || !exchangeUserData?.username) {
       // Not connected - show connect modal
-      zapLinkBottomSheetRef.current?.snapToIndex(0);
+      // zapLinkBottomSheetRef.current?.snapToIndex(0);
+      setIsZapperBottomSheetVisible(true);
+      zapperBottomSheetRef.current?.snapToIndex(0);
     } else {
       // Connected - go to profile
       router.push("/dashboard/home/wallet-home/more/profile");
@@ -185,7 +211,8 @@ const Sidebar = () => {
 
   // Handle logout - open disconnect modal (like swap screen)
   const handleLogout = useCallback(() => {
-    zapLinkBottomSheetRef.current?.snapToIndex(0);
+    zapLinkBottomSheetRef.current?.snapToIndex(1);
+    // setShowLogoutModal(true);
   }, []);
 
   const handleChangePin = useCallback(() => {
@@ -322,51 +349,52 @@ const Sidebar = () => {
     handleChangePin,
   ]);
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(() => {
-    const items: ISidebarItem[] = [
-      {
-        icon: (
-          <ThemedShieldFillIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "Terms of Service",
-        link: "/dashboard/home/wallet-home/more/legal",
-        isActive: false,
-      },
-      {
-        icon: (
-          <ThemedHelpIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "Help & Support",
-        link: "/dashboard/home/wallet-home/more/help",
-        isActive: false,
-      },
-      {
-        icon: (
-          <ThemedStarFillIcon
-            width={20}
-            height={20}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
-          />
-        ),
-        title: "About Zap Wallet",
-        link: "/dashboard/home/wallet-home/more/help",
-        isActive: false,
-      },
-    ];
+  let SIDEBAR_ABOUT_DATA: ISidebarItem[] = [
+    {
+      icon: (
+        <ThemedShieldFillIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Terms of Service",
+      link: "/dashboard/home/wallet-home/more/legal",
+      isActive: false,
+    },
+    {
+      icon: (
+        <ThemedHelpIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "Help & Support",
+      link: "/dashboard/home/wallet-home/more/help",
+      isActive: false,
+    },
+    {
+      icon: (
+        <ThemedStarFillIcon
+          width={20}
+          height={20}
+          darkModeColor={theme.colors.bodyTextColor}
+          lightModeColor={theme.colors.bodyTextColor}
+        />
+      ),
+      title: "About Zap Wallet",
+      link: "/dashboard/home/wallet-home/more/help",
+      isActive: false,
+    },
+  ];
 
-    if (isExchangeAuthenticated) {
-      items.push({
+  if (isExchangeAuthenticated) {
+    const items = uniq([
+      ...SIDEBAR_ABOUT_DATA,
+      {
         icon: (
           <ThemedSignOutIcon
             width={20}
@@ -378,17 +406,12 @@ const Sidebar = () => {
         title: "Logout",
         link: "/dashboard/home/wallet-home/more/about",
         isActive: false,
-        onPress: handleLogout,
+        onPress: () => handleLogout(),
         disablClick: false,
-      });
-    }
-
-    return items;
-  }, [
-    theme.colors.bodyTextColor,
-    isExchangeAuthenticated,
-    handleLogout,
-  ]);
+      },
+    ]);
+    SIDEBAR_ABOUT_DATA = items;
+  }
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -422,7 +445,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {exchangeUserData?.avatar ? (
+            {isExchangeAuthenticated ? (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -431,14 +454,14 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: exchangeUserData?.avatar?.backgroundColor,
+                  backgroundColor: user?.avatar?.backgroundColor,
                 }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {({ pressed }) => (
                   <Image
-                    source={{ uri: exchangeUserData?.avatar?.url }}
+                    source={{ uri: user?.avatar?.url }}
                     style={[
                       { width: 40, height: 40, borderRadius: 20 },
                       pressed && { opacity: 0.7 },
@@ -454,10 +477,10 @@ const Sidebar = () => {
             )}
           </Box>
           <Box marginLeft="s">
-            {exchangeUserData?.username ? (
+            {isExchangeAuthenticated ? (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  {exchangeUserData?.username || "anonymous.zap"}
+                  {user?.username || "anonymous.zap"}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>
@@ -485,53 +508,57 @@ const Sidebar = () => {
           </Box>
         </Pressable>
       </LinearGradient>
-      <Box flex={1}>
+      <Box flex={0.8}>
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          <Box paddingHorizontal="m" paddingTop="l">
-            <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
-              borderColor="borderColor"
-              borderRadius={12}
-            >
-              {SIDEBAR_DATA.map((item, index) => (
-                <SidebarItemCard
-                  key={item.title || index.toString()}
-                  {...item}
-                />
-              ))}
+          {isExchangeAuthenticated && (
+            <Box paddingHorizontal="m" paddingTop="l">
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="secondaryBackgroundColor"
+                borderWidth={1}
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_DATA.map((item, index) => (
+                  <SidebarItemCard
+                    key={item.title || index.toString()}
+                    {...item}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          <Box paddingHorizontal="m" marginTop="l">
-            <CustomText
-              variant="bodySubheader"
-              fontSize={14}
-              color="disabledTextColor"
-              marginBottom="m"
-            >
-              SECURITY
-            </CustomText>
-            <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
-              borderColor="borderColor"
-              borderRadius={12}
-            >
-              {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                <SidebarItemCard
-                  key={item.title || index.toString()}
-                  {...item}
-                />
-              ))}
+          {isExchangeAuthenticated && (
+            <Box paddingHorizontal="m" marginTop="l">
+              <CustomText
+                variant="bodySubheader"
+                fontSize={14}
+                color="disabledTextColor"
+                marginBottom="m"
+              >
+                SECURITY
+              </CustomText>
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="secondaryBackgroundColor"
+                borderWidth={1}
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_SECURITY_DATA.map((item, index) => (
+                  <SidebarItemCard
+                    key={item.title || index.toString()}
+                    {...item}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
           <Box paddingHorizontal="m" marginTop="l" mb="3xl">
             <CustomText
@@ -561,6 +588,20 @@ const Sidebar = () => {
           </Box>
         </ScrollView>
       </Box>
+      <Box width={"100%"} height={140}>
+        <ScrollView
+          horizontal
+          contentContainerStyle={{
+            width: "100%",
+            height: "100%",
+            paddingLeft: 20,
+            paddingTop: 20,
+          }}
+        >
+          <LearnWithZapCards />
+          <LearnWithZapCards />
+        </ScrollView>
+      </Box>
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
           key="zapper-bottom-sheet"
@@ -571,6 +612,8 @@ const Sidebar = () => {
           }}
           onClose={() => {
             setIsZapperBottomSheetVisible(false);
+            zapperBottomSheetRef.current?.close();
+            zapLinkBottomSheetRef.current?.close();
           }}
         />
       )}
@@ -581,6 +624,10 @@ const Sidebar = () => {
         username={exchangeUserData?.username}
         onClose={() => zapLinkBottomSheetRef.current?.close()}
         ref={zapLinkBottomSheetRef}
+      />
+      <LogoutModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
       />
       <PinEntryModal
         type="VERIFY"
