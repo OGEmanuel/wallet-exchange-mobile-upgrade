@@ -446,10 +446,6 @@ export const useAggregatedBalances = () => {
 
     // Use the processed portfolio data which has enabledAssets
     if (processedPortfolio.enabledAssets) {
-      console.log(
-        "🎯 Using processed portfolio enabledAssets:",
-        processedPortfolio.enabledAssets.length
-      );
       const enabledBalance = processedPortfolio.enabledAssets.reduce(
         (total: number, asset: ProcessedAsset) => total + (asset.totalUsdValue || 0),
         0

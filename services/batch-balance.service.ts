@@ -318,8 +318,6 @@ export class BatchBalanceService {
         supportedCurrency.tokenAddress ||
         '';
 
-      console.log('--- tokenAddress', tokenAddress);
-
       return (
         !tokenAddress ||
         tokenAddress === '' ||

@@ -8,6 +8,7 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import ButtonLightDecoration from "@/components/general/ButtonLightDecoration";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 // import { useNavigation } from "@react-navigation/native";
@@ -523,6 +524,7 @@ const Swap = () => {
               }
               hasError={!!error}
               errorColor={theme.colors.error}
+              isLoading={isLoading}
             />
           </Box>
 
@@ -562,6 +564,7 @@ const Swap = () => {
               isCrypto={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
+              isLoading={isLoading}
             />
             <SwapButton
               onPress={handleSwapButtonPress}
@@ -749,29 +752,32 @@ const Swap = () => {
                 zapLinkBottomSheetRef.current?.snapToIndex(0)
               }
               isZapLinked={isUserLoggedIn}
+              isLoading={isLoading}
             />
           )}
 
           <Box mt="l">
-            <CustomButton
-              text={"Zap Now"}
-              isLoading={isCreatingOrder}
-              fontSize={14}
-              width="100%"
-              height={56}
-              borderRadius={56}
-              bgColor={theme.colors.primaryColor}
-              onPress={handleContinue}
-              disabled={
-                isLoading ||
-                isCreatingOrder ||
-                !baseCurrency ||
-                !targetCurrency ||
-                baseAmount <= 0 ||
-                ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
-                  (!cryptoAddress.trim() || !!addressError))
-              }
-            />
+            <ButtonLightDecoration interval={12000}>
+              <CustomButton
+                text={"Zap Now"}
+                isLoading={isCreatingOrder}
+                fontSize={14}
+                width="100%"
+                height={56}
+                borderRadius={56}
+                bgColor={theme.colors.primaryColor}
+                onPress={handleContinue}
+                disabled={
+                  isLoading ||
+                  isCreatingOrder ||
+                  !baseCurrency ||
+                  !targetCurrency ||
+                  baseAmount <= 0 ||
+                  ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
+                    (!cryptoAddress.trim() || !!addressError))
+                }
+              />
+            </ButtonLightDecoration>
           </Box>
         </Box>
       </ScrollView>

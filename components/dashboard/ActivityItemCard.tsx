@@ -289,9 +289,10 @@ const ActivityItemCard = ({
           <CustomText
             variant="bodyMedium"
             fontSize={12}
+            color="disabledTextColor"
             style={{ marginBottom: 4 }}
           >
-            +
+            -
             {getApproximateAmount(
               activity.buyAmount,
               activity.buyCurrency.currencyId?.isCrypto
@@ -304,10 +305,9 @@ const ActivityItemCard = ({
           <CustomText
             variant="bodyMedium"
             fontSize={12}
-            color="disabledTextColor"
             style={{ marginBottom: 4 }}
           >
-            -
+            +
             {getApproximateAmount(
               activity.sellAmount,
               activity.sellCurrency.currencyId?.isCrypto

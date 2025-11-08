@@ -91,29 +91,38 @@ const SwapProgressSheet = forwardRef<
 
             <View style={{ width: 24 }} />
           </View>
-          <ProgressView
-            key={orderDetails?._id}
-            fromAmount={orderDetails?.buyAmount || "0"}
-            fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
-            toAmount={orderDetails?.sellAmount}
-            toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
-            recipient={"John Doe"}
-            network={(() => {})() as string}
-            status={orderStatus || "confirming"}
-            orderDetails={orderDetails}
-            progress={progress || 0}
-            currentStep={currentStep || "Confirming"}
-          />
-          <SuccessView
-            fromAmount={orderDetails?.buyAmount || "0"}
-            fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
-            toAmount={orderDetails?.sellAmount}
-            toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
-            recipient={"John Doe"}
-            network={(() => {})() as string}
-            status="confirming"
-            orderDetails={orderDetails}
-          />
+          {orderStatus === "FILLED" ? (
+            <SuccessView
+              fromAmount={orderDetails?.buyAmount || "0"}
+              fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
+              toAmount={orderDetails?.sellAmount}
+              toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
+              recipient={"John Doe"}
+              network={(() => {})() as string}
+              transactionTime={orderDetails?.createdAt ? new Date(orderDetails.createdAt).toLocaleTimeString() : ""}
+              orderDetails={orderDetails}
+            />
+          ) : (
+            <ProgressView
+              key={orderDetails?._id}
+              fromAmount={orderDetails?.buyAmount || "0"}
+              fromCurrency={orderDetails?.buyCurrency?.currencyId?.code || ""}
+              toAmount={orderDetails?.sellAmount}
+              toCurrency={orderDetails?.sellCurrency?.currencyId?.code || ""}
+              recipient={"John Doe"}
+              network={(() => {})() as string}
+              status={(() => {
+                // Map API order status to ProgressView status type
+                if (orderStatus === "DEPOSIT_CONFIRMING" || orderStatus === "PENDING") return "confirming";
+                if (orderStatus === "DEPOSIT_CONFIRMED" || orderStatus === "WITHDRAWAL_CONFIRMING") return "swapping";
+                if (orderStatus === "WITHDRAWAL_CONFIRMED") return "sending";
+                return "confirming";
+              })() as any}
+              orderDetails={orderDetails}
+              progress={progress || 0}
+              currentStep={currentStep || "Confirming"}
+            />
+          )}
         </BottomSheetView>
       </BottomSheet>
     );

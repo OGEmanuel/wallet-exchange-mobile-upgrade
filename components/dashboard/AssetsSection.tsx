@@ -8,7 +8,7 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import {
   selectAllSupportedTokens,
-  selectEnabledPortfolioAssets
+  selectEnabledPortfolioAssets,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -25,6 +25,7 @@ import SmartImage from "../general/SmartImage";
 import ManageTokensModal from "../Modals/ManageTokensModal";
 import AssetCardSkeleton from "./AssetCardSkeleton";
 import PortfolioErrorState from "./PortfolioErrorState";
+import { ISupportedCurrency } from "@zap/blockchain-sdk";
 
 const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
   const [imageError, setImageError] = React.useState(false);
@@ -79,7 +80,7 @@ const AssetCard = ({ asset }: { asset: ProcessedAsset }) => {
   const handleTokenPress = () => {
     // Pass supportedCurrencyId._id for navigation, token details will extract currencyId
     const supportedCurrencyId =
-      asset.supportedCurrencyId?._id || asset.supportedCurrencyId;
+      (asset.supportedCurrencyId as ISupportedCurrency)?._id || asset.supportedCurrencyId;
     router.push(`/dashboard/home/token-details/${supportedCurrencyId}`);
   };
 
@@ -363,7 +364,9 @@ const AssetsSection = ({
         />
       </Box>
       {enabledAssets.map((asset, index) => {
-        return asset && <AssetCard key={`${index}-${asset.id}`} asset={asset} />;
+        return (
+          asset && <AssetCard key={`${index}-${asset.id}`} asset={asset} />
+        );
       })}
     </Box>
   );
@@ -414,25 +417,16 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           const updatedPortfolio = JSON.parse(JSON.stringify(portfolio));
 
           // Extract and normalize userTokenList
-          let userTokenList = updatedPortfolio.userTokenList;
-          const hasDataWrapper =
-            (userTokenList as any)?.data &&
-            Array.isArray((userTokenList as any).data);
-
-          if (hasDataWrapper) {
-            userTokenList = [...(userTokenList as any).data]; // Create new array reference
-          } else if (Array.isArray(userTokenList)) {
-            userTokenList = [...userTokenList]; // Create new array reference
-          } else {
-            userTokenList = [];
-          }
+          let userTokenList = PortfolioService.normalizeUserTokenList(
+            updatedPortfolio.userTokenList
+          );
 
           // Find and update token status optimistically
-          const tokenIndex = userTokenList.findIndex((t: any) => {
+          const tokenIndex = userTokenList.findIndex((t) => {
             const supportedCurrencyId =
               typeof t.supportedCurrencyId === "string"
                 ? t.supportedCurrencyId
-                : t.supportedCurrencyId?._id;
+                : (t.supportedCurrencyId as ISupportedCurrency)?._id;
             return supportedCurrencyId === assetId;
           });
 
@@ -452,30 +446,6 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
             console.log(
               `🔄 Optimistic update: Token ${assetId} status changed from ${oldStatus} to ${newStatus}`
             );
-
-            // Ensure userTokenList is properly structured in portfolio (new array reference)
-            if (hasDataWrapper) {
-              updatedPortfolio.userTokenList = {
-                ...(updatedPortfolio.userTokenList as any),
-                data: userTokenList, // New array reference
-              };
-            } else {
-              updatedPortfolio.userTokenList = userTokenList; // New array reference
-            }
-
-            // Debug: Log what we're updating
-            const enabledCount = userTokenList.filter(
-              (t: any) => t.status === "ENABLED"
-            ).length;
-            console.log(`🔄 Optimistic update - Before setPortfolio:`, {
-              tokenId: assetId,
-              oldStatus,
-              newStatus,
-              enabledTokenCount: enabledCount,
-              totalTokenCount: userTokenList.length,
-              portfolioReference:
-                portfolio === updatedPortfolio ? "SAME (ERROR!)" : "NEW (GOOD)",
-            });
 
             // Update portfolio state - this should trigger useEffect in home.tsx
             setPortfolio(updatedPortfolio);
@@ -578,12 +548,21 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           console.log(
             `⏱️ Scheduled background sync (ID: ${syncTimeoutId}), will execute in 10 seconds`
           );
-
         } catch (backendError: any) {
           console.error("❌ Failed to toggle token on backend:", backendError);
           console.error("   Error type:", typeof backendError);
-          console.error("   Error constructor:", backendError?.constructor?.name);
-          console.error("   Full error object:", JSON.stringify(backendError, Object.getOwnPropertyNames(backendError), 2));
+          console.error(
+            "   Error constructor:",
+            backendError?.constructor?.name
+          );
+          console.error(
+            "   Full error object:",
+            JSON.stringify(
+              backendError,
+              Object.getOwnPropertyNames(backendError),
+              2
+            )
+          );
 
           // Revert optimistic update on error
           if (optimisticUpdateApplied && originalPortfolio && setPortfolio) {
@@ -591,16 +570,21 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
               "🔄 Reverting optimistic update due to backend error..."
             );
             console.log("   Original portfolio state:", {
-              enabledCount: originalPortfolio.userTokenList 
-                ? (Array.isArray(originalPortfolio.userTokenList) 
-                    ? originalPortfolio.userTokenList.filter((t: any) => t.status === 'ENABLED').length
-                    : (originalPortfolio.userTokenList as any)?.data?.filter((t: any) => t.status === 'ENABLED').length || 0
-                  )
+              enabledCount: originalPortfolio.userTokenList
+                ? Array.isArray(originalPortfolio.userTokenList)
+                  ? originalPortfolio.userTokenList.filter(
+                      (t: any) => t.status === "ENABLED"
+                    ).length
+                  : (originalPortfolio.userTokenList as any)?.data?.filter(
+                      (t: any) => t.status === "ENABLED"
+                    ).length || 0
                 : 0,
             });
             setPortfolio(originalPortfolio);
             optimisticUpdateApplied = false;
-            console.log("✅ Optimistic update reverted - UI should show original state");
+            console.log(
+              "✅ Optimistic update reverted - UI should show original state"
+            );
           } else {
             console.warn("⚠️ Cannot revert optimistic update:", {
               optimisticUpdateApplied,
@@ -643,10 +627,14 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           if (!isRetryable && props.onRefreshPortfolio) {
             // Only refresh on non-retryable errors (client errors like 400, 401, 403)
             // This will sync the UI with backend state
-            console.log("   Refreshing portfolio to sync with backend state...");
+            console.log(
+              "   Refreshing portfolio to sync with backend state..."
+            );
             props.onRefreshPortfolio();
           } else {
-            console.log("   Skipping portfolio refresh - backend may be down or error is retryable");
+            console.log(
+              "   Skipping portfolio refresh - backend may be down or error is retryable"
+            );
           }
 
           throw backendError; // Re-throw to let caller handle the error

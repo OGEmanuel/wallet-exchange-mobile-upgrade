@@ -34,12 +34,19 @@ export interface IBank {
   updatedAt: Date; // Added automatically by Mongoose with timestamps
 }
 
+// Extended ISupportedCurrency with balance information
+export interface ISupportedCurrencyWithBalance extends ISupportedCurrency {
+  balance?: number;
+  totalUsdValue?: number;
+}
+
 interface SupportedCurrenciesContextType {
   // State
-  supportedCurrenciesForSwap: ISupportedCurrency[];
+  supportedCurrenciesForSwap: ISupportedCurrencyWithBalance[];
   defaultTokens: ISupportedCurrency[];
   setDefaultTokens: (tokens: ISupportedCurrency[]) => void;
   setSupportedCurrenciesForSwap: (currencies: ISupportedCurrency[]) => void;
+  enrichSupportedCurrenciesWithBalances: (assets: any[]) => void;
   defaultTokensMap: Map<string, ISupportedCurrency>;
   lastFetchedWallet: Date | null;
   isLoading: boolean;
@@ -74,6 +81,9 @@ export const SupportedCurrenciesProvider: React.FC<
   SupportedCurrenciesProviderProps
 > = ({ children }) => {
   const [supportedCurrenciesForSwap, setSupportedCurrenciesForSwap] = useState<
+    ISupportedCurrencyWithBalance[]
+  >([]);
+  const [baseSupportedCurrencies, setBaseSupportedCurrencies] = useState<
     ISupportedCurrency[]
   >([]);
   const [defaultTokens, setDefaultTokens] = useState<ISupportedCurrency[]>([]);
@@ -203,7 +213,8 @@ export const SupportedCurrenciesProvider: React.FC<
       const cachedSupportedCurrencies =
         await loadSupportedCurrenciesFromCache();
       if (cachedSupportedCurrencies && cachedSupportedCurrencies.length > 0) {
-        setSupportedCurrenciesForSwap(cachedSupportedCurrencies);
+        setBaseSupportedCurrencies(cachedSupportedCurrencies);
+        setSupportedCurrenciesForSwap(cachedSupportedCurrencies.map(c => ({ ...c })));
         setLastFetched(new Date());
         console.log(
           "✅ Supported currencies for swap loaded from cache on mount"
@@ -274,19 +285,21 @@ export const SupportedCurrenciesProvider: React.FC<
       // This ensures SDK is ready before making the call
       const currencies = await zapSDKService.executeWithNetworkHandling(
         async () => {
-          const sdk = zapSDKService.getSDK();
-          if (!sdk || !sdk.supportedCurrencies?.listAll) {
-            throw new Error(
-              "SDK not initialized or supportedCurrencies not available"
-            );
-          }
+      const sdk = zapSDKService.getSDK();
+      if (!sdk || !sdk.supportedCurrencies?.listAll) {
+        throw new Error(
+          "SDK not initialized or supportedCurrencies not available"
+        );
+      }
           return await sdk.supportedCurrencies.listAll({ includeFiat: true });
         },
         "listAllSupportedCurrencies"
       );
 
       console.log("✅ Supported currencies fetched:", currencies.length);
-      setSupportedCurrenciesForSwap(currencies);
+      setBaseSupportedCurrencies(currencies);
+      // Initially set without balances, will be enriched when portfolio loads
+      setSupportedCurrenciesForSwap(currencies.map(c => ({ ...c })));
 
       // Save to cache after fetching
       await saveSupportedCurrenciesToCache(currencies);
@@ -413,12 +426,72 @@ export const SupportedCurrenciesProvider: React.FC<
     );
   };
 
+  // Enrich supported currencies with balances from portfolio assets
+  const enrichSupportedCurrenciesWithBalances = (assets: any[]) => {
+    if (!assets || assets.length === 0) {
+      // Reset to base currencies without balances
+      setSupportedCurrenciesForSwap(baseSupportedCurrencies.map(c => ({ ...c })));
+      return;
+    }
+
+    // Create a map of supportedCurrencyId -> aggregated asset balance
+    // This aggregates balances across multiple chains if the same currency exists on different chains
+    const balanceMap = new Map<string, { balance: number; totalUsdValue: number }>();
+    
+    assets.forEach((asset) => {
+      // Try to match by supportedCurrencyId
+      const supportedCurrencyId = 
+        typeof asset.supportedCurrencyId === 'string' 
+          ? asset.supportedCurrencyId 
+          : (asset.supportedCurrencyId as ISupportedCurrency)?._id;
+      
+      if (supportedCurrencyId && (asset.balance || 0) > 0) {
+        const existing = balanceMap.get(supportedCurrencyId);
+        if (existing) {
+          // Aggregate balances if same currency exists on multiple chains
+          balanceMap.set(supportedCurrencyId, {
+            balance: existing.balance + (asset.balance || 0),
+            totalUsdValue: existing.totalUsdValue + (asset.totalUsdValue || 0),
+          });
+        } else {
+          balanceMap.set(supportedCurrencyId, {
+            balance: asset.balance || 0,
+            totalUsdValue: asset.totalUsdValue || 0,
+          });
+        }
+      }
+    });
+
+    // Enrich supported currencies with balances
+    const enriched = baseSupportedCurrencies.map((currency) => {
+      const balanceData = balanceMap.get(currency._id);
+      if (balanceData) {
+        return {
+          ...currency,
+          balance: balanceData.balance,
+          totalUsdValue: balanceData.totalUsdValue,
+        };
+      }
+      return {
+        ...currency,
+        balance: 0,
+        totalUsdValue: 0,
+      };
+    });
+
+    setSupportedCurrenciesForSwap(enriched);
+  };
+
   const contextValue: SupportedCurrenciesContextType = {
     // State
     supportedCurrenciesForSwap,
     defaultTokens,
     setDefaultTokens,
-    setSupportedCurrenciesForSwap,
+    setSupportedCurrenciesForSwap: (currencies: ISupportedCurrency[]) => {
+      setBaseSupportedCurrencies(currencies);
+      setSupportedCurrenciesForSwap(currencies.map(c => ({ ...c })));
+    },
+    enrichSupportedCurrenciesWithBalances,
     defaultTokensMap,
     lastFetchedWallet,
     isLoading,

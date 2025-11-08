@@ -1,6 +1,7 @@
 import { ThemedFaceIDIcon } from "@/assets/svg/wallet-icons-components";
 import NetworkFeeCard from "@/components/dashboard/NetworkFeeCard";
 import { CustomButton, CustomText } from "@/components/general";
+import ButtonLightDecoration from "@/components/general/ButtonLightDecoration";
 import CryptoIcon from "@/components/general/CrptoIcon";
 import { PinEntryModal } from "@/components/Modals/PinEntryModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
@@ -324,23 +325,25 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
             color={theme.colors.headerTextColor}
             onPress={onClose || (() => {})}
           />
-          <CustomButton
-            width="48%"
-            height={56}
-            borderRadius={50}
-            text="Send"
-            disabled={isProcessing}
-            isLoading={isProcessing}
-            trailingIcon={
-              <Box ml="s">
-                <ThemedFaceIDIcon
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              </Box>
-            }
-            onPress={handleSendPress}
-          />
+          <ButtonLightDecoration interval={12000}>
+            <CustomButton
+              width="48%"
+              height={56}
+              borderRadius={50}
+              text="Send"
+              disabled={isProcessing}
+              isLoading={isProcessing}
+              trailingIcon={
+                <Box ml="s">
+                  <ThemedFaceIDIcon
+                    darkModeColor={theme.colors.bodyTextColor}
+                    lightModeColor={theme.colors.bodyTextColor}
+                  />
+                </Box>
+              }
+              onPress={handleSendPress}
+            />
+          </ButtonLightDecoration>
         </Box>
 
         {/* PIN Entry Modal */}

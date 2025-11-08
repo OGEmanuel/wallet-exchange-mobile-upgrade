@@ -4,13 +4,12 @@ import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
 import { Theme } from "@/theme";
-import { SellFlowProps } from "@/types/sell.types";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import React from "react";
 
-interface SuccessStepProps extends SellFlowProps {
+interface SuccessStepProps {
   onZapAgain: () => void;
   onGoToHistory: () => void;
 }

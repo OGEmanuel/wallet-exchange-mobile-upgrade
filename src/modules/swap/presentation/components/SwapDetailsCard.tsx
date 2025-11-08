@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
+import SkeletonLoader from "@/components/general/SkeletonLoader";
 import { Theme } from "@/theme";
 import { ArrowSwapHorizontal } from "iconsax-react-nativejs";
 import { TouchableOpacity } from "react-native";
@@ -20,6 +21,7 @@ interface SwapDetailsCardProps {
   showLess?: boolean;
   onProviderPress?: () => void;
   isZapLinked?: boolean;
+  isLoading?: boolean;
 }
 
 const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
@@ -33,6 +35,7 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
   showLess = false,
   onProviderPress,
   isZapLinked = false,
+  isLoading = false,
 }) => {
   const theme = useTheme<Theme>();
   const [isExpanded, setIsExpanded] = useState(!showLess);
@@ -114,14 +117,24 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
                 size={15}
                 color={theme.colors.secondaryColor}
               />
-              <CustomText
-                variant="bodyMedium"
-                color="secondaryColor"
-                fontSize={12}
-                ml="s"
-              >
-                {rate}
-              </CustomText>
+              {isLoading ? (
+                <SkeletonLoader
+                  width={120}
+                  height={16}
+                  borderRadius={4}
+                  isLoading={true}
+                  style={{ marginLeft: 8 }}
+                />
+              ) : (
+                <CustomText
+                  variant="bodyMedium"
+                  color="secondaryColor"
+                  fontSize={12}
+                  ml="s"
+                >
+                  {rate}
+                </CustomText>
+              )}
             </Box>
           </Box>
           <Box
@@ -143,13 +156,22 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
               justifyContent="space-between"
               alignItems="center"
             >
-              <CustomText
-                variant="bodyMedium"
-                fontSize={12}
-                color="headerTextColor"
-              >
-                {zapFee}
-              </CustomText>
+              {isLoading ? (
+                <SkeletonLoader
+                  width={80}
+                  height={16}
+                  borderRadius={4}
+                  isLoading={true}
+                />
+              ) : (
+                <CustomText
+                  variant="bodyMedium"
+                  fontSize={12}
+                  color="headerTextColor"
+                >
+                  {zapFee}
+                </CustomText>
+              )}
             </Box>
           </Box>
         </>

@@ -64,11 +64,11 @@ const ChainCard = ({
   );
 };
 
-const Chains = () => {
+const ChainsStep = () => {
   const theme = useTheme<Theme>();
 
   return (
-    <Box flex={1} paddingHorizontal="m">
+    <Box flex={1} paddingHorizontal="m" paddingTop="m">
       <CustomInputWithoutForm
         value=""
         onChange={(e) => console.log(e)}
@@ -115,4 +115,5 @@ const Chains = () => {
   );
 };
 
-export default Chains;
+export default ChainsStep;
+

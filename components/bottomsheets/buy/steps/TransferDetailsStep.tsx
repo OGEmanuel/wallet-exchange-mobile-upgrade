@@ -36,7 +36,7 @@ const ListItem = ({
   );
 };
 
-const TransferDetails = () => {
+const TransferDetailsStep = () => {
   const theme = useTheme<Theme>();
   const currency = useSelector(selectBuyCurrency);
   const dispatch = useDispatch();
@@ -49,7 +49,7 @@ const TransferDetails = () => {
     return () => clearTimeout(sub);
   }, []);
   return (
-    <Box flex={1}>
+    <Box flex={1} paddingHorizontal="m" paddingTop="m">
       <SettingsHeader
         title="Transaction Details"
         onBackPress={() => dispatch(setBuyStage("buy"))}
@@ -390,4 +390,5 @@ const TransferDetails = () => {
   );
 };
 
-export default TransferDetails;
+export default TransferDetailsStep;
+

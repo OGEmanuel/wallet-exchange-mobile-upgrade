@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.newzapwalletexchange"
+      "bundleIdentifier": "com.anonymous.newzapwalletexchange",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We use your location to provide enhanced security and fraud prevention for your transactions. Your location helps us verify your identity and protect your account."
+      }
     },
     "android": {
       "adaptiveIcon": {

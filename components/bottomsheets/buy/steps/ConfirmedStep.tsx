@@ -9,7 +9,7 @@ import { Bolt, ChevronLeft } from "lucide-react-native";
 import React from "react";
 import { useDispatch } from "react-redux";
 
-const Confirmed = () => {
+const ConfirmedStep = () => {
   const dispatch = useDispatch();
   const theme = useTheme<Theme>();
   return (
@@ -17,7 +17,7 @@ const Confirmed = () => {
       colors={["#00000000", "#6045FF"]}
       start={{ x: 0.8, y: 0.4 }}
       end={{ x: 1, y: 0 }}
-      style={{ flex: 1, paddingHorizontal: 20 }}
+      style={{ flex: 1, paddingHorizontal: 20, paddingTop: 18 }}
     >
       <ChevronLeft
         size={30}
@@ -134,4 +134,5 @@ const Confirmed = () => {
   );
 };
 
-export default Confirmed;
+export default ConfirmedStep;
+

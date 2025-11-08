@@ -9,8 +9,9 @@ import BottomSheet, {
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import React, { forwardRef } from "react";
-import { Pressable } from "react-native";
+import { Platform, Pressable } from "react-native";
 import { ChevronRight } from "react-native-feather";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type Token = {
   id: string;
@@ -45,7 +46,7 @@ const ItemCard = ({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: theme.spacing.m,
+        padding: 16, // theme.spacing.m value
       }}
       onPress={() => onPress()}
     >
@@ -66,17 +67,27 @@ const ItemCard = ({
 
 const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const theme = useTheme<Theme>();
-  const {
-    tradeBottomSheetRef,
-    buyTokensBottomSheetRef,
-    sellTokensBottomSheetRef,
-  } = useBottomSheetRefs();
+  const insets = useSafeAreaInsets();
+  const { buyTokensBottomSheetRef, sellTokensBottomSheetRef } =
+    useBottomSheetRefs();
+
+  // Tab bar height: 90 on iOS, 70 on Android
+  const tabBarHeight = Platform.OS === "ios" ? 90 : 70;
+  const bottomInset = tabBarHeight;
 
   const openSellFlow = () => {
-    tradeBottomSheetRef.current?.close();
+    // Close this sheet using the ref prop
+    (ref as React.RefObject<BottomSheet>).current?.close();
 
     setTimeout(() => {
       sellTokensBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
+  };
+
+  const openBuyFlow = () => {
+    (ref as React.RefObject<BottomSheet>).current?.close();
+    setTimeout(() => {
+      buyTokensBottomSheetRef.current?.snapToIndex(0);
     }, 100);
   };
 
@@ -88,6 +99,7 @@ const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
       enablePanDownToClose
       enableOverDrag={false}
       enableDynamicSizing={false}
+      bottomInset={bottomInset}
       backdropComponent={(props: any) => (
         <BottomSheetBackdrop
           {...props}
@@ -97,6 +109,7 @@ const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
       )}
       style={{
         backgroundColor: theme.colors.mainBackgroundColor,
+        zIndex: 1000,
       }}
       handleComponent={() => (
         <Box
@@ -134,10 +147,7 @@ const TradeSelectBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
               style={{ width: "100%", height: "100%" }}
             />
           }
-          onPress={() => {
-            buyTokensBottomSheetRef.current?.snapToIndex(0);
-            tradeBottomSheetRef.current?.snapToPosition("0%");
-          }}
+          onPress={openBuyFlow}
         />
         <Box height={16}></Box>
         <ItemCard

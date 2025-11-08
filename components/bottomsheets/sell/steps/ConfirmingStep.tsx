@@ -2,28 +2,33 @@ import icons from "@/assets/icons";
 import { ARROW_DARK_LEFT_SVG, ARROW_LEFT_SVG } from "@/assets/svgs";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
+import { setSellStage } from "@/src/modules/sell/presentation/state/sell-slice";
 import { Theme } from "@/theme";
-import { SellFlowProps } from "@/types/sell.types";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import React from "react";
 import { Pressable } from "react-native";
 import { SvgXml } from "react-native-svg";
+import { useDispatch } from "react-redux";
 import ProgressSteps from "../ProgressSteps";
 
-interface ConfirmingStepProps extends SellFlowProps {
+interface ConfirmingStepProps {
   currentStepIndex: number;
   steps: string[];
 }
 
 const ConfirmingStep: React.FC<ConfirmingStepProps> = ({
-  onBack,
   currentStepIndex,
   steps,
 }) => {
   const theme = useTheme<Theme>();
   const isDark = theme.colors.headerTextColor === "#FBFBFB";
+  const dispatch = useDispatch();
+
+  const handleBack = () => {
+    dispatch(setSellStage("details"));
+  };
 
   return (
     <BottomSheetView style={{ flex: 1, paddingHorizontal: 10, paddingTop: 10 }}>
@@ -34,7 +39,7 @@ const ConfirmingStep: React.FC<ConfirmingStepProps> = ({
         marginBottom="m"
         flex={1}
       >
-        <Pressable onPress={onBack}>
+        <Pressable onPress={handleBack}>
           <SvgXml
             xml={isDark ? ARROW_DARK_LEFT_SVG : ARROW_LEFT_SVG}
             width={16}

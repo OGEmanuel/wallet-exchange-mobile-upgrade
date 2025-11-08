@@ -2,8 +2,8 @@ import { ARROW_DARK_LEFT_SVG, ARROW_LEFT_SVG } from "@/assets/svgs";
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
+import { setSellStage } from "@/src/modules/sell/presentation/state/sell-slice";
 import { Theme } from "@/theme";
-import { SellFlowProps } from "@/types/sell.types";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
@@ -11,13 +11,21 @@ import React, { useState } from "react";
 import { Pressable, TouchableOpacity } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SvgXml } from "react-native-svg";
+import { useDispatch } from "react-redux";
 
-const DetailsStep: React.FC<
-  SellFlowProps & { setShowConfirmModal: (show: boolean) => void }
-> = ({ onBack, setShowConfirmModal }) => {
+interface DetailsStepProps {
+  setShowConfirmModal: (show: boolean) => void;
+}
+
+const DetailsStep: React.FC<DetailsStepProps> = ({ setShowConfirmModal }) => {
   const theme = useTheme<Theme>();
   const isDark = theme.colors.headerTextColor === "#FBFBFB";
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState("Summary");
+
+  const handleBack = () => {
+    dispatch(setSellStage("select-bank"));
+  };
 
   return (
     <BottomSheetView style={{ flex: 1, paddingHorizontal: 10, paddingTop: 10 }}>
@@ -28,7 +36,7 @@ const DetailsStep: React.FC<
         marginBottom="m"
         flex={1}
       >
-        <Pressable onPress={onBack}>
+        <Pressable onPress={handleBack}>
           <SvgXml
             xml={isDark ? ARROW_DARK_LEFT_SVG : ARROW_LEFT_SVG}
             width={16}

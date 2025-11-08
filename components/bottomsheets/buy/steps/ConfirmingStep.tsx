@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react-native";
 import React from "react";
 import { useDispatch } from "react-redux";
 
-const Confirming = () => {
+const ConfirmingStep = () => {
   const dispatch = useDispatch();
   const theme = useTheme<Theme>();
 
@@ -19,7 +19,7 @@ const Confirming = () => {
     return () => clearTimeout(sub);
   }, []);
   return (
-    <Box flex={1} paddingHorizontal="m">
+    <Box flex={1} paddingHorizontal="m" paddingTop={18}>
       <ChevronLeft
         size={30}
         color={theme.colors.bodyTextColor}
@@ -122,4 +122,5 @@ const Confirming = () => {
   );
 };
 
-export default Confirming;
+export default ConfirmingStep;
+
