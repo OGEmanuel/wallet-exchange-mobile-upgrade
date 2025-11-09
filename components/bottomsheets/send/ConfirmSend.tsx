@@ -316,34 +316,38 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
           mt="l"
           gap="m"
         >
-          <CustomButton
-            width="48%"
-            height={56}
-            borderRadius={50}
-            text="Cancel"
-            bgColor={theme.colors.borderColor}
-            color={theme.colors.headerTextColor}
-            onPress={onClose || (() => {})}
-          />
-          <ButtonLightDecoration interval={12000}>
+          <Box flex={1}>
             <CustomButton
-              width="48%"
+              width="100%"
               height={56}
               borderRadius={50}
-              text="Send"
-              disabled={isProcessing}
-              isLoading={isProcessing}
-              trailingIcon={
-                <Box ml="s">
-                  <ThemedFaceIDIcon
-                    darkModeColor={theme.colors.bodyTextColor}
-                    lightModeColor={theme.colors.bodyTextColor}
-                  />
-                </Box>
-              }
-              onPress={handleSendPress}
+              text="Cancel"
+              bgColor={theme.colors.borderColor}
+              color={theme.colors.headerTextColor}
+              onPress={onClose || (() => {})}
             />
-          </ButtonLightDecoration>
+          </Box>
+          <Box flex={1}>
+            <ButtonLightDecoration interval={12000}>
+              <CustomButton
+                width="100%"
+                height={56}
+                borderRadius={50}
+                text="Send"
+                disabled={isProcessing}
+                isLoading={isProcessing}
+                trailingIcon={
+                  <Box ml="s">
+                    <ThemedFaceIDIcon
+                      darkModeColor={theme.colors.bodyTextColor}
+                      lightModeColor={theme.colors.bodyTextColor}
+                    />
+                  </Box>
+                }
+                onPress={handleSendPress}
+              />
+            </ButtonLightDecoration>
+          </Box>
         </Box>
 
         {/* PIN Entry Modal */}

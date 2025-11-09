@@ -3,8 +3,6 @@ import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
-import { useWallet } from "@/src/core/wallet/wallet-context";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -31,8 +29,6 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
 }) => {
   const theme = useTheme<Theme>();
   const { exchangeUserData } = useExchangeAuth();
-  const { setExchangeUserData } = useWallet();
-  const { fetchUserById } = useKyc();
   const [currentScreen, setCurrentScreen] = useState<TwoFAScreen>("toggle");
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +54,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
     exchangeUserDataRef.current = exchangeUserData;
   }, [exchangeUserData]);
 
-  // Check 2FA status function - fetches latest user data and uses user object data
+  // Check 2FA status function - uses SDK's getTwoFaStatus
   const check2FAStatus = useCallback(async () => {
     // Prevent multiple simultaneous calls
     if (hasCheckedRef.current) {
@@ -69,53 +65,31 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       setIsLoading(true);
       hasCheckedRef.current = true;
       
-      const currentUserData = exchangeUserDataRef.current;
-      const currentUserId = currentUserData?._id;
+      // Use SDK's getTwoFaStatus function
+      const statusResult = await zapSDKService.getTwoFaStatus();
       
-      // Use fetchUserById which uses users.getProfile and should include all fields including 2FA
-      if (currentUserId) {
-        const response = await fetchUserById(currentUserData);
+      console.log("🔍 2FA Status Check (from SDK):", statusResult);
+      
+      // The SDK returns the 2FA status - check the response structure
+      // It might return { enabled: boolean } or { isEnabled: boolean } or just a boolean
+      if (statusResult) {
+        const isEnabled = 
+          (statusResult as any)?.enabled === true ||
+          (statusResult as any)?.isEnabled === true ||
+          (statusResult as any)?.isTwoFAenabled === true ||
+          (statusResult as any)?.twoFA === true ||
+          statusResult === true;
         
-        if (response?.data) {
-          // Only update if user ID changed to prevent loops
-          if (userIdRef.current !== response.data._id && response.data._id) {
-            userIdRef.current = response.data._id || null;
-            setExchangeUserData(response.data);
-          }
-          
-          // Check user data for 2FA status - check all possible field names
-          const userHas2FA = 
-            response.data.isTwoFAenabled || 
-            response.data.twoFA || 
-            (response.data as any)?.is2FAEnabled ||
-            (response.data as any)?.is2FA ||
-            false;
-          
-          console.log("🔍 2FA Status Check (with fresh data from fetchUserById):", {
-            exchangeUserData: {
-              _id: response.data._id,
-              isTwoFAenabled: response.data.isTwoFAenabled,
-              twoFA: response.data.twoFA,
-              is2FAEnabled: (response.data as any)?.is2FAEnabled,
-              is2FA: (response.data as any)?.is2FA,
-            },
-            userHas2FA,
-            allKeys: Object.keys(response.data), // Log all keys to see what's available
-          });
-          
-          setIs2FAEnabled(userHas2FA);
-        } else {
-          // Fall back to existing user data if fetch fails
-          const userHas2FA = currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
-          setIs2FAEnabled(userHas2FA);
-        }
+        setIs2FAEnabled(isEnabled);
+        
+        console.log("✅ 2FA Status from SDK:", { statusResult, isEnabled });
       } else {
-        // No user ID available, use existing data
-        const userHas2FA = currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
-        setIs2FAEnabled(userHas2FA);
+        // No status returned (likely 404 - user hasn't set up 2FA)
+        setIs2FAEnabled(false);
+        console.log("ℹ️ No 2FA status found (user hasn't set up 2FA)");
       }
     } catch (error) {
-      console.error("Failed to fetch latest user data:", error);
+      console.error("Failed to get 2FA status from SDK:", error);
       // Fall back to existing user data on error
       const currentUserData = exchangeUserDataRef.current;
       const userHas2FA = currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
@@ -127,20 +101,20 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         hasCheckedRef.current = false;
       }, 1000);
     }
-  }, [fetchUserById, setExchangeUserData]); // Removed exchangeUserData from deps to prevent loop
+  }, []); // No dependencies needed since we're using SDK directly
 
   // Check 2FA status on mount and when user ID changes
   useEffect(() => {
+    // Check 2FA status when component mounts or when user changes
     const currentUserId = exchangeUserData?._id;
     if (currentUserId && userIdRef.current !== currentUserId) {
       userIdRef.current = currentUserId;
       check2FAStatus();
-    } else if (!currentUserId) {
-      // If no user ID, just check from existing data
-      const userHas2FA = exchangeUserData?.isTwoFAenabled || exchangeUserData?.twoFA || false;
-      setIs2FAEnabled(userHas2FA);
+    } else if (currentUserId) {
+      // User ID exists, check status using SDK
+      check2FAStatus();
     }
-  }, [exchangeUserData?._id, check2FAStatus, exchangeUserData]);
+  }, [exchangeUserData?._id, check2FAStatus]);
 
   const handleEnable2FA = async () => {
     try {

@@ -1493,8 +1493,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
                   } as ExchangeValidateOtpResponse;
                   
                   // Set authentication state
+                  // SDK now automatically stores tokens after 2FA login, no need to manually store them
                   const exchangeUserId = user?._id || responseData.userId || null;
                   if (exchangeUserId) {
+                    // Store user profile
+                    if (user) {
+                      await SecureStore.setItemAsync(
+                        StorageKeys.USER_PROFILE,
+                        JSON.stringify(user)
+                      );
+                    }
+                    
                     setIsExchangeAuthenticated(true);
                     setCurrentExchangeUser(exchangeUserId);
                     setExchangeUserData(user as UserModel | null);
