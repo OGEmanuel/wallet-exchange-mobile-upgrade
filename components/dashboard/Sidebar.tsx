@@ -42,6 +42,7 @@ import CustomText from "../general/CustomText";
 import SmartImage from "../general/SmartImage";
 import { PinEntryModal } from "../Modals/PinEntryModal";
 import { PinSetupModal } from "../Modals/PinSetupModal";
+import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
@@ -107,7 +108,6 @@ const Sidebar = () => {
   const [pendingAction, setPendingAction] = useState<
     "logout" | "changePin" | "disableBiometric" | null
   >(null);
-
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
 
@@ -122,10 +122,8 @@ const Sidebar = () => {
   useEffect(() => {
     const loadBiometricPreference = async () => {
       try {
-        const stored = await SecureStore.getItemAsync(
-          StorageKeys.BIOMETRIC_ENABLED
-        );
-        setIsBiometricEnabled(stored === "true");
+        const value = pinStorageService.getFaceIdValue();
+        setIsBiometricEnabled(value);
       } catch (error) {
         console.error("Failed to load biometric preference:", error);
       }
@@ -163,14 +161,15 @@ const Sidebar = () => {
     }, 100);
   }, []);
 
-  const handleDisconnectZapExchange = useCallback(async () => {
+  const handleDisconnectZapExchange = async () => {
     try {
-      await logoutFromExchange();
-      zapLinkBottomSheetRef.current?.close();
+      logoutFromExchange().then(() => {
+        zapLinkBottomSheetRef.current?.close();
+      });
     } catch (error) {
       console.error("Logout from exchange failed:", error);
     }
-  }, [logoutFromExchange]);
+  };
 
   const handleBiometricEnabled = useCallback(async () => {
     const newValue = !isBiometricEnabled;
@@ -264,7 +263,9 @@ const Sidebar = () => {
   const handleCheck = () => {
     if (!isUserLoggedIn) {
       // Not connected - show connect modal
-      zapLinkBottomSheetRef.current?.snapToIndex(0);
+      // zapLinkBottomSheetRef.current?.snapToIndex(0);
+      setIsZapperBottomSheetVisible(true);
+      zapperBottomSheetRef.current?.snapToIndex(0);
     } else {
       // Connected - go to profile
       router.push("/dashboard/home/wallet-home/more/profile");
@@ -331,7 +332,8 @@ const Sidebar = () => {
 
   // Handle logout - open disconnect modal (like swap screen)
   const handleLogout = useCallback(() => {
-    zapLinkBottomSheetRef.current?.snapToIndex(0);
+    zapLinkBottomSheetRef.current?.snapToIndex(1);
+    // setShowLogoutModal(true);
   }, []);
 
   const handleChangePin = useCallback(() => {
@@ -710,6 +712,20 @@ const Sidebar = () => {
           </Box>
         </ScrollView>
       </Box>
+      <Box width={"100%"} height={140}>
+        <ScrollView
+          horizontal
+          contentContainerStyle={{
+            width: "100%",
+            height: "100%",
+            paddingLeft: 20,
+            paddingTop: 20,
+          }}
+        >
+          <LearnWithZapCards />
+          <LearnWithZapCards />
+        </ScrollView>
+      </Box>
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
           key="zapper-bottom-sheet"
@@ -720,6 +736,8 @@ const Sidebar = () => {
           }}
           onClose={() => {
             setIsZapperBottomSheetVisible(false);
+            zapperBottomSheetRef.current?.close();
+            zapLinkBottomSheetRef.current?.close();
           }}
         />
       )}

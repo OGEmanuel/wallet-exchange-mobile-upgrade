@@ -195,6 +195,10 @@ export default function RootLayout() {
                                       name="index"
                                       options={{ title: "Home" }}
                                     />
+                                    <Stack.Screen
+                                      name="(modal)"
+                                      options={{ presentation: "modal" }}
+                                    />
                                   </Stack>
                                   <BottomSheetManager />
                                   <AppLoadingModal />

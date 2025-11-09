@@ -15,8 +15,8 @@ const LogoutModal = ({ visible, onClose }: IProps) => {
   const { logoutFromExchange } = useWallet();
   const handleLogout = async () => {
     await logoutFromExchange();
-    onClose();
     router.push("/dashboard/home/wallet-home/swap");
+    onClose();
   };
   return (
     <Modal
