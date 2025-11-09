@@ -135,31 +135,34 @@ const BankAccountsScreen = () => {
     setShowAddAccountBottomSheet(false);
   };
 
-  const renderAccountList = () => (
-    <Box flex={1} bg="mainBackgroundColor" marginTop="l" marginHorizontal="m">
-      <Box
-        backgroundColor="secondaryBackgroundColor"
-        borderRadius={30}
-        paddingHorizontal="m"
-        marginBottom="m"
-        flexDirection="row"
-        alignItems="center"
-      >
-        <Search size={18} color={theme.colors.bodyTextColor} />
-        <TextInput
-          style={{
-            flex: 1,
-            padding: 13,
-            color: theme.colors.headerTextColor,
-            fontSize: 15,
-          }}
-          placeholder="Search accounts"
-          placeholderTextColor={theme.colors.disabledTextColor}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </Box>
+  const renderSearchBar = () => (
+    <Box
+      backgroundColor="secondaryBackgroundColor"
+      borderRadius={30}
+      paddingHorizontal="m"
+      marginBottom="m"
+      flexDirection="row"
+      alignItems="center"
+    >
+      <Search size={18} color={theme.colors.bodyTextColor} />
+      <TextInput
+        style={{
+          flex: 1,
+          padding: 13,
+          color: theme.colors.headerTextColor,
+          fontSize: 15,
+        }}
+        placeholder="Search accounts"
+        placeholderTextColor={theme.colors.disabledTextColor}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+    </Box>
+  );
 
+  const renderAccountList = () => (
+    <Box flex={1} width="100%">
+      {renderSearchBar()}
       <Box>
         {filteredBankAccounts.map((account) => (
           <TouchableOpacity
@@ -178,28 +181,35 @@ const BankAccountsScreen = () => {
     </Box>
   );
 
-  const renderEmptyState = () => (
-    <Box
-      bg="mainBackgroundColor"
-      flex={1}
-      marginTop="s"
-      marginHorizontal="m"
-      alignItems="center"
-      justifyContent="center"
-    >
-      <EmptyState
-        title="No Accounts"
-        info="You haven't added any accounts. Add a bank account to receive your naira"
-        onPress={handleAddAccount}
-        source={require("@/assets/images/noBank.png")}
+  const renderEmptyState = (showSearchBar: boolean = false) => (
+    <Box flex={1} width="100%">
+      {showSearchBar && renderSearchBar()}
+      <Box
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        paddingHorizontal="m"
       >
-        <CustomButton
-          text="+ Add New Account"
+        <EmptyState
+          title={showSearchBar ? "No Results" : "No Accounts"}
+          info={
+            showSearchBar
+              ? "No accounts match your search. Try a different search term."
+              : "You haven't added any accounts. Add a bank account to receive your naira"
+          }
           onPress={handleAddAccount}
-          borderRadius={30}
-          width={200}
-        />
-      </EmptyState>
+          source={require("@/assets/images/noBank.png")}
+        >
+          {!showSearchBar && (
+            <CustomButton
+              text="+ Add New Account"
+              onPress={handleAddAccount}
+              borderRadius={30}
+              width={200}
+            />
+          )}
+        </EmptyState>
+      </Box>
     </Box>
   );
 
@@ -220,21 +230,14 @@ const BankAccountsScreen = () => {
         }
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <Box
-          width="100%"
-          alignItems="center"
-          flexDirection="row"
-          justifyContent="center"
-          paddingHorizontal="l"
-          position="relative"
-        >
+        <Box flex={1} p="m" position="relative">
           {bankAccounts.length > 0 && (
-            <Box position="absolute" right={16} top={0} zIndex={1}>
+            <Box position="absolute" right={16} top={16} zIndex={1}>
               <CustomButton
                 text="+ New"
                 onPress={handleAddAccount}
                 width={70}
-                height={30}
+                height={43}
                 borderRadius={50}
               />
             </Box>
@@ -259,10 +262,14 @@ const BankAccountsScreen = () => {
                 />
               </Box>
             </Box>
-          ) : filteredBankAccounts.length > 0 ? (
-            renderAccountList()
+          ) : bankAccounts.length > 0 ? (
+            filteredBankAccounts.length > 0 ? (
+              renderAccountList()
+            ) : (
+              renderEmptyState(true)
+            )
           ) : (
-            renderEmptyState()
+            renderEmptyState(false)
           )}
         </Box>
       </ScrollView>

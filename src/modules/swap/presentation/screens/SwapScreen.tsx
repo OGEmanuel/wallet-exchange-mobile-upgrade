@@ -133,6 +133,8 @@ const Swap = () => {
     error,
     setError,
     isLoading,
+    isRateLoading,
+    currenciesLoading,
     baseAmountUSD,
     isInputtingUSD,
     // supportedCurrencies,
@@ -150,6 +152,9 @@ const Swap = () => {
     handleBaseAmountFocus,
     handleTargetAmountFocus,
   } = useSwapSDK();
+
+  // Initial loading state: show number skeletons only when currencies are loading and no data is available yet
+  const isInitialLoading = currenciesLoading && (!baseCurrency || !targetCurrency);
 
   const { fetchBankAccounts } = useBankAccounts();
 
@@ -524,7 +529,8 @@ const Swap = () => {
               }
               hasError={!!error}
               errorColor={theme.colors.error}
-              isLoading={isLoading}
+              isLoading={isInitialLoading}
+              isCurrenciesLoading={currenciesLoading}
             />
           </Box>
 
@@ -564,7 +570,8 @@ const Swap = () => {
               isCrypto={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
-              isLoading={isLoading}
+              isLoading={isInitialLoading}
+              isCurrenciesLoading={currenciesLoading}
             />
             <SwapButton
               onPress={handleSwapButtonPress}
@@ -753,6 +760,7 @@ const Swap = () => {
               }
               isZapLinked={isUserLoggedIn}
               isLoading={isLoading}
+              isRateLoading={isRateLoading}
             />
           )}
 

@@ -40,7 +40,8 @@ interface TokenInputCardProps {
   hasError?: boolean;
   errorColor?: string;
   onFocus?: () => void;
-  isLoading?: boolean;
+  isLoading?: boolean; // For numbers/amounts loading (initial load)
+  isCurrenciesLoading?: boolean; // For currencies loading
 }
 
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
@@ -64,6 +65,7 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
   errorColor = "#FF6B6B",
   onFocus,
   isLoading = false,
+  isCurrenciesLoading = false,
 }) => {
   const theme = useTheme<Theme>();
 
@@ -130,27 +132,36 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
           />
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.selectedToken,
-            { backgroundColor: theme.colors.mainBackgroundColor },
-          ]}
-          onPress={onTokenSelect || (() => {})}
-        >
-          <Image source={tokenImage} style={styles.selectedTokenImage} />
-          <CustomText
-            variant="body"
-            style={{ fontSize: 14, fontWeight: "500" }}
-            marginRight="s"
-          >
-            {tokenCode || tokenSymbol}
-          </CustomText>
-          <Image
-            source={icons.down}
-            style={styles.selectedTokenArrow}
-            tintColor={theme.colors.bodyTextColor}
+        {isCurrenciesLoading ? (
+          <SkeletonLoader
+            width={107}
+            height={36}
+            borderRadius={18}
+            isLoading={true}
           />
-        </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.selectedToken,
+              { backgroundColor: theme.colors.mainBackgroundColor },
+            ]}
+            onPress={onTokenSelect || (() => {})}
+          >
+            <Image source={tokenImage} style={styles.selectedTokenImage} />
+            <CustomText
+              variant="body"
+              style={{ fontSize: 14, fontWeight: "500" }}
+              marginRight="s"
+            >
+              {tokenCode || tokenSymbol}
+            </CustomText>
+            <Image
+              source={icons.down}
+              style={styles.selectedTokenArrow}
+              tintColor={theme.colors.bodyTextColor}
+            />
+          </TouchableOpacity>
+        )}
       </Box>
 
       {isReceive ? null : (

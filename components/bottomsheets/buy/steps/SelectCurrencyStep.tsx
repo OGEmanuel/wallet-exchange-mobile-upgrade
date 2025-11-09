@@ -7,12 +7,12 @@ import {
   setBuyStage,
 } from "@/src/modules/buy/presentation/state/buy-slice";
 import { Theme } from "@/theme";
-import { BottomSheetView } from "@gorhom/bottom-sheet";
+import { BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
 import { Image } from "expo-image";
 import React, { useMemo } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useDispatch } from "react-redux";
 
@@ -135,27 +135,33 @@ const SelectCurrencyStep = () => {
         </CustomText>
         <Box width={30} />
       </Box>
-      <Box bg="secondaryBackgroundColor" p="m" borderRadius={12} mt="m">
+      <Box bg="secondaryBackgroundColor" borderRadius={12} mt="m" flex={1} overflow="hidden">
         {isLoading ? (
-          <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
-            Loading currencies...
-          </CustomText>
+          <Box p="m">
+            <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
+              Loading currencies...
+            </CustomText>
+          </Box>
         ) : fiatCurrencies.length === 0 ? (
-          <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
-            No fiat currencies available
-          </CustomText>
+          <Box p="m">
+            <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
+              No fiat currencies available
+            </CustomText>
+          </Box>
         ) : (
-          <FlatList
-            data={fiatCurrencies}
-            keyExtractor={(item: FiatCurrency) => item.code}
-            style={{ marginTop: 16 }}
-            renderItem={({ item }: { item: FiatCurrency }) => (
+          <BottomSheetScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+            showsVerticalScrollIndicator={true}
+          >
+            {fiatCurrencies.map((item: FiatCurrency) => (
               <TokenCard
+                key={item.code}
                 currency={item}
                 onSelect={() => handleCurrencySelect(item)}
               />
-            )}
-          />
+            ))}
+          </BottomSheetScrollView>
         )}
       </Box>
     </BottomSheetView>

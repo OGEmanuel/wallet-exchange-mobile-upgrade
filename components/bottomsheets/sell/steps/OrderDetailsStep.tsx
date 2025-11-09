@@ -14,6 +14,8 @@ import {
   selectSellToken,
   setSellCreatedOrder,
   setSellIsCreatingOrder,
+  setSellSelectedBank,
+  setSellStage,
 } from "@/src/modules/sell/presentation/state/sell-slice";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { ICurrency } from "@zap/blockchain-sdk";
@@ -163,6 +165,16 @@ const OrderDetailsStep = () => {
             `Circuit breaker is open. Please wait ${waitTimeSeconds} seconds before trying again.`
           );
           // TODO: Show user-friendly error message (e.g., via Alert or toast)
+          return;
+        }
+        
+        // Check if it's an "Account not found" error
+        if (error?.message?.includes("Account not found") || error?.message?.includes("account not found")) {
+          console.error("Bank account not found. The account may have been deleted. Please select a different account.");
+          // Reset the selected bank account so user can select a new one
+          dispatch(setSellSelectedBank(null));
+          // Navigate back to bank selection step
+          dispatch(setSellStage("select-bank"));
           return;
         }
         

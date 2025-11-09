@@ -4,6 +4,7 @@ import {
   ThemedProfileOutlineIcon,
   ThemedShieldOutlineIcon,
 } from "@/assets/svg/wallet-icons-components";
+import TwoFactorAuthBottomSheet from "@/components/bottomsheets/TwoFactorAuthBottomSheet";
 import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import {
@@ -82,6 +83,7 @@ const ProfilePage = () => {
   const { isUserLoggedIn } = useExchangeAuth();
   const { showBottomSheet } = useAppBottomSheet();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
+  const twoFactorAuthBottomSheetRef = useRef<BottomSheet>(null);
 
   const showKYCBottomSheet = (options?: { onComplete?: () => void; onClose?: () => void }) => {
     return showBottomSheet({
@@ -181,7 +183,9 @@ const ProfilePage = () => {
         />
       ),
       title: "Two factor authentication",
-      onPress: () => {},
+      onPress: () => {
+        twoFactorAuthBottomSheetRef.current?.snapToIndex(0);
+      },
     },
     {
       icon: (
@@ -324,6 +328,10 @@ const ProfilePage = () => {
         onClose={() => {
           zapLinkBottomSheetRef.current?.close();
         }}
+      />
+      <TwoFactorAuthBottomSheet
+        bottomSheetRef={twoFactorAuthBottomSheetRef}
+        onClose={() => twoFactorAuthBottomSheetRef.current?.close()}
       />
     </PageWrapper>
   );

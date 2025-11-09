@@ -5,12 +5,12 @@ import { Currency } from "@/interfaces/account.interface";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { setSellCurrency, setSellStage } from "@/src/modules/sell/presentation/state/sell-slice";
 import { Theme } from "@/theme";
-import { BottomSheetView } from "@gorhom/bottom-sheet";
+import { BottomSheetScrollView, BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
 import { Image } from "expo-image";
 import React, { useMemo } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { SvgXml } from "react-native-svg";
 import { useDispatch } from "react-redux";
 
@@ -87,52 +87,58 @@ const SelectCurrencyStep = () => {
         </CustomText>
         <Box width={30} />
       </Box>
-      <Box bg="secondaryBackgroundColor" p="m" borderRadius={12} mt="m">
+      <Box bg="secondaryBackgroundColor" borderRadius={12} mt="m" flex={1} overflow="hidden">
         {isLoading ? (
-          <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
-            Loading currencies...
-          </CustomText>
+          <Box p="m">
+            <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
+              Loading currencies...
+            </CustomText>
+          </Box>
         ) : fiatCurrencies.length === 0 ? (
-          <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
-            No fiat currencies available
-          </CustomText>
+          <Box p="m">
+            <CustomText variant="body" color="disabledTextColor" textAlign="center" mt="m">
+              No fiat currencies available
+            </CustomText>
+          </Box>
         ) : (
-          <FlatList
-            data={fiatCurrencies}
-            keyExtractor={(i) => i.code}
-            style={{ marginTop: 16 }}
-            renderItem={({ item }) => (
-            <Pressable
-              onPress={() => handleCurrencySelect(item)}
-              style={{
-                padding: 1,
-                marginBottom: 10,
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Image
-                  source={{ uri: item.flag }}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    marginRight: 12,
-                  }}
-                  contentFit="contain"
-                />
-                <View>
-                  <CustomText variant="bodyBold">{item.code}</CustomText>
-                  <CustomText variant="body" color="disabledTextColor">
-                    {item.name}
-                  </CustomText>
+          <BottomSheetScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+            showsVerticalScrollIndicator={true}
+          >
+            {fiatCurrencies.map((item) => (
+              <Pressable
+                key={item.code}
+                onPress={() => handleCurrencySelect(item)}
+                style={{
+                  padding: 1,
+                  marginBottom: 10,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Image
+                    source={{ uri: item.flag }}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      marginRight: 12,
+                    }}
+                    contentFit="contain"
+                  />
+                  <View>
+                    <CustomText variant="bodyBold">{item.code}</CustomText>
+                    <CustomText variant="body" color="disabledTextColor">
+                      {item.name}
+                    </CustomText>
+                  </View>
                 </View>
-              </View>
-            </Pressable>
-          )}
-          />
+              </Pressable>
+            ))}
+          </BottomSheetScrollView>
         )}
       </Box>
     </BottomSheetView>

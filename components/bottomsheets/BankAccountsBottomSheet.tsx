@@ -38,7 +38,7 @@ import BankAccountsList from "./BankAccountsList";
 interface BankAccountsBottomSheetProps {
   onBankAccountSelect?: (bankAccount: UserBankAccount | null) => void;
   onClose?: () => void;
-  onContinue?: () => void;
+  onContinue?: (bankAccount: UserBankAccount | null) => void;
   targetCurrency: ISupportedCurrency | null;
   initialView?: "list" | "add"; // Control initial view: list or add account form
 }
@@ -707,7 +707,11 @@ const BankAccountsBottomSheet = forwardRef<
               text="Continue"
               width="100%"
               borderRadius={30}
-              onPress={() => onContinue?.()}
+              onPress={() => {
+                if (selectedAccount) {
+                  onContinue?.(selectedAccount);
+                }
+              }}
               disabled={!selectedAccount}
               bgColor={theme.colors.primaryColor}
             />

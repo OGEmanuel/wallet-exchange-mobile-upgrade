@@ -179,6 +179,46 @@ export class HttpErrorHandler {
   }
 
   /**
+   * Checks if an error indicates that 2FA is required
+   * @param error - The axios error
+   * @returns boolean - True if 2FA is required
+   */
+  static is2FARequiredError(error: AxiosError<GeneralResponseErrorModel>): boolean {
+    if (!error.response) return false;
+    
+    const status = error.response.status;
+    const serverError = error.response.data;
+    
+    // Check for 401 status (common for 2FA required)
+    if (status === 401) {
+      const errorMessage = 
+        serverError?.message?.toLowerCase() || 
+        (Array.isArray(serverError?.errors) ? serverError.errors[0]?.toLowerCase() : serverError?.errors?.toLowerCase()) ||
+        '';
+      
+      // Check for 2FA-related keywords in error message
+      const is2FAError = 
+        errorMessage.includes('2fa') ||
+        errorMessage.includes('two factor') ||
+        errorMessage.includes('totp') ||
+        errorMessage.includes('two-factor') ||
+        errorMessage.includes('authentication code') ||
+        errorMessage.includes('verification code');
+      
+      return is2FAError;
+    }
+    
+    // Check for specific error codes (if the API uses them)
+    const errorCode = (serverError as any)?.code || (serverError as any)?.errorCode;
+    if (errorCode) {
+      const codeStr = String(errorCode).toLowerCase();
+      return codeStr.includes('2fa') || codeStr.includes('totp') || codeStr === 'totp_required' || codeStr === '2fa_required';
+    }
+    
+    return false;
+  }
+
+  /**
    * Checks if an error is a network error (no response)
    * @param error - The axios error
    * @returns boolean - True if network error

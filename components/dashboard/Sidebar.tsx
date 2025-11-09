@@ -644,8 +644,7 @@ const Sidebar = () => {
               width={"100%"}
               height={"auto"}
               p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
+              bg="surfaceContainer"
               borderColor="borderColor"
               borderRadius={12}
             >
@@ -671,8 +670,7 @@ const Sidebar = () => {
               width={"100%"}
               height={"auto"}
               p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
+              bg="surfaceContainer"
               borderColor="borderColor"
               borderRadius={12}
             >
@@ -698,8 +696,7 @@ const Sidebar = () => {
               width={"100%"}
               height={"auto"}
               p="s"
-              bg="secondaryBackgroundColor"
-              borderWidth={1}
+              bg="surfaceContainer"
               borderColor="borderColor"
               borderRadius={12}
             >

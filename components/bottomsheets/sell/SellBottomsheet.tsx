@@ -19,9 +19,8 @@ import {
   selectSellCurrency,
   selectSellStage,
   selectSellToken,
-  setSellCreatedOrder,
   setSellSelectedBank,
-  setSellStage,
+  setSellStage
 } from "@/src/modules/sell/presentation/state/sell-slice";
 import type {
   OrderDetailsSheetRef,
@@ -113,23 +112,26 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
 
   // Auto-open order details when order is created and close main bottom sheet
   useEffect(() => {
-    if (createdOrder && orderDetailsSheetRef.current) {
-      // Store the created order before resetting state
-      const orderToShow = createdOrder;
+    if (createdOrder) {
+      console.log("📦 Order created, opening order details sheet:", createdOrder._id);
+      
       // Close the main bottom sheet first
       if (ref && typeof ref !== 'function' && ref.current) {
         ref.current.close();
       }
-      // Reset the sell state so next time it opens from the beginning
-      // But preserve the createdOrder for the order details sheet
-      dispatch(resetSellState());
-      dispatch(setSellCreatedOrder(orderToShow));
-      // Then open the order details sheet
-      setTimeout(() => {
-        orderDetailsSheetRef.current?.open();
-      }, 300);
+      
+      // Wait a bit longer to ensure main sheet and its backdrop are fully closed
+      // before the order details sheet tries to open
+      const timer = setTimeout(() => {
+        if (orderDetailsSheetRef.current) {
+          console.log("✅ Manually opening order details sheet after main sheet closed");
+          orderDetailsSheetRef.current.open();
+        }
+      }, 800); // Increased delay to ensure main sheet backdrop is gone
+      
+      return () => clearTimeout(timer);
     }
-  }, [createdOrder, ref, dispatch]);
+  }, [createdOrder, ref]);
 
   // Handle the confirming step animation
   useEffect(() => {
@@ -156,7 +158,10 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   };
 
   const handleClose = () => {
-    resetStates();
+    // Don't reset state if we have a created order - let the order details sheet handle it
+    if (!createdOrder) {
+      resetStates();
+    }
     (ref as React.RefObject<BottomSheetMethods>).current?.close();
   };
 
@@ -240,18 +245,27 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         backgroundStyle={{
           backgroundColor: theme.colors.mainBackgroundColor,
         }}
-        backdropComponent={(props: any) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-            pressBehavior="close"
-            opacity={0.5}
-            enableTouchThrough={false}
-          />
-        )}
+        backdropComponent={(props: any) => {
+          // Hide backdrop immediately when we have a created order
+          // This ensures the backdrop doesn't interfere with the order details sheet
+          if (createdOrder) {
+            return null;
+          }
+          return (
+            <BottomSheetBackdrop
+              {...props}
+              disappearsOnIndex={-1}
+              appearsOnIndex={0}
+              pressBehavior="close"
+              opacity={0.5}
+              enableTouchThrough={false}
+            />
+          );
+        }}
         onChange={(index) => {
-          if (index === -1) {
+          // Don't reset state when closing if we have a created order
+          // The order details sheet should handle its own state
+          if (index === -1 && !createdOrder) {
             handleClose();
             // handleClose already calls resetStates which resets the state
           }
@@ -297,12 +311,17 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         targetCurrency={targetCurrency}
         onBankAccountSelect={(bankAccount) => {
           dispatch(setSellSelectedBank(bankAccount));
-          // Close bank account modal and start order creation
-          bankAccountsBottomSheetRef.current?.close();
-          // Small delay to ensure modal closes before transitioning
-          setTimeout(() => {
-            dispatch(setSellStage("order_details"));
-          }, 300);
+        }}
+        onContinue={(bankAccount) => {
+          if (bankAccount) {
+            dispatch(setSellSelectedBank(bankAccount));
+            // Close bank account modal and start order creation
+            bankAccountsBottomSheetRef.current?.close();
+            // Small delay to ensure modal closes before transitioning
+            setTimeout(() => {
+              dispatch(setSellStage("order_details"));
+            }, 300);
+          }
         }}
         onClose={() => {
           bankAccountsBottomSheetRef.current?.close();
@@ -313,6 +332,9 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         ref={orderDetailsSheetRef}
         orderDetails={createdOrder}
         onClose={() => {
+          // Reset sell state when order details sheet is closed
+          // This ensures the sell flow starts fresh next time
+          dispatch(resetSellState());
           // Don't automatically open progress sheet - let WebSocket updates handle it
         }}
         title="Order Created"

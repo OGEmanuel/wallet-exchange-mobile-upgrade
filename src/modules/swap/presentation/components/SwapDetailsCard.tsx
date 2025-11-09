@@ -21,7 +21,8 @@ interface SwapDetailsCardProps {
   showLess?: boolean;
   onProviderPress?: () => void;
   isZapLinked?: boolean;
-  isLoading?: boolean;
+  isLoading?: boolean; // For general loading (zap fee, etc)
+  isRateLoading?: boolean; // For rate loading specifically
 }
 
 const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
@@ -36,6 +37,7 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
   onProviderPress,
   isZapLinked = false,
   isLoading = false,
+  isRateLoading = false,
 }) => {
   const theme = useTheme<Theme>();
   const [isExpanded, setIsExpanded] = useState(!showLess);
@@ -117,7 +119,7 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
                 size={15}
                 color={theme.colors.secondaryColor}
               />
-              {isLoading ? (
+              {isRateLoading ? (
                 <SkeletonLoader
                   width={120}
                   height={16}
@@ -156,7 +158,7 @@ const SwapDetailsCard: React.FC<SwapDetailsCardProps> = ({
               justifyContent="space-between"
               alignItems="center"
             >
-              {isLoading ? (
+              {isRateLoading ? (
                 <SkeletonLoader
                   width={80}
                   height={16}

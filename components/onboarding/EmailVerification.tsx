@@ -75,16 +75,30 @@ export default function EmailVerification({
         console.log("Email verification response:", response);
 
         // Check if verification was successful
-        if (response) {
+        // If response is false, it means 2FA is required (handled separately)
+        // Only proceed if we have a valid response object with user data
+        if (response && typeof response === 'object' && 'data' in response) {
+          const responseData = response as ExchangeValidateOtpResponse;
+          
+          // Check if 2FA is required (response has twoFA flag but no user)
+          const requires2FA = 
+            responseData.message?.toLowerCase().includes('2fa required') ||
+            responseData.message?.toLowerCase().includes('2fa') ||
+            (responseData.data as any)?.twoFA === true;
+          
+          if (requires2FA && !responseData.data?.user) {
+            // 2FA is required - the 2FA input sheet should already be showing
+            // Don't show error here, just wait for 2FA input
+            setIsVerifying(false);
+            return;
+          }
+
           await storageService.setItem(
             StorageKeys.TOKEN_DATA,
-            JSON.stringify(
-              (response as ExchangeValidateOtpResponse).data?.session || ""
-            )
+            JSON.stringify(responseData.data?.session || "")
           );
 
-          const userData = (response as ExchangeValidateOtpResponse)?.data
-            ?.user;
+          const userData = responseData.data?.user;
 
           if (userData) {
             await storageService.setItem(
@@ -93,16 +107,26 @@ export default function EmailVerification({
             );
           }
 
-          // Always call onVerify with user data to let parent component handle the flow
-          // The parent (ZapperSiginBottomSheet) will check for username and close if needed
-          onVerify?.(code, userData);
+          // Only call onVerify if we have user data (full login successful)
+          if (userData) {
+            onVerify?.(code, userData);
+          }
+        } else if (response === false) {
+          // 2FA is required - don't show error, the 2FA input sheet will handle it
+          // Just reset the verifying state
         } else {
           setError("Invalid OTP. Please try again.");
         }
       } catch (error) {
         console.error("Email verification error:", error);
+        // Only show error if it's not a 2FA-related error
+        // 2FA errors should be handled by the 2FA input sheet
         const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
-        setError(errorMessage);
+        const is2FAError = errorMessage.toLowerCase().includes('2fa') || errorMessage.toLowerCase().includes('totp');
+        
+        if (!is2FAError) {
+          setError(errorMessage);
+        }
         // Error handling is already done by the API service with toast notifications
       } finally {
         setIsVerifying(false);

@@ -9,8 +9,7 @@ import {
   selectBuyCreatedOrder,
   selectBuyStage,
   selectBuyToken,
-  setBuyCreatedOrder,
-  setBuyStage,
+  setBuyStage
 } from "@/src/modules/buy/presentation/state/buy-slice";
 import OrderDetailsSheet, {
   OrderDetailsSheetRef,
@@ -129,23 +128,26 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
 
   // Auto-open order details when order is created and close main bottom sheet
   React.useEffect(() => {
-    if (createdOrder && orderDetailsSheetRef.current) {
-      // Store the created order before resetting state
-      const orderToShow = createdOrder;
+    if (createdOrder) {
+      console.log("📦 Buy order created, opening order details sheet:", createdOrder._id);
+      
       // Close the main bottom sheet first
       if (ref && typeof ref !== 'function' && ref.current) {
         ref.current.close();
       }
-      // Reset the buy state so next time it opens from the beginning
-      // But preserve the createdOrder for the order details sheet
-      dispatch(resetBuyState());
-      dispatch(setBuyCreatedOrder(orderToShow));
-      // Then open the order details sheet
-      setTimeout(() => {
-        orderDetailsSheetRef.current?.open();
-      }, 300);
+      
+      // Wait a bit longer to ensure main sheet and its backdrop are fully closed
+      // before the order details sheet tries to open
+      const timer = setTimeout(() => {
+        if (orderDetailsSheetRef.current) {
+          console.log("✅ Manually opening order details sheet after main sheet closed");
+          orderDetailsSheetRef.current.open();
+        }
+      }, 800); // Increased delay to ensure main sheet backdrop is gone
+      
+      return () => clearTimeout(timer);
     }
-  }, [createdOrder, ref, dispatch]);
+  }, [createdOrder, ref]);
 
   const renderComponent = React.useCallback(() => {
     switch (stage) {
@@ -184,9 +186,18 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
         backgroundStyle={{
           backgroundColor: theme.colors.mainBackgroundColor,
         }}
-        backdropComponent={renderBackdrop}
+        backdropComponent={(props: any) => {
+          // Hide backdrop immediately when we have a created order
+          // This ensures the backdrop doesn't interfere with the order details sheet
+          if (createdOrder) {
+            return null;
+          }
+          return renderBackdrop(props);
+        }}
         onChange={(index) => {
-          if (index === -1) {
+          // Don't reset state when closing if we have a created order
+          // The order details sheet should handle its own state
+          if (index === -1 && !createdOrder) {
             // Reset state when bottom sheet closes so next time it opens fresh
             dispatch(resetBuyState());
           }
@@ -222,6 +233,9 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
         ref={orderDetailsSheetRef}
         orderDetails={createdOrder}
         onClose={() => {
+          // Reset buy state when order details sheet is closed
+          // This ensures the buy flow starts fresh next time
+          dispatch(resetBuyState());
           // Don't automatically open progress sheet - let WebSocket updates handle it
         }}
         title="Order Created"

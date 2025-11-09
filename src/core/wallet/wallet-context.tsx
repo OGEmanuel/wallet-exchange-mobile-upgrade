@@ -35,6 +35,7 @@ import { AppState, InteractionManager } from "react-native";
 import { useDispatch } from "react-redux";
 import { useChains } from "../chains/chains-context";
 import zapSDKService from "../sdk/zap-sdk.service";
+import { twoFactorAuthService } from "../services/two-factor-auth.service";
 import AddressesStorage, { StoredAddress } from "../storage/addresses-storage";
 import PrivateKeysStorage, {
   StoredPrivateKey,
@@ -1411,40 +1412,207 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   const exchangeValidateOtp = async (
     email: string,
-    otp: string
+    otp: string,
+    totp?: string // 2FA code parameter
   ): Promise<ExchangeValidateOtpResponse | boolean> => {
     try {
       setIsAuthenticating(true);
       setError(null);
 
       // Use the advanced SDK service with network handling and circuit breaker
-      const result = await zapSDKService.validateExchangeOtp(email, otp);
+      const result = await zapSDKService.validateExchangeOtp(email, otp, totp) as ExchangeValidateOtpResponse | null | undefined;
 
       if (result) {
-        console.log(result, "result");
-        const exchangeUserId = result.data.user?._id || null;
+        // Check if the response indicates 2FA is required (successful response with 2FA flag)
+        // The API returns 200 with message "2FA Required" and data.twoFA: true
+        const requires2FA = 
+          result.message?.toLowerCase().includes('2fa required') ||
+          result.message?.toLowerCase().includes('2fa') ||
+          (result.data as any)?.twoFA === true;
+
+        if (requires2FA && !totp) {
+          // 2FA is required but no 2FA code was provided
+          // According to the 2FA guide: 
+          // 1. validateOtp returns partialToken when 2FA is required
+          // 2. Use sdk.twoFA.login(code, partialToken) to complete login
+          const partialToken = (result.data as any)?.partialToken;
+          
+          if (!partialToken) {
+            setError("2FA is required but partial token is missing. Please try again.");
+            return false;
+          }
+          
+          // Show 2FA input bottom sheet
+          return new Promise<ExchangeValidateOtpResponse | boolean>((resolve, reject) => {
+            twoFactorAuthService.show2FAInput(async (code: string) => {
+              try {
+                // According to the guide, backend expects: POST /auth/2fa/login with { code, partialToken }
+                // But SDK sends: { email, code, sessionToken }
+                // The SDK uses sessionToken but backend expects partialToken
+                // We need to make a direct API call with the correct parameters
+                const sdk = zapSDKService.getSDK();
+                
+                // Get the HTTP client from SDK to make direct API call
+                // The SDK's httpClient should be accessible
+                const httpClient = (sdk as any).httpClient || (sdk as any).client || (sdk as any).exchangeAuth?.httpClient;
+                
+                if (!httpClient) {
+                  throw new Error("HTTP client not available for 2FA login");
+                }
+                
+                // Make direct POST request to /auth/2fa/login with correct parameters
+                // Backend expects: { code, partialToken }
+                const loginResult = await httpClient.post('/auth/2fa/login', {
+                  code,
+                  partialToken,
+                }) as any;
+                
+                // Extract data from response if wrapped
+                // Backend response structure: { data: { user, token, refreshToken, session }, message, success }
+                const resultData = loginResult?.data || loginResult;
+                const responseData = resultData?.data || resultData;
+                
+                // The login result should contain user, token, refreshToken, session
+                // According to the guide, backend returns: { data: { user, token, refreshToken, session } }
+                if (responseData && (responseData.user || responseData.data?.user)) {
+                  const user = responseData.user || responseData.data?.user;
+                  const token = responseData.token || responseData.data?.token;
+                  const refreshToken = responseData.refreshToken || responseData.data?.refreshToken;
+                  const session = responseData.session || responseData.data?.session;
+                  
+                  // Create a response object matching ExchangeValidateOtpResponse format
+                  const authResult = {
+                    success: true,
+                    message: "Login successful",
+                    data: {
+                      user: user as any, // SDK response may have different structure
+                      token: token || "",
+                      refreshToken: refreshToken || "",
+                      session: session || {},
+                    },
+                  } as ExchangeValidateOtpResponse;
+                  
+                  // Set authentication state
+                  const exchangeUserId = user?._id || responseData.userId || null;
+                  if (exchangeUserId) {
+                    setIsExchangeAuthenticated(true);
+                    setCurrentExchangeUser(exchangeUserId);
+                    setExchangeUserData(user as UserModel | null);
+
+                    // Save exchange user ID to cache
+                    await SecureStore.setItemAsync(
+                      StorageKeys.EXCHANGE_USER_ID,
+                      exchangeUserId
+                    );
+                    console.log("✅ Exchange user ID saved to cache:", exchangeUserId);
+
+                    await checkAuthenticationAndRoute();
+                  }
+                  
+                  resolve(authResult);
+                } else {
+                  // Invalid 2FA code or incomplete response
+                  reject(new Error("Invalid 2FA code. Please try again."));
+                }
+              } catch (retryError: any) {
+                // Extract error message from the error - this will be displayed in the 2FA input sheet
+                const errorMessage = retryError?.message || retryError?.response?.data?.message || "Invalid 2FA code. Please try again.";
+                // Reject so the 2FA input sheet can display the error and stay open
+                reject(new Error(errorMessage));
+              }
+            });
+          });
+        }
+
+        // Check if we have a full user object (login complete)
+        // If 2FA was required and we provided it, the response should have a full user object
+        const exchangeUserId = result.data?.user?._id || (result.data as any)?.userId || null;
+        const hasFullUser = !!result.data?.user;
+        
+        // Only proceed with login if we have a full user object (not just userId/partialToken)
+        if (exchangeUserId && hasFullUser) {
+          // Full login successful
         setIsExchangeAuthenticated(true);
         setCurrentExchangeUser(exchangeUserId);
         setExchangeUserData(result.data.user as UserModel | null);
 
         // Save exchange user ID to cache for fast future access
-        if (exchangeUserId) {
           await SecureStore.setItemAsync(
             StorageKeys.EXCHANGE_USER_ID,
             exchangeUserId
           );
           console.log("✅ Exchange user ID saved to cache:", exchangeUserId);
-        }
 
         await checkAuthenticationAndRoute();
         return result;
+        } else if (requires2FA && totp) {
+          // Still requires 2FA even after providing code - invalid code
+          // Throw error so the 2FA input can show it
+          throw new Error("Invalid 2FA code. Please try again.");
+        } else if (requires2FA && !totp) {
+          // 2FA is required - don't proceed with login/routing
+          // The 2FA input should have been shown above
+          // Return false to indicate login is not complete
+          return false;
+        } else if (!hasFullUser) {
+          // No full user object - don't proceed with login
+          // This could be a partial response or error
+          return false;
       } else {
-        setError(result || "Invalid OTP");
+          // Other response - return as-is but don't proceed with login
+          return result;
+        }
+      } else {
+        setError("Invalid OTP");
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("OTP validation error:", error);
-      setError("Invalid OTP");
+      
+      // Check if this is a 2FA required error (401 with 2FA message)
+      const is2FAError = 
+        error?.response?.status === 401 &&
+        (
+          error?.response?.data?.message?.toLowerCase().includes('2fa') ||
+          error?.response?.data?.message?.toLowerCase().includes('totp') ||
+          error?.response?.data?.message?.toLowerCase().includes('two factor') ||
+          error?.response?.data?.message?.toLowerCase().includes('authentication code') ||
+          error?.response?.data?.message?.toLowerCase().includes('verification code') ||
+          (Array.isArray(error?.response?.data?.errors) && 
+           error.response.data.errors.some((e: string) => 
+             e.toLowerCase().includes('2fa') || 
+             e.toLowerCase().includes('totp') ||
+             e.toLowerCase().includes('two factor')
+           ))
+        );
+      
+      if (is2FAError) {
+        // Re-throw the error so the HTTP interceptor can handle it
+        // The interceptor will show the 2FA input bottom sheet
+        throw error;
+      }
+      
+      // For other errors (like invalid OTP or invalid 2FA code)
+      // Check if this is an invalid 2FA code error (500 with "Invalid OTP" message)
+      const isInvalid2FA = totp && (
+        (error?.response?.status === 500 || error?.response?.status === 400) &&
+        (
+          error?.response?.data?.message?.toLowerCase().includes('invalid') ||
+          error?.response?.data?.message?.toLowerCase().includes('otp') ||
+          error?.message?.toLowerCase().includes('invalid')
+        )
+      );
+      
+      const errorMessage = error?.message || error?.response?.data?.message || "Invalid OTP. Please try again.";
+      
+      // If this is an invalid 2FA code error, re-throw so the 2FA input can display it
+      // Otherwise, set error and return false
+      if (isInvalid2FA) {
+        // Re-throw so the promise in the 2FA input callback rejects
+        throw new Error(errorMessage);
+      }
+      
+      setError(errorMessage);
       return false;
     } finally {
       setIsAuthenticating(false);

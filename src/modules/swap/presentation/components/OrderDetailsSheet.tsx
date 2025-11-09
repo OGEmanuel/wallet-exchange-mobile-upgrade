@@ -1,6 +1,7 @@
 import Icons from "@/assets/icons";
 import { TouchableIcon } from "@/components";
 import { Box, CustomButton, CustomText } from "@/components/general";
+import SmartImage from "@/components/general/SmartImage";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
 import { useChains } from "@/src/core/chains/chains-context";
@@ -123,17 +124,38 @@ const OrderDetailsSheet = forwardRef<
   }));
 
   // Auto-open when orderDetails is set
+  // Note: This is a backup - the parent component should handle opening
   useEffect(() => {
     if (orderDetails && bottomSheetRef.current) {
-      // Small delay to ensure component is fully mounted
-      const timer = setTimeout(() => {
-        bottomSheetRef.current?.snapToIndex(0);
-      }, 100);
-      return () => clearTimeout(timer);
+      console.log("📋 OrderDetailsSheet: orderDetails set, will auto-open:", orderDetails._id);
+      // Don't auto-open here - let the parent component handle it
+      // This prevents conflicts with manual opening
+      // The parent will call open() after the main sheet is closed
     }
   }, [orderDetails]);
 
-  if (!orderDetails) return null;
+  // Always render the BottomSheet so the ref is available, but show empty content when no orderDetails
+  if (!orderDetails) {
+    return (
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={["90%"]}
+        enablePanDownToClose
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
+          />
+        )}
+      >
+        <BottomSheetView style={{ flex: 1 }}>
+          <View />
+        </BottomSheetView>
+      </BottomSheet>
+    );
+  }
 
   const copyToClipboard = async (text: string) => {
     await Clipboard.setStringAsync(text);
@@ -172,9 +194,17 @@ const OrderDetailsSheet = forwardRef<
           disappearsOnIndex={-1}
           appearsOnIndex={0}
           opacity={0.5}
+          enableTouchThrough={false}
         />
       )}
       onClose={onClose}
+      onChange={(index) => {
+        // Log when sheet state changes
+        console.log("📊 OrderDetailsSheet onChange:", index);
+        if (index === -1 && orderDetails) {
+          console.log("⚠️ OrderDetailsSheet closed unexpectedly");
+        }
+      }}
       backgroundStyle={{
         backgroundColor: theme.colors.mainBackgroundColor,
         borderTopLeftRadius: 20,
@@ -367,14 +397,19 @@ const OrderDetailsSheet = forwardRef<
                     {isBuyCrypto ? "Chain:" : "Bank:"}
                   </CustomText>
                   <Box flexDirection="row">
-                    <Image
-                      source={
-                        isBuyCrypto
-                          ? getChainImage(buyChain?._id || "")
-                          : orderDetails?.depositAccount?.bankId?.icon || ""
-                      }
-                      style={{ width: 20, height: 20, marginRight: 10 }}
-                    />
+                    {isBuyCrypto ? (
+                      <Image
+                        source={getChainImage(buyChain?._id || "")}
+                        style={{ width: 20, height: 20, marginRight: 10 }}
+                      />
+                    ) : (
+                      <SmartImage
+                        source={orderDetails?.depositAccount?.bankId?.icon || ""}
+                        width={20}
+                        height={20}
+                        style={{ marginRight: 10 }}
+                      />
+                    )}
                     <CustomText>
                       {isBuyCrypto
                         ? buyChain?.name
