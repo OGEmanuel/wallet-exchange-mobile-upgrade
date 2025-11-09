@@ -1,4 +1,4 @@
-package com.anonymous.newzapwalletexchange
+package com.zapapp
 
 import android.app.Application
 import android.content.res.Configuration

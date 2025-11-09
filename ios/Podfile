@@ -25,11 +25,8 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
-target 'newzapwalletexchange' do
+target 'ZapWallet' do
   use_expo_modules!
-  
-  # IdensicMobileSDK is required by @sumsub/react-native-mobilesdk-module
-  # It's available via Sumsub's spec repository (added above)
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];

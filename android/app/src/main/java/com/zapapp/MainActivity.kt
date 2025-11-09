@@ -1,4 +1,4 @@
-package com.anonymous.newzapwalletexchange
+package com.zapapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
