@@ -13,6 +13,9 @@ import {
 } from "@/assets/svg/wallet-icons-components";
 import { DebitCardComponent } from "@/assets/svg/wallet-icons-components/DebitCardIcon";
 import TokenSelectorBottomSheet from "@/components/bottomsheets/TokenSelectorBottomSheet";
+import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
+import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
+import SellFlowBottomSheet from "@/components/bottomsheets/sell/SellBottomsheet";
 import AssetsSection from "@/components/dashboard/AssetsSection";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import StickyHeader from "@/components/dashboard/StickyHeader";
@@ -20,6 +23,7 @@ import WalletSelectorHeader from "@/components/dashboard/WalletSelectorHeader";
 import { AppBar, CustomButton } from "@/components/general";
 import WalletEmptyScreen from "@/components/wallet/WalletEmptyScreen";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { PortfolioService } from "@/services/portfolio.service";
 import { useChains } from "@/src/core/chains/chains-context";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
@@ -32,7 +36,7 @@ import {
   setPortfolioLoading,
   setProcessedPortfolio,
   setRawPortfolio,
-  setRawTokenList
+  setRawTokenList,
 } from "@/state/reducers/portfolio.reducer";
 import { selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -45,10 +49,12 @@ const Home = () => {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { chainsMap, getChainImage } = useChains();
-  const { defaultTokens } = useSupportedCurrencies();
+  const { defaultTokens, enrichSupportedCurrenciesWithBalances } = useSupportedCurrencies();
+  const { loadAllDataFromCache } = useWallet();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
+  const { tradeBottomSheetRef, buyTokensBottomSheetRef, sellTokensBottomSheetRef } = useBottomSheetRefs();
 
   // Redux state
   const dispatch = useDispatch();
@@ -63,6 +69,10 @@ const Home = () => {
   } = useWallet();
 
   const { getCurrentWalletEnabledBalance } = useAggregatedBalances();
+
+  useEffect(() => {
+    loadAllDataFromCache();
+  }, []);
 
   // Clear Redux portfolio state immediately when wallet changes
   // This ensures stale balance data doesn't show when switching wallets
@@ -128,11 +138,6 @@ const Home = () => {
           hasPendingAccounts = accountsPendingWallets.some(
             (w) => w.userWalletGroupId === currentWalletId
           );
-          console.log("🔍 Checked for pending accounts:", {
-            currentWalletId,
-            hasPendingAccounts,
-            pendingWalletsCount: accountsPendingWallets.length,
-          });
         } catch (error) {
           console.error("Failed to check pending accounts:", error);
         }
@@ -145,15 +150,6 @@ const Home = () => {
           !retryPendingWalletsCalledRef.current.has(currentWalletId);
 
         if (shouldCallRetry) {
-          console.log(
-            "🔄 Calling retryPendingWallets for wallet:",
-            currentWalletId,
-            {
-              hasPendingAccounts,
-              alreadyCalled:
-                retryPendingWalletsCalledRef.current.has(currentWalletId),
-            }
-          );
           retryPendingWalletsCalledRef.current.add(currentWalletId);
           // Force execution for newly created wallets to ensure accounts are added immediately
           await retryPendingWallets(hasPendingAccounts);
@@ -250,7 +246,12 @@ const Home = () => {
 
           dispatch(setRawTokenList(userTokenList));
 
-          const processed = PortfolioService.processPortfolioData(portfolio, chainsMap, defaultTokens, getChainImage);
+          const processed = PortfolioService.processPortfolioData(
+            portfolio,
+            chainsMap,
+            defaultTokens,
+            getChainImage
+          );
 
           if (!processed) {
             console.warn("⚠️ Portfolio processing was skipped or failed");
@@ -258,11 +259,18 @@ const Home = () => {
             return;
           }
 
-          console.log(processed.assets.filter(asset => asset.symbol === 'USDT'));
+          console.log(
+            processed.assets.filter((asset) => asset.symbol === "USDT")
+          );
 
           // Store in Redux
           dispatch(setRawPortfolio(portfolio));
           dispatch(setProcessedPortfolio(processed));
+          
+          // Enrich supported currencies with balances from processed portfolio
+          if (processed?.assets && processed.assets.length > 0) {
+            enrichSupportedCurrenciesWithBalances(processed.assets);
+          }
         } catch (error) {
           console.error("Failed to process portfolio data:", error);
           dispatch(setPortfolioError("Failed to process portfolio data"));
@@ -277,6 +285,8 @@ const Home = () => {
       console.log("🧹 Portfolio is null, clearing Redux state");
       dispatch(clearPortfolioData());
       dispatch(clearTokenListData());
+      // Reset supported currencies balances when portfolio is cleared
+      enrichSupportedCurrenciesWithBalances([]);
     } else {
       // Portfolio exists but missing mainWalletGroupPortfolio structure
       console.warn(
@@ -288,8 +298,6 @@ const Home = () => {
       );
     }
   }, [portfolio, dispatch, defaultTokens, chainsMap]);
-
-  // Portfolio loading is now handled in the initialization useEffect above
 
   // Animation values for staggered card stack entrance
   const cardStackAnimations = useRef([
@@ -356,26 +364,7 @@ const Home = () => {
         portfolioChange={0} // We don't have change data from the API
         portfolioChangePercentage={0} // We don't have change data from the API
       />
-      <ScrollView
-        style={{ flex: 1, marginBottom: 50 }}
-        showsVerticalScrollIndicator={false}
-        decelerationRate={10000}
-        onScroll={(event) => {
-          const scrollY = event.nativeEvent.contentOffset.y;
-          // Show sticky header when scrolled past the balance section (approximately 200px)
-          setShowStickyHeader(scrollY > 200);
-        }}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={theme.colors.primaryColor}
-            colors={[theme.colors.primaryColor]}
-          />
-        }
-      >
-        <AppBar
+      <AppBar
           title={
             <WalletSelectorHeader
               currentUserWalletGroup={mainUserWalletGroup}
@@ -410,6 +399,25 @@ const Home = () => {
             />
           }
         />
+      <ScrollView
+        style={{ flex: 1, marginBottom: 50 }}
+        showsVerticalScrollIndicator={false}
+        decelerationRate={10000}
+        onScroll={(event) => {
+          const scrollY = event.nativeEvent.contentOffset.y;
+          // Show sticky header when scrolled past the balance section (approximately 200px)
+          setShowStickyHeader(scrollY > 200);
+        }}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primaryColor}
+            colors={[theme.colors.primaryColor]}
+          />
+        }
+      >
         <LinearGradient
           colors={["rgba(96, 69, 255, 0)", "rgba(96, 69, 255, 1)"]}
           start={{ x: 0, y: 0.45 }}
@@ -439,7 +447,9 @@ const Home = () => {
               onSend={() => {
                 sendTokenRef.current?.snapToIndex(1);
               }}
-              onTrade={() => {}}
+              onTrade={() => {
+                tradeBottomSheetRef.current?.snapToIndex(0);
+              }}
               onSwap={() => {
                 router.push("/dashboard/home/wallet-home/swap");
               }}
@@ -542,7 +552,7 @@ const Home = () => {
             onRefreshPortfolio={() => {
               const currentWalletId = mainUserWalletGroup?._id;
               if (currentWalletId) {
-                refreshPortfolio(currentWalletId);
+                refreshPortfolio(currentWalletId, true);
               }
             }}
             onManagePress={() => {
@@ -553,7 +563,7 @@ const Home = () => {
                 dispatch(setPortfolioError(null));
                 const currentWalletId = mainUserWalletGroup?._id;
                 if (currentWalletId) {
-                  await refreshPortfolio(currentWalletId);
+                  await refreshPortfolio(currentWalletId, true);
                 }
               } catch (err) {
                 console.error("Failed to retry portfolio:", err);
@@ -567,6 +577,8 @@ const Home = () => {
           />
         </Box>
       </ScrollView>
+      <SelectBuyTokens ref={buyTokensBottomSheetRef} />
+      <SellFlowBottomSheet ref={sellTokensBottomSheetRef} />
       <TokenSelectorBottomSheet
         key="send-token-selector"
         ref={sendTokenRef}
@@ -581,6 +593,7 @@ const Home = () => {
         ref={recieveTokenRef}
         mode="receive"
       />
+      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
     </PageWrapper>
   );
 };

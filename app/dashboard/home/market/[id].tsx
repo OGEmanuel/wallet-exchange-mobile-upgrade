@@ -221,9 +221,9 @@ export default function AssetInfo() {
             currencyId={currentTokenDetails?.tokenMetrics?.currencyId}
           />
 
-          <ScrollView
+              <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingBottom: 150 }}
+                contentContainerStyle={{ paddingBottom: 150 }}
             showsVerticalScrollIndicator={false}
           >
             {/* Token Graph Component */}
@@ -310,13 +310,13 @@ export default function AssetInfo() {
                 {/* About Section - Matching Portfolio */}
                 {currentTokenDetails?.tokenDetails && (
                   <Box width="100%" paddingHorizontal="m" marginTop="l">
-                    <Box
-                      flexDirection="row"
-                      justifyContent="space-between"
-                      alignItems="center"
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
                       marginBottom="m"
-                    >
-                      <CustomText
+                  >
+                    <CustomText
                         variant="bodyBold"
                         fontSize={18}
                         color="headerTextColor"
@@ -326,8 +326,8 @@ export default function AssetInfo() {
                           parsedAsset?.currencyId?.symbol ||
                           parsedAsset?.symbol ||
                           "Token"}
-                      </CustomText>
-                    </Box>
+                    </CustomText>
+                  </Box>
                     <CustomText
                       color="placeholderTextColor"
                       variant="body"
@@ -487,7 +487,7 @@ export default function AssetInfo() {
                             )
                           : "N/A"}
                       </CustomText>
-                    </Box>
+                  </Box>
                   )}
 
                   {/* Circulating Supply */}
@@ -512,7 +512,7 @@ export default function AssetInfo() {
                             )
                           : "N/A"}
                       </CustomText>
-                    </Box>
+                </Box>
                   )}
 
                   {/* All Time High */}
@@ -693,25 +693,25 @@ export default function AssetInfo() {
                 )}
 
                 {/* Top Stories Section - Matching Portfolio */}
-                <Box
-                  flexDirection="row"
-                  justifyContent="space-between"
-                  alignItems="center"
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
                   paddingHorizontal="m"
                   marginTop="l"
-                >
-                  <CustomText
+                  >
+                    <CustomText
                     variant="bodyBold"
                     fontSize={18}
                     color="headerTextColor"
                     marginVertical="l"
-                  >
-                    Top Stories
-                  </CustomText>
+                    >
+                      Top Stories
+                    </CustomText>
                   <Pressable
-                    onPress={() => {
-                      router.push(`/dashboard/home/token-details/news?tokenId=${id}`);
-                    }}
+                      onPress={() => {
+                        router.push(`/dashboard/home/token-details/news?tokenId=${id}`);
+                      }}
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
                     })}
@@ -724,7 +724,7 @@ export default function AssetInfo() {
                       View All
                     </CustomText>
                   </Pressable>
-                </Box>
+                  </Box>
                 <Box width="100%" paddingHorizontal="m">
 
                   <Box marginTop="s">
@@ -962,18 +962,18 @@ export default function AssetInfo() {
                   </Box>
                 </Box>
 
-            <Box paddingHorizontal="m" paddingVertical="m">
-              <CustomButton
-                text="Zap Now"
-                color="white"
-                onPress={() => {
-                  router.push("/dashboard/home/wallet-home/home");
-                }}
-                width="100%"
-                borderRadius={50}
-              />
-            </Box>
-          </ScrollView>
+                <Box paddingHorizontal="m" paddingVertical="m">
+                  <CustomButton
+                    text="Zap Now"
+                    color="white"
+                    onPress={() => {
+                      router.push("/dashboard/home/wallet-home/home");
+                    }}
+                    width="100%"
+                    borderRadius={50}
+                  />
+                </Box>
+              </ScrollView>
         </Box>
       </LoaderWrapper>
     </PageWrapper>

@@ -148,40 +148,23 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           return;
         }
 
-        // If no stored addresses, wait a bit more before deriving (might still be storing)
-        // This gives time for retryPendingWallets to complete derivation and storage
-        console.log(
-          "ℹ️ No stored addresses found, waiting briefly before deriving...",
-          userWalletGroup._id
-        );
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Check again after delay
         const retryStoredAddresses = await getAddresses(userWalletGroup._id);
         if (retryStoredAddresses && retryStoredAddresses.length > 0) {
-          console.log(
-            "✅ Found stored addresses after delay:",
-            retryStoredAddresses.length
-          );
           setWalletAddresses(retryStoredAddresses);
           setIsLoading(false);
           return;
         }
-
-        console.log(
-          "ℹ️ Still no stored addresses, deriving them...",
-          userWalletGroup._id
-        );
 
         // Get stored credentials to access seed phrase
         const storedCredentials =
           await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
             userWalletGroup._id
           );
-        console.log("🔍 Debug - storedCredentials:", storedCredentials);
 
         if (!storedCredentials || !storedCredentials.credential) {
-          console.log("❌ No stored credentials found");
           setWalletAddresses([]);
           setIsLoading(false);
           return;
@@ -189,15 +172,12 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
 
         const sdk = getSDK();
         if (!sdk) {
-          console.log("❌ SDK not available");
           setWalletAddresses([]);
           setIsLoading(false);
           return;
         }
 
         // Derive all addresses once using the SDK
-        console.log("🔍 Deriving all addresses once...");
-        console.log("🔍 Using wallet depth:", wallet.walletDepth || 0);
         setIsAccountDeriving(true);
 
         // Use InteractionManager to defer heavy computation and allow UI to remain responsive
@@ -214,29 +194,18 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
               } catch (error) {
                 reject(error);
               }
-            }, 100); // Small delay to ensure UI thread is free
+            }, 100);
           });
         });
 
         setIsAccountDeriving(false);
-        console.log("🔍 Derived result:", derivedResult);
 
         const addresses: StoredAddress[] = [];
         const processedChains = new Set<string>();
         const addressesToStore: StoredAddress[] = [];
 
-        console.log(
-          "🔍 Debug - derivedResult.addresses:",
-          derivedResult.addresses
-        );
-
         // Process each chain from walletChains
         for (const chainData of walletChains) {
-          console.log(
-            "🔍 Debug - processing chain:",
-            chainData.symbol,
-            chainData.name
-          );
           if (processedChains.has(chainData.symbol)) continue;
 
           // Map chain symbols to derivation symbols
@@ -254,14 +223,12 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           const mappedSymbol =
             chainSymbolMap[chainData.symbol as keyof typeof chainSymbolMap];
           if (!mappedSymbol) {
-            console.log("🔍 Debug - no mapped symbol for:", chainData.symbol);
             continue;
           }
 
           // Get the derived address for this chain
           const derivedAddress = derivedResult.addresses?.[mappedSymbol];
           if (!derivedAddress) {
-            console.log("🔍 Debug - no derived address for:", mappedSymbol);
             continue;
           }
 
@@ -284,8 +251,6 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           addressesToStore.push(addressData);
         }
 
-        console.log("🔍 Derived wallet addresses:", addresses);
-
         // Store addresses securely for future use
         if (addressesToStore.length > 0) {
           await AddressesStorage.storeAddresses(
@@ -294,7 +259,6 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
           );
         }
 
-        console.log("🔍 addresses:", addresses);
         setWalletAddresses(addresses);
       } catch (error) {
         console.error("❌ Failed to derive wallet addresses:", error);
@@ -368,7 +332,12 @@ const WalletAddresses: React.FC<WalletAddressesProps> = () => {
             </Box>
           ) : (
             walletAddresses.map((addressData, index) => {
-              const chain = getChainBySymbol(addressData.chainSymbol.toUpperCase());
+              const chain = getChainBySymbol(
+                addressData.chainSymbol.toUpperCase()
+              );
+              if (!chain) {
+                return null;
+              }
               const chainImage = getChainImage(chain?._id || "");
               const chainName = chain?.name || addressData.chainName;
               const chainSymbol = chain?.symbol || addressData.chainSymbol;

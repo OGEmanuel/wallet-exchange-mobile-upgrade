@@ -43,38 +43,50 @@ const useKyc = () => {
       return null
     }
 
-    setFetchingUserDetails(true);
-    const usecase = new KycUsecases();
-    const response = await usecase.executeFetchUserById({
-      body: {
-        _id: payload?._id || currentExchangeUser || user?._id || undefined,
-      },
-      params: null,
-      extra: null,
-    });
-
-    if (response.data) {
-      const updatedUser = {
-        ...user,
-        ...response.data,
-        metaData: { 
-          ...user?.metaData,
-        },
-      };
-      
-      dispatch(kycActions.setUser(updatedUser));
-      
-      // Update wallet context to keep exchange user data in sync
-      if (response.data._id) {
-        setCurrentExchangeUser(response.data._id);
-        setIsExchangeAuthenticated(true);
-      }
-      setExchangeUserData(updatedUser);
+    // Only fetch if exchange is authenticated (required for SDK call)
+    if (!isExchangeAuthenticated) {
+      console.log("⚠️ Exchange not authenticated, skipping fetchUserById");
+      return null;
     }
 
-    setFetchingUserDetails(false);
+    setFetchingUserDetails(true);
+    try {
+      const usecase = new KycUsecases();
+      const response = await usecase.executeFetchUserById({
+        body: {
+          _id: payload?._id || currentExchangeUser || user?._id || undefined,
+        },
+        params: null,
+        extra: null,
+      });
 
-    return response;
+      if (response.data) {
+        const updatedUser = {
+          ...user,
+          ...response.data,
+          metaData: { 
+            ...user?.metaData,
+          },
+        };
+        
+        dispatch(kycActions.setUser(updatedUser));
+        
+        // Update wallet context to keep exchange user data in sync
+        if (response.data._id) {
+          setCurrentExchangeUser(response.data._id);
+          setIsExchangeAuthenticated(true);
+        }
+        setExchangeUserData(updatedUser);
+      }
+
+      setFetchingUserDetails(false);
+      return response;
+    } catch (error) {
+      console.error("Failed to fetch user by ID:", error);
+      setFetchingUserDetails(false);
+      // Return null on error to prevent breaking the flow
+      return null;
+    }
   };
 
   const loadUserFromStorage = async (): Promise<UserModel | null> => {
@@ -191,8 +203,7 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ) => {
-    // ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
+    ): Promise<GeneralResponseModel<unknown>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,

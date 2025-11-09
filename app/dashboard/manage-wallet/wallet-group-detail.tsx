@@ -7,6 +7,7 @@ import AddWalletModal from "@/components/Modals/AddWalletModal";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
 import SuccessModal from "@/components/Modals/SuccessModal";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
+import { PortfolioService } from "@/services/portfolio.service";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { listWalletGroupBackups } from "@/src/core/utils/backup-utils";
@@ -37,7 +38,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
     switchWallet,
   } = useWallet();
 
-  const { getWalletBalance, getWalletGroupBalance, getEnhancedWalletGroups } =
+  const { getWalletBalance } =
     useAggregatedBalances();
   const { walletGroupId } = useLocalSearchParams<{ walletGroupId: string }>();
 
@@ -133,7 +134,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       }
 
       setIsEditingName(false);
-      await refreshPortfolio(); // Refresh to get updated data
+      await refreshPortfolio(userWalletGroup?._id, true);
     } catch (error) {
       console.error("Failed to update wallet group name:", error);
       Alert.alert("Error", "Failed to update wallet group name");
@@ -302,7 +303,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
         Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
       } else {
         Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
-        await refreshPortfolio();
+        await refreshPortfolio(result.userWalletGroupId, true);
       }
     } catch (error) {
       console.error("❌ Failed to create wallet:", error);
@@ -571,8 +572,8 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
                 getWalletBalance(userWalletGroup._id) || 0;
               const walletBalance =
                 aggregatedBalance > 0
-                  ? `$${aggregatedBalance.toFixed(2)}`
-                  : "$0.00";
+                  ? PortfolioService.formatCurrency(aggregatedBalance)
+                  : PortfolioService.formatCurrency(0);
 
               return (
                 <Pressable

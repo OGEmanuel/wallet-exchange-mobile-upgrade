@@ -1,7 +1,7 @@
 import { useOnboardingContext } from "@/src/core/contexts/onboarding";
 import { Onboarding } from "@/src/core/contexts/onboarding/types";
 import { AppRootState } from "@/state";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View } from "react-native";
 import { useSelector } from "react-redux";
 import IdentityVerification from "./IdentityVerification";
@@ -19,6 +19,22 @@ export default function KYCFlowManager({
 }: KYCFlowManagerProps) {
   const { currentOnboardingStep, setCurrentOnboardingStep } = useOnboardingContext();
   const { user } = useSelector((state: AppRootState) => state.kyc);
+
+  // Ensure we show identity verification if opened directly (e.g., from Swap screen)
+  useEffect(() => {
+    const identityVerificationSteps = [
+      Onboarding.AuthIdentityVerificationOverview,
+      Onboarding.AuthBvnVerificationInput,
+      Onboarding.AuthBvnVerificationSuccess,
+      Onboarding.AuthIdVerificationInput,
+      Onboarding.AuthIdVerificationUpload,
+    ];
+    
+    // If current step is not an identity verification step, set it to overview
+    if (!identityVerificationSteps.includes(currentOnboardingStep)) {
+      setCurrentOnboardingStep(Onboarding.AuthIdentityVerificationOverview);
+    }
+  }, [currentOnboardingStep, setCurrentOnboardingStep]);
 
   // Extract phone number and country code from user state
   const phoneNumber = useMemo(() => {
@@ -84,7 +100,13 @@ export default function KYCFlowManager({
           />
         );
       default:
-        return null;
+        // Fallback to Identity Verification if step doesn't match
+        return (
+          <IdentityVerification
+            onComplete={onComplete}
+            onBack={onBack}
+          />
+        );
     }
   }, [currentOnboardingStep, setCurrentOnboardingStep, phoneNumber, countryCode, onComplete, onBack]);
 

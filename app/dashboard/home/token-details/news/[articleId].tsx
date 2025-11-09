@@ -2,10 +2,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Bell, Star } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-    Image,
-    Pressable,
-    ScrollView,
-    StatusBar,
+  Image,
+  Pressable,
+  ScrollView,
+  StatusBar,
 } from "react-native";
 import { useSelector } from "react-redux";
 
@@ -13,12 +13,12 @@ import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import PageWrapper from "@/components/general/PageWrapper";
+import SmartImage from "@/components/general/SmartImage";
 import ZapLoader from "@/components/general/ZapLoader";
 import { formatDate } from "@/src/core/utils/format-utils";
 import { AppRootState } from "@/state";
 import { selectAssetBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
-import { SvgUri } from "react-native-svg";
 
 // CryptoIcon component for token images
 const CryptoIcon = ({
@@ -44,11 +44,11 @@ const CryptoIcon = ({
       style={{ backgroundColor: "transparent" }}
     >
       {image && !imageError ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={size - 4}
           height={size - 4}
-          onError={() => {
+          onError={(error) => {
             console.log("Failed to load token image:", image);
             setImageError(true);
           }}

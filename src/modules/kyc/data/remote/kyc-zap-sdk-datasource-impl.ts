@@ -38,21 +38,33 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   async fetchUserById(
     payload: GeneralRequestModel<UserModel, unknown, unknown>
   ): Promise<GeneralResponseModel<UserModel>> {
-    const sdk = zapSDKService.getSDK();
-    // const result = await sdk.exchangeAuth.getUser();
+    try {
+      const sdk = zapSDKService.getSDK();
+      // const result = await sdk.exchangeAuth.getUser();
 
+      const result = await sdk.users.getProfile(payload.body?._id || "");
+      console.log("Resultssss:", result);
 
-    const result = await sdk.users.getProfile(payload.body?._id || "");
-    console.log("Resultssss:", result);
-
-    return {
-      success: true,
-      message: "User fetched successfully",
-      data: result,
-      token: null,
-      refreshToken: null,
-      error: null,
-    };
+      return {
+        success: true,
+        message: "User fetched successfully",
+        data: result,
+        token: null,
+        refreshToken: null,
+        error: null,
+      };
+    } catch (error: any) {
+      console.error("Failed to fetch user profile from SDK:", error);
+      // Return error response instead of throwing to prevent breaking the flow
+      return {
+        success: false,
+        message: error?.message || "Failed to fetch user profile",
+        data: null as any,
+        token: null,
+        refreshToken: null,
+        error: error,
+      };
+    }
   }
 
   async verifyEmail(

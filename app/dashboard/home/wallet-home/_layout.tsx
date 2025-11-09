@@ -62,6 +62,7 @@ const Layout = () => {
           elevation: 0,
           shadowOpacity: 0,
           backdropFilter: "blur(20px)",
+          zIndex: 1, // Lower z-index so bottom sheets appear above
         },
         tabBarInactiveTintColor: theme.colors.inActiveBtnColor,
       }}

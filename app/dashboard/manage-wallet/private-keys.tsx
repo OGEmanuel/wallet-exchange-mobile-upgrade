@@ -384,6 +384,7 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
         />
         {/* PIN Modal - render at root level */}
         <PinEntryModal
+          type="VERIFY"
           visible={showPinModal}
           onSuccess={handlePinSuccess}
           onClose={() => setShowPinModal(false)}
@@ -432,9 +433,12 @@ const PrivateKeys: React.FC<PrivateKeysProps> = () => {
           ) : (
             privateKeys.map((keyData, index) => {
               const chain = getChainBySymbol(keyData.symbol.toUpperCase());
-              const chainImage = getChainImage(chain?._id || "");
-              const chainName = chain?.name || keyData.chain;
-              const chainSymbol = chain?.symbol || keyData.symbol;
+              if (!chain) {
+                return null;
+              }
+              const chainImage = getChainImage(chain._id || "");
+              const chainName = chain.name || keyData.chain;
+              const chainSymbol = chain.symbol || keyData.symbol;
               return (
                 <Pressable
                   key={index}
