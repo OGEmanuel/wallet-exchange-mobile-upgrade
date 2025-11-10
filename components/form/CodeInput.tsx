@@ -28,7 +28,17 @@ export default function CodeInput({
 
   useEffect(() => {
     if (autoFocus && inputRefs.current[0]) {
-      inputRefs.current[0].focus();
+      // Add a longer delay to ensure the component is fully visible and user is ready
+      // This prevents the keyboard from popping up unexpectedly on app start
+      // Only focus if the component is actually visible (not on initial app load)
+      const focusTimer = setTimeout(() => {
+        // Double-check that the input still exists and component is mounted
+        if (inputRefs.current[0]) {
+          inputRefs.current[0]?.focus();
+        }
+      }, 1000); // Increased delay to 1 second
+      
+      return () => clearTimeout(focusTimer);
     }
   }, [autoFocus]);
 
