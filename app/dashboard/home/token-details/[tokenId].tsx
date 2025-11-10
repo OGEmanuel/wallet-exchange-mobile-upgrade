@@ -14,7 +14,16 @@ import {
   ScrollView,
   StatusBar,
 } from "react-native";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+
+import TokenGraph from "@/components/dashboard/market/TokenGraph";
+import {
+  calculatePriceChange,
+  formatLargeNumber,
+  getAvailablePeriods,
+  getLatestMarketData,
+} from "@/lib/utils/market/chartHelpers";
+import { formatPrice } from "@/lib/utils/market/priceFormatter";
 
 import {
   ThemedQrCodeIcon,
@@ -23,6 +32,9 @@ import {
 import ThemedGlassIcon from "@/assets/svg/wallet-icons-components/ThemedGlassIcon";
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
 import TransactionDetailsBottomSheet from "@/components/bottomsheets/TransactionDetailsBottomSheet";
+import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
+import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
+import SellFlowBottomSheet from "@/components/bottomsheets/sell/SellBottomsheet";
 import ActionButtons from "@/components/dashboard/ActionButtons";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import TransactionCardSkeleton from "@/components/dashboard/TransactionCardSkeleton";
@@ -34,23 +46,30 @@ import PageWrapper from "@/components/general/PageWrapper";
 import ZapLoader from "@/components/general/ZapLoader";
 import TokenHistoryCard from "@/components/wallet/TokenHistoryCard";
 import { isSameDay } from "@/configs/helpers";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { PortfolioService } from "@/services/portfolio.service";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatCurrency, formatDate } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { setBuyStage, setBuyToken } from "@/src/modules/buy/presentation/state/buy-slice";
 import { AppRootState } from "@/state";
 import {
   selectAllSupportedTokens,
+  selectAssetBySupportedCurrencyId,
   selectProcessedPortfolio,
-  selectTokenBySupportedCurrencyId,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { BlockchainTransaction } from "@zap/blockchain-sdk";
+import { BlockchainTransaction, ICurrency } from "@zap/blockchain-sdk";
 import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TokenDetails = () => {
+  console.log("🚀 TokenDetails component rendering");
+
   const { tokenId: rawTokenId } = useLocalSearchParams();
+  console.log("📱 Raw tokenId from params:", rawTokenId);
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -78,6 +97,8 @@ const TokenDetails = () => {
   const handleTransactionPress = (transaction: BlockchainTransaction) => {
     console.log("🎯 Transaction pressed:", transaction);
     setSelectedTransaction(transaction);
+    // Open the bottom sheet when transaction is selected
+    transactionDetailsRef.current?.snapToIndex(0);
   };
 
   // Handle different tokenId formats
@@ -96,20 +117,26 @@ const TokenDetails = () => {
 
   // Ensure tokenId is a string
   tokenId = String(tokenId);
+  console.log("🔑 Processed tokenId:", tokenId);
+
   const router = useRouter();
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
+  const { supportedCurrenciesForSwap } = useSupportedCurrencies();
   const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } =
     useWallet();
 
   // Redux state
   const processedPortfolio = useSelector(selectProcessedPortfolio);
   const selectedToken = useSelector((state: AppRootState) =>
-    selectTokenBySupportedCurrencyId(state, tokenId as string)
+    selectAssetBySupportedCurrencyId(state, tokenId as string)
   );
 
   // Fallback: manually find token if selector doesn't work
   const allTokens = useSelector(selectAllSupportedTokens);
   const portfolioAssets = processedPortfolio?.assets || [];
+  const marketTokensRaw = useSelector((state: AppRootState) => state.market.marketTokens);
+  const marketTokens = React.useMemo(() => marketTokensRaw || [], [marketTokensRaw]);
 
   const fallbackToken = allTokens?.find((token) => {
     // Try multiple matching strategies
@@ -165,7 +192,28 @@ const TokenDetails = () => {
 
   const finalSelectedToken = portfolioToken || selectedToken || fallbackToken;
 
-  console.log(finalSelectedToken);
+  console.log("🎯 Final Selected Token Analysis:");
+  console.log("   - Full Object:", finalSelectedToken);
+  console.log("   - Symbol:", finalSelectedToken?.symbol);
+  console.log("   - Code:", (finalSelectedToken as any)?.code);
+  console.log("   - Currency ID:", finalSelectedToken?.currencyId);
+  console.log(
+    "   - Supported Currency ID:",
+    finalSelectedToken?.supportedCurrencyId
+  );
+  console.log("   - Token ID used:", tokenId);
+  console.log("   - Market tokens count:", marketTokens?.length);
+
+  if (marketTokens?.length > 0) {
+    console.log(
+      "   - Sample market tokens:",
+      marketTokens.slice(0, 3).map((mt) => ({
+        symbol: mt.symbol || (mt.currencyId as ICurrency)?.symbol,
+        currencyId: mt.currencyId,
+        _id: (mt as any)._id,
+      }))
+    );
+  }
 
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [isTokenDetailsLoading, setIsTokenDetailsLoading] = useState(false);
@@ -173,10 +221,19 @@ const TokenDetails = () => {
   const [activeTab, setActiveTab] = useState<"asset" | "history">("asset");
   const [selectedTimeframe, setSelectedTimeframe] = useState<
     "24h" | "W" | "M" | "6M" | "1Y"
-  >("W");
+  >("24h");
   const [isFavorite, setIsFavorite] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const insets = useSafeAreaInsets();
+  const [graphPeriod, setGraphPeriod] = useState<string>("24h");
+  const [graphCurrency, setGraphCurrency] = useState<"USD" | "NGN">("USD");
+  const [availableGraphPeriods, setAvailableGraphPeriods] = useState<string[]>([
+    "24h",
+    "7D",
+    "3M",
+    "6M",
+    "1Y",
+  ]);
 
   // Animation refs
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -185,6 +242,7 @@ const TokenDetails = () => {
   const [showStickyActions, setShowStickyActions] = useState(false);
   const stickyAnim = useRef(new Animated.Value(0)).current;
   const receiveBottomSheetRef = useRef<BottomSheet>(null);
+  const { tradeBottomSheetRef, buyTokensBottomSheetRef, sellTokensBottomSheetRef } = useBottomSheetRefs();
   const SCREEN_WIDTH = Dimensions.get("window").width;
 
   // Tab animation effect
@@ -236,6 +294,19 @@ const TokenDetails = () => {
   const [selectedTransaction, setSelectedTransaction] =
     useState<BlockchainTransaction | null>(null);
   const transactionDetailsRef = useRef<BottomSheet>(null);
+  const hasFetchedTokenDetailsRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const prevTokenIdRef = useRef<string | undefined>(undefined);
+
+  // Open bottom sheet when transaction is selected
+  useEffect(() => {
+    if (selectedTransaction) {
+      // Small delay to ensure the component is rendered
+      setTimeout(() => {
+        transactionDetailsRef.current?.snapToIndex(0);
+      }, 100);
+    }
+  }, [selectedTransaction]);
 
   const fetchTokenHistoryCallback = useCallback(async () => {
     if (!finalSelectedToken || !walletAddress) {
@@ -278,14 +349,101 @@ const TokenDetails = () => {
 
   // Fetch token details using SDK directly
   const fetchTokenDetailsCallback = useCallback(async () => {
+    console.log("📞 fetchTokenDetailsCallback called");
+    console.log("   - tokenId:", tokenId);
+    console.log("   - finalSelectedToken exists:", !!finalSelectedToken);
+    console.log("   - hasFetchedTokenDetailsRef:", hasFetchedTokenDetailsRef.current);
+    console.log("   - isFetchingRef:", isFetchingRef.current);
+
+    // Prevent multiple simultaneous fetches
+    if (isFetchingRef.current) {
+      console.log("⏭️ Already fetching token details, skipping");
+      return;
+    }
+
+    if (hasFetchedTokenDetailsRef.current) {
+      console.log("⏭️ Already fetched token details, skipping");
+      return;
+    }
+
     if (tokenId && finalSelectedToken) {
+      isFetchingRef.current = true;
+      hasFetchedTokenDetailsRef.current = true;
+      console.log("✅ Conditions met, starting fetch process");
       setIsTokenDetailsLoading(true);
       try {
-        // Use the stored currencyId from ProcessedAsset
-        const currencyId = finalSelectedToken.currencyId;
+        // Map from supportedCurrencyId to actual market currency ID using symbol/code
+        let marketCurrencyId: string | undefined;
 
-        if (!currencyId) {
-          throw new Error("No currencyId found for token");
+        // Get the token symbol from finalSelectedToken
+        const tokenSymbol = finalSelectedToken.symbol;
+        const tokenCode = (finalSelectedToken as any).code; // Some tokens might use 'code' instead of 'symbol'
+
+        console.log(
+          "🔍 Looking for market currency ID for symbol:",
+          tokenSymbol,
+          "or code:",
+          tokenCode
+        );
+        console.log("📊 Available market tokens:", marketTokens.length);
+
+        // Find the corresponding market token by symbol/code
+        const matchingMarketToken = marketTokens.find((marketToken) => {
+          const marketTokenCurrency = marketToken.currencyId as ICurrency;
+          const marketSymbol =
+            marketTokenCurrency?.symbol || marketToken.symbol;
+          const marketCode =
+            (marketToken.currencyId as any)?.code || (marketToken as any).code;
+
+          return (
+            marketSymbol === tokenSymbol ||
+            marketSymbol === tokenCode ||
+            marketCode === tokenSymbol ||
+            marketCode === tokenCode ||
+            marketTokenCurrency?._id === tokenSymbol ||
+            marketTokenCurrency?._id === tokenCode
+          );
+        });
+
+        if (matchingMarketToken && matchingMarketToken.currencyId) {
+          // Use the market token's currency ID
+          if (typeof matchingMarketToken.currencyId === "string") {
+            marketCurrencyId = matchingMarketToken.currencyId;
+          } else {
+            marketCurrencyId = matchingMarketToken.currencyId._id;
+          }
+        }
+
+        // Fallback: try using the tokenId directly or finalSelectedToken currency info
+        if (!marketCurrencyId) {
+          if (finalSelectedToken.currencyId) {
+            if (typeof finalSelectedToken.currencyId === "string") {
+              marketCurrencyId = finalSelectedToken.currencyId;
+            } else {
+              marketCurrencyId =
+                (finalSelectedToken.currencyId as ICurrency)?._id ||
+                finalSelectedToken.currencyId;
+            }
+          } else if (finalSelectedToken.supportedCurrencyId) {
+            if (typeof finalSelectedToken.supportedCurrencyId === "string") {
+              marketCurrencyId = finalSelectedToken.supportedCurrencyId;
+            } else {
+              marketCurrencyId =
+                finalSelectedToken.supportedCurrencyId._id ||
+                finalSelectedToken.supportedCurrencyId;
+            }
+          }
+        }
+
+        // Final fallback: use tokenId directly
+        if (!marketCurrencyId) {
+          marketCurrencyId = tokenId;
+        }
+
+        console.log("✅ Using market currency ID:", marketCurrencyId);
+
+        if (!marketCurrencyId) {
+          throw new Error("No valid currency ID found for historical data");
         }
 
         // Use SDK directly instead of useMarket hook
@@ -295,11 +453,60 @@ const TokenDetails = () => {
         }
 
         // Fetch token details and historical rates in parallel
+        // Note: SDK may not support period parameter, so we get all data and filter client-side
+        console.log(
+          "🕐 Fetching historical rates (period filtering will be done client-side):",
+          graphPeriod
+        );
         const [tokenDetailsResponse, historicalRatesResponse] =
           await Promise.all([
-            sdk.markets.getTokenDetails(currencyId),
-            sdk.markets.getHistoricalRates(currencyId),
+            sdk.markets.getTokenDetails(marketCurrencyId),
+            sdk.markets.getHistoricalRates(marketCurrencyId),
           ]);
+
+        console.log("📈 Historical rates response:", historicalRatesResponse);
+        console.log("🔍 Historical rates structure:");
+        console.log("   - Type:", typeof historicalRatesResponse);
+        console.log("   - Keys:", Object.keys(historicalRatesResponse || {}));
+        console.log("   - Data property:", historicalRatesResponse?.data);
+        console.log(
+          "   - Data keys:",
+          Object.keys(historicalRatesResponse?.data || {})
+        );
+        console.log("   - Rates array:", historicalRatesResponse?.data?.rates);
+        console.log(
+          "   - Rates length:",
+          historicalRatesResponse?.data?.rates?.length
+        );
+
+        if (historicalRatesResponse?.data?.rates?.length > 0) {
+          console.log(
+            "   - First rate entry:",
+            historicalRatesResponse.data.rates[0]
+          );
+          console.log(
+            "   - Last rate entry:",
+            historicalRatesResponse.data.rates[
+              historicalRatesResponse.data.rates.length - 1
+            ]
+          );
+
+          // Check the structure of rate entries
+          const sampleRate = historicalRatesResponse.data.rates[0];
+          console.log("   - Rate entry keys:", Object.keys(sampleRate || {}));
+          console.log("   - Rate values:", {
+            close: sampleRate?.close,
+            open: sampleRate?.open,
+            high: sampleRate?.high,
+            low: sampleRate?.low,
+            price: sampleRate?.price,
+            value: sampleRate?.value,
+            timestamp: sampleRate?.timestamp,
+            date: sampleRate?.date,
+          });
+        }
+
+        console.log("💡 Token details response:", tokenDetailsResponse);
 
         // Store the token details in state
         setTokenDetails(tokenDetailsResponse);
@@ -308,16 +515,84 @@ const TokenDetails = () => {
         console.error("❌ Failed to fetch token details:", error);
         setTokenDetails(null);
         setHistoricalRates(null);
+        hasFetchedTokenDetailsRef.current = false; // Reset on error so we can retry
       } finally {
         setIsTokenDetailsLoading(false);
+        isFetchingRef.current = false;
+      }
+    } else {
+      console.log("❌ Fetch conditions not met:");
+      console.log("   - tokenId:", tokenId);
+      console.log("   - finalSelectedToken:", finalSelectedToken);
+      console.log("   - tokenId exists:", !!tokenId);
+      console.log("   - finalSelectedToken exists:", !!finalSelectedToken);
+    }
+  }, [tokenId, finalSelectedToken, marketTokens]);
+
+  // Fetch token details on mount or when tokenId/finalSelectedToken changes
+  useEffect(() => {
+    // Reset fetch flag when tokenId or finalSelectedToken changes
+    const currentTokenId = finalSelectedToken?.id || 
+      (typeof finalSelectedToken?.supportedCurrencyId === 'object' 
+        ? finalSelectedToken?.supportedCurrencyId?._id 
+        : finalSelectedToken?.supportedCurrencyId) ||
+      tokenId;
+    
+    if (prevTokenIdRef.current !== currentTokenId) {
+      hasFetchedTokenDetailsRef.current = false;
+      isFetchingRef.current = false;
+      prevTokenIdRef.current = currentTokenId;
+    }
+    
+    console.log("🔄 useEffect triggered to fetch token details");
+    console.log("   - tokenId:", tokenId);
+    console.log("   - finalSelectedToken:", !!finalSelectedToken);
+    console.log("   - currentTokenId:", currentTokenId);
+    
+    if (tokenId && finalSelectedToken && !hasFetchedTokenDetailsRef.current && !isFetchingRef.current) {
+      fetchTokenDetailsCallback();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenId, finalSelectedToken?.id, finalSelectedToken?.supportedCurrencyId]);
+
+  // Update available periods when historical rates data changes
+  useEffect(() => {
+    if (historicalRates?.data?.rates) {
+      const periods = getAvailablePeriods(historicalRates.data.rates);
+      console.log("🔄 Period Selection Logic:");
+      console.log("   - Available periods from data:", periods);
+      console.log("   - Current graphPeriod:", graphPeriod);
+      console.log(
+        "   - Is current period available?:",
+        periods.includes(graphPeriod)
+      );
+
+      // Always ensure 24h is available as it's our default
+      const finalPeriods = periods.includes("24h")
+        ? periods
+        : ["24h", ...periods];
+      setAvailableGraphPeriods(finalPeriods);
+
+      // Keep the current period if it's 24h (our default), otherwise follow the original logic
+      if (graphPeriod === "24h") {
+        console.log("   - Keeping default 24h period");
+        // Don't change the period, keep it as 24h
+      } else if (
+        finalPeriods.length > 0 &&
+        !finalPeriods.includes(graphPeriod)
+      ) {
+        console.log(
+          "   - Changing period from",
+          graphPeriod,
+          "to",
+          finalPeriods[0]
+        );
+        setGraphPeriod(finalPeriods[0]);
+      } else {
+        console.log("   - Keeping current period:", graphPeriod);
       }
     }
-  }, [tokenId, finalSelectedToken]);
-
-  // Fetch token details on mount
-  useEffect(() => {
-    fetchTokenDetailsCallback();
-  }, [fetchTokenDetailsCallback]);
+  }, [historicalRates, graphPeriod]);
 
   // Fetch transaction history when wallet address and accountId are available
   useEffect(() => {
@@ -405,20 +680,37 @@ const TokenDetails = () => {
     switch (action) {
       case "receive":
         // Show receive bottom sheet
-        receiveBottomSheetRef.current?.snapToIndex(0);
+        if (receiveBottomSheetRef.current) {
+          receiveBottomSheetRef.current.snapToIndex(0);
+        }
         break;
       case "send":
-        router.push(`/dashboard/home/send-token?tokenId=${tokenId}`);
+        // Navigate to send token page with tokenId
+        router.push(`/dashboard/home/send-token?tokenId=${encodeURIComponent(tokenId)}`);
         break;
       case "trade":
-        // Navigate to trade flow
+        // Open trade bottom sheet (Buy/Sell selection)
+        tradeBottomSheetRef.current?.snapToIndex(0);
         break;
       case "swap":
-        router.replace(`/dashboard/home/wallet-home/swap`);
-        // Navigate to swap flow
+        // Navigate to swap screen
+        router.push(`/dashboard/home/wallet-home/swap`);
         break;
       case "buy":
-        // router.push(`/dashboard/home/wallet-home/buy`);
+        // Find token in supportedCurrenciesForSwap and pre-select it
+        const buyToken = supportedCurrenciesForSwap.find(
+          (c) => c._id === tokenId || (c.currencyId as any)?._id === tokenId
+        );
+        if (buyToken && (buyToken.currencyId as any)?.isCrypto) {
+          dispatch(setBuyToken(buyToken));
+          dispatch(setBuyStage("currency_select")); // Skip token selection
+        } else {
+          dispatch(setBuyStage("crypto_select")); // Start from token selection if not found
+        }
+        // Open buy flow
+        setTimeout(() => {
+          buyTokensBottomSheetRef.current?.snapToIndex(0);
+        }, 100);
         break;
     }
   };
@@ -430,6 +722,39 @@ const TokenDetails = () => {
   const formatPercentage = (value: number) => {
     return PortfolioService.formatPercentage(value);
   };
+
+  // Handle graph period change
+  const handleGraphPeriodChange = (newPeriod: string) => {
+    if (availableGraphPeriods.includes(newPeriod)) {
+      setGraphPeriod(newPeriod);
+    }
+  };
+
+  // Handle graph currency change
+  const handleGraphCurrencyChange = (newCurrency: "USD" | "NGN") => {
+    setGraphCurrency(newCurrency);
+  };
+
+  // Get currency objects (similar to [id] page)
+  const { nairaCurrency, usdCurrency, ngnSellRate } = useSelector(
+    (state: AppRootState) => {
+      const currencies = state.utilities?.currencies;
+      if (currencies) {
+        const ngnCurrency = currencies.find((c: any) => c.code === "NGN");
+        const usdCurrencyObj = currencies.find((c: any) => c.code === "USD");
+        return {
+          nairaCurrency: ngnCurrency,
+          usdCurrency: usdCurrencyObj,
+          ngnSellRate: ngnCurrency?.sellRate || undefined,
+        };
+      }
+      return {
+        nairaCurrency: undefined,
+        usdCurrency: undefined,
+        ngnSellRate: undefined,
+      };
+    }
+  );
 
   if (isPortfolioLoading || isTokenDetailsLoading) {
     return (
@@ -814,221 +1139,82 @@ const TokenDetails = () => {
         {/* Content based on active tab */}
         {activeTab === "asset" ? (
           <Box paddingHorizontal="m">
-            {/* Enhanced Price Chart Section */}
-            <Box
-              backgroundColor="modalBackgroundColor"
-              borderRadius={20}
-              padding="l"
-              marginBottom="l"
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 8,
-                elevation: 4,
-              }}
-            >
+            {/* Token Graph Component */}
+
+            {historicalRates?.data?.rates &&
+            historicalRates.data.rates.length > 0 ? (
+              <>
+                <TokenGraph
+                  symbol={
+                    tokenDetails?.tokenDetails?.symbol ||
+                    finalSelectedToken.symbol
+                  }
+                  price={(() => {
+                    // Use the price from portfolio data (finalSelectedToken.price) to match the portfolio display
+                    // This ensures consistency between portfolio and token details page
+                    const portfolioPrice = finalSelectedToken.price || 0;
+                    return formatPrice(
+                      portfolioPrice,
+                      graphCurrency,
+                      nairaCurrency,
+                      usdCurrency
+                    );
+                  })()}
+                  priceChangePercentage={calculatePriceChange(
+                    historicalRates.data.rates,
+                    graphPeriod
+                  )}
+                  period={graphPeriod}
+                  data={historicalRates.data.rates}
+                  currency={graphCurrency}
+                  availablePeriods={availableGraphPeriods}
+                  onPeriodChange={handleGraphPeriodChange}
+                  onCurrencyChange={handleGraphCurrencyChange}
+                  tokenLogo={
+                    tokenDetails?.tokenDetails?.logo || finalSelectedToken.image
+                  }
+                  ngnSellRate={ngnSellRate}
+                  nairaCurrency={nairaCurrency}
+                  usdCurrency={usdCurrency}
+                />
+              </>
+            ) : (
               <Box
-                flexDirection="row"
-                justifyContent="space-between"
-                alignItems="center"
+                backgroundColor="modalBackgroundColor"
+                borderRadius={20}
+                padding="l"
                 marginBottom="l"
+                minHeight={200}
+                justifyContent="center"
+                alignItems="center"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
               >
-                <Box flex={1}>
-                  <Box flexDirection="row" alignItems="center" mb="s">
-                    <CryptoIcon
-                      image={finalSelectedToken.image}
-                      size={32}
-                      symbol={finalSelectedToken.symbol}
-                    />
-                    <CustomText
-                      variant="body"
-                      ml="s"
-                      fontSize={18}
-                      color="headerTextColor"
-                    >
-                      {tokenDetails?.tokenDetails?.name ||
-                        finalSelectedToken.name ||
-                        finalSelectedToken.symbol}
-                    </CustomText>
-                  </Box>
-                  <CustomText
-                    variant="subheader"
-                    fontSize={24}
-                    color="headerTextColor"
-                  >
-                    {formatCurrency(
-                      tokenDetails?.tokenMetrics?.rate ||
-                        finalSelectedToken.price
-                    )}
-                  </CustomText>
-                </Box>
-                <Box
-                  flex={1}
-                  alignItems="flex-end"
-                  justifyContent="space-between"
+                <CustomText
+                  color="headerTextColor"
+                  fontSize={16}
+                  fontWeight="bold"
+                  marginBottom="s"
                 >
-                  <CustomText mb="s" color="success" fontSize={14}>
-                    {formatPercentage(
-                      tokenDetails?.tokenMetrics?.dailyChange ||
-                        tokenDetails?.tokenMetrics?.change24h ||
-                        finalSelectedToken.change ||
-                        0
-                    )}{" "}
-                  </CustomText>
-                  <CustomText color="bodyTextColor" fontSize={14}>
-                    past week
-                  </CustomText>
-                </Box>
+                  Price Chart
+                </CustomText>
+                <CustomText
+                  color="bodyTextColor"
+                  fontSize={14}
+                  textAlign="center"
+                >
+                  {isTokenDetailsLoading
+                    ? "Loading chart data..."
+                    : "No historical data available"}
+                </CustomText>
               </Box>
-
-              {/* Enhanced Chart Area */}
-              <Box height={220} borderRadius={12} marginBottom="l" padding="m">
-                {historicalRates?.data?.rates &&
-                historicalRates.data.rates.length > 0 ? (
-                  <Box flex={1} justifyContent="center" alignItems="center">
-                    <CustomText
-                      color="headerTextColor"
-                      fontSize={16}
-                      fontWeight="bold"
-                      marginBottom="s"
-                    >
-                      Price Chart
-                    </CustomText>
-                    <CustomText
-                      color="bodyTextColor"
-                      fontSize={14}
-                      textAlign="center"
-                      marginBottom="m"
-                    >
-                      {historicalRates.data.rates.length} data points available
-                    </CustomText>
-
-                    {/* Display some key metrics from historical data */}
-                    <Box width="100%" marginTop="m">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="s"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Highest Price
-                        </CustomText>
-                        <CustomText
-                          color="success"
-                          fontSize={16}
-                          variant="body"
-                        >
-                          {formatCurrency(
-                            Math.max(
-                              ...historicalRates.data.rates.map(
-                                (r: any) => r.rate
-                              )
-                            )
-                          )}
-                        </CustomText>
-                      </Box>
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        marginBottom="s"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Lowest Price
-                        </CustomText>
-                        <CustomText color="error" fontSize={16} variant="body">
-                          {formatCurrency(
-                            Math.min(
-                              ...historicalRates.data.rates.map(
-                                (r: any) => r.rate
-                              )
-                            )
-                          )}
-                        </CustomText>
-                      </Box>
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <CustomText color="placeholderTextColor" fontSize={14}>
-                          Current Price
-                        </CustomText>
-                        <CustomText
-                          color="headerTextColor"
-                          fontSize={16}
-                          variant="body"
-                        >
-                          {formatCurrency(
-                            historicalRates.data.rates[
-                              historicalRates.data.rates.length - 1
-                            ]?.rate || 0
-                          )}
-                        </CustomText>
-                      </Box>
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box flex={1} justifyContent="center" alignItems="center">
-                    <CustomText
-                      color="headerTextColor"
-                      fontSize={16}
-                      fontWeight="bold"
-                    >
-                      Price Chart
-                    </CustomText>
-                    <CustomText
-                      color="bodyTextColor"
-                      fontSize={14}
-                      marginTop="s"
-                      textAlign="center"
-                    >
-                      Interactive chart coming soon
-                    </CustomText>
-                  </Box>
-                )}
-              </Box>
-
-              {/* Enhanced Timeframe Selectors */}
-              <Box flexDirection="row" justifyContent="space-between" gap="s">
-                {["24h", "W", "M", "6M", "1Y"].map((timeframe) => (
-                  <Pressable
-                    key={timeframe}
-                    onPress={() => setSelectedTimeframe(timeframe as any)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      borderRadius: 10,
-                      backgroundColor:
-                        selectedTimeframe === timeframe
-                          ? "rgba(35, 43, 15, 1)"
-                          : "transparent",
-                      opacity: pressed ? 0.8 : 1,
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                    })}
-                  >
-                    <CustomText
-                      style={{
-                        color:
-                          selectedTimeframe === timeframe
-                            ? "rgba(199, 230, 77, 1)"
-                            : "white",
-                      }}
-                      fontSize={13}
-                      fontWeight={
-                        selectedTimeframe === timeframe ? "bold" : "600"
-                      }
-                      textAlign="center"
-                    >
-                      {timeframe}
-                    </CustomText>
-                  </Pressable>
-                ))}
-              </Box>
-            </Box>
+            )}
+            <Box marginBottom="l" />
             {/* Enhanced Your Balance */}
             <Box
               backgroundColor="modalBackgroundColor"
@@ -1194,7 +1380,8 @@ const TokenDetails = () => {
                   </CustomText>
                 </Box>
               ) : null}
-              {tokenDetails?.tokenMetrics?.volume ? (
+              {(tokenDetails?.tokenMetrics?.volume ||
+                historicalRates?.data?.rates) && (
                 <Box
                   paddingVertical="m"
                   flexDirection="row"
@@ -1209,13 +1396,18 @@ const TokenDetails = () => {
                     fontSize={16}
                     variant="body"
                   >
-                    {tokenDetails?.tokenMetrics?.volume
-                      ? formatCurrency(tokenDetails.tokenMetrics.volume)
-                      : "N/A"}
+                    {formatLargeNumber(
+                      tokenDetails?.tokenMetrics?.volume ||
+                        getLatestMarketData(historicalRates?.data?.rates)
+                          .volume,
+                      graphCurrency,
+                      ngnSellRate
+                    )}
                   </CustomText>
                 </Box>
-              ) : null}
-              {tokenDetails?.tokenMetrics?.marketCap ? (
+              )}
+              {(tokenDetails?.tokenMetrics?.marketCap ||
+                historicalRates?.data?.rates) && (
                 <Box
                   paddingVertical="m"
                   flexDirection="row"
@@ -1230,10 +1422,16 @@ const TokenDetails = () => {
                     fontSize={16}
                     variant="body"
                   >
-                    {formatCurrency(tokenDetails.tokenMetrics.marketCap)}
+                    {formatLargeNumber(
+                      tokenDetails?.tokenMetrics?.marketCap ||
+                        getLatestMarketData(historicalRates?.data?.rates)
+                          .marketCap,
+                      graphCurrency,
+                      ngnSellRate
+                    )}
                   </CustomText>
                 </Box>
-              ) : null}
+              )}
               {tokenDetails?.tokenMetrics?.totalSupply ? (
                 <Box
                   paddingVertical="m"
@@ -1789,8 +1987,18 @@ const TokenDetails = () => {
         transaction={selectedTransaction}
         selectedToken={finalSelectedToken}
         visible={!!selectedTransaction}
-        onClose={() => setSelectedTransaction(null)}
+        onClose={() => {
+          setSelectedTransaction(null);
+          transactionDetailsRef.current?.close();
+        }}
       />
+
+      {/* Trade Select Bottom Sheet */}
+      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
+      
+      {/* Buy and Sell Bottom Sheets */}
+      <SelectBuyTokens ref={buyTokensBottomSheetRef} />
+      <SellFlowBottomSheet ref={sellTokensBottomSheetRef} />
     </PageWrapper>
   );
 };

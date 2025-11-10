@@ -2,12 +2,12 @@ import { Box, CustomText } from "@/components/general";
 import { SIZES } from "@/data";
 import { formatToSigFigMax6Digits } from "@/lib/utils/market/helpers";
 import { formatPrice } from "@/lib/utils/market/priceFormatter";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import { TokenDetailModel } from "@/src/modules/market/domain/entities/models/token-detail-model";
 import { TokenHistoryDetailModel } from "@/src/modules/market/domain/entities/models/token-history-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ICurrency, MarketData } from "@zap/blockchain-sdk";
 import { ArrowDown3, ArrowUp3 } from "iconsax-react-nativejs";
 import React, { useEffect, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
@@ -17,10 +17,12 @@ import TokenImage from "./TokenImage";
 
 interface AssetChartDetailsProps {
   tokenDetails: TokenDetailModel | null;
-  asset?: MarketTokenModel | null;
+  asset?: MarketData | null;
   nairaCurrency?: CurrencyModel | null;
   usdCurrency?: CurrencyModel | null;
   tokenHistory?: TokenHistoryDetailModel | null;
+  selectedCurrency?: "USD" | "NGN";
+  onCurrencyChange?: (currency: "USD" | "NGN") => void;
 }
 
 export default function AssetChartDetails({
@@ -29,10 +31,17 @@ export default function AssetChartDetails({
   nairaCurrency,
   usdCurrency,
   tokenHistory,
+  selectedCurrency: propSelectedCurrency,
+  onCurrencyChange,
 }: AssetChartDetailsProps) {
   const theme = useTheme<Theme>();
   // Detect if we're in dark mode by checking theme colors
   const isDark = theme.colors.headerTextColor === "#FBFBFB"; // Dark theme text color
+
+  // Use passed token details data
+  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
+    propSelectedCurrency || "USD"
+  );
 
   useEffect(() => {
     if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
@@ -40,7 +49,7 @@ export default function AssetChartDetails({
         (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
       );
       const labels = sortedHistory.map((item) =>
-        new Date(item.date!).toLocaleTimeString([], {
+        new Date(Number(item.date)).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         })
@@ -49,39 +58,7 @@ export default function AssetChartDetails({
 
       setChartData({ labels, datasets: [{ data }] });
     }
-  }, [tokenHistory]);
-
-  // useEffect(() => {
-  //   if (tokenHistory?.rates && Array.isArray(tokenHistory?.rates)) {
-  //     const sortedHistory = [...tokenHistory.rates].sort(
-  //       (a, b) => Number(a.date ?? 0) - Number(b.date ?? 0)
-  //     );
-
-  //     const labels = sortedHistory.map((item) =>
-  //       new Date(item.date!).toLocaleTimeString([], {
-  //         hour: "2-digit",
-  //         minute: "2-digit",
-  //       })
-  //     );
-
-  //     const data = sortedHistory.map((item) => item.rate ?? 0);
-
-  //     // ✅ Add clear console log here
-  //     console.log("📊 Chart Data Mapping (24H):");
-  //     sortedHistory.forEach((item, index) => {
-  //       const timeLabel = labels[index];
-  //       const rateValue = data[index];
-  //       console.log(
-  //         `⏰ ${timeLabel} → 💰 Rate: $${rateValue.toLocaleString(undefined, {
-  //           minimumFractionDigits: 2,
-  //           maximumFractionDigits: 6,
-  //         })}`
-  //       );
-  //     });
-
-  //     setChartData({ labels, datasets: [{ data }] });
-  //   }
-  // }, [tokenHistory]);
+  }, [tokenHistory, selectedCurrency]); // Added selectedCurrency to trigger Y-axis update
 
   // Theme-aware chart config
   const chartConfig = {
@@ -102,10 +79,12 @@ export default function AssetChartDetails({
     },
   };
 
-  // Use passed token details data
-  const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
-    "USD"
-  );
+  // Update local state when prop changes
+  useEffect(() => {
+    if (propSelectedCurrency) {
+      setSelectedCurrency(propSelectedCurrency);
+    }
+  }, [propSelectedCurrency]);
 
   const [timeRange, setTimeRange] = useState("24H");
   const [chartData, setChartData] = useState({
@@ -125,27 +104,47 @@ export default function AssetChartDetails({
     hasData: true,
   }));
 
-  // const getYAxisLabels = () => {
-  //   return ["40K", "30K", "20K", "10K"];
-  // };
-
   const getYAxisLabels = () => {
     const data = chartData.datasets[0]?.data || [];
     if (!data.length) return [];
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
+    let values = [...data];
+    
+    // Convert to NGN if needed
+    if (selectedCurrency === "NGN" && nairaCurrency?.sellRate) {
+      values = values.map(v => v / nairaCurrency.sellRate!);
+    }
 
-    if (min === max) return [formatToSigFigMax6Digits(max)];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    if (min === max) {
+      return [formatCompactCurrency(max, selectedCurrency)];
+    }
 
     const step = (max - min) / 4;
 
-    // return Array.from({ length: 5 }, (_, i) =>
-    //   formatToSigFigMax6Digits(max - step * i)
-    // );
-    return Array.from({ length: 5 }, (_, i) =>
-      Number((max - step * i).toFixed(1))
-    );
+    return Array.from({ length: 5 }, (_, i) => {
+      const value = max - step * i;
+      return formatCompactCurrency(value, selectedCurrency);
+    });
+  };
+
+  // Helper function to format numbers compactly for Y-axis with currency
+  const formatCompactCurrency = (value: number, currency: string): string => {
+    const symbol = currency === "NGN" ? "₦" : "$";
+    
+    if (value >= 1000000000) {
+      return `${symbol}${(value / 1000000000).toFixed(1)}B`;
+    } else if (value >= 1000000) {
+      return `${symbol}${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${symbol}${(value / 1000).toFixed(1)}K`;
+    } else if (value >= 1) {
+      return `${symbol}${value.toFixed(0)}`;
+    } else {
+      return `${symbol}${value.toFixed(2)}`;
+    }
   };
 
   const isPositive = asset?.change24h && asset.change24h > 0;
@@ -166,19 +165,14 @@ export default function AssetChartDetails({
         >
           <Box flexDirection="row" alignItems="center" gap="s">
             <TokenImage
-              uri={tokenDetails?.tokenDetails?.logo || asset?.currencyId?.logo}
+              uri={tokenDetails?.tokenDetails?.logo || (asset?.currencyId as ICurrency)?.logo}
               name={tokenDetails?.tokenDetails?.symbol}
               size={24}
             />
             <CustomText variant="bodySubheader" fontSize={20}>
-              {tokenDetails?.tokenDetails?.name || asset?.currencyId?.name}
+              {tokenDetails?.tokenDetails?.name || (asset?.currencyId as ICurrency)?.name}
             </CustomText>
           </Box>
-          {/* <Box>
-            <CustomText variant="body" fontSize={14} color="success">
-              {formatToSigFigMax6Digits(asset?.dailyChange || 1)}%
-            </CustomText>
-          </Box> */}
           <Box
             flexDirection="row"
             style={{ gap: 3 }}
@@ -213,7 +207,14 @@ export default function AssetChartDetails({
             </CustomText>
             <CurrencyTab
               selectedCurrency={selectedCurrency}
-              setSelectedCurrency={setSelectedCurrency}
+              setSelectedCurrency={onCurrencyChange ? 
+                ((currency: React.SetStateAction<"USD" | "NGN">) => {
+                  if (typeof currency === 'string') {
+                    onCurrencyChange(currency);
+                  }
+                }) as React.Dispatch<React.SetStateAction<"USD" | "NGN">>
+                : setSelectedCurrency
+              }
             />
           </Box>
           <Box alignItems="flex-end">
@@ -226,10 +227,10 @@ export default function AssetChartDetails({
         {/* Chart */}
         <Box width="100%" alignItems="center">
           <Box width="100%" flexDirection="row" alignItems="center">
-            <Box width="90%" alignItems="center">
+            <Box width="82%" alignItems="center">
               <LineChart
                 data={chartData}
-                width={SIZES.width - 150}
+                width={SIZES.width - 180}
                 height={250}
                 yAxisSuffix=""
                 withInnerLines={true}
@@ -247,17 +248,20 @@ export default function AssetChartDetails({
               />
             </Box>
             <Box
-              width="10%"
+              width="18%"
               paddingLeft="s"
               height={180}
               justifyContent="space-between"
+              alignItems="flex-start"
             >
               {getYAxisLabels().map((label, i) => (
                 <CustomText
                   key={`y-axis-${i}`}
                   variant="body"
-                  fontSize={12}
+                  fontSize={10}
                   color="disabledTextColor"
+                  numberOfLines={1}
+                  style={{ flexShrink: 0 }}
                 >
                   {label}
                 </CustomText>
@@ -285,8 +289,6 @@ export default function AssetChartDetails({
           ))}
         </Box>
       </Box>
-
-      {/* <Loader visible={isFetchingHistory || chartData.labels.length === 0} /> */}
     </Box>
   );
 }

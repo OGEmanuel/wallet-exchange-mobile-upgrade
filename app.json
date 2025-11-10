@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Zap Wallet",
-    "slug": "zap",
+    "name": "new-zap-wallet-exchange",
+    "slug": "new-zap-wallet-exchange",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/zapicon.png",
@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.newzapwalletexchange",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "NSLocationWhenInUseUsageDescription": "We use your location to provide enhanced security and fraud prevention for your transactions. Your location helps us verify your identity and protect your account."
       }
     },
     "android": {
@@ -68,9 +68,6 @@
               "android.defaultConfig.missingDimensionStrategy": "react-native-camera, general"
             },
             "enableMinifyInReleaseBuilds": false
-          },
-          "ios": {
-            "deploymentTarget": "15.1"
           }
         }
       ]
@@ -89,9 +86,8 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "858e4f24-9027-482a-80f5-7011c39d0064"
+        "projectId": "024a9f16-05df-4af1-8688-c9552b3b89e8"
       }
-    },
-    "owner": "zap-africa"
+    }
   }
 }

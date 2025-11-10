@@ -1,11 +1,10 @@
-import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import storageService from "@/src/core/storage/app-storage";
+import { StorageKeys } from "@/src/core/storage/storage-types";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { ExchangeValidateOtpResponse, UserModel } from "@zap/blockchain-sdk";
-import { router } from "expo-router";
+import { ExchangeValidateOtpResponse } from "@zap/blockchain-sdk";
 import React, { useEffect, useState } from "react";
 import { Keyboard, Pressable } from "react-native";
 import OTPInput from "../form/OTPInput";
@@ -14,7 +13,7 @@ import Box from "../general/Box";
 
 interface EmailVerificationProps {
   email?: string;
-  onVerify?: (code: string) => void;
+  onVerify?: (code: string, userData?: any) => void;
   onResend?: () => void;
   isLoading?: boolean;
   onCloseBottomSheet?: () => void;
@@ -33,10 +32,7 @@ export default function EmailVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme<Theme>();
-  const { hideAllBottomSheets } = useAppBottomSheet();
-  const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
-    useExchangeAuth();
-    const { fetchUserById } = useKyc();
+  const { handleExchangeValidateOtp } = useExchangeAuth();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -79,37 +75,58 @@ export default function EmailVerification({
         console.log("Email verification response:", response);
 
         // Check if verification was successful
-        if (response) {
-          // Check if user data has username
-          let exchangeUser = exchangeUserData;
-
+        // If response is false, it means 2FA is required (handled separately)
+        // Only proceed if we have a valid response object with user data
+        if (response && typeof response === 'object' && 'data' in response) {
+          const responseData = response as ExchangeValidateOtpResponse;
           
-          const userData: UserModel = (response as ExchangeValidateOtpResponse)?.data?.user;
+          // Check if 2FA is required (response has twoFA flag but no user)
+          const requires2FA = 
+            responseData.message?.toLowerCase().includes('2fa required') ||
+            responseData.message?.toLowerCase().includes('2fa') ||
+            (responseData.data as any)?.twoFA === true;
           
-          if (!userData?.username) {
-            // exchangeUser = await getExchangeUser();
+          if (requires2FA && !responseData.data?.user) {
+            // 2FA is required - the 2FA input sheet should already be showing
+            // Don't show error here, just wait for 2FA input
+            setIsVerifying(false);
+            return;
           }
 
-          const userResponse = await fetchUserById(userData);
-          exchangeUser = userResponse.data;
-          
-          if (exchangeUser?.username) {
-            // User has username, close bottom sheet and navigate to app
-            console.log(
-              "User has username, closing bottom sheet and navigating to app"
+          await storageService.setItem(
+            StorageKeys.TOKEN_DATA,
+            JSON.stringify(responseData.data?.session || "")
+          );
+
+          const userData = responseData.data?.user;
+
+          if (userData) {
+            await storageService.setItem(
+              StorageKeys.USER_PROFILE,
+              JSON.stringify(userData)
             );
-            hideAllBottomSheets();
-            router.push("/dashboard/home/wallet-home/swap");
-          } else {
-            // User doesn't have username, continue with normal flow
-            onVerify?.(code);
           }
+
+          // Only call onVerify if we have user data (full login successful)
+          if (userData) {
+            onVerify?.(code, userData);
+          }
+        } else if (response === false) {
+          // 2FA is required - don't show error, the 2FA input sheet will handle it
+          // Just reset the verifying state
         } else {
           setError("Invalid OTP. Please try again.");
         }
       } catch (error) {
         console.error("Email verification error:", error);
-        setError(error as string);
+        // Only show error if it's not a 2FA-related error
+        // 2FA errors should be handled by the 2FA input sheet
+        const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
+        const is2FAError = errorMessage.toLowerCase().includes('2fa') || errorMessage.toLowerCase().includes('totp');
+        
+        if (!is2FAError) {
+          setError(errorMessage);
+        }
         // Error handling is already done by the API service with toast notifications
       } finally {
         setIsVerifying(false);

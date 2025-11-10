@@ -1,27 +1,43 @@
 /**
  * Zap SDK Service
- * 
+ *
  * Centralized service for managing the Zap Blockchain SDK instance
  * and providing a clean interface for the rest of the application.
  */
 
-import { AddTokenRequest, CreateOrderRequest, DisableTokenRequest, EnableTokenRequest, LoginRequest, MarketData, SendTransactionRequest, SupportedCurrency, UpdateUserWalletGroupNameRequest, UpdateWalletGroupRequest, UserModel, WALLET_GROUP_TYPE, WalletUtils, ZapSDK } from '@zap/blockchain-sdk';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
-import * as SecureStore from 'expo-secure-store';
-import WalletCredentialsStorage from '../storage/wallet-credentials-storage';
-import { NetworkErrorHandler } from '../utils/network-error-handler';
-import { createSDKInstance, getSDKConfig } from './zap-sdk.config';
+import { UpdateSettingsBody } from "@/src/modules/settings/domain/entities/params/update-settings-body";
+import {
+  AddTokenRequest,
+  CreateOrderRequest,
+  DisableTokenRequest,
+  EnableTokenRequest,
+  LoginRequest,
+  MarketData,
+  SendTransactionRequest,
+  SupportedCurrency,
+  UpdateUserWalletGroupNameRequest,
+  UpdateWalletGroupRequest,
+  UserModel,
+  WALLET_GROUP_TYPE,
+  WalletUtils,
+  ZapSDK,
+} from "@zap/blockchain-sdk";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
+import * as SecureStore from "expo-secure-store";
+import WalletCredentialsStorage from "../storage/wallet-credentials-storage";
+import { NetworkErrorHandler } from "../utils/network-error-handler";
+import { createSDKInstance, getSDKConfig } from "./zap-sdk.config";
 
 export interface AddAccountsToExistingWalletRequest {
   userWalletGroupId?: string;
   walletId?: string;
   walletGroupId?: string;
-  seedPhrase?: string;           // For seedphrase-based accounts
-  privateKey?: string;           // For private key-based accounts
-  searchChain?: string;          // Optional chain specification for private key/watch address
-  watchAddress?: string;         // For watch-only accounts
-  derivationIndex?: number;      // Derivation index (default: 0)
+  seedPhrase?: string; // For seedphrase-based accounts
+  privateKey?: string; // For private key-based accounts
+  searchChain?: string; // Optional chain specification for private key/watch address
+  watchAddress?: string; // For watch-only accounts
+  derivationIndex?: number; // Derivation index (default: 0)
 }
 
 export interface TokenDetailsRequest {
@@ -89,7 +105,7 @@ class ZapSDKService {
    * Force stop all SDK operations and reset circuit breaker
    */
   public async forceStop(): Promise<void> {
-    console.log('🛑 Force stopping SDK operations...');
+    console.log("🛑 Force stopping SDK operations...");
 
     // Reset circuit breaker
     this.resetAuthCircuitBreakerInternal();
@@ -100,7 +116,7 @@ class ZapSDKService {
         await this.sdk.cleanup();
       }
     } catch (error) {
-      console.warn('⚠️ Error during force cleanup:', error);
+      console.warn("⚠️ Error during force cleanup:", error);
     }
 
     // Reset all state
@@ -108,14 +124,14 @@ class ZapSDKService {
     this.isInitialized = false;
     this.initializationPromise = null;
 
-    console.log('✅ SDK force stopped and circuit breaker reset');
+    console.log("✅ SDK force stopped and circuit breaker reset");
   }
 
   /**
    * Emergency stop - completely disable SDK
    */
   public emergencyStop(): void {
-    console.log('🚨 EMERGENCY STOP - Disabling SDK completely');
+    console.log("🚨 EMERGENCY STOP - Disabling SDK completely");
 
     // Open circuit breaker immediately
     this.isAuthCircuitOpen = true;
@@ -127,17 +143,17 @@ class ZapSDKService {
       //   this.sdk.disconnect();
       // }
     } catch (error) {
-      console.warn('⚠️ Error disconnecting SDK:', error);
+      console.warn("⚠️ Error disconnecting SDK:", error);
     }
 
-    console.log('🚨 SDK emergency stopped - all operations blocked');
+    console.log("🚨 SDK emergency stopped - all operations blocked");
   }
 
   /**
    * Force disable SDK internal retry mechanisms
    */
   public disableSDKRetries(): void {
-    console.log('🛑 Disabling SDK internal retry mechanisms...');
+    console.log("🛑 Disabling SDK internal retry mechanisms...");
 
     try {
       if (this.sdk) {
@@ -156,16 +172,16 @@ class ZapSDKService {
         //   this.sdk.clearRetryTimers();
         // }
 
-        console.log('✅ SDK retry mechanisms disabled');
+        console.log("✅ SDK retry mechanisms disabled");
       }
     } catch (error) {
-      console.warn('⚠️ Could not disable SDK retry mechanisms:', error);
+      console.warn("⚠️ Could not disable SDK retry mechanisms:", error);
     }
   }
 
   private async _initialize(): Promise<boolean> {
     try {
-      console.log('🚀 Initializing Zap SDK...');
+      console.log("🚀 Initializing Zap SDK...");
 
       this.sdk = createSDKInstance();
       await this.sdk.initialize();
@@ -174,11 +190,11 @@ class ZapSDKService {
       this.setupWebSocketListeners();
 
       this.isInitialized = true;
-      console.log('✅ Zap SDK initialized successfully');
+      console.log("✅ Zap SDK initialized successfully");
 
       return true;
     } catch (error) {
-      console.error('❌ Failed to initialize Zap SDK:', error);
+      console.error("❌ Failed to initialize Zap SDK:", error);
       this.isInitialized = false;
       this.sdk = null;
       throw error;
@@ -190,13 +206,15 @@ class ZapSDKService {
    */
   public getSDK(): ZapSDK {
     if (!this.sdk) {
-      throw new Error('SDK not initialized. Call initialize() first.');
+      throw new Error("SDK not initialized. Call initialize() first.");
     }
 
     // Block SDK access if circuit breaker is open
     if (this.shouldBlockSDKOperation()) {
-      console.warn('🚨 SDK access blocked - circuit breaker is open');
-      throw new Error('SDK access blocked due to authentication circuit breaker. Please try again later.');
+      console.warn("🚨 SDK access blocked - circuit breaker is open");
+      throw new Error(
+        "SDK access blocked due to authentication circuit breaker. Please try again later."
+      );
     }
 
     return this.sdk;
@@ -206,12 +224,12 @@ class ZapSDKService {
    * Completely destroy SDK instance to stop all internal operations
    */
   public destroySDK(): void {
-    console.log('💥 Destroying SDK instance to stop all operations...');
+    console.log("💥 Destroying SDK instance to stop all operations...");
 
     try {
       if (this.sdk) {
         // Try to cleanup and destroy the SDK
-        if (typeof this.sdk.cleanup === 'function') {
+        if (typeof this.sdk.cleanup === "function") {
           this.sdk.cleanup();
         }
 
@@ -224,14 +242,14 @@ class ZapSDKService {
         // }
       }
     } catch (error) {
-      console.warn('⚠️ Error destroying SDK:', error);
+      console.warn("⚠️ Error destroying SDK:", error);
     } finally {
       // Force reset all state
       this.sdk = null;
       this.isInitialized = false;
       this.initializationPromise = null;
 
-      console.log('💥 SDK instance destroyed');
+      console.log("💥 SDK instance destroyed");
     }
   }
 
@@ -257,14 +275,18 @@ class ZapSDKService {
     this.authFailureCount++;
     this.lastAuthFailure = Date.now();
 
-    console.warn(`🔒 Auth failure ${this.authFailureCount}/${this.maxAuthFailures}`);
+    console.warn(
+      `🔒 Auth failure ${this.authFailureCount}/${this.maxAuthFailures}`
+    );
 
     // Check for retry loop pattern
     this.detectRetryLoop();
 
     if (this.authFailureCount >= this.maxAuthFailures) {
       this.isAuthCircuitOpen = true;
-      console.warn('🚨 Authentication circuit breaker opened due to repeated failures');
+      console.warn(
+        "🚨 Authentication circuit breaker opened due to repeated failures"
+      );
 
       // Immediately destroy SDK to stop all internal retries
       this.destroySDK();
@@ -279,7 +301,11 @@ class ZapSDKService {
    */
   private detectRetryLoop(): void {
     const now = Date.now();
-    const { /* consecutiveAuthErrors, */ lastAuthErrorTime, maxConsecutiveErrors, errorWindow } = this.retryLoopDetection;
+    const {
+      /* consecutiveAuthErrors, */ lastAuthErrorTime,
+      maxConsecutiveErrors,
+      errorWindow,
+    } = this.retryLoopDetection;
 
     // Reset counter if enough time has passed
     if (now - lastAuthErrorTime > errorWindow) {
@@ -290,11 +316,13 @@ class ZapSDKService {
 
     this.retryLoopDetection.lastAuthErrorTime = now;
 
-    console.warn(`🔄 Retry loop detection: ${this.retryLoopDetection.consecutiveAuthErrors}/${maxConsecutiveErrors} consecutive errors`);
+    console.warn(
+      `🔄 Retry loop detection: ${this.retryLoopDetection.consecutiveAuthErrors}/${maxConsecutiveErrors} consecutive errors`
+    );
 
     // If we detect a retry loop, emergency stop
     if (this.retryLoopDetection.consecutiveAuthErrors >= maxConsecutiveErrors) {
-      console.error('🚨 RETRY LOOP DETECTED - Emergency stopping SDK!');
+      console.error("🚨 RETRY LOOP DETECTED - Emergency stopping SDK!");
       this.emergencyStop();
     }
   }
@@ -313,31 +341,30 @@ class ZapSDKService {
       if (sdk.httpClient && sdk.httpClient.interceptors) {
         sdk.httpClient.interceptors.request.clear();
         sdk.httpClient.interceptors.response.clear();
-        console.log('🛑 Cleared HTTP interceptors');
+        console.log("🛑 Cleared HTTP interceptors");
       }
 
       // Disable WebSocket reconnection if possible
-      if (sdk.wsClient && typeof sdk.wsClient.disconnect === 'function') {
+      if (sdk.wsClient && typeof sdk.wsClient.disconnect === "function") {
         sdk.wsClient.disconnect();
-        console.log('🛑 Disconnected WebSocket');
+        console.log("🛑 Disconnected WebSocket");
       }
 
       // Disable any retry timers
       if (sdk.retryTimer) {
         clearTimeout(sdk.retryTimer);
         sdk.retryTimer = null;
-        console.log('🛑 Cleared retry timer');
+        console.log("🛑 Cleared retry timer");
       }
 
       // Disable any refresh timers
       if (sdk.refreshTimer) {
         clearTimeout(sdk.refreshTimer);
         sdk.refreshTimer = null;
-        console.log('🛑 Cleared refresh timer');
+        console.log("🛑 Cleared refresh timer");
       }
-
     } catch (error) {
-      console.warn('⚠️ Could not intercept SDK retries:', error);
+      console.warn("⚠️ Could not intercept SDK retries:", error);
     }
   }
 
@@ -357,21 +384,22 @@ class ZapSDKService {
     if (!error) return false;
 
     const authErrorPatterns = [
-      'Validation failed',
-      'Authentication failed',
-      'Invalid token',
-      'Token expired',
-      'Unauthorized',
-      '401',
-      '403'
+      "Validation failed",
+      "Authentication failed",
+      "Invalid token",
+      "Token expired",
+      "Unauthorized",
+      "401",
+      "403",
     ];
 
-    const errorMessage = error.message || error.toString() || '';
-    const errorCode = error.code || error.status || '';
+    const errorMessage = error.message || error.toString() || "";
+    const errorCode = error.code || error.status || "";
 
-    return authErrorPatterns.some(pattern =>
-      errorMessage.toLowerCase().includes(pattern.toLowerCase()) ||
-      errorCode.toString().includes(pattern)
+    return authErrorPatterns.some(
+      (pattern) =>
+        errorMessage.toLowerCase().includes(pattern.toLowerCase()) ||
+        errorCode.toString().includes(pattern)
     );
   }
 
@@ -380,13 +408,24 @@ class ZapSDKService {
    */
   public async executeWithNetworkHandling<T>(
     operation: () => Promise<T>,
-    context: string = 'SDK operation'
+    context: string = "SDK operation"
   ): Promise<T> {
     try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for ${context}, auto-initializing...`);
+        await this.initialize();
+      }
+
       // Check if auth circuit breaker is open
       if (this.isAuthCircuitBreakerOpen()) {
-        console.warn('🚨 Circuit breaker is OPEN - blocking SDK call:', context);
-        throw new Error('Authentication circuit breaker is open. Please try again later.');
+        console.warn(
+          "🚨 Circuit breaker is OPEN - blocking SDK call:",
+          context
+        );
+        throw new Error(
+          "Authentication circuit breaker is open. Please try again later."
+        );
       }
 
       console.log(`🔄 Executing SDK call: ${context}`);
@@ -395,15 +434,18 @@ class ZapSDKService {
       console.log(`❌ SDK call failed: ${context}`, error.message);
 
       // Handle token refresh race condition
-      if (error.message?.includes('Token refresh already in progress')) {
+      if (error.message?.includes("Token refresh already in progress")) {
         console.warn(`⏳ Token refresh in progress for ${context}, waiting...`);
         // Wait a bit and retry once
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         try {
           return await operation();
         } catch (retryError: any) {
           console.error(`❌ Retry failed for ${context}:`, retryError.message);
-          const networkError = NetworkErrorHandler.handleSDKError(retryError, context);
+          const networkError = NetworkErrorHandler.handleSDKError(
+            retryError,
+            context
+          );
           throw networkError;
         }
       }
@@ -412,11 +454,16 @@ class ZapSDKService {
       if (this.isAuthError(error)) {
         this.recordAuthFailure();
         console.warn(`🔒 Authentication error in ${context}:`, error.message);
-        console.warn(`🔒 Circuit breaker status:`, this.getCircuitBreakerStatus());
+        console.warn(
+          `🔒 Circuit breaker status:`,
+          this.getCircuitBreakerStatus()
+        );
 
         // If this is the second failure, immediately trigger circuit breaker
         if (this.authFailureCount >= this.maxAuthFailures) {
-          console.warn('🚨 Triggering immediate circuit breaker due to repeated auth failures');
+          console.warn(
+            "🚨 Triggering immediate circuit breaker due to repeated auth failures"
+          );
           this.triggerCircuitBreaker();
         }
       }
@@ -432,9 +479,15 @@ class ZapSDKService {
    */
   public async executeWithNetworkHandlingNoAuth<T>(
     operation: () => Promise<T>,
-    context: string = 'SDK operation'
+    context: string = "SDK operation"
   ): Promise<T> {
     try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for ${context}, auto-initializing...`);
+        await this.initialize();
+      }
+
       console.log(`🔄 Executing SDK call (no auth check): ${context}`);
       return await operation();
     } catch (error: any) {
@@ -451,7 +504,7 @@ class ZapSDKService {
    */
   public async executeWithRetry<T>(
     operation: () => Promise<T>,
-    context: string = 'SDK operation',
+    context: string = "SDK operation",
     maxRetries: number = 3
   ): Promise<T> {
     try {
@@ -465,45 +518,59 @@ class ZapSDKService {
   public async getMarkets(options?: { useCache?: boolean }) {
     const response: MarketData[] = await this.executeWithNetworkHandling(
       () => this.getSDK().markets.getMarkets(options),
-      'getMarkets'
+      "getMarkets"
     );
     return response || null;
   }
 
   // Wallet Operations
-  public async createWalletGroupMultipurpose(params: CreateWalletGroupMultipurposeParams) {
+  public async createWalletGroupMultipurpose(
+    params: CreateWalletGroupMultipurposeParams
+  ) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().createWalletGroupMultipurpose(params),
-      'createWalletGroupMultipurpose'
+      "createWalletGroupMultipurpose"
     );
   }
 
-  public async updateWalletGroup(walletGroupId: string, params: UpdateWalletGroupRequest) {
+  public async updateWalletGroup(
+    walletGroupId: string,
+    params: UpdateWalletGroupRequest
+  ) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().wallets.updateWalletGroup(walletGroupId, params),
-      'updateWalletGroup'
+      "updateWalletGroup"
     );
   }
 
   public async deleteWalletGroup(walletGroupId: string) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().wallets.deleteWalletGroup(walletGroupId),
-      'deleteWalletGroup'
+      "deleteWalletGroup"
     );
   }
 
-  public async updateUserWalletGroupName(userWalletGroupId: string, params: UpdateUserWalletGroupNameRequest) {
+  public async updateUserWalletGroupName(
+    userWalletGroupId: string,
+    params: UpdateUserWalletGroupNameRequest
+  ) {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().wallets.updateUserWalletGroupName(userWalletGroupId, params),
-      'updateUserWalletGroupName'
+      () =>
+        this.getSDK().wallets.updateUserWalletGroupName(
+          userWalletGroupId,
+          params
+        ),
+      "updateUserWalletGroupName"
     );
   }
 
-  public async addAccountsToExistingWallet(params: AddAccountsToExistingWalletRequest) {
+  public async addAccountsToExistingWallet(
+    params: AddAccountsToExistingWalletRequest
+  ) {
     this.isAddingAccounts = true;
     return this.executeWithNetworkHandling(
       () => this.getSDK().wallets.addAccountsToExistingWallet(params),
-      'addAccountsToExistingWallet'
+      "addAccountsToExistingWallet"
     ).finally(() => {
       this.isAddingAccounts = false;
     });
@@ -511,10 +578,23 @@ class ZapSDKService {
 
   // Token Operations
   public async enableToken(params: EnableTokenRequest) {
-    return this.executeWithNetworkHandling(
-      () => this.getSDK().tokens.enableToken(params),
-      'enableToken'
-    );
+    try {
+      console.log("✅ Attempting to enable token:", params);
+      const result = await this.executeWithNetworkHandling(
+        () => this.getSDK().tokens.enableToken(params),
+        "enableToken"
+      );
+      console.log("✅ Token enabled successfully:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to enable token:", error);
+      console.error("   Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        params,
+      });
+      throw error;
+    }
   }
 
   public async disableToken(params: DisableTokenRequest) {
@@ -522,7 +602,7 @@ class ZapSDKService {
       console.log("🚫 Attempting to disable token:", params);
       const result = await this.executeWithNetworkHandling(
         () => this.getSDK().tokens.disableToken(params),
-        'disableToken'
+        "disableToken"
       );
       console.log("✅ Token disabled successfully:", result);
       return result;
@@ -535,84 +615,111 @@ class ZapSDKService {
   public async getTokenDetails(params: TokenDetailsRequest) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().tokens.getTokenDetails(params),
-      'getTokenDetails'
+      "getTokenDetails"
     );
   }
 
   public async addToken(params: AddTokenRequest) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().tokens.addToken(params),
-      'addToken'
+      "addToken"
     );
   }
 
   // Blockchain Operations
-  public async deriveMultiChainAddresses(seedPhrase: string, walletDepth: number) {
+  public async deriveMultiChainAddresses(
+    seedPhrase: string,
+    walletDepth: number
+  ) {
     return this.executeWithNetworkHandlingNoAuth(
-      () => this.getSDK().blockchain.deriveMultiChainAddresses(seedPhrase, walletDepth),
-      'deriveMultiChainAddresses'
+      () =>
+        this.getSDK().blockchain.deriveMultiChainAddresses(
+          seedPhrase,
+          walletDepth
+        ),
+      "deriveMultiChainAddresses"
     );
   }
 
-  public async deriveAddress(seedPhrase: string, chainSymbol: string, walletDepth: number = 0) {
+  public async deriveAddress(
+    seedPhrase: string,
+    chainSymbol: string,
+    walletDepth: number = 0
+  ) {
     return this.executeWithNetworkHandlingNoAuth(
-      () => this.getSDK().blockchain.deriveAddress(seedPhrase, chainSymbol, walletDepth),
-      'deriveAddress'
+      () =>
+        this.getSDK().blockchain.deriveAddress(
+          seedPhrase,
+          chainSymbol,
+          walletDepth
+        ),
+      "deriveAddress"
     );
   }
 
   public async getBanks() {
     return this.executeWithNetworkHandling(
       () => this.getSDK().banks.listAll(),
-      'getBanks'
+      "getBanks"
     );
   }
 
-  public async getBankAccounts(userId: string, options?: { limit?: number, offset?: number, useCache?: boolean }) {
+  public async getBankAccounts(
+    userId: string,
+    options?: { limit?: number; offset?: number; useCache?: boolean }
+  ) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().bankAccounts.getUserBankAccounts(userId, options),
-      'getBankAccounts'
+      "getBankAccounts"
     );
   }
 
   public async resolveBankAccount(bankId: string, accountNumber: string) {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().banks.resolveAccount({
-        bankId,
-        accountNumber,
-      }),
-      'resolveBankAccount'
+      () =>
+        this.getSDK().banks.resolveAccount({
+          bankId,
+          accountNumber,
+        }),
+      "resolveBankAccount"
     );
   }
 
-  public async createBankAccount(params: { bankId: string; name: string; supportedCurrency: SupportedCurrency, userId: string, number: string }) {
+  public async createBankAccount(params: {
+    bankId: string;
+    name: string;
+    supportedCurrency: SupportedCurrency;
+    userId: string;
+    number: string;
+  }) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().bankAccounts.createBankAccount(params),
-      'createBankAccount'
+      "createBankAccount"
     );
   }
 
   public async createOrder(params: CreateOrderRequest) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().orders.createOrder(params),
-      'createOrder'
+      "createOrder"
     );
   }
 
   public async sendTransaction(params: SendTransactionRequest) {
     return this.executeWithNetworkHandlingNoAuth(
-      () => this.getSDK().sendTransaction(
-        params.fromAddress,
-        params.toAddress,
-        Number(params.amount),
-        params.privateKey,
-        params.chainSymbol,
-        {
-          tokenAddress: params.tokenAddress,
-          tokenMintAddress: params.tokenMintAddress,
-        }
-      ),
-      'sendTransaction'
+      () =>
+        this.getSDK().sendTransaction(
+          params.fromAddress,
+          params.toAddress,
+          Number(params.amount),
+          params.privateKey,
+          params.chainSymbol,
+          {
+            tokenAddress: params.tokenAddress,
+            tokenMintAddress: params.tokenMintAddress,
+          }
+        ),
+      "sendTransaction"
     );
   }
 
@@ -624,14 +731,15 @@ class ZapSDKService {
     options?: any
   ) {
     return this.executeWithNetworkHandlingNoAuth(
-      () => this.getSDK().blockchain.estimateTransactionCost(
-        toAddress,
-        amount,
-        fromAddress,
-        chainSymbol,
-        options
-      ),
-      'estimateTransactionCost'
+      () =>
+        this.getSDK().blockchain.estimateTransactionCost(
+          toAddress,
+          amount,
+          fromAddress,
+          chainSymbol,
+          options
+        ),
+      "estimateTransactionCost"
     );
   }
 
@@ -639,7 +747,7 @@ class ZapSDKService {
   public async login(params: LoginRequest) {
     const result = await this.executeWithNetworkHandling(
       () => this.getSDK().walletAuth.login(params),
-      'login'
+      "login"
     );
 
     // Reset circuit breaker on successful login
@@ -650,42 +758,56 @@ class ZapSDKService {
   public async logoutFromExchange() {
     return this.executeWithNetworkHandling(
       () => this.getSDK().logoutFromExchange(),
-      'logoutFromExchange'
+      "logoutFromExchange"
     );
   }
 
   public async sendExchangeOtp(email: string) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().sendExchangeOtp(email),
-      'sendExchangeOtp'
+      "sendExchangeOtp"
     );
   }
 
-  public async validateExchangeOtp(email: string, otp: string) {
+  public async validateExchangeOtp(email: string, otp: string, totp?: string) {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().validateExchangeOtp(email, otp),
-      'validateExchangeOtp'
+      () => {
+        const sdk = this.getSDK();
+        
+        // According to the 2FA guide, when 2FA is required during login:
+        // 1. First call validateOtp without totp (returns partialToken)
+        // 2. Then call twoFA.login(code, partialToken) to complete login
+        // So we should NOT pass totp to validateOtp - use twoFA.login instead
+        // This totp parameter is kept for backward compatibility but is ignored
+        if (totp) {
+          console.warn("⚠️ validateExchangeOtp: totp parameter is deprecated. Use twoFA.login(code, partialToken) instead after getting partialToken from validateOtp.");
+        }
+        
+        // Normal call - don't pass totp here
+        return sdk.validateExchangeOtp(email, otp);
+      },
+      "validateExchangeOtp"
     );
   }
 
   public async getCurrentUserId() {
     return this.executeWithNetworkHandling(
       () => this.getSDK().walletAuth.getCurrentUserId(),
-      'getCurrentUserId'
+      "getCurrentUserId"
     );
   }
 
   public async isExchangeAuthenticated() {
     return this.executeWithNetworkHandling(
       () => this.getSDK().isExchangeAuthenticated(),
-      'isExchangeAuthenticated'
+      "isExchangeAuthenticated"
     );
   }
 
   public async getExchangeUserId() {
     return this.executeWithNetworkHandling(
       async () => (await this.getSDK().exchangeAuth.getUser())?.id,
-      'getExchangeUserId'
+      "getExchangeUserId"
     );
   }
 
@@ -698,12 +820,14 @@ class ZapSDKService {
       try {
         const exchangeUserId = await this.getExchangeUserId();
         if (!exchangeUserId) return null;
-        const profile = await sdk.users.getProfile(exchangeUserId, { bypassCache: true });
+        const profile = await sdk.users.getProfile(exchangeUserId, {
+          bypassCache: true,
+        });
         return profile || null;
       } catch {
         return null;
       }
-    }, 'getExchangeUser');
+    }, "getExchangeUser");
   }
 
   /**
@@ -719,25 +843,36 @@ class ZapSDKService {
   ) {
     return this.executeWithNetworkHandling(
       () => this.getSDK().users.completeOnboarding(userId, data),
-      'users.completeOnboarding'
+      "users.completeOnboarding"
     );
   }
 
-  public async getUserWalletGroups(userId: string, options?: { useCache?: boolean }) {
+  public async getUserWalletGroups(
+    userId: string,
+    options?: { useCache?: boolean }
+  ) {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().wallets.getUserWalletGroups(userId, { useCache: options?.useCache }),
-      'getUserWalletGroups'
+      () =>
+        this.getSDK().wallets.getUserWalletGroups(userId, {
+          useCache: options?.useCache,
+        }),
+      "getUserWalletGroups"
     );
   }
 
   public async getMainWalletGroupId() {
     return this.executeWithNetworkHandling(
       () => this.getSDK().secureTokenManager.getMainWalletGroupId(),
-      'getMainWalletGroupId'
+      "getMainWalletGroupId"
     );
   }
 
-  public generateSeedPhrase() {
+  public async generateSeedPhrase() {
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for generateSeedPhrase, auto-initializing...`);
+      await this.initialize();
+    }
     return this.getSDK().generateSeedPhrase();
   }
 
@@ -763,21 +898,21 @@ class ZapSDKService {
 
     // Listen for wallet updates
     this.sdk.onWalletUpdate((update) => {
-      console.log('📱 Wallet update received:', update);
+      console.log("📱 Wallet update received:", update);
       // Emit custom event or update global state
       this.emitWalletUpdate(update);
     });
 
     // Listen for notifications
     this.sdk.onNotification((notification) => {
-      console.log('🔔 Notification received:', notification);
+      console.log("🔔 Notification received:", notification);
       // Emit custom event or show notification
       this.emitNotification(notification);
     });
 
     // Listen for connection changes
     this.sdk.onConnectionChange((connected) => {
-      console.log('🌐 WebSocket connection changed:', connected);
+      console.log("🌐 WebSocket connection changed:", connected);
       // Emit custom event or update connection status
       this.emitConnectionChange(connected);
     });
@@ -796,8 +931,10 @@ class ZapSDKService {
   private emitWalletUpdate(update: any): void {
     // You can integrate with your state management here
     // For example, dispatch to Redux store or emit custom events
-    if (typeof window !== 'undefined' && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('zap-wallet-update', { detail: update }));
+    if (typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(
+        new CustomEvent("zap-wallet-update", { detail: update })
+      );
     }
   }
 
@@ -805,8 +942,10 @@ class ZapSDKService {
    * Emit notification event
    */
   private emitNotification(notification: any): void {
-    if (typeof window !== 'undefined' && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('zap-notification', { detail: notification }));
+    if (typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(
+        new CustomEvent("zap-notification", { detail: notification })
+      );
     }
   }
 
@@ -814,8 +953,10 @@ class ZapSDKService {
    * Emit connection change event
    */
   private emitConnectionChange(connected: boolean): void {
-    if (typeof window !== 'undefined' && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent('zap-connection-change', { detail: connected }));
+    if (typeof window !== "undefined" && window.dispatchEvent) {
+      window.dispatchEvent(
+        new CustomEvent("zap-connection-change", { detail: connected })
+      );
     }
   }
 
@@ -823,10 +964,12 @@ class ZapSDKService {
    * Reconnect WebSocket
    */
   public async reconnectWebSocket(): Promise<void> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for reconnectWebSocket, auto-initializing...`);
+      await this.initialize();
     }
-    await this.sdk.reconnectWebSocket();
+    await this.sdk!.reconnectWebSocket();
   }
 
   /**
@@ -863,7 +1006,7 @@ class ZapSDKService {
    */
   public resetAuthCircuitBreaker(): void {
     this.resetAuthCircuitBreakerInternal();
-    console.log('🔄 Authentication circuit breaker manually reset');
+    console.log("🔄 Authentication circuit breaker manually reset");
   }
 
   /**
@@ -875,12 +1018,15 @@ class ZapSDKService {
     timeUntilReset: number;
   } {
     const now = Date.now();
-    const timeUntilReset = Math.max(0, this.authFailureWindow - (now - this.lastAuthFailure));
+    const timeUntilReset = Math.max(
+      0,
+      this.authFailureWindow - (now - this.lastAuthFailure)
+    );
 
     return {
       isOpen: this.isAuthCircuitOpen,
       failureCount: this.authFailureCount,
-      timeUntilReset
+      timeUntilReset,
     };
   }
 
@@ -888,16 +1034,19 @@ class ZapSDKService {
    * Test circuit breaker functionality
    */
   public testCircuitBreaker(): void {
-    console.log('🧪 Testing circuit breaker...');
-    console.log('Current status:', this.getCircuitBreakerStatus());
+    console.log("🧪 Testing circuit breaker...");
+    console.log("Current status:", this.getCircuitBreakerStatus());
 
     // Simulate auth failures
     for (let i = 0; i < 5; i++) {
       this.recordAuthFailure();
-      console.log(`Simulated failure ${i + 1}:`, this.getCircuitBreakerStatus());
+      console.log(
+        `Simulated failure ${i + 1}:`,
+        this.getCircuitBreakerStatus()
+      );
     }
 
-    console.log('Final status:', this.getCircuitBreakerStatus());
+    console.log("Final status:", this.getCircuitBreakerStatus());
   }
 
   /**
@@ -922,7 +1071,7 @@ class ZapSDKService {
       isInitialized: this.isInitialized,
       circuitBreaker: this.getCircuitBreakerStatus(),
       hasSDK: !!this.sdk,
-      isRetrying: this.isSDKRetrying()
+      isRetrying: this.isSDKRetrying(),
     };
   }
 
@@ -930,7 +1079,7 @@ class ZapSDKService {
    * Manually trigger automatic re-login (for testing)
    */
   public async triggerAutoRelogin(): Promise<void> {
-    console.log('🔄 Manually triggering automatic re-login...');
+    console.log("🔄 Manually triggering automatic re-login...");
     await this.attemptAutoRelogin();
   }
 
@@ -938,7 +1087,7 @@ class ZapSDKService {
    * Force stop SDK and trigger circuit breaker (for emergency situations)
    */
   public forceStopSDK(): void {
-    console.log('🛑 Force stopping SDK and triggering circuit breaker...');
+    console.log("🛑 Force stopping SDK and triggering circuit breaker...");
 
     // Immediately open circuit breaker
     this.isAuthCircuitOpen = true;
@@ -948,14 +1097,14 @@ class ZapSDKService {
     // Destroy SDK to stop all operations
     this.destroySDK();
 
-    console.log('🛑 SDK force stopped and circuit breaker opened');
+    console.log("🛑 SDK force stopped and circuit breaker opened");
   }
 
   /**
    * Manually trigger circuit breaker (for emergency situations)
    */
   public triggerCircuitBreaker(): void {
-    console.log('🚨 Manually triggering circuit breaker...');
+    console.log("🚨 Manually triggering circuit breaker...");
 
     // Force open circuit breaker
     this.isAuthCircuitOpen = true;
@@ -965,14 +1114,16 @@ class ZapSDKService {
     // Attempt automatic re-login before destroying SDK
     this.attemptAutoRelogin();
 
-    console.log('🚨 Circuit breaker manually triggered - all SDK operations stopped');
+    console.log(
+      "🚨 Circuit breaker manually triggered - all SDK operations stopped"
+    );
   }
 
   /**
    * Attempt automatic re-login using existing wallet context
    */
   private async attemptAutoRelogin(): Promise<void> {
-    console.log('🔄 Attempting automatic re-login...');
+    console.log("🔄 Attempting automatic re-login...");
 
     try {
       // Import the wallet context to access the existing login function
@@ -982,13 +1133,17 @@ class ZapSDKService {
       // Note: This is a bit tricky since it's a React context function
       // We'll use a simpler approach by calling the SDK login directly
 
-
       // Get device fingerprint from secure storage (same as wallet context)
-      let deviceFingerprint = await SecureStore.getItemAsync("device_fingerprint");
+      let deviceFingerprint = await SecureStore.getItemAsync(
+        "device_fingerprint"
+      );
       if (!deviceFingerprint) {
         // Create fallback fingerprint (same logic as wallet context)
         deviceFingerprint = JSON.stringify({
-          deviceId: Device.osInternalBuildId || Device.modelId || `unknown-${Date.now()}`,
+          deviceId:
+            Device.osInternalBuildId ||
+            Device.modelId ||
+            `unknown-${Date.now()}`,
           deviceName: Device.deviceName || Device.modelName || "Unknown Device",
           deviceType: Device.deviceType || 0,
           osName: Device.osName || "Unknown OS",
@@ -997,15 +1152,15 @@ class ZapSDKService {
       }
 
       // Get device token (same as wallet context)
-      const deviceToken = Device.osInternalBuildId ||
-        Device.modelId ||
-        `unknown-${Date.now()}`;
+      const deviceToken =
+        Device.osInternalBuildId || Device.modelId || `unknown-${Date.now()}`;
 
       // Get push token (same as wallet context)
       let pushToken = "";
       if (Device.isDevice) {
         try {
-          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          const { status: existingStatus } =
+            await Notifications.getPermissionsAsync();
           let finalStatus = existingStatus;
 
           if (existingStatus !== "granted") {
@@ -1015,10 +1170,10 @@ class ZapSDKService {
 
           if (finalStatus === "granted") {
             pushToken = (await Notifications.getExpoPushTokenAsync()).data;
-            console.log('📱 Push token obtained for auto re-login:', pushToken);
+            console.log("📱 Push token obtained for auto re-login:", pushToken);
           }
         } catch (error) {
-          console.warn('Failed to get push token for auto re-login:', error);
+          console.warn("Failed to get push token for auto re-login:", error);
         }
       }
 
@@ -1030,19 +1185,19 @@ class ZapSDKService {
       });
 
       if (loginResult.success) {
-        console.log('✅ Automatic re-login successful!');
+        console.log("✅ Automatic re-login successful!");
         // Reset circuit breaker on successful login
         this.resetAuthCircuitBreakerInternal();
         return;
       } else {
-        console.warn('❌ Automatic re-login failed:', loginResult);
+        console.warn("❌ Automatic re-login failed:", loginResult);
       }
     } catch (error) {
-      console.error('❌ Automatic re-login error:', error);
+      console.error("❌ Automatic re-login error:", error);
     }
 
     // If auto re-login fails, destroy SDK to stop all operations
-    console.log('💥 Auto re-login failed, destroying SDK...');
+    console.log("💥 Auto re-login failed, destroying SDK...");
     this.destroySDK();
   }
 
@@ -1055,7 +1210,7 @@ class ZapSDKService {
         await this.sdk.cleanup();
       }
     } catch (error) {
-      console.error('Error during SDK cleanup:', error);
+      console.error("Error during SDK cleanup:", error);
     } finally {
       this.sdk = null;
       this.isInitialized = false;
@@ -1078,83 +1233,104 @@ class ZapSDKService {
    * Get all chains
    */
   public async getChains(): Promise<any[]> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChains, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.listAll();
+    return await this.sdk!.chains.listAll();
   }
 
   /**
    * Get wallet chains (chains that support wallet operations)
    */
   public async getWalletChains(): Promise<any[]> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getWalletChains, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getWalletChains();
+    return await this.sdk!.chains.getWalletChains();
   }
 
   /**
    * Get chain by ID
    */
   public async getChainById(chainId: string): Promise<any> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChainById, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getById(chainId);
+    return await this.sdk!.chains.getById(chainId);
   }
 
   /**
    * Get chain by symbol
    */
   public async getChainBySymbol(symbol: string): Promise<any> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for getChainBySymbol, auto-initializing...`);
+      await this.initialize();
     }
-    return await this.sdk.chains.getBySymbol(symbol);
+    return await this.sdk!.chains.getBySymbol(symbol);
   }
 
   /**
    * Validate private key for a specific chain
    */
-  public async validatePrivateKey(privateKey: string, chainSymbol: string): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+  public async validatePrivateKey(
+    privateKey: string,
+    chainSymbol: string
+  ): Promise<{ isValid: boolean; error?: string }> {
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for validatePrivateKey, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
       // Basic validation - check if private key is not empty
       if (!privateKey || privateKey.trim().length === 0) {
-        return { isValid: false, error: 'Please enter your private key' };
+        return { isValid: false, error: "Please enter your private key" };
       }
 
       const cleanPrivateKey = privateKey.trim();
-      console.log('🔍 Validating private key:', { chainSymbol, keyLength: cleanPrivateKey.length });
+      console.log("🔍 Validating private key:", {
+        chainSymbol,
+        keyLength: cleanPrivateKey.length,
+      });
 
       // Check if the SDK method exists
-      if (typeof this.sdk.validatePrivateKey !== 'function') {
-        console.log('⚠️ SDK validatePrivateKey method not available, using basic validation');
+      if (typeof this.sdk!.validatePrivateKey !== "function") {
+        console.log(
+          "⚠️ SDK validatePrivateKey method not available, using basic validation"
+        );
         // Fallback to basic length validation
         if (cleanPrivateKey.length < 32) {
-          return { isValid: false, error: 'Private key too short' };
+          return { isValid: false, error: "Private key too short" };
         }
         return { isValid: true };
       }
 
       // Use SDK validation directly
-      const isValid = await this.sdk.validatePrivateKey(cleanPrivateKey, chainSymbol);
+      const isValid = await this.sdk!.validatePrivateKey(
+        cleanPrivateKey,
+        chainSymbol
+      );
       if (isValid) {
-        console.log('✅ SDK validation passed');
+        console.log("✅ SDK validation passed");
         return { isValid: true };
       } else {
-        console.log('❌ SDK validation failed:', isValid);
-        return { isValid: false, error: 'Invalid private key for this chain' };
+        console.log("❌ SDK validation failed:", isValid);
+        return { isValid: false, error: "Invalid private key for this chain" };
       }
     } catch (error: any) {
-      console.log('❌ SDK validation failed:', error);
+      console.log("❌ SDK validation failed:", error);
 
       // Handle specific SDK validation errors
-      let errorMessage = 'Invalid private key for this chain';
+      let errorMessage = "Invalid private key for this chain";
 
       if (error?.error?.code === "VALIDATION_ERROR") {
         errorMessage = error.error.message || "Invalid private key format";
@@ -1170,7 +1346,7 @@ class ZapSDKService {
 
       return {
         isValid: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -1178,49 +1354,62 @@ class ZapSDKService {
   /**
    * Validate a wallet address for a specific chain
    */
-  public async validateAddress(address: string, chainSymbol: string): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+  public async validateAddress(
+    address: string,
+    chainSymbol: string
+  ): Promise<{ isValid: boolean; error?: string }> {
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for validateAddress, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
       if (!address || address.trim().length === 0) {
-        return { isValid: false, error: 'Please enter a wallet address' };
+        return { isValid: false, error: "Please enter a wallet address" };
       }
 
       const cleanAddress = address.trim();
-      console.log('🔍 Validating address:', { chainSymbol, addressLength: cleanAddress.length });
+      console.log("🔍 Validating address:", {
+        chainSymbol,
+        addressLength: cleanAddress.length,
+      });
 
       // Check if the SDK method exists (for debugging/fallback)
-      if (typeof this.sdk.validateAddress !== 'function') {
-        console.log('⚠️ SDK validateAddress method not available, using basic validation');
+      if (typeof this.sdk!.validateAddress !== "function") {
+        console.log(
+          "⚠️ SDK validateAddress method not available, using basic validation"
+        );
         // Basic fallback validation based on chain
-        if (chainSymbol === 'BTC' && cleanAddress.length < 26) {
-          return { isValid: false, error: 'Invalid Bitcoin address format' };
+        if (chainSymbol === "BTC" && cleanAddress.length < 26) {
+          return { isValid: false, error: "Invalid Bitcoin address format" };
         }
-        if (chainSymbol === 'ETH' && !cleanAddress.startsWith('0x')) {
-          return { isValid: false, error: 'Invalid Ethereum address format' };
+        if (chainSymbol === "ETH" && !cleanAddress.startsWith("0x")) {
+          return { isValid: false, error: "Invalid Ethereum address format" };
         }
-        if (chainSymbol === 'SOL' && cleanAddress.length < 32) {
-          return { isValid: false, error: 'Invalid Solana address format' };
+        if (chainSymbol === "SOL" && cleanAddress.length < 32) {
+          return { isValid: false, error: "Invalid Solana address format" };
         }
         return { isValid: true };
       }
 
       // Use SDK validation directly
-      const isValid = await this.sdk.validateAddress(cleanAddress, chainSymbol);
+      const isValid = await this.sdk!.validateAddress(cleanAddress, chainSymbol);
       if (isValid) {
-        console.log('✅ SDK address validation passed');
+        console.log("✅ SDK address validation passed");
         return { isValid: true };
       } else {
-        console.log('❌ SDK address validation failed:', isValid);
-        return { isValid: false, error: 'Invalid address for this chain' };
+        console.log("❌ SDK address validation failed:", isValid);
+        return { isValid: false, error: "Invalid address for this chain" };
       }
     } catch (error) {
-      console.log('❌ SDK address validation failed:', error);
+      console.log("❌ SDK address validation failed:", error);
       return {
         isValid: false,
-        error: error instanceof Error ? error.message : 'Invalid address for this chain'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Invalid address for this chain",
       };
     }
   }
@@ -1242,45 +1431,86 @@ class ZapSDKService {
     derivationIndex?: number;
     error?: string;
   }> {
-    if (!this.sdk) {
-      throw new Error('SDK not initialized');
+    // Auto-initialize SDK if not already initialized
+    if (!this.isInitialized || !this.sdk) {
+      console.log(`🔧 SDK not initialized for createWalletInGroup, auto-initializing...`);
+      await this.initialize();
     }
 
     try {
-      console.log('🚀 Creating wallet in existing group:', {
+      console.log("🚀 Creating wallet in existing group:", {
         walletGroupId: params.walletGroupId,
         name: params.name,
-        hasSeedPhrase: !!params.seedPhrase
+        hasSeedPhrase: !!params.seedPhrase,
       });
 
       // Add wallet to wallet group
-      const addWalletResponse = await this.sdk.wallets.addWalletToWalletGroup({
+      const addWalletResponse = await this.sdk!.wallets.addWalletToWalletGroup({
         walletGroupId: params.walletGroupId,
         name: params.name,
         seedPhrase: params.seedPhrase,
       });
 
-      console.log('✅ Wallet added to group:', addWalletResponse);
+      console.log("✅ Wallet added to group:", addWalletResponse);
 
-      const walletStorageId = await WalletCredentialsStorage.storeWalletCredential({
-        userWalletGroupId: addWalletResponse.userWalletGroupId,
-        derivationIndex: addWalletResponse.derivationIndex,
-        name: params.name,
-        credential: params.seedPhrase,
-        class: 'SEEDPHRASE' as any,
-      });
+      const walletStorageId =
+        await WalletCredentialsStorage.storeWalletCredential({
+          userWalletGroupId: addWalletResponse.userWalletGroupId,
+          derivationIndex: addWalletResponse.derivationIndex,
+          name: params.name,
+          credential: params.seedPhrase,
+          class: "SEEDPHRASE" as any,
+        });
 
       if (walletStorageId) {
-        await WalletCredentialsStorage.markWalletAsCreated(walletStorageId, addWalletResponse.userWalletGroupId);
-        console.log('✅ Wallet marked as created, account creation will be handled by retryPendingWallets');
+        await WalletCredentialsStorage.markWalletAsCreated(
+          walletStorageId,
+          addWalletResponse.userWalletGroupId
+        );
+        console.log(
+          "✅ Wallet marked as created:",
+          {
+            walletStorageId,
+            userWalletGroupId: addWalletResponse.userWalletGroupId,
+            name: params.name,
+          }
+        );
+        
+        // Verify the wallet is now in accounts pending wallets
+        const accountsPending = await WalletCredentialsStorage.getAccountsPendingWallets();
+        const thisWallet = accountsPending.find(
+          w => w.userWalletGroupId === addWalletResponse.userWalletGroupId
+        );
+        if (thisWallet) {
+          console.log(
+            "✅ Verified: Wallet is in accounts pending wallets, ready for retryPendingWallets"
+          );
+        } else {
+          console.error(
+            "❌ WARNING: Wallet NOT found in accounts pending wallets!",
+            {
+              expectedUserWalletGroupId: addWalletResponse.userWalletGroupId,
+              accountsPendingCount: accountsPending.length,
+              accountsPendingIds: accountsPending.map(w => w.userWalletGroupId),
+            }
+          );
+        }
       }
 
       if (!addWalletResponse.userWalletGroupId) {
-        throw new Error('Failed to get userWalletGroupId from addWalletToWalletGroup');
+        throw new Error(
+          "Failed to get userWalletGroupId from addWalletToWalletGroup"
+        );
       }
 
-      // Account creation will be handled by retryPendingWallets in useEffect
-      console.log('✅ Wallet created, account creation will be handled by retryPendingWallets');
+      // Account creation will be handled by retryPendingWallets
+      console.log(
+        "✅ Wallet created, account creation will be handled by retryPendingWallets",
+        {
+          userWalletGroupId: addWalletResponse.userWalletGroupId,
+          walletId: addWalletResponse.walletId,
+        }
+      );
 
       return {
         success: true,
@@ -1288,25 +1518,145 @@ class ZapSDKService {
         walletId: addWalletResponse.walletId,
         derivationIndex: addWalletResponse.derivationIndex,
       };
-
     } catch (error) {
-      console.error('❌ Wallet creation in group failed:', error);
+      console.error("❌ Wallet creation in group failed:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create wallet in group'
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to create wallet in group",
       };
     }
   }
 
-  public async derivePrivateKey(privateKey: string, chainSymbol: string): Promise<{ address: string; privateKey: string }> {
+  public async derivePrivateKey(
+    privateKey: string,
+    chainSymbol: string
+  ): Promise<{ address: string; privateKey: string }> {
     try {
-      if (!this.sdk) {
-        throw new Error('SDK not initialized');
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for derivePrivateKey, auto-initializing...`);
+        await this.initialize();
       }
-      return await WalletUtils.importAccountFromPrivateKey(privateKey, chainSymbol);
+      return await WalletUtils.importAccountFromPrivateKey(
+        privateKey,
+        chainSymbol
+      );
     } catch (error) {
-      console.error('❌ Failed to derive private key:', error);
+      console.error("❌ Failed to derive private key:", error);
       return { address: "", privateKey: "" };
+    }
+  }
+
+  public async getNotificationPreferences({ userId }: { userId: string }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for getNotificationPreferences, auto-initializing...`);
+        await this.initialize();
+      }
+      return await this.sdk!.users.getNotificationPreferences(userId, {
+        bypassCache: true,
+      });
+    } catch (error) {
+      console.error("❌ Failed to get notification preferences:", error);
+      return null;
+    }
+  }
+
+  public async updateNotificationPreferences({
+    userId,
+    notificationPreferences,
+  }: {
+    userId: string;
+    notificationPreferences: UpdateSettingsBody;
+  }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for updateNotificationPreferences, auto-initializing...`);
+        await this.initialize();
+      }
+      return await this.sdk!.users.updateNotificationPreferences(
+        userId,
+        notificationPreferences
+      );
+    } catch (error) {
+      console.error("❌ Failed to update notification preferences:", error);
+      return null;
+    }
+  }
+
+  public async getTwoFaStatus() {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for getTwoFaStatus, auto-initializing...`);
+        await this.initialize();
+      }
+      return await this.sdk!.twoFA.getStatus({ bypassCache: true });
+    } catch (error: any) {
+      // 404 is expected if user hasn't set up 2FA yet, so don't log it as an error
+      const is404Error = error?.response?.status === 404 || error?.status === 404 || 
+                        (error?.message && error.message.includes('404')) ||
+                        (error?.message && error.message.includes('status code 404'));
+      
+      if (!is404Error) {
+        console.error("❌ Failed to get 2FA status:", error);
+      }
+      return null;
+    }
+  }
+
+  public async enableTwoFa({ userId }: { userId: string }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for enableTwoFa, auto-initializing...`);
+        await this.initialize();
+      }
+      return await this.sdk!.twoFA.generate();
+    } catch (error) {
+      console.error("❌ Failed to enable two factor authentication:", error);
+      return null;
+    }
+  }
+
+  public async verifyTwoFa({ code, secret }: { code: string; secret: string }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for verifyTwoFa, auto-initializing...`);
+        await this.initialize();
+      }
+      const result = await this.sdk!.twoFA.verify(code, secret);
+      // Clear cache after verification to ensure status is refreshed
+      this.sdk!.twoFA.clearCache();
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to verify two factor authentication:", error);
+      // Re-throw error so the component can handle it
+      throw error;
+    }
+  }
+
+  public async disableTwoFa({ code }: { code: string }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for disableTwoFa, auto-initializing...`);
+        await this.initialize();
+      }
+      const result = await this.sdk!.twoFA.disable(code);
+      // Clear cache after disabling to ensure status is refreshed
+      this.sdk!.twoFA.clearCache();
+      return result;
+    } catch (error) {
+      console.error("❌ Failed to disable two factor authentication:", error);
+      // Re-throw error so the component can handle it
+      throw error;
     }
   }
 }

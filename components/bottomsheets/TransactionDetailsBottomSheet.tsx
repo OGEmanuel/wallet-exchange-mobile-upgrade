@@ -1,22 +1,30 @@
 import CryptoIcon from "@/components/general/CrptoIcon";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { PortfolioService } from "@/services/portfolio.service";
+import { showErrorToast, showSuccessToast } from "@/src/core/utils/toast-utils";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { BlockchainTransaction } from "@zap/blockchain-sdk";
-import { Copy, ExternalLink } from "lucide-react-native";
+import {
+  BlockchainTransaction,
+  ExchangeActivityModel,
+} from "@zap/blockchain-sdk";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
+import { Copy } from "lucide-react-native";
 import React, { forwardRef, useCallback } from "react";
 import { Pressable } from "react-native";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 
 interface TransactionDetailsBottomSheetProps {
-  transaction: BlockchainTransaction | null;
-  selectedToken: ProcessedAsset | null;
+  activity?: ExchangeActivityModel | null;
+  transaction?: BlockchainTransaction | null;
+  selectedToken?: ProcessedAsset | null;
   onClose?: () => void;
   visible?: boolean;
 }
@@ -24,8 +32,16 @@ interface TransactionDetailsBottomSheetProps {
 const TransactionDetailsBottomSheet = forwardRef<
   BottomSheet,
   TransactionDetailsBottomSheetProps
->(({ transaction, selectedToken, onClose, visible = false }, ref) => {
+>(({ activity, transaction, selectedToken, onClose, visible = false }, ref) => {
   const theme = useTheme<Theme>();
+  const {
+    getApproximateAmount,
+    getAmountToReceive,
+    getActualTransactionStatus,
+  } = useUtilities();
+
+  // Determine if we're displaying a wallet transaction or exchange activity
+  const isWalletTransaction = !!transaction;
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -39,69 +55,165 @@ const TransactionDetailsBottomSheet = forwardRef<
     []
   );
 
-  const getTransactionType = (direction: string) => {
-    switch (direction) {
-      case "OUT":
-        return "Sent";
-      case "IN":
-        return "Received";
-      case "SWAP":
-        return "Swapped";
-      default:
-        return "Transaction";
+  // Abbreviate wallet address
+  const abbreviateWalletAddress = (
+    walletAddress?: string | null,
+    startLength = 5,
+    endLength = 4
+  ): string => {
+    if (!walletAddress) return "";
+    return (
+      walletAddress.slice(0, startLength) +
+      "..." +
+      walletAddress.slice(-endLength)
+    );
+  };
+
+  // Format date
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    return `${month} ${day}, ${year} ${hours}:${minutes}`;
+  };
+
+  // Get transaction type
+  const getTransactionType = () => {
+    if (isWalletTransaction && transaction) {
+      if (transaction.direction === "OUT") return "Sent";
+      if (transaction.direction === "IN") return "Received";
+      if (transaction.direction === "SELF") return "Self";
+      return "Transaction";
+    }
+
+    if (activity) {
+      if (activity.buyAmount && activity.buyCurrency) {
+        return "Buy";
+      } else if (activity.sellAmount && activity.sellCurrency) {
+        return "Sell";
+      } else if (activity.amountToReceive) {
+        return "Swap";
+      }
+    }
+    return "Transaction";
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      showSuccessToast("Copied to clipboard");
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      showErrorToast("Failed to copy");
     }
   };
 
-  const getTransactionIcon = (direction: string) => {
-    const iconSize = 24;
-    switch (direction) {
-      case "OUT":
-        return "→";
-      case "IN":
-        return "←";
-      case "SWAP":
-        return "⇄";
-      default:
-        return "✓";
-    }
-  };
-
-  const getTransactionColor = (direction: string) => {
-    switch (direction) {
-      case "OUT":
-        return "error";
-      case "IN":
-        return "success";
-      case "SWAP":
-        return "pendingColor";
-      default:
-        return "primaryColor";
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
-  const copyToClipboard = (text: string) => {
-    // You can implement clipboard functionality here
-    console.log("Copy to clipboard:", text);
-  };
-
-  const openExplorer = (hash: string) => {
-    // You can implement block explorer opening here
-    console.log("Open explorer for hash:", hash);
-  };
-
-  if (!transaction) {
+  // Don't render if neither activity nor transaction is provided
+  if (!activity && !transaction) {
     return null;
   }
+
+  // Get display currency and status based on type
+  const displayCurrency =
+    isWalletTransaction && transaction
+      ? transaction.tokenSymbol || "Unknown"
+      : activity?.sellCurrency?.currencyId?.code ||
+        activity?.buyCurrency?.currencyId?.code ||
+        "USDT";
+
+  const actualStatus =
+    isWalletTransaction && transaction
+      ? transaction.status === "SUCCESS"
+        ? "Success"
+        : transaction.status === "FAILED"
+        ? "Failed"
+        : transaction.status === "PENDING"
+        ? "Pending"
+        : "Unknown"
+      : getActualTransactionStatus(activity);
+
+  // Get status color based on status
+  const getStatusColor = (status?: string) => {
+    if (!status) return { bg: "#6B7280", text: "#FFFFFF" }; // gray
+    switch (status.toLowerCase()) {
+      case "pending":
+        return { bg: "#EAB308", text: "#000000" }; // yellow
+      case "success":
+      case "successful":
+      case "completed":
+      case "confirmed":
+      case "filled":
+        return { bg: "#10B981", text: "#FFFFFF" }; // green
+      case "failed":
+      case "error":
+      case "expired":
+      case "cancelled":
+        return { bg: "#EF4444", text: "#FFFFFF" }; // red
+      default:
+        return { bg: "#6B7280", text: "#FFFFFF" }; // gray
+    }
+  };
+
+  const statusColors = getStatusColor(actualStatus);
+
+  // Get transaction amount
+  const transactionAmount =
+    isWalletTransaction && transaction
+      ? transaction.amount || 0
+      : getAmountToReceive(activity);
+
+  // Calculate USD value
+  const usdValue =
+    isWalletTransaction && transaction
+      ? (transaction.valueFormatted
+          ? parseFloat(transaction.valueFormatted)
+          : transaction.amount || 0) * (selectedToken?.price || 0)
+      : activity?.buyRate && activity?.buyAmount
+      ? activity.buyAmount * activity.buyRate
+      : activity?.sellRate && activity?.sellAmount
+      ? activity.sellAmount * activity.sellRate
+      : activity?.rate && activity?.amountToReceive
+      ? activity.amountToReceive * activity.rate
+      : transactionAmount * (selectedToken?.price || 0);
+
+  // Get token logo/icon
+  const tokenLogo =
+    isWalletTransaction && transaction
+      ? selectedToken?.image || undefined // Use selected token image if available
+      : activity?.sellCurrency?.currencyId?.logo ||
+        activity?.buyCurrency?.currencyId?.logo;
+
+  // Get transaction date
+  const transactionDate =
+    isWalletTransaction && transaction
+      ? transaction.timestamp
+        ? new Date(transaction.timestamp * 1000)
+        : null
+      : activity?.childOrder?.createdAt || activity?.createdAt || null;
+
+  // Get chain information
+  const chainName = selectedToken?.chainName || "Unknown";
+  const chainImage = selectedToken?.chainImage || undefined;
+  const chainSymbol = selectedToken?.chainSymbol || "";
 
   return (
     <BottomSheet
@@ -151,10 +263,10 @@ const TransactionDetailsBottomSheet = forwardRef<
             color="headerTextColor"
             marginBottom="s"
           >
-            {getTransactionType(transaction.direction)}
+            {getTransactionType()}
           </CustomText>
           <CustomText color="placeholderTextColor" fontSize={14}>
-            {formatDate(transaction.timestamp)}
+            {transactionDate ? formatDate(transactionDate) : "Unknown time"}
           </CustomText>
         </Box>
 
@@ -167,30 +279,55 @@ const TransactionDetailsBottomSheet = forwardRef<
           marginBottom="xl"
         >
           {/* Token Icon */}
-          <CryptoIcon
-            image={selectedToken?.image}
-            size={40}
-            symbol={selectedToken?.chainSymbol}
-          />
+          <CryptoIcon image={tokenLogo} size={30} symbol={displayCurrency} />
 
           {/* Amount */}
           <CustomText
             variant="header"
-            fontSize={30}
+            fontSize={25}
             color="headerTextColor"
-            marginVertical="m"
+            marginTop="m"
             textAlign="center"
           >
-            {transaction.direction === "OUT" ? "-" : "+"}
-            {transaction.amount} {transaction.tokenSymbol}
+            {isWalletTransaction && transaction
+              ? `${PortfolioService.formatBalance(
+                  transaction.valueFormatted
+                    ? parseFloat(transaction.valueFormatted)
+                    : transaction.amount || 0
+                )} ${displayCurrency}`
+              : `${getApproximateAmount(
+                  transactionAmount,
+                  activity?.sellCurrency?.currencyId?.isCrypto || false
+                )} ${displayCurrency}`}
           </CustomText>
 
           {/* USD Value */}
-          <CustomText color="placeholderTextColor" fontSize={16}>
-            {PortfolioService.formatCurrency(
-              transaction.amount * (selectedToken?.price || 0)
-            )}
+          <CustomText
+            color="placeholderTextColor"
+            fontSize={14}
+            marginVertical="s"
+          >
+            {PortfolioService.formatCurrency(usdValue)}
           </CustomText>
+
+          {/* Status Badge */}
+          <Box
+            style={{ backgroundColor: statusColors.bg }}
+            borderRadius={16}
+            paddingHorizontal="m"
+            paddingVertical="s"
+            marginTop="s"
+          >
+            <CustomText
+              style={{ color: statusColors.text }}
+              fontSize={12}
+              fontWeight="600"
+              textTransform="capitalize"
+            >
+              {actualStatus?.charAt(0).toUpperCase()}
+              {actualStatus?.slice(1).toLowerCase()}
+            </CustomText>
+          </Box>
         </Box>
 
         {/* Transaction Details */}
@@ -200,8 +337,13 @@ const TransactionDetailsBottomSheet = forwardRef<
           borderWidth={1}
           borderColor="borderColor"
         >
-          {/* Direction Details */}
-          {transaction.direction === "OUT" && (
+          {/* Recipient/Sender Details */}
+          {((isWalletTransaction &&
+            transaction &&
+            (transaction.from || transaction.to)) ||
+            (!isWalletTransaction &&
+              (activity?.withdrawalAccount?.walletAddress ||
+                activity?.withdrawalAccount?.holderName))) && (
             <Box
               flexDirection="row"
               justifyContent="space-between"
@@ -211,7 +353,15 @@ const TransactionDetailsBottomSheet = forwardRef<
               borderBottomColor="modalBackgroundColor"
             >
               <CustomText color="placeholderTextColor" fontSize={14}>
-                Sent To
+                {isWalletTransaction && transaction
+                  ? transaction.direction === "OUT"
+                    ? "Sent To"
+                    : transaction.direction === "IN"
+                    ? "From"
+                    : "Address"
+                  : activity?.withdrawalAccount?.holderName
+                  ? "Sent To"
+                  : "Recipient"}
               </CustomText>
               <Box flexDirection="row" alignItems="center">
                 <CustomText
@@ -219,48 +369,55 @@ const TransactionDetailsBottomSheet = forwardRef<
                   fontSize={14}
                   marginRight="s"
                 >
-                  {transaction.to?.slice(0, 6)}...{transaction.to?.slice(-4)}
+                  {isWalletTransaction && transaction
+                    ? transaction.direction === "OUT"
+                      ? abbreviateWalletAddress(transaction.to, 7, 7)
+                      : transaction.direction === "IN"
+                      ? abbreviateWalletAddress(transaction.from, 7, 7)
+                      : abbreviateWalletAddress(
+                          transaction.to || transaction.from,
+                          7,
+                          7
+                        )
+                    : activity?.withdrawalAccount?.walletAddress
+                    ? abbreviateWalletAddress(
+                        activity.withdrawalAccount.walletAddress,
+                        7,
+                        7
+                      )
+                    : activity?.withdrawalAccount?.holderName ||
+                      activity?.depositAccount?.holderName ||
+                      "Unknown"}
                 </CustomText>
-                <Pressable
-                  onPress={() => copyToClipboard(transaction.to || "")}
-                >
-                  <Copy size={16} color={theme.colors.placeholderTextColor} />
-                </Pressable>
+                {((isWalletTransaction &&
+                  transaction &&
+                  (transaction.from || transaction.to)) ||
+                  (!isWalletTransaction &&
+                    (activity?.withdrawalAccount?.walletAddress ||
+                      activity?.depositAccount?.walletAddress))) && (
+                  <Pressable
+                    onPress={() =>
+                      copyToClipboard(
+                        isWalletTransaction && transaction
+                          ? transaction.direction === "OUT"
+                            ? transaction.to
+                            : transaction.direction === "IN"
+                            ? transaction.from
+                            : transaction.to || transaction.from || ""
+                          : activity?.withdrawalAccount?.walletAddress ||
+                              activity?.depositAccount?.walletAddress ||
+                              ""
+                      )
+                    }
+                  >
+                    <Copy size={16} color={theme.colors.placeholderTextColor} />
+                  </Pressable>
+                )}
               </Box>
             </Box>
           )}
 
-          {transaction.direction === "IN" && (
-            <Box
-              flexDirection="row"
-              justifyContent="space-between"
-              alignItems="center"
-              paddingVertical="m"
-              borderBottomWidth={1}
-              borderBottomColor="modalBackgroundColor"
-            >
-              <CustomText color="placeholderTextColor" fontSize={14}>
-                Received From
-              </CustomText>
-              <Box flexDirection="row" alignItems="center">
-                <CustomText
-                  color="headerTextColor"
-                  fontSize={14}
-                  marginRight="s"
-                >
-                  {transaction.from?.slice(0, 6)}...
-                  {transaction.from?.slice(-4)}
-                </CustomText>
-                <Pressable
-                  onPress={() => copyToClipboard(transaction.from || "")}
-                >
-                  <Copy size={16} color={theme.colors.placeholderTextColor} />
-                </Pressable>
-              </Box>
-            </Box>
-          )}
-
-          {/* Network */}
+          {/* Currency */}
           <Box
             flexDirection="row"
             justifyContent="space-between"
@@ -270,66 +427,107 @@ const TransactionDetailsBottomSheet = forwardRef<
             borderBottomColor="modalBackgroundColor"
           >
             <CustomText color="placeholderTextColor" fontSize={14}>
-              Network
+              Currency
             </CustomText>
             <Box flexDirection="row" alignItems="center">
               <CryptoIcon
-                image={selectedToken?.image}
+                image={tokenLogo}
                 size={20}
-                symbol={selectedToken?.chainSymbol}
+                symbol={displayCurrency}
               />
               <CustomText ml="s" color="headerTextColor" fontSize={14}>
-                {selectedToken?.chainName || "Unknown Network"}
+                {displayCurrency}
               </CustomText>
             </Box>
           </Box>
 
-          {/* Network Fee */}
+          {/* Chain/Network */}
+          {chainName && chainName !== "Unknown" && (
+            <Box
+              flexDirection="row"
+              justifyContent="space-between"
+              alignItems="center"
+              paddingVertical="m"
+              borderBottomWidth={1}
+              borderBottomColor="modalBackgroundColor"
+            >
+              <CustomText color="placeholderTextColor" fontSize={14}>
+                Network
+              </CustomText>
+              <Box flexDirection="row" alignItems="center">
+                {chainImage && (
+                  <>
+                    <CryptoIcon
+                      image={chainImage}
+                      size={20}
+                      symbol={chainSymbol}
+                    />
+                    <CustomText ml="s" color="headerTextColor" fontSize={14}>
+                      {chainName}
+                    </CustomText>
+                  </>
+                )}
+                {!chainImage && (
+                  <CustomText color="headerTextColor" fontSize={14}>
+                    {chainName}
+                  </CustomText>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {/* Amount */}
           <Box
             flexDirection="row"
             justifyContent="space-between"
             alignItems="center"
             paddingVertical="m"
-            borderBottomWidth={1}
-            borderBottomColor="modalBackgroundColor"
           >
             <CustomText color="placeholderTextColor" fontSize={14}>
-              Network Fee
+              Amount
             </CustomText>
             <CustomText color="headerTextColor" fontSize={14}>
-              {transaction.fee
-                ? `${transaction.fee} ${selectedToken?.chainSymbol}`
-                : "N/A"}
+              {isWalletTransaction && transaction
+                ? `${PortfolioService.formatBalance(
+                    transaction.valueFormatted
+                      ? parseFloat(transaction.valueFormatted)
+                      : transaction.amount || 0
+                  )} ${displayCurrency}`
+                : `${getApproximateAmount(
+                    transactionAmount,
+                    activity?.sellCurrency?.currencyId?.isCrypto || false
+                  )} ${displayCurrency}`}
             </CustomText>
           </Box>
 
-          {/* Transaction Hash */}
-          <Box
-            flexDirection="row"
-            justifyContent="space-between"
-            alignItems="center"
-            paddingVertical="m"
-          >
-            <CustomText color="placeholderTextColor" fontSize={14}>
-              Txn Hash
-            </CustomText>
-            <Pressable
-              onPress={() => openExplorer(transaction.hash || "")}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                opacity: pressed ? 0.5 : 1,
-              })}
+          {/* Transaction Hash (for wallet transactions) */}
+          {isWalletTransaction && transaction?.hash && (
+            <Box
+              flexDirection="row"
+              justifyContent="space-between"
+              alignItems="center"
+              paddingVertical="m"
+              borderTopWidth={1}
+              borderTopColor="modalBackgroundColor"
+              mt="m"
             >
-              <CustomText color="headerTextColor" fontSize={14} marginRight="s">
-                {transaction.hash?.slice(0, 6)}...{transaction.hash?.slice(-4)}
+              <CustomText color="placeholderTextColor" fontSize={14}>
+                Transaction Hash
               </CustomText>
-              <ExternalLink
-                size={16}
-                color={theme.colors.placeholderTextColor}
-              />
-            </Pressable>
-          </Box>
+              <Box flexDirection="row" alignItems="center">
+                <CustomText
+                  color="headerTextColor"
+                  fontSize={14}
+                  marginRight="s"
+                >
+                  {abbreviateWalletAddress(transaction.hash, 8, 8)}
+                </CustomText>
+                <Pressable onPress={() => copyToClipboard(transaction.hash)}>
+                  <Copy size={16} color={theme.colors.placeholderTextColor} />
+                </Pressable>
+              </Box>
+            </Box>
+          )}
         </Box>
       </BottomSheetView>
     </BottomSheet>

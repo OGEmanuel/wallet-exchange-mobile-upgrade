@@ -3,23 +3,20 @@ import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef } from "react";
 import {
-    Animated,
-    Dimensions,
-    ImageBackground,
-    StyleSheet,
-    View
+  Animated,
+  ImageBackground,
+  StyleSheet,
+  View,
 } from "react-native";
 
 import ThemedText from "@/components/general/ThemedText";
 import DirectionButton from "@/components/onboarding/DirectionButton";
-import { SIZES } from "@/data";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import images from "../assets/images";
 
 export default function HomeScreen() {
   const theme = useTheme<Theme>();
-  const screenWidth = Dimensions.get("window").width;
   const inset = useSafeAreaInsets();
 
   console.log('HomeScreen rendering:', { screenWidth, SIZES });
@@ -77,7 +74,6 @@ export default function HomeScreen() {
     bitcoinAnimation,
     dollarAnimation,
     asteriskAnimation,
-    screenWidth,
   ]);
 
   return (
@@ -86,6 +82,7 @@ export default function HomeScreen() {
       colors={["#19087d", "#846fff"]}
       start={{ x: 0.95, y: 1 }}
       end={{ x: 0.03, y: 0 }}
+      style={{ flex: 1 }}
     >
       <ImageBackground style={styles.container} source={images.clouds}>
         {/* Hand and phone with vertical animation */}
@@ -143,20 +140,19 @@ export default function HomeScreen() {
 
         <DirectionButton
           color="#6045FF"
-          onPress={() => router.push("/select-track")}
+          onPress={() => router.push("/select-track") as any}
         />
-      </ImageBackground>
+        </ImageBackground>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
     paddingBottom: 50,
-    height: SIZES.height,
-    width: SIZES.width,
   },
   // Cloud styles
   cloud1: {

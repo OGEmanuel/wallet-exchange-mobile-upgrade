@@ -1,3 +1,4 @@
+import icons from "@/assets/icons";
 import images from "@/assets/images";
 import CurrencyTab from "@/components/dashboard/market/CurrencyTab";
 import EmptyState from "@/components/dashboard/market/EmptyState";
@@ -6,17 +7,18 @@ import MarketFilter from "@/components/dashboard/market/MarketFilter";
 import MarketTableItem from "@/components/dashboard/market/MarketTableItem";
 import SwitchTab from "@/components/dashboard/market/SwitchTab";
 import TableHeader from "@/components/dashboard/market/TableHeader";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { PageWrapper } from "@/components/general";
 import Box from "@/components/general/Box";
-import CustomText from "@/components/general/CustomText";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
+import { MarketData } from "@zap/blockchain-sdk";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView } from "react-native";
+import { Image, Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 const Explore = () => {
@@ -78,43 +80,32 @@ const Explore = () => {
       // setIsError(false);
       setErrorMessage(null);
 
-      await fetchMarketTokens({
-        body: {},
-        params: {},
-        extra: {},
-      });
+      await fetchMarketTokens();
     } catch (error) {
-      // setIsError(true);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "An unexpected error occurred. Please try again."
+          : "An unexpected error occurred while loading market tokens. Please try again."
       );
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchMarketTokens]);
 
-  const loadCurrencies = useCallback(async () => {
-    await fetchCurrencies({
-      body: {},
-      params: {},
-      extra: {},
-    }).then(() => {
-      retrieveNairaCurrency();
-      retrieveUsdCurrency();
-    });
-  }, []);
-
-  // Function to fetch watchlist tokens
+  // Function to fetch watchlist tokens with proper error handling
   const loadWatchlistTokens = useCallback(async () => {
+    if (!user) {
+      console.log("No user available for watchlist fetch");
+      return;
+    }
+
     try {
       setIsLoading(true);
       setErrorMessage(null);
 
       await fetchWatchlistTokens({
-        body: {},
-        params: {},
+        body: null,
+        params: null,
         extra: user,
       });
     } catch (error) {
@@ -127,6 +118,15 @@ const Explore = () => {
       setIsLoading(false);
     }
   }, [fetchWatchlistTokens, user]);
+
+  // Function to fetch currencies
+  const loadCurrencies = useCallback(async () => {
+    try {
+      await fetchCurrencies();
+    } catch (error) {
+      console.error("Failed to load currencies:", error);
+    }
+  }, [fetchCurrencies]);
 
   useEffect(() => {
     if (currencies && currencies.length > 0) {
@@ -143,16 +143,23 @@ const Explore = () => {
   useEffect(() => {
     loadCurrencies();
     loadMarketTokens();
+    // Load watchlist on initial mount if user exists
+    if (user) {
+      loadWatchlistTokens();
+    }
   }, []);
 
-  // Load watchlist when switching to watchlist tab
+  // Load watchlist when switching to watchlist tab or when user changes
   useEffect(() => {
     if (!isTokens && user) {
       loadWatchlistTokens();
     }
-  }, [isTokens, user, loadWatchlistTokens]);
+  }, [isTokens, user]);
 
   const categories = ["All", "Top Gainers", "Top Losers"];
+
+  const getTokenChange = (token: MarketData) =>
+    (token as { change24h?: number }).change24h;
 
   // Filter market tokens based on selected category
   const filteredMarketTokens = React.useMemo(() => {
@@ -161,13 +168,23 @@ const Explore = () => {
     switch (selectedCategory) {
       case "Top Gainers":
         return [...marketTokens]
-          .filter((token) => token.change24h && token.change24h > 0)
-          .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change > 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(b) || 0) - (getTokenChange(a) || 0)
+          );
 
       case "Top Losers":
         return [...marketTokens]
-          .filter((token) => token.change24h && token.change24h < 0)
-          .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change < 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(a) || 0) - (getTokenChange(b) || 0)
+          );
 
       case "All":
       default:
@@ -179,23 +196,32 @@ const Explore = () => {
   const filteredWatchlistTokens = React.useMemo(() => {
     if (!watchlistTokens) return null;
 
-    // Extract market data from watchlist items
     const watchlistMarketData = watchlistTokens
       .map((item) => item.marketData)
-      .filter(Boolean) as MarketTokenModel[];
+      .filter(Boolean) as MarketData[];
 
     if (watchlistMarketData.length === 0) return [];
 
     switch (selectedCategory) {
       case "Top Gainers":
         return [...watchlistMarketData]
-          .filter((token) => token.change24h && token.change24h > 0)
-          .sort((a, b) => (b.change24h || 0) - (a.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change > 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(b) || 0) - (getTokenChange(a) || 0)
+          );
 
       case "Top Losers":
         return [...watchlistMarketData]
-          .filter((token) => token.change24h && token.change24h < 0)
-          .sort((a, b) => (a.change24h || 0) - (b.change24h || 0));
+          .filter((token) => {
+            const change = getTokenChange(token);
+            return change && change < 0;
+          })
+          .sort((a, b) =>
+            (getTokenChange(a) || 0) - (getTokenChange(b) || 0)
+          );
 
       case "All":
       default:
@@ -218,6 +244,42 @@ const Explore = () => {
   // const isWatchlistEmpty =
   //   !isTokens && watchlistTokens && watchlistTokens.length === 0;
 
+  const openWatchlistModal = useCallback(() => {
+    router.push("/(modal)/select-watchlist");
+  }, [router]);
+
+  const renderFloatingActionButton = () => (
+    <Pressable
+      onPress={openWatchlistModal}
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: "#6366F1",
+        justifyContent: "center",
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+      }}
+      hitSlop={12}
+    >
+      <Image
+        source={icons.edit}
+        style={{
+          width: 20,
+          height: 20,
+          tintColor: "white",
+        }}
+      />
+    </Pressable>
+  );
+
   const watchlistEmptyState = (
     <Box
       flex={1}
@@ -232,20 +294,16 @@ const Explore = () => {
         hasNoBtn={true}
         source={images.glass}
       />
+
+      <Box position="absolute" bottom={40} right={24}>
+        {renderFloatingActionButton()}
+      </Box>
     </Box>
   );
 
   return (
     <PageWrapper>
-      <Box width="100%" alignItems="center">
-        <CustomText
-          variant="bodyBold"
-          textAlign="center"
-          style={{ fontFamily: "NewScience_Bold" }}
-        >
-          Markets
-        </CustomText>
-      </Box>
+      <SettingsHeader title="Markets" onBackPress={() => router.back()} />
       <Box width="100%" mt="m">
         <SwitchTab
           active={isTokens}
@@ -289,12 +347,13 @@ const Explore = () => {
         errorMessage={errorMessage}
         onRetry={isTokens ? loadMarketTokens : loadWatchlistTokens}
         isEmpty={
+          !isTokens &&
           !currentLoading &&
           !currentError &&
           (!currentData || currentData?.length === 0)
         }
         emptyComponent={watchlistEmptyState}
-        existingData={!currentData}
+        existingData={!!currentData && currentData.length > 0}
       >
         <Box
           // bg="modalBackgroundColor"
@@ -302,6 +361,7 @@ const Explore = () => {
           borderRadius={8}
           marginTop="s"
           marginHorizontal="m"
+          position="relative"
         >
           <TableHeader />
 
@@ -322,6 +382,47 @@ const Explore = () => {
               />
             ))}
           </ScrollView>
+
+          {/* Floating Edit Icon - display only on Watchlist tab */}
+          {!isTokens && (
+            <Box
+              position="absolute"
+              bottom={20}
+              right={20}
+              zIndex={10}
+            >
+              <Pressable
+                onPress={() => {
+                  router.push("/(modal)/select-watchlist");
+                }}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: "#6366F1",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  shadowColor: "#000",
+                  shadowOffset: {
+                    width: 0,
+                    height: 2,
+                  },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 3.84,
+                  elevation: 5,
+                }}
+              >
+                <Image
+                  source={icons.edit}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    tintColor: "white",
+                  }}
+                />
+              </Pressable>
+            </Box>
+          )}
         </Box>
       </LoaderWrapper>
       <Loader visible={currentLoading} />

@@ -180,7 +180,7 @@ export default function OTPInput({
       {errorText ? (
         <Box mb="s">
           <CustomText color="error" variant="body" textAlign="center">
-            {errorText}
+            {typeof errorText === 'string' ? errorText : errorText?.message || 'An error occurred'}
           </CustomText>
         </Box>
       ) : null}

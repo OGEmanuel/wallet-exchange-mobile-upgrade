@@ -1,10 +1,5 @@
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { Box, CustomButton } from "@/components/general";
-import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { IAvatar } from "@/src/modules/settings/domain/entities/models/avatar-model";
-import { IUpdateUserDetailsParams } from "@/src/modules/settings/domain/entities/params/update-user-details-params";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { kycActions, selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -12,11 +7,8 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
-import { User } from "iconsax-react-nativejs";
-import React, { forwardRef, useCallback, useState } from "react";
-import { ActivityIndicator, Pressable } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
-import { useDispatch, useSelector } from "react-redux";
+import React, { forwardRef, useCallback } from "react";
+import { Pressable, ScrollView } from "react-native";
 
 const BG_COLORS = [
   "#23F9A1",
@@ -30,53 +22,24 @@ const BG_COLORS = [
   "#9E472F",
 ];
 
-const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
-  const user = useSelector(selectUser);
-  const dispatch = useDispatch();
+const AVATARS = [
+  require("@/assets/images/avatar/a1.png"),
+  require("@/assets/images/avatar/a2.png"),
+  require("@/assets/images/avatar/a3.png"),
+  require("@/assets/images/avatar/a4.png"),
+  require("@/assets/images/avatar/a5.png"),
+  require("@/assets/images/avatar/a6.png"),
+  require("@/assets/images/avatar/a7.png"),
+  require("@/assets/images/avatar/a8.png"),
+  require("@/assets/images/avatar/a9.png"),
+  require("@/assets/images/avatar/a10.png"),
+  require("@/assets/images/avatar/a11.png"),
+];
 
-  const [activeColor, setActiveColor] = React.useState(
-    user?.avatar?.backgroundColor || "#23F9A1"
-  );
-  const [activeAvatar, setActiveAvatar] = React.useState<string>(
-    user?.avatar?.url || ""
-  ); // Default to a3.png (index 2)
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [data, setData] = useState<IAvatar[]>([]);
-  const { getAvatars, updateUser } = useSettings();
+const EditAvatarBottomSheet = forwardRef<BottomSheet, object>((props, ref) => {
+  const [activeColor, setActiveColor] = React.useState("#23F9A1");
+  const [activeAvatarIndex, setActiveAvatarIndex] = React.useState(2); // Default to a3.png (index 2)
   const theme = useTheme<Theme>();
-  React.useEffect(() => {
-    (async () => {
-      try {
-        setIsLoading(true);
-        const response = await getAvatars();
-        console.log(response.data);
-        setData(response.data || []);
-        setIsLoading(false);
-      } catch (error) {
-        console.log(error);
-      }
-    })();
-  }, []);
-
-  const handleUpdateUser = useCallback(
-    async (payload: Partial<IUpdateUserDetailsParams>) => {
-      try {
-        if (!activeAvatar) {
-          alert("Your avatar is required");
-          return;
-        }
-        setIsLoading(true);
-        const response = await updateUser(payload, user as UserModel);
-        dispatch(kycActions.setUser(response.data as UserModel));
-        console.log(response.data);
-        setIsLoading(false);
-      } catch (error) {
-        console.log(error);
-      }
-    },
-    [updateUser, user]
-  );
-
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
@@ -133,22 +96,12 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
               borderRadius={50}
               style={{ backgroundColor: activeColor }}
               p="s"
-              justifyContent="center"
-              alignItems="center"
             >
-              {activeAvatar ? (
-                <Image
-                  source={activeAvatar}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                />
-              ) : (
-                <User
-                  size={70}
-                  variant="Bold"
-                  color={theme.colors.bodyTextColor}
-                />
-              )}
+              <Image
+                source={AVATARS[activeAvatarIndex]}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+              />
             </Box>
           </Box>
           <Box
@@ -174,63 +127,44 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
           </Box>
 
           <Box mt="l" flex={1}>
-            <FlatList
-              data={data}
-              keyExtractor={(item) => item._id}
-              numColumns={4}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={{
-                    width: "25%",
-                    aspectRatio: 1,
-                    marginBottom: 10,
-                    borderRadius: 50,
-                    borderWidth: activeAvatar === item.url ? 2 : 0,
-                    borderColor: theme.colors.bodyTextColor,
-                    padding: 5,
-                    //   backgroundColor: activeColor,
-                  }}
-                  onPress={() => setActiveAvatar(item.url)}
-                >
-                  <Image
-                    source={item.url}
-                    style={{ width: "100%", height: "100%", borderRadius: 8 }}
-                    contentFit="cover"
-                  />
-                </Pressable>
-              )}
-              ListFooterComponent={() => (
-                <>
-                  {isLoading && (
-                    <Box
-                      width={"100%"}
-                      height={20}
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <ActivityIndicator
-                        animating={isLoading}
-                        color={theme.colors.bodyTextColor}
-                      />
-                    </Box>
-                  )}
-                </>
-              )}
-            />
+            <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+              <Box
+                flexDirection="row"
+                flexWrap="wrap"
+                justifyContent="flex-start"
+                paddingBottom="l"
+              >
+                {AVATARS.map((avatar, index) => (
+                  <Pressable
+                    key={index.toString()}
+                    onPress={() => setActiveAvatarIndex(index)}
+                    style={{
+                      width: "25%",
+                      aspectRatio: 1,
+                      marginBottom: 10,
+                      borderRadius: 50,
+                      borderWidth: activeAvatarIndex === index ? 2 : 0,
+                      borderColor: theme.colors.bodyTextColor,
+                      padding: 5,
+                      //   backgroundColor: activeColor,
+                    }}
+                  >
+                    <Image
+                      source={avatar}
+                      style={{ width: "100%", height: "100%", borderRadius: 8 }}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                ))}
+              </Box>
+            </ScrollView>
           </Box>
         </Box>
         <Box height={70} justifyContent="center" paddingHorizontal="m">
           <CustomButton
             width={"100%"}
             borderRadius={50}
-            isLoading={isLoading}
-            disabled={!activeAvatar}
-            disabledColor={theme.colors.disabledTextColor}
-            onPress={() =>
-              handleUpdateUser({
-                avatar: { url: activeAvatar, backgroundColor: activeColor },
-              })
-            }
+            onPress={() => {}}
             text="Save Changes"
           />
         </Box>
@@ -238,5 +172,7 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
     </BottomSheet>
   );
 });
+
+EditAvatarBottomSheet.displayName = "EditAvatarBottomSheet";
 
 export default EditAvatarBottomSheet;

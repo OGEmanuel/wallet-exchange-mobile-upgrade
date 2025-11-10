@@ -1,11 +1,13 @@
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
-import { AppBar, CustomButton, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import Identicon from "@/components/general/Identicon";
 import AddWalletModal from "@/components/Modals/AddWalletModal";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
 import SuccessModal from "@/components/Modals/SuccessModal";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
+import { PortfolioService } from "@/services/portfolio.service";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { listWalletGroupBackups } from "@/src/core/utils/backup-utils";
@@ -13,15 +15,16 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
-import { ArrowLeft, ChevronRight, CloudOff, Plus } from "lucide-react-native";
+import { ChevronRight, CloudOff, Plus } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface WalletGroupDetailProps {}
 
 const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   const theme = useTheme<Theme>();
+  const insets = useSafeAreaInsets();
   const {
     userWalletGroups,
     currentWalletUser,
@@ -32,9 +35,10 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
     setIsCreatingWallet,
     removeWalletGroup,
     mainUserWalletGroup,
+    switchWallet,
   } = useWallet();
 
-  const { getWalletBalance, getWalletGroupBalance, getEnhancedWalletGroups } =
+  const { getWalletBalance } =
     useAggregatedBalances();
   const { walletGroupId } = useLocalSearchParams<{ walletGroupId: string }>();
 
@@ -86,9 +90,9 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   if (!userWalletGroup) {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
-        <AppBar
+        <SettingsHeader
           title="Wallet Group"
-          leading={<ArrowLeft size={24} color={theme.colors.headerTextColor} />}
+          onBackPress={() => router.back()}
         />
         <Box flex={1} justifyContent="center" alignItems="center">
           <CustomText variant="body" color="disabledTextColor">
@@ -130,7 +134,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       }
 
       setIsEditingName(false);
-      await refreshPortfolio(); // Refresh to get updated data
+      await refreshPortfolio(userWalletGroup?._id, true);
     } catch (error) {
       console.error("Failed to update wallet group name:", error);
       Alert.alert("Error", "Failed to update wallet group name");
@@ -145,14 +149,27 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   };
 
   const handleRemoveWalletGroup = () => {
+    console.log("🔄 handleRemoveWalletGroup: User clicked 'Remove Wallet Group' - opening confirmation modal");
+    // Ensure PIN modal is closed when opening remove modal
+    // This prevents any auto-triggering if PIN modal was previously open
+    setShowPinModal(false);
     setShowRemoveModal(true);
   };
 
   const handleConfirmRemove = () => {
+    console.log("🔄 handleConfirmRemove: User clicked 'Yes, remove' - showing PIN modal for confirmation");
+    // User has explicitly confirmed by clicking "Yes, remove" button
+    // Now show PIN modal (or proceed if no PIN required)
     setShowPinModal(true);
   };
 
   const handlePinSuccess = async (pin: string) => {
+    console.log("🔄 handlePinSuccess: PIN verified (or not required), proceeding with wallet removal");
+    // This is only called after:
+    // 1. User clicked "Remove Wallet Group" button (opens modal)
+    // 2. User clicked "Yes, remove" button on modal (calls handleConfirmRemove)
+    // 3. PIN was entered/verified (or auto-proceeded if no PIN)
+    // So it's safe to proceed with deletion
     try {
       await removeWalletGroup(
         userWalletGroup.walletGroupId._id,
@@ -213,8 +230,9 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
   };
 
   const handleRecoveryPhrase = () => {
-    // TODO: Navigate to recovery phrase screen
-    Alert.alert("Recovery Phrase", "Navigate to recovery phrase screen");
+    router.push(
+      `/dashboard/manage-wallet/secret-phrase?walletId=${userWalletGroup?.walletId?._id}`
+    );
   };
 
   const handleBackupWallet = () => {
@@ -267,38 +285,40 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
 
       // Close modal and show success
       setShowAddWalletModal(false);
-      Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+      
+      // Reset context flag
+      setIsCreatingWallet(false);
 
-      // Refresh wallet groups and portfolio to show new wallet
+      // Refresh wallet groups to get the new wallet
       await refreshUserWalletGroups();
-      await refreshPortfolio();
+      
+      // Small delay to ensure wallet credential storage is fully written
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Switch to the new wallet (this will navigate to portfolio page)
+      // retryPendingWallets will be called automatically in home.tsx after navigation
+      if (result.userWalletGroupId) {
+        console.log("🔄 Switching to newly created wallet:", result.userWalletGroupId);
+        await switchWallet(result.userWalletGroupId, undefined, true); // forceRefresh=true
+        Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+      } else {
+        Alert.alert("Success", `Wallet '${walletName}' created successfully!`);
+        await refreshPortfolio(result.userWalletGroupId, true);
+      }
     } catch (error) {
       console.error("❌ Failed to create wallet:", error);
       Alert.alert("Error", "Failed to create wallet. Please try again.");
-    } finally {
-      setIsCreatingWallet(false); // Reset context flag
+      setIsCreatingWallet(false); // Reset context flag on error too
     }
   };
 
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       {/* Header */}
-      <Box
-        flexDirection="row"
-        alignItems="center"
-        justifyContent="space-between"
-        paddingTop="xl"
-        backgroundColor="mainBackgroundColor"
-      >
-        <AppBar
+      <Box style={{ paddingTop: insets.top }}>
+        <SettingsHeader
           title={userWalletGroup.walletGroupId.name || "Wallet Group"}
-          leading={
-            <ArrowLeft2
-              onPress={handleBack}
-              size={24}
-              color={theme.colors.headerTextColor}
-            />
-          }
+          onBackPress={() => router.back()}
         />
       </Box>
 
@@ -394,7 +414,7 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <ThemedEditIcon />
+                  <ThemedEditIcon darkModeColor={theme.colors.white} lightModeColor={theme.colors.black} />
                 </Pressable>
               )}
             </Box>
@@ -552,8 +572,8 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
                 getWalletBalance(userWalletGroup._id) || 0;
               const walletBalance =
                 aggregatedBalance > 0
-                  ? `$${aggregatedBalance.toFixed(2)}`
-                  : "$0.00";
+                  ? PortfolioService.formatCurrency(aggregatedBalance)
+                  : PortfolioService.formatCurrency(0);
 
               return (
                 <Pressable
@@ -628,7 +648,12 @@ const WalletGroupDetail: React.FC<WalletGroupDetailProps> = () => {
       {/* Remove Wallet Modal */}
       <RemoveWalletModal
         visible={showRemoveModal}
-        onClose={() => setShowRemoveModal(false)}
+        onClose={() => {
+          console.log("🔄 RemoveWalletModal onClose: Closing remove modal and PIN modal");
+          // Ensure PIN modal is also closed when remove modal closes
+          setShowPinModal(false);
+          setShowRemoveModal(false);
+        }}
         onConfirm={handleConfirmRemove}
         walletName={userWalletGroup.walletGroupId.name || "wallet group"}
         showPinModal={showPinModal}

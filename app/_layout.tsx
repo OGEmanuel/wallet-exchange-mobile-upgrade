@@ -10,6 +10,8 @@ import { InternetConnectionProvider } from "@/context/InternetConnectionContext"
 import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
+import { OnboardingProvider } from "@/src/core/contexts/onboarding";
+import { TwoFactorAuthProvider } from "@/src/core/contexts/two-factor-auth/TwoFactorAuthContext";
 import { SupportedCurrenciesProvider } from "@/src/core/supported-currencies/supported-currencies-context";
 import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
 import { WebSocketProvider } from "@/src/core/websocket/WebSocketProvider";
@@ -40,12 +42,12 @@ global.Buffer = Buffer;
 
 // Component to handle app-wide loading modal
 const AppLoadingModal = () => {
-  const { 
-    isAccountDeriving, 
-    isRetryingPendingWallets, 
-    isInitializing, 
-    isAuthenticating, 
-    isCreatingWallet 
+  const {
+    isAccountDeriving,
+    isRetryingPendingWallets,
+    isInitializing,
+    isAuthenticating,
+    isCreatingWallet,
   } = useWallet();
 
   const getLoadingMessage = () => {
@@ -222,44 +224,49 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <AppInitializer onInitializationComplete={() => {
-              console.log('App initialization complete, setting isAppReady to true');
-              setIsAppReady(true);
-            }}>
-            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
-              <QueryClientProvider client={queryClient}>
-                <InternetConnectionProvider>
-                  <NetworkProvider>
-                    <ChainsProvider>
+            <AppInitializer>
+              <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
+                <QueryClientProvider client={queryClient}>
+                  <InternetConnectionProvider>
+                    <NetworkProvider>
                       <SupportedCurrenciesProvider>
-                        <WalletProvider>
-                          <WebSocketProvider>
-                            <BottomSheetProvider>
-                      <StatusBar
-                        barStyle={
-                          colorTheme === "dark"
-                            ? "light-content"
-                            : "dark-content"
-                        }
-                      />
-                      {/* <PinGuard /> */}
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen
-                          name="index"
-                          options={{ title: "Home" }}
-                        />
-                      </Stack>
-                      <BottomSheetManager />
-                      <AppLoadingModal />
-                            </BottomSheetProvider>
-                          </WebSocketProvider>
-                        </WalletProvider>
+                        <ChainsProvider>
+                          <WalletProvider>
+                            <WebSocketProvider>
+                              <OnboardingProvider>
+                                <TwoFactorAuthProvider>
+                                  <BottomSheetProvider>
+                                    <StatusBar
+                                    barStyle={
+                                      colorTheme === "dark"
+                                        ? "light-content"
+                                        : "dark-content"
+                                    }
+                                  />
+                                  {/* <PinGuard /> */}
+                                  <Stack screenOptions={{ headerShown: false }}>
+                                    <Stack.Screen
+                                      name="index"
+                                      options={{ title: "Home" }}
+                                    />
+                                    <Stack.Screen
+                                      name="(modal)"
+                                      options={{ presentation: "modal" }}
+                                    />
+                                  </Stack>
+                                  <BottomSheetManager />
+                                  <AppLoadingModal />
+                                </BottomSheetProvider>
+                                </TwoFactorAuthProvider>
+                              </OnboardingProvider>
+                            </WebSocketProvider>
+                          </WalletProvider>
+                        </ChainsProvider>
                       </SupportedCurrenciesProvider>
-                    </ChainsProvider>
-                  </NetworkProvider>
-                </InternetConnectionProvider>
-              </QueryClientProvider>
-            </ThemeProvider>
+                    </NetworkProvider>
+                  </InternetConnectionProvider>
+                </QueryClientProvider>
+              </ThemeProvider>
             </AppInitializer>
           </Provider>
         </GestureHandlerRootView>

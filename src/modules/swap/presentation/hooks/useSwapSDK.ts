@@ -8,7 +8,7 @@
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatNumber } from "@/src/core/utils/format-utils";
-import { CreateOrderRequest, IChain, ICurrency, SupportedCurrency } from "@zap/blockchain-sdk";
+import { CreateOrderRequest, IChain, ICurrency, ISupportedCurrency } from "@zap/blockchain-sdk";
 // import { useWallet } from "@/src/core/wallet/wallet-context";
 import { useCallback, useEffect, useState } from "react";
 
@@ -38,8 +38,8 @@ export interface SwapState {
   isInputtingUSD: boolean;
 
   // Currency states
-  baseCurrency: SupportedCurrency | null;
-  targetCurrency: SupportedCurrency | null;
+  baseCurrency: ISupportedCurrency | null;
+  targetCurrency: ISupportedCurrency | null;
 
   // Rate and loading states
   marketRate: SwapRate | null;
@@ -54,7 +54,7 @@ export interface SwapState {
 }
 
 export const useSwapSDK = () => {
-  const { supportedCurrencies, isLoading: currenciesLoading } = useSupportedCurrencies();
+  const { supportedCurrenciesForSwap, isLoading: currenciesLoading } = useSupportedCurrencies();
 
   // Local state (replacing Redux)
   const [state, setState] = useState<SwapState>({
@@ -76,11 +76,11 @@ export const useSwapSDK = () => {
 
   // Set default currencies when supported currencies load
   useEffect(() => {
-    if (currenciesLoading || !supportedCurrencies.length || state.baseCurrency) return;
+    if (currenciesLoading || !supportedCurrenciesForSwap.length || state.baseCurrency) return;
 
-    const btc = supportedCurrencies.find((c) => (c.chainId as Partial<IChain>)?.symbol === "BTC");
-    const eth = supportedCurrencies.find((c) => (c.chainId as Partial<IChain>)?.symbol === "ETH" && (c.currencyId as Partial<ICurrency>)?.symbol === "ETH");
-    const ngn = supportedCurrencies.find((c) => (c.currencyId as Partial<ICurrency>)?.code === "NGN");
+    const btc = supportedCurrenciesForSwap.find((c) => (c.chainId as Partial<IChain>)?.symbol === "BTC");
+    const eth = supportedCurrenciesForSwap.find((c) => (c.chainId as Partial<IChain>)?.symbol === "ETH" && (c.currencyId as Partial<ICurrency>)?.symbol === "ETH");
+    const ngn = supportedCurrenciesForSwap.find((c) => (c.currencyId as Partial<ICurrency>)?.code === "NGN");
 
     let defaultAmount = 0;
 
@@ -88,7 +88,7 @@ export const useSwapSDK = () => {
       defaultAmount = btc ? 0.0025 : 0.1;
       setState(prev => ({
         ...prev,
-        baseCurrency: (btc || eth) as SupportedCurrency,
+        baseCurrency: (btc || eth) as ISupportedCurrency,
         baseAmount: defaultAmount,
         baseAmountInput: defaultAmount.toString(),
       }));
@@ -102,8 +102,8 @@ export const useSwapSDK = () => {
     }
 
     // Fetch initial market rate
-    fetchMarketRate(btc as SupportedCurrency, ngn as SupportedCurrency, defaultAmount);
-  }, [supportedCurrencies, currenciesLoading, state.baseCurrency]);
+    fetchMarketRate(btc as ISupportedCurrency, ngn as ISupportedCurrency, defaultAmount);
+  }, [supportedCurrenciesForSwap, currenciesLoading, state.baseCurrency]);
 
   // Update target amount when market rate changes
   useEffect(() => {
@@ -170,8 +170,8 @@ export const useSwapSDK = () => {
 
   // Fetch market rate using SDK
   const fetchMarketRate = useCallback(async (
-    baseCurrency: SupportedCurrency,
-    targetCurrency: SupportedCurrency,
+    baseCurrency: ISupportedCurrency,
+    targetCurrency: ISupportedCurrency,
     amount: number,
     isBuyAmount: boolean = true
   ): Promise<SwapRate | null> => {
@@ -256,23 +256,90 @@ export const useSwapSDK = () => {
         sellRate: rateResponse?.data?.sellRate || 0,
       };
 
-      setState(prev => ({ ...prev, marketRate: swapRate, isRateLoading: false }));
+      setState(prev => ({ ...prev, marketRate: swapRate, isRateLoading: false, error: null }));
       return swapRate;
     } catch (error) {
       console.error("Failed to fetch market rate:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to fetch rate";
-      setState(prev => ({
+      
+      // On error, preserve the last known rate and scale amounts accordingly
+      setState(prev => {
+        const lastRate = prev.marketRate;
+        
+        // If we have a last known rate, use it to recalculate amounts
+        if (lastRate && lastRate.rate > 0) {
+          // Recalculate based on isBuyAmount flag (which determines calculation direction)
+          if (prev.isBuyAmount && prev.baseAmount > 0) {
+            // User is buying - base amount is input, recalculate target amount
+            const newTargetAmount = prev.baseAmount * lastRate.rate;
+            const newBaseAmountUSD = prev.baseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              targetAmount: newTargetAmount,
+              targetAmountInput: newTargetAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          } else if (!prev.isBuyAmount && prev.targetAmount > 0) {
+            // User is selling - target amount is input, recalculate base amount
+            const calculatedBaseAmount = prev.targetAmount / lastRate.rate;
+            const newBaseAmountUSD = calculatedBaseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              baseAmount: calculatedBaseAmount,
+              baseAmountInput: calculatedBaseAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          }
+          
+          // Fallback: if amounts exist but direction is unclear, recalculate based on last edited field
+          if (prev.lastEditedField === "baseAmount" && prev.baseAmount > 0) {
+            const newTargetAmount = prev.baseAmount * lastRate.rate;
+            const newBaseAmountUSD = prev.baseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              targetAmount: newTargetAmount,
+              targetAmountInput: newTargetAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          } else if (prev.lastEditedField === "targetAmount" && prev.targetAmount > 0) {
+            const calculatedBaseAmount = prev.targetAmount / lastRate.rate;
+            const newBaseAmountUSD = calculatedBaseAmount * (lastRate.buyRate || lastRate.rate);
+            
+            return {
+              ...prev,
+              baseAmount: calculatedBaseAmount,
+              baseAmountInput: calculatedBaseAmount.toString(),
+              baseAmountUSD: newBaseAmountUSD,
+              error: errorMessage,
+              isRateLoading: false,
+            };
+          }
+        }
+        
+        // No last rate available - just set error
+        return {
         ...prev,
         error: errorMessage,
         isRateLoading: false
-      }));
+        };
+      });
+      
       return null;
     }
   }, []);
 
   // Debounced rate fetching
   const debouncedFetchRate = useCallback(
-    (baseCurrency: SupportedCurrency, targetCurrency: SupportedCurrency, amount: number, isBuyAmount: boolean = true) => {
+    (baseCurrency: ISupportedCurrency, targetCurrency: ISupportedCurrency, amount: number, isBuyAmount: boolean = true) => {
       const timeoutId = setTimeout(() => {
         fetchMarketRate(baseCurrency, targetCurrency, amount, isBuyAmount);
       }, 500);
@@ -286,6 +353,7 @@ export const useSwapSDK = () => {
     setState(prev => {
       if (prev.isInputtingUSD) {
         // When in USD mode, remove $ symbol and parse the number
+        console.log("handleBaseAmountChange called", amount);
         const cleanAmount = amount.replace(/[$,]/g, '');
         const numAmount = parseFloat(cleanAmount) || 0;
 
@@ -350,7 +418,7 @@ export const useSwapSDK = () => {
   }, [state.baseCurrency, state.targetCurrency, state.marketRate, debouncedFetchRate]);
 
   // Currency change handlers
-  const setBaseCurrency = useCallback((currency: SupportedCurrency) => {
+  const setBaseCurrency = useCallback((currency: ISupportedCurrency) => {
     setState(prev => ({ ...prev, baseCurrency: currency, error: null }));
 
     // Fetch rate if we have target currency and amount
@@ -360,7 +428,7 @@ export const useSwapSDK = () => {
     }
   }, [state.targetCurrency, state.baseAmount, debouncedFetchRate]);
 
-  const setTargetCurrency = useCallback((currency: SupportedCurrency) => {
+  const setTargetCurrency = useCallback((currency: ISupportedCurrency) => {
     setState(prev => ({ ...prev, targetCurrency: currency, error: null }));
 
     // Fetch rate if we have base currency and amount
@@ -449,21 +517,20 @@ export const useSwapSDK = () => {
 
   // Format helpers - format with commas but preserve decimal points during typing
   const handleBaseAmountFormat = useCallback(() => {
+    // If input ends with decimal point, preserve it
+    if (state.baseAmountInput.endsWith('.')) {
+      return state.baseAmountInput;
+    }
+
+    // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
+    // This prevents formatNumber from truncating very small numbers during typing
+    if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.endsWith('0')) {
+      return state.baseAmountInput;
+    }
     if (state.isInputtingUSD) {
       if (!state.baseAmountUSD || state.baseAmountUSD === 0) return formatNumber(0, 2);
       return formatNumber(state.baseAmountUSD, 2);
     } else {
-      // If input ends with decimal point, preserve it
-      if (state.baseAmountInput.endsWith('.')) {
-        return state.baseAmountInput;
-      }
-
-      // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
-      // This prevents formatNumber from truncating very small numbers during typing
-      if (state.baseAmountInput.includes('.') && state.baseAmountInput.split('.')[1]?.includes('00')) {
-        return state.baseAmountInput;
-      }
-
       const isCrypto = (state.baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
       return formatNumber(state.baseAmount, isCrypto ? 8 : 2);
     }
@@ -480,7 +547,7 @@ export const useSwapSDK = () => {
 
     // If input has multiple zeros after decimal (like 0.0000), preserve the raw input
     // This prevents formatNumber from truncating very small numbers during typing
-    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.includes('00')) {
+    if (state.targetAmountInput.includes('.') && state.targetAmountInput.split('.')[1]?.endsWith('0')) {
       return state.targetAmountInput;
     }
 
@@ -542,7 +609,7 @@ export const useSwapSDK = () => {
   return {
     // State
     ...state,
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     currenciesLoading,
     setError: (error: string | null) => setState(prev => ({ ...prev, error })),
 

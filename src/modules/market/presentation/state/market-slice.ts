@@ -1,30 +1,32 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { MarketTokenModel } from "../../domain/entities/models/market-token-model";
+import { MarketData } from "@zap/blockchain-sdk";
 import { TokenDetailModel } from "../../domain/entities/models/token-detail-model";
 import { TokenHistoryDetailModel } from "../../domain/entities/models/token-history-model";
 import { WatchlistTokenModel } from "../../domain/entities/models/watchlist-token-model";
 
 interface MarketState {
-  marketTokens: MarketTokenModel[] | null;
+  marketTokens: MarketData[] | null;
   currentTokenDetails: TokenDetailModel | null;
   tokenHistory: TokenHistoryDetailModel | null;
   watchlistTokens: WatchlistTokenModel[] | null;
   isWatchlistLoading: boolean;
+  isMarketTokensLoading: boolean;
 }
 
 const initialState: MarketState = {
   marketTokens: null,
   currentTokenDetails: null,
   watchlistTokens: null,
-  tokenHistory: null, 
+  tokenHistory: null,
   isWatchlistLoading: false,
+  isMarketTokensLoading: false,
 };
 
 const marketSlice = createSlice({
   name: 'market',
   initialState,
   reducers: {
-    setMarketTokens: (state, action: PayloadAction<MarketTokenModel[] | null>) => {
+    setMarketTokens: (state, action: PayloadAction<MarketData[] | null>) => {
       state.marketTokens = action.payload;
     },
     setCurrentTokenDetails: (state, action: PayloadAction<TokenDetailModel | null>) => {
@@ -34,8 +36,11 @@ const marketSlice = createSlice({
       state.watchlistTokens = action.payload;
     },
     setTokenHistory: (state, action: PayloadAction<TokenHistoryDetailModel | null>) => {
-  state.tokenHistory = action.payload;
-},
+      state.tokenHistory = action.payload;
+    },
+    setMarketTokensLoading: (state, action: PayloadAction<boolean>) => {
+      state.isMarketTokensLoading = action.payload;
+    },
     setWatchlistLoading: (state, action: PayloadAction<boolean>) => {
       state.isWatchlistLoading = action.payload;
     },
@@ -60,6 +65,7 @@ const marketSlice = createSlice({
         console.log("WatchlistTokens after removal:", state.watchlistTokens);
       }
     },
+    resetMarketState: () => initialState,
   },
 });
 

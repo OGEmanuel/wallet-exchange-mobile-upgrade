@@ -93,11 +93,14 @@ export default function IdentityVerification({
     setCountryDocumentsLoading(true);
     setFetchDocumentTypesError(null);
 
-    fetchDocumentTypes({
+    const payload = {
       body: selectedCountry || null,
       params: {},
       extra: {},
-    })
+    };
+    console.log("payload 3920842", payload);
+
+    fetchDocumentTypes(payload)
       .then((response) => {
         if (response?.data) {
           setDocumentTypes(response.data || null);
@@ -200,7 +203,7 @@ export default function IdentityVerification({
   const userHasSubmittedIdentityDocument =
     userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
 
-  const steps = filteredVerificationClasses?.map((verificationClass) =>
+  const steps = (filteredVerificationClasses || []).map((verificationClass) =>
     verificationClass.toLocaleLowerCase() === "credit"
       ? {
           title: "Bank Verification",
@@ -229,7 +232,7 @@ export default function IdentityVerification({
           onPress: handleIdPress,
         }
       : {}
-  );
+  ).filter(step => step && Object.keys(step).length > 0); // Filter out empty objects
 
   return (
     <View style={styles.container}>
@@ -238,7 +241,7 @@ export default function IdentityVerification({
       </CustomText>
       <CustomText variant="body" style={styles.subtitle}>
         Before you can buy BTC we will need to verify who you are. Be sure your
-        data is saf
+        data is safe
       </CustomText>
 
       <Select

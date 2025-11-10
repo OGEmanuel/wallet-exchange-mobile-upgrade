@@ -1,9 +1,5 @@
 import icons from "@/assets/icons";
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { BankAccount, Currency } from "@/interfaces/account.interface";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
-import { selectSettingState } from "@/src/modules/settings/presentation/state/settings-slice";
-import { selectUser } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -12,8 +8,7 @@ import BottomSheet, {
 import { useTheme } from "@shopify/restyle";
 import { ChevronRight } from "lucide-react-native";
 import React, { forwardRef, useCallback, useState } from "react";
-import { Alert, Image, Pressable, TextInput } from "react-native";
-import { useSelector } from "react-redux";
+import { Alert, Image, Pressable, ScrollView, TextInput } from "react-native";
 import { Box, CustomButton, CustomText } from "../general";
 
 interface BankAccountBottomSheetProps {
@@ -24,7 +19,7 @@ interface BankAccountBottomSheetProps {
 const BankAccountBottomSheet = forwardRef<
   BottomSheet,
   BankAccountBottomSheetProps
->(({ onAccountAdded }, ref) => {
+>(({ selectedCurrency, onAccountAdded }, ref) => {
   const theme = useTheme<Theme>();
   const [formData, setFormData] = useState({
     accountHolderName: "",
@@ -37,12 +32,6 @@ const BankAccountBottomSheet = forwardRef<
     accountType: "",
     bankName: "",
   });
-  const [loading, setLoading] = React.useState(false);
-  const { bankBottomSheetRef } = useBottomSheetRefs();
-  const { createAccount } = useSettings();
-  const { activeCurrency: selectedCurrency, activeBank } =
-    useSelector(selectSettingState);
-  const userDetails = useSelector(selectUser);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -54,15 +43,6 @@ const BankAccountBottomSheet = forwardRef<
     ),
     []
   );
-
-  React.useEffect(() => {
-    if (activeBank) {
-      setFormData((prev) => ({
-        ...prev,
-        bankName: activeBank?.name as string,
-      }));
-    }
-  }, [activeBank]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -185,7 +165,10 @@ const BankAccountBottomSheet = forwardRef<
           }}
           onPress={() => {
             // Here you would show a bank selection modal
-            bankBottomSheetRef.current?.snapToIndex(1);
+            Alert.alert(
+              "Bank Selection",
+              "Bank selection modal would open here"
+            );
           }}
         >
           <CustomText
@@ -193,7 +176,7 @@ const BankAccountBottomSheet = forwardRef<
               formData.bankName ? "headerTextColor" : "placeholderTextColor"
             }
           >
-            {activeBank?.name || "Select Bank"}
+            {formData.bankName || "Select Bank"}
           </CustomText>
           <ChevronRight size={20} color={theme.colors.bodyTextColor} />
         </Pressable>
@@ -574,14 +557,14 @@ const BankAccountBottomSheet = forwardRef<
             justifyContent: "space-between",
           }}
           onPress={() => {
-            bankBottomSheetRef.current?.snapToIndex(1);
+            Alert.alert("Recipient Details", "ACH selection would open here");
           }}
         >
           <Box flexDirection="row" alignItems="center">
             <CustomText fontSize={16} marginRight="s">
               🏦
             </CustomText>
-            <CustomText>{activeBank?.name || "ACH"}</CustomText>
+            <CustomText>ACH</CustomText>
           </Box>
           <ChevronRight size={20} color={theme.colors.bodyTextColor} />
         </Pressable>
@@ -781,26 +764,32 @@ const BankAccountBottomSheet = forwardRef<
           paddingTop: 10,
         }}
       >
-        <Box marginBottom="l">
-          <CustomText
-            variant="bodyBold"
-            textAlign="center"
-            style={{ fontFamily: "NewScience_Bold" }}
-          >
-            Add {selectedCurrency} Account
-          </CustomText>
-        </Box>
+        <ScrollView
+          style={{ flex: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Box marginBottom="l">
+            <CustomText
+              variant="bodyBold"
+              textAlign="center"
+              style={{ fontFamily: "NewScience_Bold" }}
+            >
+              Add {selectedCurrency} Account
+            </CustomText>
+          </Box>
 
-        {renderForm()}
+          {renderForm()}
 
-        <Box marginTop="l">
-          <CustomButton
-            text={"Add account"}
-            onPress={handleAddAccount}
-            width={"100%"}
-            borderRadius={50}
-          />
-        </Box>
+          <Box marginTop="l">
+            <CustomButton
+              text={"Add account"}
+              onPress={handleAddAccount}
+              width={"100%"}
+              borderRadius={50}
+            />
+          </Box>
+        </ScrollView>
       </BottomSheetView>
     </BottomSheet>
   );

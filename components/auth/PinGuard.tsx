@@ -9,8 +9,6 @@ export const PinGuard: React.FC = () => {
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
-
-
   const handlePinSetupComplete = () => {
     setShowPinSetup(false);
     // setHasCheckedPin(true); // Mark as checked to prevent re-checking
@@ -49,6 +47,7 @@ export const PinGuard: React.FC = () => {
         visible={showPinEntry}
         onSuccess={handlePinEntrySuccess}
         onClose={() => setShowPinEntry(false)}
+        type="SETUP"
       />
     );
   }

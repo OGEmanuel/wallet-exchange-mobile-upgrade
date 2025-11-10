@@ -3,6 +3,7 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { IUserWalletGroup } from "@/types/main";
+import { IWalletGroup } from "@zap/blockchain-sdk";
 import { ChevronDown } from "lucide-react-native";
 import React, { useState } from "react";
 import { Alert, Pressable } from "react-native";
@@ -16,7 +17,9 @@ const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
   currentUserWalletGroup,
 }) => {
   const [showWalletSelector, setShowWalletSelector] = useState(false);
-  const [walletToDelete, setWalletToDelete] = useState<any>(null);
+  const [walletToDelete, setWalletToDelete] = useState<IWalletGroup | null>(
+    null
+  );
 
   const { switchWallet } = useWallet();
 
@@ -24,7 +27,7 @@ const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
     setShowWalletSelector(true);
   };
 
-  const handleDeleteWallet = (wallet: any) => {
+  const handleDeleteWallet = (wallet: IWalletGroup) => {
     setWalletToDelete(wallet);
   };
 
@@ -32,7 +35,9 @@ const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
     setWalletToDelete(null);
   };
 
-  const handleSelectWallet = async (selectedUserWalletGroup: any) => {
+  const handleSelectWallet = async (
+    selectedUserWalletGroup: IUserWalletGroup
+  ) => {
     // Don't close if selecting the same wallet
     if (
       selectedUserWalletGroup._id === currentUserWalletGroup?._id ||
@@ -43,9 +48,11 @@ const WalletSelectorHeader: React.FC<WalletSelectorHeaderProps> = ({
     }
 
     try {
-      // Switch to the selected wallet
-      await switchWallet(selectedUserWalletGroup._id);
+      // Close modal first to prevent flickering
       setShowWalletSelector(false);
+
+      // Switch to the selected wallet (this may take a moment)
+      await switchWallet(selectedUserWalletGroup._id, undefined, true);
     } catch (error) {
       console.error("Failed to switch wallet:", error);
       Alert.alert("Error", "Failed to switch wallet. Please try again.");

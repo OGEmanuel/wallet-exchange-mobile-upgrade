@@ -3,6 +3,7 @@ import {
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { showErrorToast } from "@/src/core/utils/toast-utils";
 import {
   AuthPhoneNumberParams,
   CreditDocumentDataParam,
@@ -13,7 +14,7 @@ import { AuthVerificationModel } from "../../domain/entities/models/auth-verific
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
-import { UpdateUsernameParams } from "../../domain/entities/params/update-username-params";
+import { AuthGuestUserParams } from "../../domain/entities/params/auth-guest-user-params";
 import { VerifyEmailParams } from "../../domain/entities/params/verify-email-params";
 import { KycRemoteDatasource } from "./kyc-remote-datasource";
 
@@ -37,21 +38,33 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   async fetchUserById(
     payload: GeneralRequestModel<UserModel, unknown, unknown>
   ): Promise<GeneralResponseModel<UserModel>> {
-    const sdk = zapSDKService.getSDK();
-    // const result = await sdk.exchangeAuth.getUser();
+    try {
+      const sdk = zapSDKService.getSDK();
+      // const result = await sdk.exchangeAuth.getUser();
 
-    
-    const result = await sdk.users.getProfile(payload.body?._id || "");
-    console.log("Resultssss:", result);
-    
-    return {
-      success: true,
-      message: "User fetched successfully",
-      data: result,
-      token: null,
-      refreshToken: null,
-      error: null,
-    };
+      const result = await sdk.users.getProfile(payload.body?._id || "");
+      console.log("Resultssss:", result);
+
+      return {
+        success: true,
+        message: "User fetched successfully",
+        data: result,
+        token: null,
+        refreshToken: null,
+        error: null,
+      };
+    } catch (error: any) {
+      console.error("Failed to fetch user profile from SDK:", error);
+      // Return error response instead of throwing to prevent breaking the flow
+      return {
+        success: false,
+        message: error?.message || "Failed to fetch user profile",
+        data: null as any,
+        token: null,
+        refreshToken: null,
+        error: error,
+      };
+    }
   }
 
   async verifyEmail(
@@ -92,20 +105,33 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     payload: GeneralRequestModel<AuthPhoneNumberParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.exchangeAuth.updatePhoneNumber({
+    const data = {
       phone: payload?.body?.phone || null,
       countryCode: payload?.body?.countryCode || null,
       isWhatsApp: payload?.body?.isWhatsApp || false,
-    });
+    }
 
-    return {
-      success: result.success,
-      message: result.message,
-      data: null,
-      token: null,
-      refreshToken: null,
-      error: null,
-    };
+    const result = await sdk.exchangeAuth.updatePhoneNumber(data);
+
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    } else {
+      showErrorToast(result.message || "Phone number verification failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 
   async verifyPhoneNumberOtp(
@@ -117,14 +143,26 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       otp: payload.body?.otp || null,
       isOnboarding: payload.body?.isOnboarding || false,
     });
-    return {
-      success: result.success,
-      message: result.message,
-      data: null,
-      token: null,
-      refreshToken: null,
-      error: null,
-    };
+    
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    } else {
+      showErrorToast(result.message || "OTP verification failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 
   async resendPhoneNumberOtp(
@@ -137,14 +175,26 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       isWhatsApp: payload?.body?.isWhatsApp || false,
     });
 
-    return {
-      success: result.success,
-      message: result.message,
-      data: null,
-      token: null,
-      refreshToken: null,
-      error: null,
-    };
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "OTP resend failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 
   async uploadCreditDocument(
@@ -152,7 +202,26 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.verifications.submitCreditDocument(payload.body);
-    return result;
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "Credit document submission failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 
   async uploadIdentityDocument(
@@ -160,11 +229,30 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
     const result = await sdk.verifications.submitIdentityDocument(payload.body);
-    return result;
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "Identity document submission failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 
   async updateUserDetails(
-    payload: GeneralRequestModel<UpdateUsernameParams, unknown, unknown>,
+    payload: GeneralRequestModel<AddUsernameParams, unknown, unknown>,
     user: UserModel
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
@@ -172,6 +260,61 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
       user._id || null,
       payload.body
     );
-    return result;
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "Username update failed");
+
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
+  }
+
+  async loginAsGuest(
+    payload: GeneralRequestModel<AuthGuestUserParams, unknown, unknown>
+  ): Promise<GeneralResponseModel<UserModel>> {
+    const sdk = zapSDKService.getSDK();
+    const params = {
+      ip: payload.body?.ip || "",
+      platform: payload.body?.platform || "",
+      userAgent: payload.body?.userAgent || "",
+      location: payload.body?.location || "",
+    };
+
+    const result = await sdk.exchangeAuth.loginAsGuest(params);
+
+    console.log("Guest login resultsss:", result);
+
+    if (result.success) {
+      return Promise.resolve({
+        success: result.success,
+        message: result.message,
+        data: result.data.user,
+        token: result.data.token,
+        refreshToken: result.data.refreshToken,
+        error: null,
+      });
+    }
+    else {
+      showErrorToast(result.message || "Login as guest failed");
+      return Promise.reject({
+        message: result.message,
+        errors: result.errors,
+        success: result.success,
+        data: null,
+      });
+    }
   }
 }

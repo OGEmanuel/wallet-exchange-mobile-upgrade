@@ -8,6 +8,7 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import ButtonLightDecoration from "@/components/general/ButtonLightDecoration";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
 // import { useNavigation } from "@react-navigation/native";
@@ -23,10 +24,16 @@ import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import BankAccountsBottomSheet from "@/components/bottomsheets/BankAccountsBottomSheet";
 import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
+import KYCFlowManager from "@/components/kyc/KYCFlowManager";
+import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
+import { getDeviceIpAndLocation } from "@/src/core/utils/device-info-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useExchange from "@/src/modules/exchange/presentation/hooks/useExchange";
+import { userHasAtleastOneDocumentApproved } from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { ArrowDown2 } from "iconsax-react-nativejs";
 import React, {
   useCallback,
@@ -70,7 +77,7 @@ const Swap = () => {
   const orderDetailsSheetRef = useRef<OrderDetailsSheetRef>(null);
   const progressSheetRef = useRef<any>(null);
   const [shouldShake, setShouldShake] = useState(false);
-  
+
   // Order status tracking
   const {
     currentOrder,
@@ -79,12 +86,12 @@ const Swap = () => {
     isOrderActive,
     isCompleted,
     isFailed,
-    getCurrentStep
+    getCurrentStep,
   } = useOrderStatusUpdates({
     orderId: createdOrder?._id,
     onStatusChange: (order, status) => {
       console.log(`Order ${order._id} status changed to: ${status}`);
-      
+
       // Switch to progress screen when order starts processing
       if (status === "DEPOSIT_CONFIRMING" || status === "DEPOSIT_CONFIRMED") {
         orderDetailsSheetRef.current?.close();
@@ -93,7 +100,7 @@ const Swap = () => {
     },
     onProgressUpdate: (order, progressValue) => {
       console.log(`Order ${order._id} progress: ${progressValue}%`);
-    }
+    },
   });
   const [bankAccountSelected, setBankAccountSelected] =
     useState<UserBankAccount | null>(null);
@@ -107,8 +114,11 @@ const Swap = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🔹 Supported currencies context for refresh
-  const { refreshSupportedCurrencies } = useSupportedCurrencies();
-  const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
+  const { refreshSupportedCurrenciesForSwap } = useSupportedCurrencies();
+  const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } = useExchangeAuth();
+  const { showBottomSheet } = useAppBottomSheet();
+  const { fetchExchangeActivities } = useExchange();
+  const { loginAsGuest } = useKyc();
 
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
@@ -123,6 +133,8 @@ const Swap = () => {
     error,
     setError,
     isLoading,
+    isRateLoading,
+    currenciesLoading,
     baseAmountUSD,
     isInputtingUSD,
     // supportedCurrencies,
@@ -140,6 +152,9 @@ const Swap = () => {
     handleBaseAmountFocus,
     handleTargetAmountFocus,
   } = useSwapSDK();
+
+  // Initial loading state: show number skeletons only when currencies are loading and no data is available yet
+  const isInitialLoading = currenciesLoading && (!baseCurrency || !targetCurrency);
 
   const { fetchBankAccounts } = useBankAccounts();
 
@@ -189,7 +204,7 @@ const Swap = () => {
 
     try {
       // Refresh supported currencies first
-      await refreshSupportedCurrencies();
+      await refreshSupportedCurrenciesForSwap();
 
       // Then refresh rates if we have both currencies selected
       if (baseCurrency && targetCurrency && baseAmount > 0) {
@@ -209,7 +224,7 @@ const Swap = () => {
     targetCurrency,
     baseAmount,
     fetchMarketRate,
-    refreshSupportedCurrencies,
+    refreshSupportedCurrenciesForSwap,
     fetchBankAccounts,
   ]);
 
@@ -254,6 +269,52 @@ const Swap = () => {
     setAddressError(null);
     if (!validateExchange()) return;
 
+    // Check if either currency is fiat (not crypto) - if so, require authentication
+    const isBaseCrypto =
+      (baseCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
+    const isTargetCrypto =
+      (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto || false;
+    const involvesFiat = !isBaseCrypto || !isTargetCrypto;
+    const isCryptoToCrypto = isBaseCrypto && isTargetCrypto;
+
+    // If trade involves fiat and user is not logged in, require full authentication
+    if (involvesFiat && !isExchangeAuthenticated) {
+      // Show zapper login modal
+      setIsZapperBottomSheetVisible(true);
+      setTimeout(() => {
+        zapperBottomSheetRef.current?.snapToIndex(0);
+      }, 100);
+      return;
+    }
+
+    // If crypto-to-crypto trade and user is not logged in, login as guest
+    if (isCryptoToCrypto && !isExchangeAuthenticated) {
+      try {
+        setIsCreatingOrder(true); // Show loading state
+        // Fetch device IP and location, then login as guest
+        try {
+          const { ip, location } = await getDeviceIpAndLocation();
+          await loginAsGuest({
+            ip: ip || undefined,
+            platform: "mobile",
+            location: location || undefined,
+          });
+        } catch (error) {
+          console.warn("Failed to fetch device IP and location, proceeding without it:", error);
+          // Proceed with login even if device info fetch fails
+          await loginAsGuest({
+            platform: "mobile",
+          });
+        }
+        // Guest login successful, continue with order creation
+      } catch (guestLoginError) {
+        console.error("Failed to login as guest:", guestLoginError);
+        setCreateOrderError("Failed to initialize guest session. Please try again.");
+        setIsCreatingOrder(false);
+        return;
+      }
+    }
+
     const isCrypto = (targetCurrency?.currencyId as Partial<ICurrency>)
       ?.isCrypto;
 
@@ -285,9 +346,27 @@ const Swap = () => {
 
       if (orderResult) {
         setCreatedOrder(orderResult);
+        
+        // Refresh exchange history after order creation
+        if (exchangeUserData?._id) {
+          try {
+            await fetchExchangeActivities({
+              user: exchangeUserData,
+              page: 1,
+              limit: 10,
+            });
+            console.log("✅ Exchange history refreshed after order creation");
+          } catch (error) {
+            console.error("Failed to refresh exchange history:", error);
+          }
+        }
+        
+        // Open order details modal
         setTimeout(() => {
-          orderDetailsSheetRef.current?.open();
-        }, 100);
+          if (orderDetailsSheetRef.current) {
+            orderDetailsSheetRef.current.open();
+          }
+        }, 300); // Increased timeout to ensure component is mounted
       } else {
         setCreateOrderError("Failed to create order");
       }
@@ -306,6 +385,11 @@ const Swap = () => {
     cryptoAddress,
     createOrder,
     bankAccountSelected,
+    isExchangeAuthenticated,
+    baseCurrency,
+    exchangeUserData,
+    fetchExchangeActivities,
+    loginAsGuest,
   ]);
 
   const rateDetails = useMemo(() => {
@@ -445,6 +529,8 @@ const Swap = () => {
               }
               hasError={!!error}
               errorColor={theme.colors.error}
+              isLoading={isInitialLoading}
+              isCurrenciesLoading={currenciesLoading}
             />
           </Box>
 
@@ -484,6 +570,8 @@ const Swap = () => {
               isCrypto={
                 (targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto
               }
+              isLoading={isInitialLoading}
+              isCurrenciesLoading={currenciesLoading}
             />
             <SwapButton
               onPress={handleSwapButtonPress}
@@ -561,7 +649,7 @@ const Swap = () => {
             </>
           ) : (
             <>
-              {isExchangeAuthenticated && (
+              {isUserLoggedIn && (
                 <View
                   style={[
                     styles.inputContainer,
@@ -590,6 +678,38 @@ const Swap = () => {
                       maxWidth: "50%",
                     }}
                     onPress={() => {
+                      // Check if user is verified
+                      const isVerificationComplete =
+                        userHasAtleastOneDocumentApproved(exchangeUserData);
+
+                      if (!isVerificationComplete) {
+                        // Show KYC flow instead of bank account bottom sheet
+                        showBottomSheet({
+                          component: (
+                            <KYCFlowManager
+                              onComplete={() => {
+                                // After KYC completion, they can try again
+                              }}
+                              onBack={() => {
+                                // Handle close if needed
+                              }}
+                            />
+                          ),
+                          props: {
+                            snapPoints: ["90%"],
+                            enablePanDownToClose: true,
+                            showGradientHandle: true,
+                            gradientColors: [
+                              theme.colors.primaryColor,
+                              theme.colors.mainBackgroundColor,
+                              theme.colors.mainBackgroundColor,
+                            ],
+                          },
+                        });
+                        return;
+                      }
+
+                      // User is verified, show bank account bottom sheet
                       bankAccountsBottomSheetRef.current?.snapToIndex(0);
                     }}
                   >
@@ -638,30 +758,34 @@ const Swap = () => {
               onProviderPress={() =>
                 zapLinkBottomSheetRef.current?.snapToIndex(0)
               }
-              isZapLinked={isExchangeAuthenticated}
+              isZapLinked={isUserLoggedIn}
+              isLoading={isLoading}
+              isRateLoading={isRateLoading}
             />
           )}
 
           <Box mt="l">
-            <CustomButton
-              text={"Zap Now"}
-              isLoading={isCreatingOrder}
-              fontSize={14}
-              width="100%"
-              height={56}
-              borderRadius={56}
-              bgColor={theme.colors.primaryColor}
-              onPress={handleContinue}
-              disabled={
-                isLoading ||
-                isCreatingOrder ||
-                !baseCurrency ||
-                !targetCurrency ||
-                baseAmount <= 0 ||
-                ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
-                  (!cryptoAddress.trim() || !!addressError))
-              }
-            />
+            <ButtonLightDecoration interval={12000}>
+              <CustomButton
+                text={"Zap Now"}
+                isLoading={isCreatingOrder}
+                fontSize={14}
+                width="100%"
+                height={56}
+                borderRadius={56}
+                bgColor={theme.colors.primaryColor}
+                onPress={handleContinue}
+                disabled={
+                  isLoading ||
+                  isCreatingOrder ||
+                  !baseCurrency ||
+                  !targetCurrency ||
+                  baseAmount <= 0 ||
+                  ((targetCurrency?.currencyId as Partial<ICurrency>)?.isCrypto &&
+                    (!cryptoAddress.trim() || !!addressError))
+                }
+              />
+            </ButtonLightDecoration>
           </Box>
         </Box>
       </ScrollView>

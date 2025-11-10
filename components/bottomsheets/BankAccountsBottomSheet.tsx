@@ -6,7 +6,7 @@ import BottomSheet, {
   SCREEN_HEIGHT,
 } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { Bank, SupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
+import { Bank, ISupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import { ArrowDown2 } from "iconsax-react-nativejs";
 import { AlertCircle, Check, Search, X } from "lucide-react-native";
 import React, {
@@ -27,6 +27,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+import { SvgUri } from "react-native-svg";
 import EmptyState from "../dashboard/market/EmptyState";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
@@ -37,19 +38,20 @@ import BankAccountsList from "./BankAccountsList";
 interface BankAccountsBottomSheetProps {
   onBankAccountSelect?: (bankAccount: UserBankAccount | null) => void;
   onClose?: () => void;
-  onContinue?: () => void;
-  targetCurrency: SupportedCurrency | null;
+  onContinue?: (bankAccount: UserBankAccount | null) => void;
+  targetCurrency: ISupportedCurrency | null;
+  initialView?: "list" | "add"; // Control initial view: list or add account form
 }
 
 const BankAccountsBottomSheet = forwardRef<
   BottomSheet,
   BankAccountsBottomSheetProps
->(({ onBankAccountSelect, onClose, onContinue, targetCurrency }, ref) => {
+>(({ onBankAccountSelect, onClose, onContinue, targetCurrency, initialView = "list" }, ref) => {
   const theme = useTheme<Theme>();
   const [selectedAccount, setSelectedAccount] =
     useState<UserBankAccount | null>(null);
   const [accountsSearchQuery, setAccountsSearchQuery] = useState("");
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [showAddAccountModal, setShowAddAccountModal] = useState(initialView === "add");
   const [accountNumber, setAccountNumber] = useState("");
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [showBankSelector, setShowBankSelector] = useState(false);
@@ -57,6 +59,15 @@ const BankAccountsBottomSheet = forwardRef<
 
   // Animation for account name input glow
   const glowAnimation = useRef(new Animated.Value(0)).current;
+
+  // Update showAddAccountModal when initialView prop changes
+  useEffect(() => {
+    if (initialView === "add") {
+      setShowAddAccountModal(true);
+    } else {
+      setShowAddAccountModal(false);
+    }
+  }, [initialView]);
 
   const {
     bankAccounts,
@@ -225,15 +236,33 @@ const BankAccountsBottomSheet = forwardRef<
       >
         <Box flexDirection="row" alignItems="center">
           {item.icon ? (
-            <Image
-              source={{ uri: item.icon }}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                marginRight: 16,
-              }}
-            />
+            (() => {
+              const isSvg = item.icon.toLowerCase().endsWith(".svg");
+              if (isSvg) {
+                return (
+                  <Box
+                    width={40}
+                    height={40}
+                    borderRadius={20}
+                    marginRight="m"
+                    overflow="hidden"
+                  >
+                    <SvgUri uri={item.icon} width={40} height={40} />
+                  </Box>
+                );
+              }
+              return (
+                <Image
+                  source={{ uri: item.icon }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    marginRight: 16,
+                  }}
+                />
+              );
+            })()
           ) : (
             <Box
               width={40}
@@ -678,7 +707,11 @@ const BankAccountsBottomSheet = forwardRef<
               text="Continue"
               width="100%"
               borderRadius={30}
-              onPress={() => onContinue?.()}
+              onPress={() => {
+                if (selectedAccount) {
+                  onContinue?.(selectedAccount);
+                }
+              }}
               disabled={!selectedAccount}
               bgColor={theme.colors.primaryColor}
             />

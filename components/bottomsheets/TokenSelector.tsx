@@ -3,6 +3,7 @@ import ZapLogo from "@/assets/svg/wallet-icons-components/ZapLogo";
 import TokenCardSkeleton from "@/components/dashboard/TokenCardSkeleton";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
+import SmartImage from "@/components/general/SmartImage";
 import ImportTokenModal from "@/components/Modals/ImportTokenModal";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
@@ -13,16 +14,17 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { selectStage, setStage } from "@/state/reducers/recievePage.reducer";
 import { selectAllSupportedTokens } from "@/state/selectors/portfolio.selectors";
-import theme, { Theme } from "@/theme";
-import BottomSheet from "@gorhom/bottom-sheet";
+import { Theme } from "@/theme";
+import { shortenChainName } from "@/utils/chainFiltering";
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, TextInput } from "react-native";
-import { SvgUri } from "react-native-svg";
 import { useDispatch, useSelector } from "react-redux";
+import ChainLogo from "../general/ChainLogo";
 import ReceiveQRCode from "./recieve/ReceiveQRCode";
 import SelectChainBottomSheet from "./SelectChainBottomSheet";
 
@@ -39,16 +41,13 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
       alignItems="center"
     >
       {image ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={30}
           height={30}
+          borderRadius={20}
           onError={() => {
             console.log("Failed to load token image:", image);
-          }}
-          style={{
-            borderRadius: 20,
-            backgroundColor: theme.colors.secondaryBackgroundColor,
           }}
         />
       ) : (
@@ -61,7 +60,7 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
 CryptoIcon.displayName = "CryptoIcon";
 
 interface TokenSelectorProps {
-  mode: "send" | "receive" | "swap";
+  mode: "send" | "receive" | "swap" | "sell" | "buy";
   onTokenSelect: (token: ProcessedAsset | any) => void;
 }
 
@@ -78,16 +77,17 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   const { isPortfolioLoading } = useSelector(
     (state: AppRootState) => state.portfolio
   );
-  const { walletChains } = useChains();
+  const { walletChains, getChainImage } = useChains();
 
   // Supported currencies for swap mode
   const {
-    supportedCurrencies,
+    supportedCurrenciesForSwap,
     isLoading: isSupportedCurrenciesLoading,
-    searchSupportedCurrencies,
+    searchSupportedCurrenciesForSwap,
   } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
-  const chainBottomSheetRef = useRef<BottomSheet>(null);
+  const chainBottomSheetRef = useRef<BottomSheetMethods>(null);
+  const [showChainSelector, setShowChainSelector] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(
     null
@@ -107,8 +107,8 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       .map((chain) => ({
         symbol: chain.symbol,
         name: chain.name,
-        image: chain.nativeCurrencyId.logo,
-        chainImage: chain.nativeCurrencyId.logo,
+        image: getChainImage(chain._id || ""),
+        chainImage: getChainImage(chain._id || ""),
         chainSymbol: chain.symbol,
         chainName: chain.name,
       }));
@@ -123,14 +123,44 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     // Use different data source based on mode
     if (mode === "swap") {
       filtered =
-        supportedCurrencies
-          .sort((a, b) =>
-            (a.currencyId as Partial<ICurrency>)?.isCrypto ? 1 : -1
-          )
+        supportedCurrenciesForSwap
           .filter(
             (token) => (token.currencyId as Partial<ICurrency>)?.symbol
-          ) || [];
+          )
+          .sort((a, b) => {
+            // Sort by balance (highest first), then by crypto status
+            const aBalance = (a as any).balance || 0;
+            const bBalance = (b as any).balance || 0;
+            if (bBalance !== aBalance) {
+              return bBalance - aBalance; // Higher balance first
+            }
+            // If balances are equal, prioritize crypto
+            const aIsCrypto = (a.currencyId as Partial<ICurrency>)?.isCrypto;
+            const bIsCrypto = (b.currencyId as Partial<ICurrency>)?.isCrypto;
+            return aIsCrypto ? 1 : -1;
+          }) || [];
+    } else if (mode === "buy" || mode === "sell") {
+      // For buy and sell modes, use supported currencies for swap but filter for crypto tokens only
+      filtered =
+        supportedCurrenciesForSwap
+          .filter((token) => {
+            const currency = token.currencyId as Partial<ICurrency>;
+            return currency?.isCrypto && currency?.symbol;
+          })
+          .sort((a, b) => {
+            // Sort by balance (highest first), then alphabetically by symbol
+            const aBalance = (a as any).balance || 0;
+            const bBalance = (b as any).balance || 0;
+            if (bBalance !== aBalance) {
+              return bBalance - aBalance; // Higher balance first
+            }
+            // If balances are equal, sort alphabetically
+            const aSymbol = (a.currencyId as Partial<ICurrency>)?.symbol || "";
+            const bSymbol = (b.currencyId as Partial<ICurrency>)?.symbol || "";
+            return aSymbol.localeCompare(bSymbol);
+          }) || [];
     } else {
+      // For send and receive modes, use processed portfolio data (already sorted by USD value)
       filtered = allTokens || [];
     }
 
@@ -143,7 +173,29 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       if (mode === "swap") {
-        filtered = searchSupportedCurrencies(query);
+        const searchResults = searchSupportedCurrenciesForSwap(query);
+        // Re-sort search results by balance
+        filtered = searchResults.sort((a, b) => {
+          const aBalance = (a as any).balance || 0;
+          const bBalance = (b as any).balance || 0;
+          if (bBalance !== aBalance) {
+            return bBalance - aBalance;
+          }
+          const aIsCrypto = (a.currencyId as Partial<ICurrency>)?.isCrypto;
+          const bIsCrypto = (b.currencyId as Partial<ICurrency>)?.isCrypto;
+          return aIsCrypto ? 1 : -1;
+        });
+      } else if (mode === "buy" || mode === "sell") {
+        // For buy/sell, filter from supported currencies
+        filtered = filtered.filter((token: any) => {
+          const currency = token.currencyId as Partial<ICurrency>;
+          const symbol = currency?.symbol || "";
+          const name = currency?.name || "";
+          return (
+            symbol.toLowerCase().includes(query) ||
+            name.toLowerCase().includes(query)
+          );
+        });
       } else {
         filtered = filtered.filter((token: any) => {
           const symbol = token.symbol;
@@ -156,7 +208,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     // Filter by chain
     if (selectedChain && selectedChain !== "ALL") {
       filtered = filtered.filter((token: any) => {
-        if (mode === "swap") {
+        if (mode === "swap" || mode === "buy" || mode === "sell") {
           return token.chainId?.symbol === selectedChain;
         } else {
           return token.chainSymbol === selectedChain;
@@ -164,8 +216,24 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       });
     }
 
+    // Re-sort after filtering to maintain balance-based sorting for buy/sell/swap modes
+    if (mode === "swap" || mode === "buy" || mode === "sell") {
+      filtered = filtered.sort((a, b) => {
+        // Sort by balance (highest first)
+        const aBalance = (a as any).balance || 0;
+        const bBalance = (b as any).balance || 0;
+        if (bBalance !== aBalance) {
+          return bBalance - aBalance; // Higher balance first
+        }
+        // If balances are equal, sort alphabetically by symbol
+        const aSymbol = (a.currencyId as Partial<ICurrency>)?.symbol || "";
+        const bSymbol = (b.currencyId as Partial<ICurrency>)?.symbol || "";
+        return aSymbol.localeCompare(bSymbol);
+      });
+    }
+
     return filtered;
-  }, [mode, allTokens, supportedCurrencies, searchQuery, selectedChain]);
+  }, [mode, allTokens, supportedCurrenciesForSwap, searchQuery, selectedChain]);
 
   const handleTokenPress = (token: ProcessedAsset) => {
     if (mode === "receive") {
@@ -195,7 +263,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       console.log("✅ Token imported successfully");
 
       // Refresh the portfolio to show the new token
-      await refreshPortfolio();
+      await refreshPortfolio(mainUserWalletGroup?._id);
 
       // Close the modal
       setShowImportModal(false);
@@ -215,6 +283,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       ? "Send Tokens"
       : mode === "receive"
       ? "Receive Tokens"
+      : mode === "sell"
+      ? "Sell Tokens"
+      : mode === "buy"
+      ? "Buy Tokens"
       : "Select Currency";
 
   // For receive mode, show QR code when stage is "qrcode"
@@ -223,7 +295,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   }
 
   return (
-    <Box flex={1}>
+    <Box flex={1} backgroundColor="mainBackgroundColor">
       {/* Header */}
       <Box
         flexDirection="row"
@@ -234,7 +306,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         <CustomText variant="header" fontSize={20} color="headerTextColor">
           {title}
         </CustomText>
-        {mode !== "swap" && (
+        {(mode === "send" || mode === "receive") && (
           <Pressable onPress={() => setShowImportModal(true)}>
             <CustomText color="secondaryColor" fontSize={14}>
               Import Token
@@ -285,7 +357,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
 
           {/* Stacked chain icons on the right */}
           <Pressable
-            onPress={() => chainBottomSheetRef.current?.snapToIndex(0)}
+            onPress={() => {
+              setShowChainSelector(true);
+            }}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
           >
             <Box flexDirection="row" alignItems="center">
@@ -308,16 +382,12 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                     overflow="hidden"
                   >
                     {chain.chainImage ? (
-                      <SvgUri
-                        uri={chain.chainImage}
+                      <ChainLogo
+                        symbol={chain.symbol}
+                        name={chain.name}
+                        logoUrl={chain.chainImage}
                         width={28}
                         height={28}
-                        onError={() => {
-                          console.log(
-                            "Failed to load chain image:",
-                            chain.chainSymbol
-                          );
-                        }}
                       />
                     ) : (
                       <CustomText
@@ -354,7 +424,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
       </Box>
 
       {/* Tokens List */}
-      <Box flex={1}>
+      <Box flex={1} style={{ minHeight: 0 }}>
         <CustomText
           variant="body"
           fontSize={14}
@@ -375,9 +445,14 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
             paddingBottom: 100, // Add bottom padding to account for tab bar
           }}
           showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
         >
           {(
-            mode === "swap" ? isSupportedCurrenciesLoading : isPortfolioLoading
+            mode === "swap" || mode === "buy" || mode === "sell"
+              ? isSupportedCurrenciesLoading
+              : isPortfolioLoading
           ) ? (
             <Box>
               {/* Skeleton loaders for token cards */}
@@ -398,20 +473,37 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           ) : (
             (filteredTokens || []).map((token: any, index: number) => {
               const isSwap = mode === "swap";
-              const isCrypto = isSwap ? token.currencyId?.isCrypto : true;
-              const alpha3 = isSwap ? token.currencyId?.code : null;
-              const tokenSymbol = isSwap
+              const isBuyOrSell = mode === "buy" || mode === "sell";
+              const isSupportedCurrencyMode = isSwap || isBuyOrSell;
+              const isCrypto = isSupportedCurrencyMode
+                ? token.currencyId?.isCrypto
+                : true;
+              const alpha3 = isSupportedCurrencyMode
+                ? token.currencyId?.code
+                : null;
+              const tokenSymbol = isSupportedCurrencyMode
                 ? isCrypto
                   ? token.currencyId?.symbol
                   : alpha3
                 : token.symbol;
               const tokenName = token.currencyId?.name || token.name;
-              const tokenImage = isSwap
+              const tokenImage = isSupportedCurrencyMode
                 ? token.image || token.currencyId?.logo
                 : token.image;
-              const chainName = isSwap ? token.chainId?.name : token.chainName;
-              const balance = isSwap ? 0 : token.balance || 0;
-              const usdValue = isSwap ? 0 : token.totalUsdValue || 0;
+              const rawChainName = isSupportedCurrencyMode
+                ? token.chainId?.name
+                : token.chainName;
+              const chainName = rawChainName
+                ? shortenChainName(rawChainName)
+                : rawChainName;
+              // For buy/sell/swap modes, use balance from enriched supportedCurrenciesForSwap
+              // For send/receive modes, use balance from processed portfolio
+              const balance = isSupportedCurrencyMode 
+                ? (token as any).balance || 0 
+                : token.balance || 0;
+              const usdValue = isSupportedCurrencyMode
+                ? (token as any).totalUsdValue || 0
+                : token.totalUsdValue || 0;
 
               return (
                 <Pressable
@@ -470,14 +562,46 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                   </Box>
 
                   <Box alignItems="flex-end">
+                    {isSupportedCurrencyMode ? (
+                      // For buy/sell/swap modes, show balance if available
+                      balance > 0 ? (
+                        <>
+                          <CustomText
+                            variant="body"
+                            fontSize={14}
+                            color="headerTextColor"
+                          >
+                            {formatNumber(balance, 6)} {tokenSymbol}
+                          </CustomText>
+                          {usdValue > 0 && (
+                            <CustomText
+                              variant="body"
+                              fontSize={12}
+                              color="disabledTextColor"
+                              mt="s"
+                            >
+                              {formatCurrency(usdValue, "USD")}
+                            </CustomText>
+                          )}
+                        </>
+                      ) : (
+                        <CustomText
+                          variant="body"
+                          fontSize={14}
+                          color="placeholderTextColor"
+                        >
+                          {mode === "swap" ? "Available" : "0"}
+                        </CustomText>
+                      )
+                    ) : (
+                      // For send/receive modes, always show balance
+                      <>
                     <CustomText
                       variant="body"
                       fontSize={14}
                       color="headerTextColor"
                     >
-                      {mode === "swap"
-                        ? "Available"
-                        : `${formatNumber(balance, 4)} ${tokenSymbol}`}
+                          {formatNumber(balance, 4)} {tokenSymbol}
                     </CustomText>
                     <CustomText
                       variant="body"
@@ -485,8 +609,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
                       color="disabledTextColor"
                       mt="s"
                     >
-                      {mode === "swap" ? "Exchange" : formatCurrency(usdValue)}
+                          {formatCurrency(usdValue, "USD")}
                     </CustomText>
+                      </>
+                    )}
                   </Box>
 
                   <Box marginLeft="s">
@@ -499,15 +625,6 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         </ScrollView>
       </Box>
 
-      {/* Chain Selection Bottom Sheet */}
-      <SelectChainBottomSheet
-        ref={chainBottomSheetRef}
-        onChainSelect={(chainSymbol) => {
-          setSelectedChain(chainSymbol);
-          chainBottomSheetRef.current?.close();
-        }}
-      />
-
       {/* Import Token Modal - Self-contained */}
       <ImportTokenModal
         visible={showImportModal}
@@ -516,6 +633,25 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         allChains={walletChains}
         mainUserWalletGroup={mainUserWalletGroup}
       />
+
+      {/* Chain Selection Bottom Sheet - Only render when needed */}
+      {showChainSelector && (
+        <SelectChainBottomSheet
+          ref={chainBottomSheetRef}
+          onChainSelect={(chainSymbol) => {
+            setSelectedChain(chainSymbol);
+            chainBottomSheetRef.current?.close();
+            // Close after a short delay to allow animation
+            setTimeout(() => {
+              setShowChainSelector(false);
+            }, 300);
+          }}
+          onClose={() => {
+            // Handle close when user swipes down or taps backdrop
+            setShowChainSelector(false);
+          }}
+        />
+      )}
     </Box>
   );
 };

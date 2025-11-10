@@ -7,16 +7,20 @@ import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
 import RemoveWalletModal from "@/components/Modals/RemoveWalletModal";
-import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
+import {
+  EnhancedWalletGroup,
+  useAggregatedBalances,
+} from "@/hooks/useAggregatedBalances";
+import { PortfolioService } from "@/services/portfolio.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
+import { IUserWalletGroup, IWallet } from "@/types/main";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Modal, Pressable, ScrollView } from "react-native";
+import { Alert, GestureResponderEvent, Modal, Pressable, ScrollView } from "react-native";
 import { CustomButton } from "../general";
 import SuccessModal from "../Modals/SuccessModal";
-
 interface WalletSelectorBottomSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -29,6 +33,13 @@ interface WalletSelectorBottomSheetProps {
   handleCancelDelete?: () => void;
   handleConfirmDelete?: () => void;
   walletToDelete?: any;
+}
+
+interface ProcessedWalletGroup {
+  id: string;
+  name: string;
+  totalValue: string;
+  wallets: IWallet[];
 }
 
 const WalletSelectorBottomSheet = ({
@@ -45,9 +56,12 @@ const WalletSelectorBottomSheet = ({
 }: WalletSelectorBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
-  const { userWalletGroups, portfolio, removeWalletGroup } = useWallet();
-  const { getEnhancedWalletGroups, getTotalPortfolioValue, isLoading: isBalancesLoading } =
-    useAggregatedBalances();
+  const { userWalletGroups, removeWalletGroup } = useWallet();
+  const {
+    getEnhancedWalletGroups,
+    getTotalPortfolioValue,
+    isLoading: isBalancesLoading,
+  } = useAggregatedBalances();
   const [activeTab, setActiveTab] = useState<"wallets" | "watchlist">(
     "wallets"
   );
@@ -59,69 +73,85 @@ const WalletSelectorBottomSheet = ({
 
   // Get total portfolio value from aggregated balances (all wallet groups)
   const totalPortfolioValue = getTotalPortfolioValue();
-  const portfolioValue = `$${totalPortfolioValue.toFixed(2)}`;
+  const portfolioValue = PortfolioService.formatCurrency(totalPortfolioValue);
 
   // Use cached aggregated balances instead of manual calculation
+  // Fallback to userWalletGroups if enhancedWalletGroups is empty (e.g., during wallet switching)
+  // Always ensure we have wallet groups to display, even during transitions
   const enhancedWalletGroups = getEnhancedWalletGroups();
 
+  // Prioritize enhancedWalletGroups (with balances), but always fallback to userWalletGroups
+  const walletGroupsToUse: EnhancedWalletGroup[] | IUserWalletGroup[] =
+    enhancedWalletGroups.length > 0
+      ? enhancedWalletGroups
+      : userWalletGroups && userWalletGroups.length > 0
+      ? userWalletGroups
+      : [];
+
   // Process wallet groups with aggregated balances
-  const processedWalletGroups = enhancedWalletGroups.reduce(
-    (groupsMap: Map<string, any>, userWalletGroup: any) => {
-      const walletGroupId = userWalletGroup.walletGroupId?._id;
-      const walletGroupName =
-        userWalletGroup.walletGroupId?.name ||
-        `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
+  const processedWalletGroups: Map<string, ProcessedWalletGroup> =
+    walletGroupsToUse.reduce(
+      (
+        groupsMap: Map<string, ProcessedWalletGroup>,
+        userWalletGroup: EnhancedWalletGroup | IUserWalletGroup
+      ) => {
+        const walletGroupId: string = userWalletGroup.walletGroupId?._id;
+        const walletGroupName: string =
+          userWalletGroup.walletGroupId?.name ||
+          `Wallet Group ${walletGroupId?.slice(-4) || "Unknown"}`;
 
-      const walletInfo = userWalletGroup.walletId;
-      const walletName =
-        userWalletGroup?.name ||
-        walletInfo?.name ||
-        `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
+        const walletInfo = userWalletGroup.walletId;
+        const walletName: string =
+          userWalletGroup?.name ||
+          walletInfo?.name ||
+          `Wallet ${userWalletGroup?._id?.slice(-4) || "Unknown"}`;
 
-      // Use aggregated balance instead of manual calculation
-      const totalValue = userWalletGroup.aggregatedBalance || 0;
-      const formattedValue = `$${totalValue.toFixed(2)}`;
+        // Use aggregated balance if available (from enhancedWalletGroups), otherwise 0
+        // This handles the case when using raw userWalletGroups during wallet switching
+        const totalValue =
+          (userWalletGroup as EnhancedWalletGroup).aggregatedBalance ?? 0;
 
-      // If this wallet group doesn't exist in our map, create it
-      if (!groupsMap.has(walletGroupId)) {
-        groupsMap.set(walletGroupId, {
-          id: walletGroupId,
-          name: walletGroupName,
-          totalValue: "$0.00", // Will be calculated from all wallets
-          wallets: [],
-        });
-      }
+        // If this wallet group doesn't exist in our map, create it
+        if (!groupsMap.has(walletGroupId)) {
+          groupsMap.set(walletGroupId, {
+            id: walletGroupId,
+            name: walletGroupName,
+            totalValue: PortfolioService.formatCurrency(totalValue),
+            wallets: [],
+          });
+        }
 
-      // Add this wallet to the group
-      const group = groupsMap.get(walletGroupId);
-      group.wallets.push({
-        id: walletInfo?._id || userWalletGroup._id,
-        name: walletName,
-        address: walletInfo?.hashedSeedPhraseOrPrivateKey || "No address",
-        balance: formattedValue,
-        groupId: walletGroupId,
-        userWalletGroupId: userWalletGroup._id,
-      });
+        // Add this wallet to the group
+        const group = groupsMap.get(walletGroupId);
+        if (group) {
+          group.wallets.push({
+            id: walletInfo?._id || userWalletGroup._id,
+            name: walletName,
+            balance: PortfolioService.formatCurrency(totalValue),
+            groupId: walletGroupId,
+            userWalletGroupId: userWalletGroup._id,
+          });
+        }
 
-      return groupsMap;
-    },
-    new Map()
-  );
+        return groupsMap;
+      },
+      new Map()
+    );
 
   // Convert map to array and calculate total values using aggregated balances
   const finalProcessedWalletGroups = Array.from(
     processedWalletGroups.values()
   ).map((group) => {
-    const groupData = group as any;
+    const groupData = group;
     // Calculate total value for the group using aggregated balances
-    const totalValue = (groupData.wallets as any[]).reduce((sum: number, wallet: any) => {
+    const totalValue = groupData.wallets.reduce((sum: number, wallet) => {
       const value = parseFloat(wallet.balance.replace("$", "")) || 0;
       return sum + value;
     }, 0);
 
     return {
       ...groupData,
-      totalValue: `$${totalValue.toFixed(2)}`,
+      totalValue: PortfolioService.formatCurrency(totalValue),
     };
   });
 
@@ -129,7 +159,7 @@ const WalletSelectorBottomSheet = ({
     (group) => group.wallets
   );
 
-  const handleWalletSelect = (wallet: any) => {
+  const handleWalletSelect = (wallet: IWallet) => {
     // Find the user wallet group for this wallet
     const userWalletGroup = (userWalletGroups || []).find(
       (uwg) => uwg._id === wallet.userWalletGroupId
@@ -152,10 +182,9 @@ const WalletSelectorBottomSheet = ({
     onAddWalletPress?.();
   };
 
-  const handleDeleteWallet = (wallet: any, event: any) => {
-    console.log("🗑️ Delete wallet clicked:", wallet);
-    event.stopPropagation(); // Prevent the parent Pressable from firing
-    setLocalShowDeleteModal(true); // Show the local delete modal
+  const handleDeleteWallet = (wallet: IWallet, event: GestureResponderEvent) => {
+    event.stopPropagation();
+    setLocalShowDeleteModal(true);
     onDeleteWallet?.(wallet);
   };
 
@@ -232,7 +261,7 @@ const WalletSelectorBottomSheet = ({
             <CustomText
               variant="body"
               fontSize={14}
-              color="disabledTextColor"
+              color="placeholderTextColor"
               marginBottom="s"
               textAlign="center"
             >
@@ -240,7 +269,7 @@ const WalletSelectorBottomSheet = ({
             </CustomText>
             <CustomText
               variant="header"
-              fontSize={32}
+              fontSize={28}
               color="headerTextColor"
               fontWeight="bold"
               textAlign="center"
@@ -410,7 +439,9 @@ const WalletSelectorBottomSheet = ({
                               fontSize={14}
                               color="disabledTextColor"
                             >
-                              {wallet.balance}
+                              {PortfolioService.formatCurrency(
+                                parseFloat(wallet.balance.replace("$", ""))
+                              )}
                             </CustomText>
                           </Box>
                           {isManageMode ? (
@@ -542,7 +573,12 @@ const WalletSelectorBottomSheet = ({
           <CustomButton
             bgColor={theme.colors.primaryColor}
             text="Add New Wallet"
-            leadingIcon={<ThemedAddIcon />}
+            leadingIcon={
+              <ThemedAddIcon
+                darkModeColor={theme.colors.white}
+                lightModeColor={theme.colors.black}
+              />
+            }
             onPress={handleAddWalletPress}
             width="100%"
             borderRadius={50}

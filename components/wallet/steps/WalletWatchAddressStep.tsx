@@ -10,6 +10,7 @@ import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { WalletFlowData } from "@/src/hooks/useWalletFlow";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ICurrency } from "@zap/blockchain-sdk";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Clipboard from "expo-clipboard";
 import { ChevronDown, ChevronLeft, Copy, QrCode } from "lucide-react-native";
@@ -231,7 +232,7 @@ export const WalletWatchAddressStep: React.FC<WalletWatchAddressStepProps> = ({
                     <ChainLogo
                       symbol={selectedChain}
                       name={getChainLabel(selectedChain)}
-                      logoUrl={chain?.nativeCurrencyId?.logo}
+                      logoUrl={(chain?.nativeCurrencyId as ICurrency)?.logo}
                       width={32}
                       height={32}
                       style={{ marginRight: theme.spacing.m }}

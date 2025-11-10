@@ -1,6 +1,7 @@
 import Icons from "@/assets/icons";
 import { TouchableIcon } from "@/components";
 import { Box, CustomButton, CustomText } from "@/components/general";
+import SmartImage from "@/components/general/SmartImage";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
 import { useChains } from "@/src/core/chains/chains-context";
@@ -8,6 +9,8 @@ import {
   formatNumber,
   formatWalletAddress,
 } from "@/src/core/utils/format-utils";
+import { AppRootState } from "@/state";
+import { selectAssetBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -16,14 +19,18 @@ import BottomSheet, {
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { useSelector } from "react-redux";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
 import OverviewDetails from "./OverviewDetails";
 
@@ -59,32 +66,121 @@ const OrderDetailsSheet = forwardRef<
   const theme = useTheme<Theme>();
   const [activeTab, setActiveTab] = useState<"summary" | "details">("summary");
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const { getChainBySymbol } = useChains();
+  const { getChainBySymbol, getChainImage } = useChains();
+
+  // Get order details early for hooks
+  const isSellCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
+  const isBuyCrypto = orderDetails?.buyCurrency?.currencyId?.isCrypto;
+  const buySymbol = orderDetails?.buyCurrency?.currencyId?.symbol;
+  const sellSymbol = orderDetails?.sellCurrency?.currencyId?.symbol;
+  const buyChain = orderDetails ? getChainBySymbol(orderDetails?.buyCurrency?.chainId?.symbol) : null;
+  const sellChain = orderDetails ? getChainBySymbol(orderDetails?.sellCurrency?.chainId?.symbol) : null;
+
+  // Check if deposit is crypto (for buy orders, deposit is crypto; for sell orders, deposit is also crypto)
+  const isDepositCrypto = isBuyCrypto || isSellCrypto;
+  const depositAddress = orderDetails?.depositAccount?.walletAddress;
+
+  // Determine which currency to use for send (buy currency for buy orders, sell currency for sell orders)
+  const sendCurrency = isBuyCrypto ? orderDetails?.buyCurrency : orderDetails?.sellCurrency;
+  const sendChain = isBuyCrypto ? buyChain : sellChain;
+  const sendCurrencySupportedId = sendCurrency?._id || (sendCurrency as any)?.supportedCurrencyId?._id || (sendCurrency as any)?.supportedCurrencyId;
+  
+  // Get wallet balance for the currency (must be before early return)
+  const walletToken = useSelector((state: AppRootState) => 
+    sendCurrencySupportedId ? selectAssetBySupportedCurrencyId(state, sendCurrencySupportedId) : null
+  );
+  const hasBalance = walletToken && walletToken.balance > 0;
+
+  // Verify currency and chain match (must be before early return)
+  const currencyMatches = useMemo(() => {
+    if (!walletToken || !sendCurrency || !orderDetails) return false;
+    
+    // Check if supported currency IDs match
+    const walletSupportedId = typeof walletToken.supportedCurrencyId === 'string' 
+      ? walletToken.supportedCurrencyId 
+      : (walletToken.supportedCurrencyId as any)?._id;
+    const orderSupportedId = sendCurrencySupportedId;
+    
+    if (walletSupportedId !== orderSupportedId) return false;
+    
+    // Check if chains match
+    const walletChainId = walletToken.chainId;
+    const orderChainId = sendChain?._id;
+    
+    return walletChainId === orderChainId;
+  }, [walletToken, sendCurrency, sendChain, sendCurrencySupportedId, orderDetails]);
 
   useImperativeHandle(ref, () => ({
-    open: () => bottomSheetRef.current?.snapToIndex(0),
-    close: () => bottomSheetRef.current?.close(),
+    open: () => {
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.snapToIndex(0);
+      }
+    },
+    close: () => {
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.close();
+      }
+    },
   }));
 
-  // Removed auto-close effect - let user manually close the sheet
+  // Auto-open when orderDetails is set
+  // Note: This is a backup - the parent component should handle opening
+  useEffect(() => {
+    if (orderDetails && bottomSheetRef.current) {
+      console.log("📋 OrderDetailsSheet: orderDetails set, will auto-open:", orderDetails._id);
+      // Don't auto-open here - let the parent component handle it
+      // This prevents conflicts with manual opening
+      // The parent will call open() after the main sheet is closed
+    }
+  }, [orderDetails]);
 
-  if (!orderDetails) return null;
+  // Always render the BottomSheet so the ref is available, but show empty content when no orderDetails
+  if (!orderDetails) {
+    return (
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={["90%"]}
+        enablePanDownToClose
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
+          />
+        )}
+      >
+        <BottomSheetView style={{ flex: 1 }}>
+          <View />
+        </BottomSheetView>
+      </BottomSheet>
+    );
+  }
 
   const copyToClipboard = async (text: string) => {
     await Clipboard.setStringAsync(text);
     Alert.alert("Copied", "Address copied to clipboard");
   };
 
-  const isSellCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
-  const isBuyCrypto = orderDetails?.buyCurrency?.currencyId?.isCrypto;
-  const sellCode = orderDetails?.sellCurrency?.currencyId?.code;
-  const sellSymbol = orderDetails?.sellCurrency?.currencyId?.symbol;
-  const buyCode = orderDetails?.buyCurrency?.currencyId?.code;
-  const buySymbol = orderDetails?.buyCurrency?.currencyId?.symbol;
-  const buyChain = getChainBySymbol(orderDetails?.buyCurrency?.chainId?.symbol);
-  const sellChain = getChainBySymbol(
-    orderDetails?.sellCurrency?.chainId?.symbol
-  );
+  // Handle send from wallet navigation
+  const handleSendFromWallet = () => {
+    if (!depositAddress || !sendChain || !currencyMatches) {
+      Alert.alert(
+        "Cannot Send",
+        "Currency or chain mismatch. Please ensure you're sending the correct currency on the correct chain."
+      );
+      return;
+    }
+    
+    // Find the token ID from the currency
+    const tokenId = sendCurrencySupportedId || sendCurrency?._id || (sendCurrency as any)?.currencyId?._id;
+    
+    if (tokenId) {
+      router.push(`/dashboard/home/send-token?tokenId=${encodeURIComponent(tokenId)}&address=${encodeURIComponent(depositAddress)}`);
+    } else {
+      Alert.alert("Error", "Unable to determine token ID for sending");
+    }
+  };
 
   return (
     <BottomSheet
@@ -98,9 +194,17 @@ const OrderDetailsSheet = forwardRef<
           disappearsOnIndex={-1}
           appearsOnIndex={0}
           opacity={0.5}
+          enableTouchThrough={false}
         />
       )}
       onClose={onClose}
+      onChange={(index) => {
+        // Log when sheet state changes
+        console.log("📊 OrderDetailsSheet onChange:", index);
+        if (index === -1 && orderDetails) {
+          console.log("⚠️ OrderDetailsSheet closed unexpectedly");
+        }
+      }}
       backgroundStyle={{
         backgroundColor: theme.colors.mainBackgroundColor,
         borderTopLeftRadius: 20,
@@ -293,14 +397,19 @@ const OrderDetailsSheet = forwardRef<
                     {isBuyCrypto ? "Chain:" : "Bank:"}
                   </CustomText>
                   <Box flexDirection="row">
-                    <Image
-                      source={
-                        isBuyCrypto
-                          ? buyChain?.nativeCurrencyId?.logo || ""
-                          : orderDetails?.depositAccount?.bankId?.icon || ""
-                      }
-                      style={{ width: 20, height: 20, marginRight: 10 }}
-                    />
+                    {isBuyCrypto ? (
+                      <Image
+                        source={getChainImage(buyChain?._id || "")}
+                        style={{ width: 20, height: 20, marginRight: 10 }}
+                      />
+                    ) : (
+                      <SmartImage
+                        source={orderDetails?.depositAccount?.bankId?.icon || ""}
+                        width={20}
+                        height={20}
+                        style={{ marginRight: 10 }}
+                      />
+                    )}
                     <CustomText>
                       {isBuyCrypto
                         ? buyChain?.name
@@ -364,6 +473,42 @@ const OrderDetailsSheet = forwardRef<
                   </CustomText>
                   <CustomText>{orderDetails?._id}</CustomText>
                 </Box>
+
+                {/* Send from wallet button for crypto deposits (both buy and sell orders) */}
+                {isDepositCrypto && depositAddress && (
+                  <Box mt="m">
+                    <CustomButton
+                      text={hasBalance ? "Send from Wallet" : "Insufficient Balance"}
+                      onPress={handleSendFromWallet}
+                      width="100%"
+                      borderRadius={50}
+                      bgColor={hasBalance && currencyMatches ? "secondaryColor" : "disabledTextColor"}
+                      disabled={!hasBalance || !currencyMatches}
+                    />
+                    {!currencyMatches && (
+                      <CustomText 
+                        variant="body" 
+                        color="error" 
+                        fontSize={12} 
+                        textAlign="center" 
+                        style={{ marginTop: 8 }}
+                      >
+                        Currency or chain mismatch
+                      </CustomText>
+                    )}
+                    {!hasBalance && (
+                      <CustomText 
+                        variant="body" 
+                        color="disabledTextColor" 
+                        fontSize={12} 
+                        textAlign="center" 
+                        style={{ marginTop: 8 }}
+                      >
+                        You don&apos;t have this token in your wallet
+                      </CustomText>
+                    )}
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>

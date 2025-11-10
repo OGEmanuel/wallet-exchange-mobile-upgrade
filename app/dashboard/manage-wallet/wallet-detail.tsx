@@ -1,5 +1,6 @@
 import { ThemedEditIcon } from "@/assets/svg/wallet-icons-components";
-import { AppBar, CustomText } from "@/components/general";
+import SettingsHeader from "@/components/dashboard/SettingsHeader";
+import { CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import Identicon from "@/components/general/Identicon";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
@@ -7,7 +8,6 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft2 } from "iconsax-react-nativejs";
 import { ChevronRight } from "lucide-react-native";
 import React, { useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput } from "react-native";
@@ -56,11 +56,9 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
     return (
       <Box flex={1} backgroundColor="mainBackgroundColor">
         <Box style={{ paddingTop: insets.top }}>
-          <AppBar
+          <SettingsHeader
             title="Edit wallet"
-            leading={
-              <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-            }
+            onBackPress={() => router.back()}
           />
         </Box>
         <Box flex={1} justifyContent="center" alignItems="center">
@@ -96,7 +94,7 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
       }
 
       setIsEditingName(false);
-      await refreshPortfolio(); // Refresh to get updated data
+      await refreshPortfolio(wallet._id, true);
     } catch (error) {
       console.error("Failed to update wallet name:", error);
       Alert.alert("Error", "Failed to update wallet name");
@@ -127,12 +125,7 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
   return (
     <Box flex={1} backgroundColor="mainBackgroundColor">
       <Box style={{ paddingTop: insets.top }}>
-        <AppBar
-          title="Edit wallet"
-          leading={
-            <ArrowLeft2 size={24} color={theme.colors.headerTextColor} />
-          }
-        />
+        <SettingsHeader title="Edit wallet" onBackPress={() => router.back()} />
       </Box>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -232,7 +225,10 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
-                  <ThemedEditIcon />
+                  <ThemedEditIcon
+                    darkModeColor={theme.colors.white}
+                    lightModeColor={theme.colors.black}
+                  />
                 </Pressable>
               )}
             </Box>

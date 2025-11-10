@@ -4,65 +4,63 @@ import {
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppDispatch } from "@/state";
 
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
+import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { ExchangeUsecases } from "../../domain/usecases/exchange-usecases";
 import { exchangeActions } from "../state/exchange-slice";
 
-interface UseExchangeActivitiesParams {
+interface FetchExchangeActivitiesParams {
   user: UserModel | null;
   page: number;
   limit: number;
-  enabled?: boolean;
 }
 
 const useExchange = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const usecase = new ExchangeUsecases();
+  const { currentExchangeUser } = useWallet();
+  const [fetchingExchangeActivities, setFetchingExchangeActivities] = useState<boolean>(false);
 
-  const useExchangeActivities = ({
+  const fetchExchangeActivities = async ({
     user,
     page,
     limit,
-    enabled = true,
-  }: UseExchangeActivitiesParams): UseQueryResult<
-    GeneralResponseModel<ExchangeActivityModel[]>,
-    Error
-  > => {
-    return useQuery({
-      queryKey: ["exchangeActivities", user?._id, page, limit],
-      queryFn: async () => {
-        if (!user?._id) {
-          throw new Error("User ID is required");
-        }
+  }: FetchExchangeActivitiesParams): Promise<GeneralResponseModel<ExchangeActivityModel[]>> => {
+    setFetchingExchangeActivities(true);
+    
+    if (!user?._id) {
+      setFetchingExchangeActivities(false);
+      throw new Error("User ID is required");
+    }
 
-        const response = await usecase.fetchExchangeActivities({
-          body: user,
-          params: null,
-          extra: {
-            page,
-            limit,
-          },
-        });
-
-        // Update Redux store
-        if (page === 1) {
-          dispatch(exchangeActions.setExchangeActivities(response));
-        } else {
-          dispatch(exchangeActions.appendExchangeActivities(response));
-        }
-
-        return response;
+    const usecase = new ExchangeUsecases();
+    const response = await usecase.fetchExchangeActivities({
+      body: user,
+      params: null,
+      extra: {
+        page,
+        limit,
       },
-      enabled: enabled && !!user?._id,
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
     });
+
+    console.log("page 22222", page);
+    console.log("response 22222", response);
+
+    // Update Redux store
+    if (page === 1) {
+      dispatch(exchangeActions.setExchangeActivities(response));
+    } else {
+      dispatch(exchangeActions.appendExchangeActivities(response));
+    }
+
+    setFetchingExchangeActivities(false);
+    return response;
   };
 
   return {
-    useExchangeActivities,
+    fetchExchangeActivities,
+    fetchingExchangeActivities,
   };
 };
 

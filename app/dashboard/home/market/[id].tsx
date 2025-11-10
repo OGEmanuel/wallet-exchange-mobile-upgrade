@@ -1,24 +1,26 @@
-import images from "@/assets/images";
-import AnimatedTabContent from "@/components/dashboard/market/AnimatedTabContent";
-import AssetChartDetails from "@/components/dashboard/market/AssetChartDetails";
 import AssetHeader from "@/components/dashboard/market/AssetHeader";
-import EmptyState from "@/components/dashboard/market/EmptyState";
-// import ErrorState from "@/components/dashboard/market/ErrorState";
-// import Loader from "@/components/dashboard/market/Loader";
-import SwitchTab from "@/components/dashboard/market/SwitchTab";
-import TransactionList from "@/components/dashboard/market/TransactionList";
+import TokenGraph from "@/components/dashboard/market/TokenGraph";
 import { Box, CustomText, PageWrapper } from "@/components/general";
 import CustomButton from "@/components/general/CustomButton";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import { SIZES } from "@/data";
+import {
+  calculatePriceChange,
+  formatLargeNumber,
+  getAvailablePeriods,
+  getLatestMarketData,
+} from "@/lib/utils/market/chartHelpers";
 import { formatStats } from "@/lib/utils/market/helpers";
+import { formatPrice } from "@/lib/utils/market/priceFormatter";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { formatCurrency } from "@/src/core/utils/format-utils";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, Linking, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Dimensions, Image, Linking, Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
 
 // Initialize dimensions
@@ -40,7 +42,6 @@ const openExternalLink = async (url: string) => {
 };
 
 export default function AssetInfo() {
-  const [isAssetInfo, setIsAssetInfo] = useState(true);
   const { id, asset } = useLocalSearchParams();
   const router = useRouter();
   const { tokenDetails: fetchTokenDetails, tokenHistory: fetchTokenHistory } =
@@ -55,12 +56,23 @@ export default function AssetInfo() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [graphPeriod, setGraphPeriod] = useState<string>("24h");
+  const [graphCurrency, setGraphCurrency] = useState<"USD" | "NGN">("USD");
+  const [availableGraphPeriods, setAvailableGraphPeriods] = useState<string[]>([
+    "24h",
+    "7D",
+    "30D",
+    "90D",
+    "1Y",
+  ]);
+  const [historicalRates, setHistoricalRates] = useState<any>(null);
   const [nairaCurrency, setNairaCurrency] = useState<CurrencyModel | undefined>(
     undefined
   );
   const [usdCurrency, setUsdCurrency] = useState<CurrencyModel | undefined>(
     undefined
   );
+  const [enhancedTokenDetails, setEnhancedTokenDetails] = useState<any>(null);
 
   // Fetch currencies and token details when component mounts
   useEffect(() => {
@@ -85,11 +97,37 @@ export default function AssetInfo() {
       setIsLoading(true);
       setErrorMessage(null);
       try {
+        // First fetch basic token details via the market hook
         await fetchTokenDetails({
           body: id as string,
           params: {},
           extra: null,
         });
+        
+        // Fetch enhanced details with news and historical rates using SDK directly
+        try {
+          const sdk = zapSDKService.getSDK();
+          if (sdk && sdk.markets) {
+            const [enhancedDetails, historicalRatesResponse] = await Promise.all([
+              sdk.markets.getTokenDetails(id as string),
+              sdk.markets.getHistoricalRates(id as string),
+            ]);
+            setEnhancedTokenDetails(enhancedDetails);
+            setHistoricalRates(historicalRatesResponse);
+            
+            // Set available periods based on data
+            if (historicalRatesResponse?.data?.rates) {
+              const periods = getAvailablePeriods(historicalRatesResponse.data.rates);
+              setAvailableGraphPeriods(periods);
+            }
+            console.log("Enhanced token details with news:", enhancedDetails);
+            console.log("Historical rates:", historicalRatesResponse);
+          }
+        } catch (sdkError) {
+          console.warn("Failed to fetch enhanced token details:", sdkError);
+          // Continue with basic token details even if enhanced fetch fails
+        }
+        
         // Token details are now automatically stored in Redux state via the hook
       } catch (err: any) {
         console.error("Error fetching token details:", err);
@@ -98,8 +136,8 @@ export default function AssetInfo() {
         setIsLoading(false);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+     
+  }, [id, fetchTokenDetails]);
 
   const fetchTokenHistoryCallback = useCallback(async () => {
     try {
@@ -111,7 +149,7 @@ export default function AssetInfo() {
     } catch (err: any) {
       console.error("Error fetching token history:", err);
     }
-  }, [id]);
+  }, [id, fetchTokenHistory]);
 
   const fetchCurrenciesCallback = useCallback(async () => {
     try {
@@ -125,61 +163,20 @@ export default function AssetInfo() {
     }
   }, [fetchCurrencies]);
 
-  // Transaction history tab hooks (moved to top level)
-  type FiltersType = {
-    startDate: Date | null;
-    endDate: Date | null;
-    selectedBanks: string[];
-    selectedTokens: string[];
+  // Handle graph period change
+  const handleGraphPeriodChange = (newPeriod: string) => {
+    if (availableGraphPeriods.includes(newPeriod)) {
+      setGraphPeriod(newPeriod);
+    }
   };
 
-  const [searchText] = useState("");
+  // Handle graph currency change
+  const handleGraphCurrencyChange = (newCurrency: "USD" | "NGN") => {
+    setGraphCurrency(newCurrency);
+  };
 
-  const [filters] = useState<FiltersType>({
-    startDate: null,
-    endDate: null,
-    selectedBanks: [],
-    selectedTokens: [],
-  });
-
-  const filteredHistory = useMemo(() => {
-    let filtered: any[] = [];
-    if (filters.startDate !== null) {
-      filtered = filtered.filter(
-        (txn: any) => new Date(txn.createdAt) >= filters.startDate!
-      );
-    }
-    if (filters.endDate !== null) {
-      filtered = filtered.filter(
-        (txn: any) => new Date(txn.createdAt) <= filters.endDate!
-      );
-    }
-    if (filters.selectedBanks.length > 0) {
-      filtered = filtered.filter((txn: any) =>
-        filters.selectedBanks.includes(txn?.withdrawalAccount?.bankId?._id)
-      );
-    }
-    if (filters.selectedTokens.length > 0) {
-      filtered = filtered.filter((txn: any) =>
-        filters.selectedTokens.includes(txn?.sellCurrency?.currencyId?._id)
-      );
-    }
-    if (searchText) {
-      filtered = filtered.filter(
-        (txn: any) =>
-          txn?.withdrawalAccount?.holderName
-            ?.toLowerCase()
-            .includes(searchText.toLowerCase()) ||
-          txn?.withdrawalAccount?.walletAddress
-            ?.toLowerCase()
-            .includes(searchText.toLowerCase()) ||
-          txn?.sellCurrency?.currencyId?.symbol
-            ?.toLowerCase()
-            .includes(searchText.toLowerCase())
-      );
-    }
-    return filtered;
-  }, [filters, searchText]);
+  // Get ngnSellRate for chart
+  const ngnSellRate = nairaCurrency?.sellRate;
 
   // If no asset is selected, you may want to redirect or show a fallback UI
   if (!id) {
@@ -205,117 +202,371 @@ export default function AssetInfo() {
         animationType="fade"
       >
         <Box flex={1} paddingBottom="xl">
+          {(() => {
+            console.log("🔍 AssetHeader Debug Data:");
+            console.log("   - ID:", id);
+            console.log("   - currentTokenDetails:", currentTokenDetails);
+            console.log("   - parsedAsset:", parsedAsset);
+            console.log("   - Token Name:", currentTokenDetails?.tokenDetails?.name);
+            console.log("   - Token Symbol:", currentTokenDetails?.tokenDetails?.symbol);
+            console.log("   - ParsedAsset Symbol:", parsedAsset?.currencyId?.symbol || parsedAsset?.symbol);
+            console.log("   - Token Logo:", currentTokenDetails?.tokenDetails?.logo);
+            return null;
+          })()}
           <AssetHeader
-            asset={
-              currentTokenDetails?.tokenDetails?.name ||
-              currentTokenDetails?.tokenDetails?.symbol
-            }
+            asset={currentTokenDetails?.tokenDetails?.name}
             parsedAsset={parsedAsset}
             logo={currentTokenDetails?.tokenDetails?.logo}
-            symbol={currentTokenDetails?.tokenDetails?.symbol}
+            symbol={currentTokenDetails?.tokenDetails?.symbol || parsedAsset?.currencyId?.symbol || parsedAsset?.symbol}
             currencyId={currentTokenDetails?.tokenMetrics?.currencyId}
           />
-          <Box width="100%" paddingVertical="m">
-            <SwitchTab
-              active={isAssetInfo}
-              setActive={setIsAssetInfo}
-              firstText="Asset Info"
-              secondText="History"
-            />
-          </Box>
 
-          <AnimatedTabContent
-            containerHeight={SIZES.height * 0.9}
-            active={isAssetInfo}
-            firstContent={
               <ScrollView
-                style={{ height: SIZES.height - 250 }}
+            style={{ flex: 1 }}
                 contentContainerStyle={{ paddingBottom: 150 }}
-              >
-                <AssetChartDetails
-                  tokenDetails={currentTokenDetails}
-                  asset={parsedAsset}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Token Graph Component */}
+            {historicalRates?.data?.rates &&
+            historicalRates.data.rates.length > 0 ? (
+              <Box paddingHorizontal="m" marginTop="m">
+                <TokenGraph
+                  symbol={
+                    currentTokenDetails?.tokenDetails?.symbol ||
+                    parsedAsset?.currencyId?.symbol ||
+                    parsedAsset?.symbol ||
+                    "Unknown"
+                  }
+                  price={(() => {
+                    // Use the price from markets page data (parsedAsset?.rate) to match what's shown on the markets listing
+                    // This ensures consistency between markets listing and token details page
+                    const marketPrice = parsedAsset?.rate || 0;
+                    return formatPrice(
+                      marketPrice,
+                      graphCurrency,
+                      nairaCurrency,
+                      usdCurrency
+                    );
+                  })()}
+                  priceChangePercentage={calculatePriceChange(
+                    historicalRates.data.rates,
+                    graphPeriod
+                  )}
+                  period={graphPeriod}
+                  data={historicalRates.data.rates}
+                  currency={graphCurrency}
+                  availablePeriods={availableGraphPeriods}
+                  onPeriodChange={handleGraphPeriodChange}
+                  onCurrencyChange={handleGraphCurrencyChange}
+                  tokenLogo={
+                    currentTokenDetails?.tokenDetails?.logo ||
+                    parsedAsset?.currencyId?.logo ||
+                    parsedAsset?.logo
+                  }
+                  ngnSellRate={ngnSellRate}
                   nairaCurrency={nairaCurrency}
                   usdCurrency={usdCurrency}
-                  tokenHistory={tokenHistory}
                 />
+              </Box>
+            ) : (
+              <Box
+                backgroundColor="modalBackgroundColor"
+                borderRadius={20}
+                padding="l"
+                marginBottom="l"
+                marginHorizontal="m"
+                marginTop="m"
+                minHeight={200}
+                justifyContent="center"
+                alignItems="center"
+                style={{
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                }}
+              >
+                <CustomText
+                  color="headerTextColor"
+                  fontSize={16}
+                  fontWeight="bold"
+                  marginBottom="s"
+                >
+                  Price Chart
+                </CustomText>
+                <CustomText
+                  color="bodyTextColor"
+                  fontSize={14}
+                  textAlign="center"
+                >
+                  {isLoading
+                    ? "Loading chart data..."
+                    : "No historical data available"}
+                </CustomText>
+              </Box>
+            )}
 
-                <Box width="100%" paddingHorizontal="m" marginTop="m">
+                {/* About Section - Matching Portfolio */}
+                {currentTokenDetails?.tokenDetails && (
+                  <Box width="100%" paddingHorizontal="m" marginTop="l">
                   <Box
                     flexDirection="row"
                     justifyContent="space-between"
                     alignItems="center"
+                      marginBottom="m"
                   >
                     <CustomText
-                      variant="bodySubheader"
-                      fontSize={16}
-                      style={{ fontFamily: "NewScience_Bold" }}
-                    >
-                      Stats
+                        variant="bodyBold"
+                        fontSize={18}
+                        color="headerTextColor"
+                      >
+                        About{" "}
+                        {currentTokenDetails?.tokenDetails?.symbol ||
+                          parsedAsset?.currencyId?.symbol ||
+                          parsedAsset?.symbol ||
+                          "Token"}
                     </CustomText>
                   </Box>
+                    <CustomText
+                      color="placeholderTextColor"
+                      variant="body"
+                      fontSize={15}
+                      lineHeight={24}
+                    >
+                      {(currentTokenDetails?.tokenDetails as any)?.description ||
+                        (currentTokenDetails?.tokenMetrics as any)?.description ||
+                        (enhancedTokenDetails?.tokenDetails as any)?.description ||
+                        "No description available for this token."}
+                    </CustomText>
+                    {((currentTokenDetails?.tokenDetails as any)?.description ||
+                      (currentTokenDetails?.tokenMetrics as any)?.description ||
+                      (enhancedTokenDetails?.tokenDetails as any)?.description) && (
+                      <Pressable
+                        style={({ pressed }) => ({
+                          opacity: pressed ? 0.5 : 1,
+                          marginTop: 10,
+                        })}
+                      >
+                        <CustomText color="white" variant="body" fontSize={14}>
+                          View More
+                        </CustomText>
+                      </Pressable>
+                    )}
+                  </Box>
+                )}
 
-                  <Box
-                    width="100%"
-                    bg="secondaryBackgroundColor"
-                    borderRadius={16}
-                    marginTop="s"
-                    padding="m"
-                  >
+                {/* Stats Section - Matching Portfolio */}
+                <CustomText
+                  variant="bodyBold"
+                  fontSize={18}
+                  color="headerTextColor"
+                  marginVertical="l"
+                  paddingHorizontal="m"
+                >
+                  Stats
+                </CustomText>
+                <Box
+                  backgroundColor="modalBackgroundColor"
+                  borderRadius={20}
+                  padding="l"
+                  marginBottom="l"
+                  marginHorizontal="m"
+                  style={{
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  {/* Rank */}
+                  {(currentTokenDetails?.tokenMetrics as any)?.rank && (
                     <Box
+                      paddingVertical="m"
                       flexDirection="row"
                       justifyContent="space-between"
                       alignItems="center"
-                      marginBottom="m"
                     >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
+                        Rank
+                      </CustomText>
                       <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
                         variant="body"
-                        fontSize={12}
-                        color="disabledTextColor"
                       >
+                        #{(currentTokenDetails?.tokenMetrics as any)?.rank || "N/A"}
+                      </CustomText>
+                    </Box>
+                  )}
+
+                  {/* 24h Volume */}
+                  {(currentTokenDetails?.tokenMetrics?.volume ||
+                    tokenHistory?.rates) && (
+                    <Box
+                      paddingVertical="m"
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
                         24h Volume
                       </CustomText>
                       <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
                         variant="body"
-                        fontSize={14}
-                        color="bodyTextColor"
                       >
-                        {formatStats(
-                          currentTokenDetails?.tokenMetrics?.volume || 0,
-                          0,
-                          "USD"
-                        )}
+                        {tokenHistory?.rates && tokenHistory.rates.length > 0
+                          ? formatLargeNumber(
+                              getLatestMarketData(tokenHistory.rates).volume,
+                              graphCurrency,
+                              nairaCurrency?.sellRate
+                            )
+                          : formatStats(
+                              currentTokenDetails?.tokenMetrics?.volume || 0,
+                              0,
+                              graphCurrency
+                            )}
                       </CustomText>
                     </Box>
+                  )}
 
+                  {/* Market Cap */}
+                  {(currentTokenDetails?.tokenMetrics?.marketCap ||
+                    tokenHistory?.rates) && (
                     <Box
+                      paddingVertical="m"
                       flexDirection="row"
                       justifyContent="space-between"
                       alignItems="center"
                     >
-                      <CustomText
-                        variant="body"
-                        fontSize={12}
-                        color="disabledTextColor"
-                      >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
                         Market Cap
                       </CustomText>
                       <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
                         variant="body"
-                        fontSize={14}
-                        color="bodyTextColor"
                       >
-                        {formatStats(
-                          currentTokenDetails?.tokenMetrics?.marketCap || 0,
-                          0,
-                          "USD"
-                        )}
+                        {tokenHistory?.rates && tokenHistory.rates.length > 0
+                          ? formatLargeNumber(
+                              getLatestMarketData(tokenHistory.rates).marketCap,
+                              graphCurrency,
+                              nairaCurrency?.sellRate
+                            )
+                          : formatStats(
+                              currentTokenDetails?.tokenMetrics?.marketCap || 0,
+                              0,
+                              graphCurrency
+                            )}
                       </CustomText>
                     </Box>
+                  )}
+
+                  {/* Total Supply */}
+                  {(currentTokenDetails?.tokenMetrics as any)?.totalSupply && (
+                    <Box
+                      paddingVertical="m"
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
+                        Total Supply
+                      </CustomText>
+                      <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
+                        variant="body"
+                      >
+                        {(currentTokenDetails?.tokenMetrics as any)?.totalSupply
+                          ? formatCurrency(
+                              (currentTokenDetails?.tokenMetrics as any).totalSupply
+                            )
+                          : "N/A"}
+                      </CustomText>
                   </Box>
+                  )}
+
+                  {/* Circulating Supply */}
+                  {(currentTokenDetails?.tokenMetrics as any)?.circulatingSupply && (
+                    <Box
+                      paddingVertical="m"
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
+                        Circulating Supply
+                      </CustomText>
+                      <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
+                        variant="body"
+                      >
+                          {(currentTokenDetails?.tokenMetrics as any)?.circulatingSupply
+                          ? formatCurrency(
+                              (currentTokenDetails?.tokenMetrics as any).circulatingSupply
+                            )
+                          : "N/A"}
+                      </CustomText>
+                </Box>
+                  )}
+
+                  {/* All Time High */}
+                  {(currentTokenDetails?.tokenMetrics as any)?.ath && (
+                    <Box
+                      paddingVertical="m"
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
+                        All Time High
+                      </CustomText>
+                      <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
+                        variant="body"
+                      >
+                          {(currentTokenDetails?.tokenMetrics as any)?.ath
+                          ? formatCurrency(
+                              (currentTokenDetails?.tokenMetrics as any).ath
+                            )
+                          : "N/A"}
+                      </CustomText>
+                    </Box>
+                  )}
+
+                  {/* All Time Low */}
+                  {(currentTokenDetails?.tokenMetrics as any)?.atl && (
+                    <Box
+                      paddingVertical="m"
+                      flexDirection="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <CustomText color="placeholderTextColor" fontSize={14}>
+                        All Time Low
+                      </CustomText>
+                      <CustomText
+                        color="headerTextColor"
+                        fontSize={16}
+                        variant="body"
+                      >
+                          {(currentTokenDetails?.tokenMetrics as any)?.atl
+                          ? formatCurrency(
+                              (currentTokenDetails?.tokenMetrics as any).atl
+                            )
+                          : "N/A"}
+                      </CustomText>
+                    </Box>
+                  )}
                 </Box>
 
-                {/* Token Details Section */}
+                {/* Token Information Section */}
                 {currentTokenDetails?.tokenDetails && (
                   <Box width="100%" paddingHorizontal="m" marginTop="l">
                     <CustomText
@@ -441,83 +692,275 @@ export default function AssetInfo() {
                   </Box>
                 )}
 
-                {/* News Section */}
-                {currentTokenDetails?.tokenNews &&
-                  currentTokenDetails.tokenNews.length > 0 && (
-                    <Box width="100%" paddingHorizontal="m" marginTop="l">
-                      <Box
-                        flexDirection="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <CustomText
-                          variant="bodySubheader"
-                          fontSize={16}
-                          style={{ fontFamily: "NewScience_Bold" }}
-                        >
-                          Latest News
-                        </CustomText>
+                {/* Top Stories Section - Matching Portfolio */}
+                  <Box
+                    flexDirection="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  paddingHorizontal="m"
+                  marginTop="l"
+                  >
+                    <CustomText
+                    variant="bodyBold"
+                    fontSize={18}
+                    color="headerTextColor"
+                    marginVertical="l"
+                    >
+                      Top Stories
+                    </CustomText>
+                  <Pressable
+                      onPress={() => {
+                        router.push(`/dashboard/home/token-details/news?tokenId=${id}`);
+                      }}
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <CustomText
+                      variant="body"
+                      fontSize={14}
+                      color="placeholderTextColor"
+                    >
+                      View All
+                    </CustomText>
+                  </Pressable>
+                  </Box>
+                <Box width="100%" paddingHorizontal="m">
 
-                        <CustomButton
-                          text="View More"
-                          color="white"
-                          onPress={() => {
-                            router.push("/dashboard/home/all-news");
-                          }}
-                          width="25%"
-                          borderRadius={50}
-                          height={35}
-                          bgColor="#6045FF"
-                        />
-                      </Box>
-
-                      <Box marginTop="s">
-                        {currentTokenDetails.tokenNews
-                          .slice(0, 3)
-                          .map((news, index) => (
+                  <Box marginTop="s">
+                    {(enhancedTokenDetails?.tokenNews || currentTokenDetails?.tokenNews) && 
+                     (enhancedTokenDetails?.tokenNews?.length > 0 || (currentTokenDetails?.tokenNews?.length ?? 0) > 0) ? (
+                      (enhancedTokenDetails?.tokenNews || currentTokenDetails?.tokenNews || [])
+                        .slice(0, 3)
+                        .map((article: any, index: number) => (
+                          <Pressable
+                            key={article.id || index}
+                            onPress={() => {
+                              router.push(`/dashboard/home/token-details/news/${article.id || index}?tokenId=${id}`);
+                            }}
+                            style={({ pressed }) => ({
+                              opacity: pressed ? 0.8 : 1,
+                              transform: [{ scale: pressed ? 0.98 : 1 }],
+                            })}
+                          >
                             <Box
-                              key={news.id || index}
-                              width="100%"
-                              bg="secondaryBackgroundColor"
-                              borderRadius={16}
-                              marginBottom="s"
+                              backgroundColor="modalBackgroundColor"
+                              borderRadius={20}
                               padding="m"
+                              marginBottom="s"
+                              style={{
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 8,
+                                elevation: 4,
+                              }}
                             >
-                              <CustomText
-                                variant="body"
-                                fontSize={14}
-                                color="bodyTextColor"
-                                marginBottom="s"
-                                numberOfLines={2}
-                              >
-                                {news.title}
-                              </CustomText>
-                              {news.source?.name && (
-                                <CustomText
-                                  variant="body"
-                                  fontSize={12}
-                                  color="disabledTextColor"
-                                >
-                                  {news.source.name}
-                                </CustomText>
-                              )}
-                              {news.publishedAt && (
-                                <CustomText
-                                  variant="body"
-                                  fontSize={12}
-                                  color="disabledTextColor"
-                                  marginTop="s"
-                                >
-                                  {new Date(
-                                    news.publishedAt
-                                  ).toLocaleDateString()}
-                                </CustomText>
-                              )}
+                              <Box marginBottom="s">
+                                <Box flexDirection="row" alignItems="center" mb="s">
+                                  {/* Article Image */}
+                                  <Box
+                                    width={30}
+                                    height={30}
+                                    borderRadius={5}
+                                    backgroundColor="borderColor"
+                                    marginRight="s"
+                                    overflow="hidden"
+                                  >
+                                    {article?.source?.image ? (
+                                      <Image
+                                        source={{ uri: article.source.image }}
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                        }}
+                                        resizeMode="cover"
+                                      />
+                                    ) : (
+                                      <Box
+                                        flex={1}
+                                        justifyContent="center"
+                                        alignItems="center"
+                                        backgroundColor="borderColor"
+                                      >
+                                        <CustomText fontSize={24}>📰</CustomText>
+                                      </Box>
+                                    )}
+                                  </Box>
+                                  <Box
+                                    borderRadius={6}
+                                    flexDirection="row"
+                                    alignItems="center"
+                                    flex={1}
+                                  >
+                                    <CustomText
+                                      color="white"
+                                      variant="bodyMedium"
+                                      fontSize={14}
+                                    >
+                                      {article.source?.name || "News"}
+                                    </CustomText>
+                                    <CustomText
+                                      color="placeholderTextColor"
+                                      variant="bodyMedium"
+                                      fontSize={14}
+                                    >
+                                      {" "} • {" "}
+                                      {article.publishedAt
+                                        ? new Date(article.publishedAt).toLocaleDateString()
+                                        : "Today"}
+                                    </CustomText>
+                                  </Box>
+                                </Box>
+
+                                {/* Article Content */}
+                                <Box flex={1}>
+                                  <Box
+                                    marginBottom="s"
+                                    flexDirection="row"
+                                    alignItems="center"
+                                    justifyContent="space-between"
+                                  >
+                                    <CustomText
+                                      color="headerTextColor"
+                                      fontSize={15}
+                                      variant="body"
+                                      lineHeight={20}
+                                      numberOfLines={2}
+                                      flex={1}
+                                    >
+                                      {article.title || "Latest news about this token"}
+                                    </CustomText>
+                                    <Box
+                                      width={80}
+                                      height={80}
+                                      marginLeft="s"
+                                      borderRadius={10}
+                                      overflow="hidden"
+                                    >
+                                      {article.image ? (
+                                        <Image
+                                          source={{ uri: article.image }}
+                                          style={{ width: "100%", height: "100%" }}
+                                          resizeMode="cover"
+                                        />
+                                      ) : null}
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              </Box>
                             </Box>
-                          ))}
-                      </Box>
-                    </Box>
-                  )}
+                          </Pressable>
+                        ))
+                    ) : (
+                      // Mock news data if no news is available from API
+                      [
+                        {
+                          id: "1",
+                          title: `${currentTokenDetails?.tokenDetails?.symbol || "Token"} shows strong performance in recent market trends`,
+                          source: { name: "CryptoNews" },
+                          publishedAt: new Date(),
+                        },
+                        {
+                          id: "2", 
+                          title: `Market analysis: ${currentTokenDetails?.tokenDetails?.name || "Token"} reaches new milestone`,
+                          source: { name: "CoinDesk" },
+                          publishedAt: new Date(Date.now() - 86400000), // 1 day ago
+                        },
+                        {
+                          id: "3",
+                          title: `Expert predictions for ${currentTokenDetails?.tokenDetails?.symbol || "Token"} in the coming quarter`,
+                          source: { name: "BlockchainNews" },
+                          publishedAt: new Date(Date.now() - 172800000), // 2 days ago
+                        }
+                      ].map((article, index) => (
+                        <Pressable
+                          key={article.id}
+                          onPress={() => {
+                            router.push(`/dashboard/home/token-details/news/${article.id}?tokenId=${id}`);
+                          }}
+                          style={({ pressed }) => ({
+                            opacity: pressed ? 0.8 : 1,
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                          })}
+                        >
+                          <Box
+                            width="100%"
+                            bg="secondaryBackgroundColor"
+                            borderRadius={16}
+                            marginBottom="s"
+                            padding="m"
+                            style={{
+                              shadowColor: "#000",
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 8,
+                              elevation: 4,
+                            }}
+                          >
+                            <Box marginBottom="s">
+                              <Box flexDirection="row" alignItems="center" mb="s">
+                                {/* Article Image */}
+                                <Box
+                                  width={30}
+                                  height={30}
+                                  borderRadius={5}
+                                  backgroundColor="borderColor"
+                                  marginRight="s"
+                                  overflow="hidden"
+                                >
+                                  <Box
+                                    flex={1}
+                                    justifyContent="center"
+                                    alignItems="center"
+                                    backgroundColor="borderColor"
+                                  >
+                                    <CustomText fontSize={24}>📰</CustomText>
+                                  </Box>
+                                </Box>
+                                <Box
+                                  borderRadius={6}
+                                  flexDirection="row"
+                                  alignItems="center"
+                                  flex={1}
+                                >
+                                  <CustomText
+                                    color="white"
+                                    variant="bodyMedium"
+                                    fontSize={14}
+                                  >
+                                    {article.source?.name || "News"}
+                                  </CustomText>
+                                  <CustomText
+                                    color="placeholderTextColor"
+                                    variant="bodyMedium"
+                                    fontSize={14}
+                                  >
+                                    {" "} • {" "}
+                                    {article.publishedAt.toLocaleDateString()}
+                                  </CustomText>
+                                </Box>
+                              </Box>
+
+                              {/* Article Content */}
+                              <Box flex={1}>
+                                <CustomText
+                                  color="headerTextColor"
+                                  fontSize={15}
+                                  variant="body"
+                                  lineHeight={20}
+                                  numberOfLines={2}
+                                >
+                                  {article.title}
+                                </CustomText>
+                              </Box>
+                            </Box>
+                          </Box>
+                        </Pressable>
+                      ))
+                    )}
+                  </Box>
+                </Box>
 
                 <Box paddingHorizontal="m" paddingVertical="m">
                   <CustomButton
@@ -531,36 +974,6 @@ export default function AssetInfo() {
                   />
                 </Box>
               </ScrollView>
-            }
-            secondContent={
-              <Box flex={1} paddingHorizontal="l">
-                <Box marginTop="s" flex={1}>
-                  {!filteredHistory || filteredHistory.length === 0 ? (
-                    <Box height="100%" alignItems="center" marginVertical="xl">
-                      <EmptyState
-                        title="No History"
-                        info="You have not made any transactions for this asset yet."
-                        onPress={() => {
-                          router.push("/dashboard/home/wallet-home/cards");
-                        }}
-                        source={images.glass}
-                      />
-                    </Box>
-                  ) : (
-                    <TransactionList
-                      groupedTransactions={[]}
-                      refreshing={isLoading}
-                      onRefresh={fetchTokenDetailsCallback}
-                      loading={isLoading}
-                      isDarkMode={false}
-                      onEndReached={undefined}
-                      onEndReachedThreshold={0.5}
-                    />
-                  )}
-                </Box>
-              </Box>
-            }
-          />
         </Box>
       </LoaderWrapper>
     </PageWrapper>

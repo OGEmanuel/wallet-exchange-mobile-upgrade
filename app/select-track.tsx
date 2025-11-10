@@ -1,24 +1,23 @@
-import { ZapperSiginBottomSheet } from "@/components";
-import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
-import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
-import { useWallet } from "@/src/core/wallet/wallet-context";
+import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
+import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useRef, useState } from "react";
+import React, { PropsWithChildren, useCallback, useRef } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
 
 const Wrapper = ({ children }: PropsWithChildren) => {
   const { colorTheme } = useActiveTheme();
-
+  
   if (colorTheme === "dark") {
     return (
       <Box flex={1} bg="mainBackgroundColor">
@@ -28,7 +27,9 @@ const Wrapper = ({ children }: PropsWithChildren) => {
   } else {
     return (
       <LinearGradient style={{ flex: 1 }} colors={["#846FFF", "#19087D"]}>
-        <PageWrapper>{children}</PageWrapper>
+        <WalletProvider>
+          <PageWrapper>{children}</PageWrapper>
+        </WalletProvider>
       </LinearGradient>
     );
   }
@@ -51,16 +52,16 @@ const Card = ({
   const { colors } = useTheme<Theme>();
   return (
     <Box
-      width={"100%"}
-      height={131}
-      borderRadius={10}
-      borderWidth={colorTheme === "dark" ? 0.5 : 0}
-      borderColor="cardBorder"
-      flexDirection="row"
-      p="m"
-      alignItems="center"
-      mb="l"
-      bg="surfaceContainer"
+    width={"100%"}
+    height={131}
+    borderRadius={10}
+    borderWidth={colorTheme === "dark" ? 0.5 : 0}
+    borderColor="cardBorder"
+    flexDirection="row"
+    p="m"
+    alignItems="center"
+    mb="l"
+    bg="surfaceContainer"
     >
       <Box justifyContent="center" width={75}>
         {image}
@@ -70,14 +71,14 @@ const Card = ({
           style={{ marginBottom: 4 }}
           color={colors.bodyTextColor}
           type="subtitle"
-        >
+          >
           {title}
         </ThemedText>
         <ThemedText
           type="cardTitle"
           style={{ marginBottom: 24 }}
           color={colors.placeholderTextColor}
-        >
+          >
           {body}
         </ThemedText>
 
@@ -92,22 +93,28 @@ const Card = ({
 };
 
 const SelectTrack = () => {
-  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
-  const phoneVerificationBottomSheetRef =
-    useRef<AnimatedGradientBottomSheetRef>(null);
-
-  // State to control bottomsheet visibility
-  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
-    useState(false);
-
+  const { fetchUserById, loginAsGuest } = useKyc();
+  const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
+  
   // Get exchange authentication state from wallet context
-  const { isExchangeAuthenticated } = useWallet();
-
-  // Get user state from Redux store for KYC
+  const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
   const { user } = useSelector((state: AppRootState) => state.kyc);
+  
+  // Ref to track if login has been initiated
+  const loginInitiatedRef = useRef<boolean>(false);
 
   // Check if user is exchange authenticated
   const isUserLoggedIn = isExchangeAuthenticated;
+
+  const triggerFetchUserData = useCallback(() => {
+    if (user?._id || currentExchangeUser) {
+      fetchUserById({
+        _id: currentExchangeUser || user?._id || undefined
+      });
+    }
+  }, [user?._id, currentExchangeUser, fetchUserById]);
+
+  // Removed automatic guest login - guest login now happens only when needed for crypto-to-crypto trades
 
   const theme = useTheme<Theme>();
 
@@ -120,6 +127,7 @@ const SelectTrack = () => {
   }[] = [
     {
       title: "Zapper",
+      // title: "Zapper",
       body: isUserLoggedIn
         ? "Continue to your dashboard"
         : "Sign in or  create your Zap account",
@@ -131,17 +139,25 @@ const SelectTrack = () => {
           contentFit="contain"
         />
       ),
-      onPress: () => {
+      onPress: async () => {
         if (isUserLoggedIn) {
           // Navigate to dashboard for exchange authenticated users
-          router.push("/dashboard/home/wallet-home/home");
+          if (user?.isGuest) {
+            router.push("/dashboard/home/wallet-home/swap");
+          } else {
+            router.push("/dashboard/home/wallet-home/home");
+          }
         } else {
           // Show exchange login bottom sheet for non-authenticated users
-          setIsZapperBottomSheetVisible(true);
-          // Use setTimeout to ensure the component is rendered before opening
-          setTimeout(() => {
-            zapperBottomSheetRef.current?.snapToIndex(0);
-          }, 100);
+          showZapperSignBottomSheet({
+            onContinue: () => {
+              // Navigate to dashboard after successful exchange authentication
+              router.push("/dashboard/home/wallet-home/swap");
+            },
+            onClose: () => {
+              // Handle close if needed
+            },
+          });
         }
       },
     },
@@ -188,21 +204,6 @@ const SelectTrack = () => {
           ))}
         </ScrollView>
       </Box>
-
-      {isZapperBottomSheetVisible && (
-        <ZapperSiginBottomSheet
-          ref={zapperBottomSheetRef}
-          onContinue={() => {
-            zapperBottomSheetRef.current?.close();
-            setIsZapperBottomSheetVisible(false);
-            // Navigate to dashboard after successful exchange authentication
-            router.push("/dashboard/home/wallet-home/swap");
-          }}
-          onClose={() => {
-            setIsZapperBottomSheetVisible(false);
-          }}
-        />
-      )}
     </Wrapper>
   );
 };
@@ -211,7 +212,7 @@ export default SelectTrack;
 
 const styles = StyleSheet.create({
   container: {
-    width: SIZES.width * 0.9,
+    width: "90%",
     alignSelf: "center",
     marginTop: 54,
   },

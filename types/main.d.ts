@@ -1,4 +1,4 @@
-import { UserModel } from "@zap/blockchain-sdk";
+import { UserModel, UserPortfolioData } from "@zap/blockchain-sdk";
 
 export interface WalletContextType {
   // State
@@ -12,10 +12,14 @@ export interface WalletContextType {
   userWalletGroups: IUserWalletGroup[];
   isUserWalletGroups: boolean;
   mainUserWalletGroup: IUserWalletGroup | null;
-  portfolio: any | null;
+  portfolio: UserPortfolioData | null;
+  setPortfolio?: (portfolio: any | null) => void; // Optional for optimistic updates
   transactions: any[];
   isLoading: boolean;
   error: string | null;
+
+  // Loading Data from Cache
+  loadAllDataFromCache: () => Promise<void>;
 
   // Account Derivation
   isAccountDeriving: boolean;
@@ -29,11 +33,20 @@ export interface WalletContextType {
   ) => Promise<boolean>;
   logoutFromExchange: () => Promise<void>;
   exchangeLogin: (email: string) => Promise<boolean>;
-  exchangeValidateOtp: (email: string, otp: string) => Promise<ExchangeValidateOtpResponse | boolean>;
+  exchangeValidateOtp: (
+    email: string,
+    otp: string
+  ) => Promise<ExchangeValidateOtpResponse | boolean>;
   getExchangeUser: () => Promise<UserModel | null>;
-  completeOnboarding: (
-    data: { username?: string | null; userSource?: string | null; referralCode?: string | null }
-  ) => Promise<{
+  setCurrentExchangeUser: (userId: string | null) => void;
+  setExchangeUserData: (userData: UserModel | null) => void;
+  setIsExchangeAuthenticated: (isAuthenticated: boolean) => void;
+  completeOnboarding: (data: {
+    username?: string | null;
+    userSource?: string | null;
+    referralCode?: string | null;
+    userId?: string | null;
+  }) => Promise<{
     success: boolean;
     message: string;
   }>;
@@ -58,7 +71,7 @@ export interface WalletContextType {
   }) => Promise<any | null>;
 
   // Portfolio
-  refreshPortfolio: () => Promise<void>;
+  refreshPortfolio: (explicitWalletId?: string, bypassCache?: boolean) => Promise<void>;
   getWalletPortfolio: (userWalletGroupId: string) => Promise<any>;
 
   // Wallet Groups
@@ -74,7 +87,7 @@ export interface WalletContextType {
   getSDK: () => ZapSDK | null;
 
   // Account Management
-  retryPendingWallets: () => Promise<void>;
+  retryPendingWallets: (force?: boolean) => Promise<void>;
   isCreatingWallet: boolean;
   setIsCreatingWallet: (creating: boolean) => void;
 
@@ -83,19 +96,32 @@ export interface WalletContextType {
   isAuthenticating: boolean;
   isRefreshingPortfolio: boolean;
   isSendingTransaction: boolean;
-  isBackgroundWalletGroupsRefresh: boolean;
-  isBackgroundPortfolioRefresh: boolean;
   isRetryingPendingWallets: boolean;
 
   // Wallet Switching
-  switchWallet: (userWalletGroupId: string) => Promise<void>;
-  removeWalletGroup: (walletGroupId: string, userWalletGroupId: string) => Promise<boolean>;
+  switchWallet: (userWalletGroupId: string, walletGroupsToUse?: any[], forceRefresh?: boolean) => Promise<void>;
+  removeWalletGroup: (
+    walletGroupId: string,
+    userWalletGroupId: string
+  ) => Promise<boolean>;
 
   // Address and Private Key Management
-  getAddresses: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
-  getPrivateKeys: (userWalletGroupId?: string, chainSymbol?: string) => Promise<any[] | null>;
-  getAddress: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
-  getPrivateKey: (chainSymbol: string, userWalletGroupId?: string) => Promise<string | null>;
+  getAddresses: (
+    userWalletGroupId?: string,
+    chainSymbol?: string
+  ) => Promise<any[] | null>;
+  getPrivateKeys: (
+    userWalletGroupId?: string,
+    chainSymbol?: string
+  ) => Promise<any[] | null>;
+  getAddress: (
+    chainSymbol: string,
+    userWalletGroupId?: string
+  ) => Promise<string | null>;
+  getPrivateKey: (
+    chainSymbol: string,
+    userWalletGroupId?: string
+  ) => Promise<string | null>;
   getSeedPhrase: (userWalletGroupId?: string) => Promise<string | null>;
   getSeedPhrases: () => Promise<any[] | null>;
 }
@@ -108,7 +134,7 @@ export type IUserWalletGroup = {
   name: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IWalletGroup = {
   _id: string;
@@ -116,9 +142,15 @@ export type IWalletGroup = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export type IWallet = {}
+export type IWallet = {
+  id: string;
+  name: string;
+  balance: string;
+  groupId: string;
+  userWalletGroupId: string;
+};
 
 export type IWalletUser = {
   _id: string;
@@ -126,7 +158,7 @@ export type IWalletUser = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IAccount = {
   _id: string;
@@ -134,7 +166,7 @@ export type IAccount = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type ITransaction = {
   _id: string;
@@ -142,7 +174,7 @@ export type ITransaction = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export type IWalletPortfolio = {
   _id: string;
@@ -150,4 +182,4 @@ export type IWalletPortfolio = {
   description: string;
   createdAt: string;
   updatedAt: string;
-}
+};
