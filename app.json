@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Zap Wallet",
-    "slug": "zap-wallet",
-    "version": "1.0.0",
+    "slug": "new-zap-wallet-exchange",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "zapwallet",
@@ -11,8 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.zapapp",
+      "buildNumber": "48",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to provide enhanced security and fraud prevention for your transactions. Your location helps us verify your identity and protect your account."
+      },
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"],
+        "com.apple.developer.associated-domains": []
       }
     },
     "android": {

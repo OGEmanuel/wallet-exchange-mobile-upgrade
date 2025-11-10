@@ -52,14 +52,14 @@
     "dns.js": "^1.0.1",
     "domain-browser": "^1.2.0",
     "events": "^3.3.0",
-    "expo": "54.0.22",
+    "expo": "54.0.23",
     "expo-blur": "^15.0.7",
     "expo-build-properties": "^1.0.9",
     "expo-camera": "~17.0.9",
     "expo-clipboard": "^8.0.7",
     "expo-constants": "~18.0.10",
     "expo-crypto": "^15.0.7",
-    "expo-dev-client": "~6.0.13",
+    "expo-dev-client": "~6.0.17",
     "expo-device": "^8.0.9",
     "expo-font": "~14.0.9",
     "expo-haptics": "~15.0.7",
@@ -202,7 +202,13 @@
   },
   "overrides": {
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "expo-image-loader": "^6.0.0"
+    "expo-image-loader": "^6.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "resolutions": {
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   },
   "expo": {
     "doctor": {
@@ -216,6 +222,11 @@
         ],
         "listUnknownPackages": false
       }
+    },
+    "install": {
+      "exclude": [
+        "@zap/blockchain-sdk"
+      ]
     }
   }
 }
