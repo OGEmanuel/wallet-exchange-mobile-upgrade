@@ -1,14 +1,14 @@
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
-import { Theme } from "@/theme";
-import { useTheme } from "@shopify/restyle";
-import { useRouter } from "expo-router";
+// import { Theme } from "@/theme";
+// import { useTheme } from "@shopify/restyle";
+// import { useRouter } from "expo-router";
 import React from "react";
 import { Image } from "react-native";
 
 const ActivityLogsEmptyState = () => {
-  const theme = useTheme<Theme>();
-  const router = useRouter();
+  //   const theme = useTheme<Theme>();
+  //   const router = useRouter();
   return (
     <Box width={"100%"} height="auto" alignItems="center">
       <Image
