@@ -1,9 +1,7 @@
-import {
-  ThemedSearchIcon
-} from "@/assets/svg/wallet-icons-components";
+import { ThemedSearchIcon } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { TextInput } from "react-native";
 import Box from "../general/Box";
 
@@ -13,8 +11,22 @@ interface IProps {
   onSearchChange: (query: string) => void;
 }
 
-const ActivitySearchBar = ({ onFilterPress, searchQuery, onSearchChange }: IProps) => {
+const ActivitySearchBar = ({
+  onFilterPress,
+  searchQuery,
+  onSearchChange,
+}: IProps) => {
   const theme = useTheme<Theme>();
+  const [localQuery, setLocalQuery] = useState<string>(searchQuery || "");
+  useEffect(() => {
+    setLocalQuery(searchQuery || "");
+  }, [searchQuery]);
+
+  const handleChange = (text: string) => {
+    setLocalQuery(text);
+    onSearchChange(text);
+  };
+
   return (
     <Box width={"100%"} height={50} flexDirection="row" marginVertical="m">
       <Box
@@ -31,8 +43,8 @@ const ActivitySearchBar = ({ onFilterPress, searchQuery, onSearchChange }: IProp
         <TextInput
           placeholder="Search transactions..."
           placeholderTextColor={theme.colors.bodyTextColor}
-          value={searchQuery}
-          onChangeText={onSearchChange}
+          value={localQuery}
+          onChangeText={handleChange}
           style={{
             flex: 1,
             marginLeft: 10,
