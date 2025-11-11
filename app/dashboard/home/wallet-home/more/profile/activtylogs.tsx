@@ -6,8 +6,8 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { Search } from "lucide-react-native";
-import React from "react";
-import { ScrollView } from "react-native-gesture-handler";
+import React, { useState } from "react";
+import ActivityLogsEmptyState from "./empty-logs";
 
 const ItemCard = () => {
   return (
@@ -42,6 +42,12 @@ const ItemCard = () => {
 
 const ActivityLogs = () => {
   const theme = useTheme<Theme>();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />
@@ -63,8 +69,8 @@ const ActivityLogs = () => {
             <CustomInputWithoutForm
               placeholder="Search"
               placeholderTextColor={theme.colors.disabledTextColor}
-              value=""
-              onChange={() => {}}
+              value={searchQuery}
+              onChange={handleSearchChange}
               iconLeft={<Search size={20} color={theme.colors.bodyTextColor} />}
             />
           </Box>
@@ -76,14 +82,15 @@ const ActivityLogs = () => {
           />
         </Box>
       </Box>
+      <ActivityLogsEmptyState />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      {/* <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {Array.from([
           1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
         ]).map((item, index) => (
           <ItemCard key={index.toString()} />
         ))}
-      </ScrollView>
+      </ScrollView> */}
     </PageWrapper>
   );
 };
