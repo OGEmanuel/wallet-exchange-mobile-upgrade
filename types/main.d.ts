@@ -18,6 +18,9 @@ export interface WalletContextType {
   isLoading: boolean;
   error: string | null;
 
+  // Loading Data from Cache
+  loadAllDataFromCache: () => Promise<void>;
+
   // Account Derivation
   isAccountDeriving: boolean;
   setIsAccountDeriving: (deriving: boolean) => void;
@@ -141,7 +144,13 @@ export type IWalletGroup = {
   updatedAt: string;
 };
 
-export type IWallet = {};
+export type IWallet = {
+  id: string;
+  name: string;
+  balance: string;
+  groupId: string;
+  userWalletGroupId: string;
+};
 
 export type IWalletUser = {
   _id: string;

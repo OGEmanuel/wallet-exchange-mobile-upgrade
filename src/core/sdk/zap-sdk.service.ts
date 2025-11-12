@@ -769,9 +769,23 @@ class ZapSDKService {
     );
   }
 
-  public async validateExchangeOtp(email: string, otp: string) {
+  public async validateExchangeOtp(email: string, otp: string, totp?: string) {
     return this.executeWithNetworkHandling(
-      () => this.getSDK().validateExchangeOtp(email, otp),
+      () => {
+        const sdk = this.getSDK();
+        
+        // According to the 2FA guide, when 2FA is required during login:
+        // 1. First call validateOtp without totp (returns partialToken)
+        // 2. Then call twoFA.login(code, partialToken) to complete login
+        // So we should NOT pass totp to validateOtp - use twoFA.login instead
+        // This totp parameter is kept for backward compatibility but is ignored
+        if (totp) {
+          console.warn("⚠️ validateExchangeOtp: totp parameter is deprecated. Use twoFA.login(code, partialToken) instead after getting partialToken from validateOtp.");
+        }
+        
+        // Normal call - don't pass totp here
+        return sdk.validateExchangeOtp(email, otp);
+      },
       "validateExchangeOtp"
     );
   }
@@ -1583,8 +1597,15 @@ class ZapSDKService {
         await this.initialize();
       }
       return await this.sdk!.twoFA.getStatus({ bypassCache: true });
-    } catch (error) {
-      console.error("❌ Failed to update notification preferences:", error);
+    } catch (error: any) {
+      // 404 is expected if user hasn't set up 2FA yet, so don't log it as an error
+      const is404Error = error?.response?.status === 404 || error?.status === 404 || 
+                        (error?.message && error.message.includes('404')) ||
+                        (error?.message && error.message.includes('status code 404'));
+      
+      if (!is404Error) {
+        console.error("❌ Failed to get 2FA status:", error);
+      }
       return null;
     }
   }
@@ -1610,10 +1631,14 @@ class ZapSDKService {
         console.log(`🔧 SDK not initialized for verifyTwoFa, auto-initializing...`);
         await this.initialize();
       }
-      return await this.sdk!.twoFA.verify(code, secret);
+      const result = await this.sdk!.twoFA.verify(code, secret);
+      // Clear cache after verification to ensure status is refreshed
+      this.sdk!.twoFA.clearCache();
+      return result;
     } catch (error) {
       console.error("❌ Failed to verify two factor authentication:", error);
-      return null;
+      // Re-throw error so the component can handle it
+      throw error;
     }
   }
 
@@ -1624,10 +1649,14 @@ class ZapSDKService {
         console.log(`🔧 SDK not initialized for disableTwoFa, auto-initializing...`);
         await this.initialize();
       }
-      return await this.sdk!.twoFA.disable(code);
+      const result = await this.sdk!.twoFA.disable(code);
+      // Clear cache after disabling to ensure status is refreshed
+      this.sdk!.twoFA.clearCache();
+      return result;
     } catch (error) {
       console.error("❌ Failed to disable two factor authentication:", error);
-      return null;
+      // Re-throw error so the component can handle it
+      throw error;
     }
   }
 }

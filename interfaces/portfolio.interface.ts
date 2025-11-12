@@ -1,3 +1,5 @@
+import { ISupportedCurrency } from "@zap/blockchain-sdk";
+
 export interface PortfolioAccount {
   _id: string;
   currencyId: string;
@@ -153,7 +155,7 @@ export interface ProcessedAsset {
   tokenAddress: string | null;
   decimals: number;
   // Additional fields for easy access
-  supportedCurrencyId?: any; // Full supportedCurrency object
+  supportedCurrencyId?: string | ISupportedCurrency; // Full supportedCurrency object
   currencyId?: string; // For markets API
   accountId?: string; // Account ID for transaction history
 }

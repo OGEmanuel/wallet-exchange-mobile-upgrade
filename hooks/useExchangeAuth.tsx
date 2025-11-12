@@ -16,6 +16,12 @@ export const useExchangeAuth = () => {
     error,
   } = useWallet();
 
+  // Check if user is a guest (authenticated but guest user)
+  const isGuest = exchangeUserData?.isGuest || false;
+  
+  // For UI purposes, treat guests as not logged in
+  const isUserLoggedIn = isExchangeAuthenticated && !isGuest;
+
   const [isExchangeLoginVisible, setIsExchangeLoginVisible] = useState(false);
   const exchangeLoginBottomSheetRef =
     useRef<AnimatedGradientBottomSheetRef>(null);
@@ -33,13 +39,13 @@ export const useExchangeAuth = () => {
 
   const checkExchangeAuth = useCallback(
     (callback: () => void) => {
-      if (isExchangeAuthenticated) {
+      if (isUserLoggedIn) {
         callback();
       } else {
         showExchangeLogin();
       }
     },
-    [isExchangeAuthenticated, showExchangeLogin]
+    [isUserLoggedIn, showExchangeLogin]
   );
 
   const handleExchangeLogin = useCallback(
@@ -82,6 +88,8 @@ export const useExchangeAuth = () => {
 
   return {
     isExchangeAuthenticated,
+    isGuest,
+    isUserLoggedIn,
     exchangeUserData,
     isAuthenticating,
     error,

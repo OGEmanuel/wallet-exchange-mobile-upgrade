@@ -11,6 +11,7 @@ import { ChainsProvider } from "@/src/core/chains/chains-context";
 import { BottomSheetProvider } from "@/src/core/contexts/bottomsheet";
 import { NetworkProvider } from "@/src/core/contexts/NetworkContext";
 import { OnboardingProvider } from "@/src/core/contexts/onboarding";
+import { TwoFactorAuthProvider } from "@/src/core/contexts/two-factor-auth/TwoFactorAuthContext";
 import { SupportedCurrenciesProvider } from "@/src/core/supported-currencies/supported-currencies-context";
 import { WalletProvider, useWallet } from "@/src/core/wallet/wallet-context";
 import { WebSocketProvider } from "@/src/core/websocket/WebSocketProvider";
@@ -179,8 +180,9 @@ export default function RootLayout() {
                           <WalletProvider>
                             <WebSocketProvider>
                               <OnboardingProvider>
-                                <BottomSheetProvider>
-                                  <StatusBar
+                                <TwoFactorAuthProvider>
+                                  <BottomSheetProvider>
+                                    <StatusBar
                                     barStyle={
                                       colorTheme === "dark"
                                         ? "light-content"
@@ -201,6 +203,7 @@ export default function RootLayout() {
                                   <BottomSheetManager />
                                   <AppLoadingModal />
                                 </BottomSheetProvider>
+                                </TwoFactorAuthProvider>
                               </OnboardingProvider>
                             </WebSocketProvider>
                           </WalletProvider>

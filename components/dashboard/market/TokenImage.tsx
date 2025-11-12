@@ -1,7 +1,7 @@
 import CustomText from "@/components/general/CustomText";
+import SmartImage from "@/components/general/SmartImage";
 import React from "react";
 import { Image, View } from "react-native";
-import { SvgUri } from "react-native-svg";
 
 interface TokenImageProps {
   uri?: string;
@@ -16,8 +16,6 @@ export default function TokenImage({
   size = 32,
   overflow = "hidden",
 }: TokenImageProps) {
-  const isSvg = uri?.toLowerCase().endsWith(".svg");
-
   // CASE 1: If no uri at all
   if (!uri) {
     if (name) {
@@ -49,17 +47,13 @@ export default function TokenImage({
     );
   }
 
-  // CASE 2: If SVG
-  if (isSvg) {
-    return <SvgUri uri={uri} width={size} height={size} />;
-  }
-
-  // CASE 3: Default to PNG or others
+  // Use SmartImage for all URL-based images (handles both SVG and regular images)
   return (
-    <Image
+    <SmartImage
       source={{ uri }}
-      style={{ width: size, height: size }}
-      className="rounded-full"
+      width={size}
+      height={size}
+      style={{ borderRadius: size / 2 }}
       resizeMode="contain"
     />
   );

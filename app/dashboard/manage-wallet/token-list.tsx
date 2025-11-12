@@ -14,6 +14,7 @@ import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { AppRootState } from "@/state";
 import { selectAssetsBySearch } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
+import { shortenChainName } from "@/utils/chainFiltering";
 import { ArrowLeft, Search } from "lucide-react-native";
 
 const TokenListScreen = () => {
@@ -84,7 +85,7 @@ const TokenListScreen = () => {
             {token.symbol}
           </CustomText>
           <CustomText variant="light" fontSize={12} color="disabledTextColor">
-            {token.chainName}
+            {shortenChainName(token.chainName)}
           </CustomText>
         </Box>
 

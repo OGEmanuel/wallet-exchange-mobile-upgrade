@@ -2,18 +2,18 @@ import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import { CustomButton, CustomText } from "@/components/general";
 import Box from "@/components/general/Box";
 import PrivateKeyGuardScreen from "@/components/guards/PrivateKeyGuardScreen";
+import { PinEntryModal } from "@/components/Modals/PinEntryModal";
 import WalletCredentialsStorage from "@/src/core/storage/wallet-credentials-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import * as Clipboard from 'expo-clipboard';
+import * as Clipboard from "expo-clipboard";
 import { router, useLocalSearchParams } from "expo-router";
 import { Copy } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
- 
 interface SecretPhraseProps {}
 
 const SecretPhrase: React.FC<SecretPhraseProps> = () => {
@@ -21,11 +21,11 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
   const insets = useSafeAreaInsets();
   const { userWalletGroups } = useWallet();
   const { walletId } = useLocalSearchParams<{ walletId: string }>();
-  
+
   const [seedPhrase, setSeedPhrase] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [showGuardScreen, setShowGuardScreen] = useState(true);
-
+  const [showPinModal, setShowPinModal] = useState(false);
   // Find the wallet
   const wallet = userWalletGroups?.find(
     (userWalletGroup) => userWalletGroup?.walletId?._id === walletId
@@ -35,10 +35,13 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
     const loadSeedPhrase = async () => {
       try {
         setIsLoading(true);
-        
+
         if (wallet) {
           // Get the seed phrase from secure storage
-          const credential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(wallet._id);
+          const credential =
+            await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(
+              wallet._id
+            );
           if (credential?.credential) {
             setSeedPhrase(credential.credential);
           } else {
@@ -75,16 +78,28 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
   }
 
   const handleGuardContinue = () => {
+    setShowPinModal(true);
+  };
+
+  const handlePinSuccess = () => {
     setShowGuardScreen(false);
   };
 
   // Show guard screen first
   if (showGuardScreen) {
     return (
-      <PrivateKeyGuardScreen
-        onContinue={handleGuardContinue}
-        type="seed-phrase"
-      />
+      <>
+        <PrivateKeyGuardScreen
+          onContinue={handleGuardContinue}
+          type="seed-phrase"
+        />
+        <PinEntryModal
+          type="VERIFY"
+          visible={showPinModal}
+          onSuccess={handlePinSuccess}
+          onClose={() => setShowPinModal(false)}
+        />
+      </>
     );
   }
 
@@ -136,12 +151,18 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
             textAlign="center"
             lineHeight={24}
           >
-            These words are your secret phrase. Ensure you keep them personal to you.
+            These words are your secret phrase. Ensure you keep them personal to
+            you.
           </CustomText>
 
           {/* Seed Phrase Grid */}
           {isLoading ? (
-            <Box flex={1} justifyContent="center" alignItems="center" paddingVertical="xl">
+            <Box
+              flex={1}
+              justifyContent="center"
+              alignItems="center"
+              paddingVertical="xl"
+            >
               <CustomText variant="body" color="disabledTextColor">
                 Loading secret phrase...
               </CustomText>
@@ -206,11 +227,7 @@ const SecretPhrase: React.FC<SecretPhraseProps> = () => {
             })}
           >
             <Copy size={20} color={theme.colors.headerTextColor} />
-            <CustomText
-              variant="body"
-              color="headerTextColor"
-              marginLeft="s"
-            >
+            <CustomText variant="body" color="headerTextColor" marginLeft="s">
               Copy to Clipboard
             </CustomText>
           </Pressable>

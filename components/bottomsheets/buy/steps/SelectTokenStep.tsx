@@ -1,0 +1,26 @@
+import { setBuyStage, setBuyToken } from "@/src/modules/buy/presentation/state/buy-slice";
+import { BottomSheetView } from "@gorhom/bottom-sheet";
+import React from "react";
+import { useDispatch } from "react-redux";
+import TokenSelector from "../../TokenSelector";
+
+const SelectTokenStep = () => {
+  const dispatch = useDispatch();
+
+  const handleTokenSelect = (token: any) => {
+    dispatch(setBuyToken(token));
+    dispatch(setBuyStage("currency_select"));
+  };
+
+  return (
+    <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 18 }}>
+      <TokenSelector
+        mode="buy" // Use "buy" mode to get supported currencies and show correct title
+        onTokenSelect={handleTokenSelect}
+      />
+      </BottomSheetView>
+  );
+};
+
+export default SelectTokenStep;
+

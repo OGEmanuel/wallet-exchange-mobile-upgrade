@@ -6,8 +6,16 @@
  */
 
 import { IChain, ICurrency, ISupportedCurrency } from "@zap/blockchain-sdk";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
+import { StorageKeys } from "../storage/storage-types";
 
 export interface IBank {
   _id?: string; // Automatically added by Mongoose
@@ -26,10 +34,20 @@ export interface IBank {
   updatedAt: Date; // Added automatically by Mongoose with timestamps
 }
 
+// Extended ISupportedCurrency with balance information
+export interface ISupportedCurrencyWithBalance extends ISupportedCurrency {
+  balance?: number;
+  totalUsdValue?: number;
+}
+
 interface SupportedCurrenciesContextType {
   // State
-  supportedCurrenciesForSwap: ISupportedCurrency[];
+  supportedCurrenciesForSwap: ISupportedCurrencyWithBalance[];
   defaultTokens: ISupportedCurrency[];
+  setDefaultTokens: (tokens: ISupportedCurrency[]) => void;
+  setSupportedCurrenciesForSwap: (currencies: ISupportedCurrency[]) => void;
+  enrichSupportedCurrenciesWithBalances: (assets: any[]) => void;
+  defaultTokensMap: Map<string, ISupportedCurrency>;
   lastFetchedWallet: Date | null;
   isLoading: boolean;
   error: string | null;
@@ -63,13 +81,198 @@ export const SupportedCurrenciesProvider: React.FC<
   SupportedCurrenciesProviderProps
 > = ({ children }) => {
   const [supportedCurrenciesForSwap, setSupportedCurrenciesForSwap] = useState<
+    ISupportedCurrencyWithBalance[]
+  >([]);
+  const [baseSupportedCurrencies, setBaseSupportedCurrencies] = useState<
     ISupportedCurrency[]
   >([]);
   const [defaultTokens, setDefaultTokens] = useState<ISupportedCurrency[]>([]);
+  const [defaultTokensMap, setDefaultTokensMap] = useState<
+    Map<string, ISupportedCurrency>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [lastFetchedWallet, setLastFetchedWallet] = useState<Date | null>(null);
+
+  const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+  // Load supported currencies for swap from cache
+  const loadSupportedCurrenciesFromCache = async (): Promise<
+    ISupportedCurrency[] | null
+  > => {
+    try {
+      const cachedData = await SecureStore.getItemAsync(
+        StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP
+      );
+      if (!cachedData) return null;
+
+      const timestamp = await SecureStore.getItemAsync(
+        StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP_TIMESTAMP
+      );
+      if (!timestamp) return null;
+
+      const cacheTime = parseInt(timestamp);
+      const now = Date.now();
+      if (now - cacheTime > CACHE_DURATION) {
+        console.log("⚠️ Supported currencies for swap cache expired");
+        return null;
+      }
+
+      const parsedData = JSON.parse(cachedData);
+      console.log(
+        "✅ Loaded supported currencies for swap from cache:",
+        parsedData.length
+      );
+      return parsedData;
+    } catch (error) {
+      console.error(
+        "Error loading supported currencies for swap from cache:",
+        error
+      );
+      return null;
+    }
+  };
+
+  // Save supported currencies for swap to cache
+  const saveSupportedCurrenciesToCache = async (
+    currencies: ISupportedCurrency[]
+  ): Promise<void> => {
+    try {
+      await SecureStore.setItemAsync(
+        StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP,
+        JSON.stringify(currencies)
+      );
+      await SecureStore.setItemAsync(
+        StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP_TIMESTAMP,
+        Date.now().toString()
+      );
+      console.log("✅ Saved supported currencies for swap to cache");
+    } catch (error) {
+      console.error(
+        "Error saving supported currencies for swap to cache:",
+        error
+      );
+    }
+  };
+
+  // Load default tokens from cache
+  const loadDefaultTokensFromCache = async (): Promise<
+    ISupportedCurrency[] | null
+  > => {
+    try {
+      const cachedData = await SecureStore.getItemAsync(
+        StorageKeys.DEFAULT_TOKENS
+      );
+      if (!cachedData) return null;
+
+      const timestamp = await SecureStore.getItemAsync(
+        StorageKeys.DEFAULT_TOKENS_TIMESTAMP
+      );
+      if (!timestamp) return null;
+
+      const cacheTime = parseInt(timestamp);
+      const now = Date.now();
+      if (now - cacheTime > CACHE_DURATION) {
+        console.log("⚠️ Default tokens cache expired");
+        return null;
+      }
+
+      const parsedData = JSON.parse(cachedData);
+      console.log("✅ Loaded default tokens from cache:", parsedData.length);
+      return parsedData;
+    } catch (error) {
+      console.error("Error loading default tokens from cache:", error);
+      return null;
+    }
+  };
+
+  // Save default tokens to cache
+  const saveDefaultTokensToCache = async (
+    tokens: ISupportedCurrency[]
+  ): Promise<void> => {
+    try {
+      await SecureStore.setItemAsync(
+        StorageKeys.DEFAULT_TOKENS,
+        JSON.stringify(tokens)
+      );
+      await SecureStore.setItemAsync(
+        StorageKeys.DEFAULT_TOKENS_TIMESTAMP,
+        Date.now().toString()
+      );
+      console.log("✅ Saved default tokens to cache");
+    } catch (error) {
+      console.error("Error saving default tokens to cache:", error);
+    }
+  };
+
+  // Load from cache on mount, and fetch if cache is missing
+  useEffect(() => {
+    const loadFromCache = async () => {
+      // Load supported currencies for swap
+      const cachedSupportedCurrencies =
+        await loadSupportedCurrenciesFromCache();
+      if (cachedSupportedCurrencies && cachedSupportedCurrencies.length > 0) {
+        setBaseSupportedCurrencies(cachedSupportedCurrencies);
+        setSupportedCurrenciesForSwap(cachedSupportedCurrencies.map(c => ({ ...c })));
+        setLastFetched(new Date());
+        console.log(
+          "✅ Supported currencies for swap loaded from cache on mount"
+        );
+        // Refresh in background (non-blocking) - don't wait for SDK
+        setTimeout(() => {
+          refreshSupportedCurrenciesForSwap().catch((err) => {
+            console.warn(
+              "Background supported currencies refresh failed:",
+              err
+            );
+          });
+        }, 100);
+      } else {
+        // No cache - fetch immediately (but don't block UI)
+        console.log("⚠️ No cache found, fetching supported currencies for swap...");
+        setTimeout(() => {
+          refreshSupportedCurrenciesForSwap().catch((err) => {
+            console.warn(
+              "Failed to fetch supported currencies for swap:",
+              err
+            );
+          });
+        }, 100);
+      }
+
+      // Load default tokens
+      const cachedDefaultTokens = await loadDefaultTokensFromCache();
+      if (cachedDefaultTokens && cachedDefaultTokens.length > 0) {
+        setDefaultTokens(cachedDefaultTokens);
+        setDefaultTokensMap(
+          new Map(
+            cachedDefaultTokens.map((currency: ISupportedCurrency) => [
+              currency._id,
+              currency,
+            ])
+          )
+        );
+        setLastFetchedWallet(new Date());
+        console.log("✅ Default tokens loaded from cache on mount");
+        // Refresh in background (non-blocking) - don't wait for SDK
+        setTimeout(() => {
+          refreshDefaultTokens().catch((err) => {
+            console.warn("Background default tokens refresh failed:", err);
+          });
+        }, 100);
+      } else {
+        // No cache - fetch immediately (but don't block UI)
+        console.log("⚠️ No cache found, fetching default tokens...");
+        setTimeout(() => {
+          refreshDefaultTokens().catch((err) => {
+            console.warn("Failed to fetch default tokens:", err);
+          });
+        }, 100);
+      }
+    };
+    loadFromCache();
+  }, []);
 
   const refreshSupportedCurrenciesForSwap = async () => {
     try {
@@ -77,21 +280,30 @@ export const SupportedCurrenciesProvider: React.FC<
       setError(null);
 
       console.log("🔄 Fetching supported currencies...");
+      
+      // Use executeWithNetworkHandling which auto-initializes SDK if needed
+      // This ensures SDK is ready before making the call
+      const currencies = await zapSDKService.executeWithNetworkHandling(
+        async () => {
       const sdk = zapSDKService.getSDK();
-
       if (!sdk || !sdk.supportedCurrencies?.listAll) {
         throw new Error(
           "SDK not initialized or supportedCurrencies not available"
         );
       }
-
-      const currencies = await zapSDKService.executeWithNetworkHandling(
-        () => sdk.supportedCurrencies.listAll({ includeFiat: true }),
+          return await sdk.supportedCurrencies.listAll({ includeFiat: true });
+        },
         "listAllSupportedCurrencies"
       );
 
       console.log("✅ Supported currencies fetched:", currencies.length);
-      setSupportedCurrenciesForSwap(currencies);
+      setBaseSupportedCurrencies(currencies);
+      // Initially set without balances, will be enriched when portfolio loads
+      setSupportedCurrenciesForSwap(currencies.map(c => ({ ...c })));
+
+      // Save to cache after fetching
+      await saveSupportedCurrenciesToCache(currencies);
+
       setLastFetched(new Date());
     } catch (err: any) {
       console.error("❌ Failed to fetch supported currencies:", err);
@@ -121,6 +333,18 @@ export const SupportedCurrenciesProvider: React.FC<
       const supportedCurrencies = defaultTokens.data.supportedCurrencies;
       console.log("✅ Default tokens fetched:", supportedCurrencies.length);
       setDefaultTokens(supportedCurrencies);
+      setDefaultTokensMap(
+        new Map(
+          supportedCurrencies.map((currency: ISupportedCurrency) => [
+            currency._id,
+            currency,
+          ])
+        )
+      );
+
+      // Save to cache after fetching
+      await saveDefaultTokensToCache(supportedCurrencies);
+
       setLastFetchedWallet(new Date());
     } catch (err: any) {
       console.error("❌ Failed to fetch default tokens:", err);
@@ -202,10 +426,73 @@ export const SupportedCurrenciesProvider: React.FC<
     );
   };
 
+  // Enrich supported currencies with balances from portfolio assets
+  const enrichSupportedCurrenciesWithBalances = (assets: any[]) => {
+    if (!assets || assets.length === 0) {
+      // Reset to base currencies without balances
+      setSupportedCurrenciesForSwap(baseSupportedCurrencies.map(c => ({ ...c })));
+      return;
+    }
+
+    // Create a map of supportedCurrencyId -> aggregated asset balance
+    // This aggregates balances across multiple chains if the same currency exists on different chains
+    const balanceMap = new Map<string, { balance: number; totalUsdValue: number }>();
+    
+    assets.forEach((asset) => {
+      // Try to match by supportedCurrencyId
+      const supportedCurrencyId = 
+        typeof asset.supportedCurrencyId === 'string' 
+          ? asset.supportedCurrencyId 
+          : (asset.supportedCurrencyId as ISupportedCurrency)?._id;
+      
+      if (supportedCurrencyId && (asset.balance || 0) > 0) {
+        const existing = balanceMap.get(supportedCurrencyId);
+        if (existing) {
+          // Aggregate balances if same currency exists on multiple chains
+          balanceMap.set(supportedCurrencyId, {
+            balance: existing.balance + (asset.balance || 0),
+            totalUsdValue: existing.totalUsdValue + (asset.totalUsdValue || 0),
+          });
+        } else {
+          balanceMap.set(supportedCurrencyId, {
+            balance: asset.balance || 0,
+            totalUsdValue: asset.totalUsdValue || 0,
+          });
+        }
+      }
+    });
+
+    // Enrich supported currencies with balances
+    const enriched = baseSupportedCurrencies.map((currency) => {
+      const balanceData = balanceMap.get(currency._id);
+      if (balanceData) {
+        return {
+          ...currency,
+          balance: balanceData.balance,
+          totalUsdValue: balanceData.totalUsdValue,
+        };
+      }
+      return {
+        ...currency,
+        balance: 0,
+        totalUsdValue: 0,
+      };
+    });
+
+    setSupportedCurrenciesForSwap(enriched);
+  };
+
   const contextValue: SupportedCurrenciesContextType = {
     // State
     supportedCurrenciesForSwap,
     defaultTokens,
+    setDefaultTokens,
+    setSupportedCurrenciesForSwap: (currencies: ISupportedCurrency[]) => {
+      setBaseSupportedCurrencies(currencies);
+      setSupportedCurrenciesForSwap(currencies.map(c => ({ ...c })));
+    },
+    enrichSupportedCurrenciesWithBalances,
+    defaultTokensMap,
     lastFetchedWallet,
     isLoading,
     error,

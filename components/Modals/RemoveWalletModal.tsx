@@ -27,12 +27,6 @@ const RemoveWalletModal: React.FC<RemoveWalletModalProps> = ({
   setShowPinModal,
   handlePinSuccess,
 }) => {
-  console.log(
-    "🗑️ RemoveWalletModal - visible:",
-    visible,
-    "walletName:",
-    walletName
-  );
   const theme = useTheme<Theme>();
   return (
     <Modal
@@ -123,6 +117,7 @@ const RemoveWalletModal: React.FC<RemoveWalletModalProps> = ({
 
       {/* PIN Verification Modal - Nested inside RemoveWalletModal */}
       <PinEntryModal
+        type="VERIFY"
         visible={showPinModal}
         onClose={() => setShowPinModal(false)}
         onSuccess={handlePinSuccess}

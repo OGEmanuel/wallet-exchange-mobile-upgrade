@@ -1,5 +1,5 @@
-import { StorageKeys } from '@/src/core/api/models';
 import storageService from '@/src/core/storage/app-storage';
+import { StorageKeys } from '@/src/core/storage/storage-types';
 import * as SecureStore from 'expo-secure-store';
 import { resetAppState } from './reset-app-state';
 
@@ -27,6 +27,11 @@ export const logoutUser = async (): Promise<boolean> => {
     await storageService.remove(StorageKeys.AGGREGATED_BALANCES);
     await storageService.remove(StorageKeys.AGGREGATED_BALANCES_TIMESTAMP);
     await storageService.remove(StorageKeys.MAIN_WALLET_GROUP_ID);
+
+    // Clear cached auth user IDs
+    console.log('🗑️ Clearing cached auth user IDs...');
+    await SecureStore.deleteItemAsync(StorageKeys.WALLET_USER_ID).catch(() => {});
+    await SecureStore.deleteItemAsync(StorageKeys.EXCHANGE_USER_ID).catch(() => {});
 
     // Clear sensitive SecureStore data
     console.log('🗑️ Clearing secure data...');
