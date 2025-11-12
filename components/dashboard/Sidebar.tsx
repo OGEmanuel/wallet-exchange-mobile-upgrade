@@ -34,24 +34,30 @@ import React, {
 import { Keyboard, Platform, Pressable } from "react-native";
 import { ScrollView, Switch } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
+import { PinEntryModal } from "../Modals/PinEntryModal";
+import { PinSetupModal } from "../Modals/PinSetupModal";
 import { AnimatedGradientBottomSheetRef } from "../bottomsheets/AnimatedGradientBottomSheet";
 import ZapLinkBottomSheet from "../bottomsheets/ZapLinkBottomSheet";
 import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 import SmartImage from "../general/SmartImage";
-import { PinEntryModal } from "../Modals/PinEntryModal";
-import { PinSetupModal } from "../Modals/PinSetupModal";
 import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
   const theme = useTheme<Theme>();
-  const { logoutFromExchange, currentExchangeUser, getExchangeUser, setExchangeUserData } = useWallet();
-  const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } = useExchangeAuth();
+  const {
+    logoutFromExchange,
+    currentExchangeUser,
+    getExchangeUser,
+    setExchangeUserData,
+  } = useWallet();
+  const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } =
+    useExchangeAuth();
   const { user: kycUser } = useSelector((state: AppRootState) => state.kyc);
   const { loadUserFromStorage, fetchUserById } = useKyc();
-  
+
   // Use exchangeUserData if available, otherwise fall back to KYC user
   const userData = exchangeUserData || kycUser;
   const displayUsername = userData?.username;
@@ -97,7 +103,17 @@ const Sidebar = () => {
     };
 
     loadUserData();
-  }, [currentExchangeUser, exchangeUserData, kycUser, isExchangeAuthenticated, loadUserFromStorage, getExchangeUser, setExchangeUserData, fetchUserById, userData]);
+  }, [
+    currentExchangeUser,
+    exchangeUserData,
+    kycUser,
+    isExchangeAuthenticated,
+    loadUserFromStorage,
+    getExchangeUser,
+    setExchangeUserData,
+    fetchUserById,
+    userData,
+  ]);
 
   const [hasHardware, setHasHardware] = useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
@@ -470,73 +486,70 @@ const Sidebar = () => {
     handleChangePin,
   ]);
 
-  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(
-    () => {
-      const baseData: ISidebarItem[] = [
-        {
-          icon: (
-            <ThemedShieldFillIcon
-              width={20}
-              height={20}
-              darkModeColor={theme.colors.bodyTextColor}
-              lightModeColor={theme.colors.bodyTextColor}
-            />
-          ),
-          title: "Terms of Service",
-          link: "/dashboard/home/wallet-home/more/legal",
-          isActive: false,
-        },
-        {
-          icon: (
-            <ThemedHelpIcon
-              width={20}
-              height={20}
-              darkModeColor={theme.colors.bodyTextColor}
-              lightModeColor={theme.colors.bodyTextColor}
-            />
-          ),
-          title: "Help & Support",
-          link: "/dashboard/home/wallet-home/more/help",
-          isActive: false,
-        },
-        {
-          icon: (
-            <ThemedStarFillIcon
-              width={20}
-              height={20}
-              darkModeColor={theme.colors.bodyTextColor}
-              lightModeColor={theme.colors.bodyTextColor}
-            />
-          ),
-          title: "About Zap Wallet",
-          link: "/dashboard/home/wallet-home/more/help",
-          isActive: false,
-        },
-      ];
+  const SIDEBAR_ABOUT_DATA: ISidebarItem[] = useMemo(() => {
+    const baseData: ISidebarItem[] = [
+      {
+        icon: (
+          <ThemedShieldFillIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Terms of Service",
+        link: "/dashboard/home/wallet-home/more/legal",
+        isActive: false,
+      },
+      {
+        icon: (
+          <ThemedHelpIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Help & Support",
+        link: "/dashboard/home/wallet-home/more/help",
+        isActive: false,
+      },
+      {
+        icon: (
+          <ThemedStarFillIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "About Zap Wallet",
+        link: "/dashboard/home/wallet-home/more/help",
+        isActive: false,
+      },
+    ];
 
-      // Add logout button only if authenticated (not guest)
-      if (isUserLoggedIn) {
-        baseData.push({
-          icon: (
-            <ThemedSignOutIcon
-              width={20}
-              height={20}
-              darkModeColor={theme.colors.bodyTextColor}
-              lightModeColor={theme.colors.bodyTextColor}
-            />
-          ),
-          title: "Logout",
-          link: "/dashboard/home/wallet-home/more/about",
-          isActive: false,
-          onPress: handleLogout,
-          disablClick: false,
-        });
-      }
+    // Add logout button only if authenticated (not guest)
+    if (isUserLoggedIn) {
+      baseData.push({
+        icon: (
+          <ThemedSignOutIcon
+            width={20}
+            height={20}
+            darkModeColor={theme.colors.bodyTextColor}
+            lightModeColor={theme.colors.bodyTextColor}
+          />
+        ),
+        title: "Logout",
+        link: "/dashboard/home/wallet-home/more/about",
+        isActive: false,
+        onPress: handleLogout,
+        disablClick: false,
+      });
+    }
 
-      return baseData;
-    },
-    [theme.colors.bodyTextColor, handleLogout, isUserLoggedIn]
-  );
+    return baseData;
+  }, [theme.colors.bodyTextColor, handleLogout, isUserLoggedIn]);
 
   return (
     <Box flex={1} bg="mainBackgroundColor">
@@ -570,7 +583,7 @@ const Sidebar = () => {
             borderRadius={20}
             bg="secondaryBackgroundColor"
           >
-            {displayAvatar ? (
+            {isUserLoggedIn ? (
               <Pressable
                 onPress={() =>
                   router.push("/dashboard/home/wallet-home/more/profile")
@@ -635,56 +648,60 @@ const Sidebar = () => {
           </Box>
         </Pressable>
       </LinearGradient>
-      <Box flex={1}>
+      <Box flex={0.9}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          <Box paddingHorizontal="m" paddingTop="l">
-            <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="surfaceContainer"
-              borderColor="borderColor"
-              borderRadius={12}
-            >
-              {SIDEBAR_DATA.map((item, index) => (
-                <SidebarItemCard
-                  key={item.title || index.toString()}
-                  {...item}
-                />
-              ))}
+          {isUserLoggedIn && (
+            <Box paddingHorizontal="m" paddingTop="l">
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="surfaceContainer"
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_DATA.map((item, index) => (
+                  <SidebarItemCard
+                    key={item.title || index.toString()}
+                    {...item}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
-          <Box paddingHorizontal="m" marginTop="l">
-            <CustomText
-              variant="bodySubheader"
-              fontSize={14}
-              color="disabledTextColor"
-              marginBottom="m"
-            >
-              SECURITY
-            </CustomText>
-            <Box
-              width={"100%"}
-              height={"auto"}
-              p="s"
-              bg="surfaceContainer"
-              borderColor="borderColor"
-              borderRadius={12}
-            >
-              {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                <SidebarItemCard
-                  key={item.title || index.toString()}
-                  {...item}
-                />
-              ))}
+          {isUserLoggedIn && (
+            <Box paddingHorizontal="m" marginTop="l">
+              <CustomText
+                variant="bodySubheader"
+                fontSize={14}
+                color="disabledTextColor"
+                marginBottom="m"
+              >
+                SECURITY
+              </CustomText>
+              <Box
+                width={"100%"}
+                height={"auto"}
+                p="s"
+                bg="surfaceContainer"
+                borderColor="borderColor"
+                borderRadius={12}
+              >
+                {SIDEBAR_SECURITY_DATA.map((item, index) => (
+                  <SidebarItemCard
+                    key={item.title || index.toString()}
+                    {...item}
+                  />
+                ))}
+              </Box>
             </Box>
-          </Box>
+          )}
 
           <Box paddingHorizontal="m" marginTop="l" mb="l">
             <CustomText
@@ -711,24 +728,23 @@ const Sidebar = () => {
               ))}
             </Box>
           </Box>
-
-          {/* Learn with Zap section - now inside ScrollView */}
-          <Box width={"100%"} marginTop="l" marginBottom="xl" paddingHorizontal="m">
-            <Box width={"100%"} height={140}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingLeft: 0,
-                  paddingRight: 20,
-                }}
-              >
-                <LearnWithZapCards />
-                <LearnWithZapCards />
-              </ScrollView>
-            </Box>
-          </Box>
         </ScrollView>
+      </Box>
+      {/* Learn with Zap section - now inside ScrollView */}
+      <Box width={"100%"} marginTop="l" marginBottom="xl" paddingHorizontal="m">
+        <Box width={"100%"} height={140}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingLeft: 0,
+              paddingRight: 20,
+            }}
+          >
+            <LearnWithZapCards />
+            <LearnWithZapCards />
+          </ScrollView>
+        </Box>
       </Box>
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
@@ -742,6 +758,7 @@ const Sidebar = () => {
             setIsZapperBottomSheetVisible(false);
             zapperBottomSheetRef.current?.close();
             zapLinkBottomSheetRef.current?.close();
+            zapperBottomSheetRef.current?.snapToIndex(-1);
           }}
         />
       )}

@@ -1,7 +1,7 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { forwardRef, useCallback, useImperativeHandle } from "react";
+import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import {
   Dimensions,
   StatusBar,
@@ -65,6 +65,7 @@ const AnimatedGradientBottomSheet = forwardRef<
     const context = useSharedValue({ y: 0 });
     const isOpen = useSharedValue(false);
     const backdropOpacity = useSharedValue(0);
+    const [isInteractive, setIsInteractive] = useState(false);
 
     const snapPointsArray = snapPoints.map((point) => {
       const percentage = parseFloat(point.replace("%", ""));
@@ -73,6 +74,8 @@ const AnimatedGradientBottomSheet = forwardRef<
 
     const open = useCallback(() => {
       "worklet";
+      // Enable interactions immediately when opening
+      runOnJS(setIsInteractive)(true);
       // For 100% snap point, position at the top of the screen
       const targetY =
         snapPointsArray[0] === SCREEN_HEIGHT
@@ -85,6 +88,8 @@ const AnimatedGradientBottomSheet = forwardRef<
 
     const close = useCallback(() => {
       "worklet";
+      // Disable interactions so touches pass through when closed
+      runOnJS(setIsInteractive)(false);
       translateY.value = withTiming(SCREEN_HEIGHT, { duration: 300 });
       backdropOpacity.value = withTiming(0, { duration: 300 });
       isOpen.value = false;
@@ -96,6 +101,8 @@ const AnimatedGradientBottomSheet = forwardRef<
     const snapToIndex = useCallback(
       (index: number) => {
         "worklet";
+        // Enable or disable interactions based on target index
+        runOnJS(setIsInteractive)(index >= 0);
         if (index < 0) {
           close();
         } else {
@@ -179,7 +186,10 @@ const AnimatedGradientBottomSheet = forwardRef<
     return (
       <>
         <StatusBar barStyle="light-content" />
-        <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
+        <Animated.View
+          style={[styles.backdrop, animatedBackdropStyle]}
+          pointerEvents={isInteractive ? "auto" : "none"}
+        >
           <TouchableOpacity
             style={styles.backdropTouchable}
             activeOpacity={1}
@@ -188,7 +198,10 @@ const AnimatedGradientBottomSheet = forwardRef<
         </Animated.View>
 
         <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.container, animatedSheetStyle]}>
+          <Animated.View
+            style={[styles.container, animatedSheetStyle]}
+            pointerEvents={isInteractive ? "auto" : "none"}
+          >
             <LinearGradient
               colors={gradientColors as any}
               locations={[0, 0.25, 1] as any}
