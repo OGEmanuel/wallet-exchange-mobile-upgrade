@@ -1,5 +1,6 @@
 // services/http-interceptors.ts
 import { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { twoFactorAuthService } from '../services/two-factor-auth.service';
 import { HttpErrorHandler } from './http-error-handler';
 import { CustomInternalAxiosRequestConfig, GeneralResponseErrorModel } from './http-types';
 import { TokenManager } from './token-manager';
@@ -122,6 +123,56 @@ export class HttpInterceptors {
       async (error: AxiosError<GeneralResponseErrorModel>): Promise<any> => {
         const originalConfig = error.config as CustomInternalAxiosRequestConfig;
         const metadata = originalConfig?.metadata;
+
+        // Check if this is a 2FA required error FIRST (before token refresh)
+        // This is important for login/OTP validation flows where 2FA might be required
+        if (HttpErrorHandler.is2FARequiredError(error)) {
+          // Show 2FA input bottom sheet and retry request with 2FA code
+          return new Promise((resolve, reject) => {
+            twoFactorAuthService.show2FAInput(async (code: string) => {
+              try {
+                // Retry the original request with 2FA code
+                if (originalConfig) {
+                  // For login/OTP validation, add 2FA code to body
+                  // For other requests, add to headers
+                  const isLoginRequest = 
+                    originalConfig.url?.includes('/auth/') ||
+                    originalConfig.url?.includes('/validate') ||
+                    originalConfig.url?.includes('/otp');
+                  
+                  if (isLoginRequest && originalConfig.data) {
+                    // Add totp to request body for login/OTP validation
+                    const body = typeof originalConfig.data === 'string' 
+                      ? JSON.parse(originalConfig.data) 
+                      : originalConfig.data;
+                    originalConfig.data = JSON.stringify({ ...body, totp: code });
+                  } else {
+                    // Add 2FA code to headers for other requests
+                    originalConfig.headers = originalConfig.headers || {};
+                    originalConfig.headers['X-2FA-Code'] = code;
+                  }
+                  
+                  // Retry the request
+                  const response = await axiosInstance.request(originalConfig);
+                  twoFactorAuthService.hide2FAInput();
+                  resolve(response);
+                } else {
+                  throw new Error('Original request config not available');
+                }
+              } catch (retryError) {
+                // If retry fails, check if it's another 2FA error or a different error
+                if (HttpErrorHandler.is2FARequiredError(retryError as AxiosError<GeneralResponseErrorModel>)) {
+                  // Still 2FA error, keep the bottom sheet open
+                  reject(retryError);
+                } else {
+                  // Different error, close 2FA input and reject
+                  twoFactorAuthService.hide2FAInput();
+                  reject(retryError);
+                }
+              }
+            });
+          });
+        }
 
         // Skip refresh token handling for specific conditions
         const shouldSkipRefreshToken = HttpErrorHandler.shouldSkipRefreshToken(error, metadata);

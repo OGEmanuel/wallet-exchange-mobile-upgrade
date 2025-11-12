@@ -71,6 +71,40 @@ export const isTokenAvailableOnChain = (
 };
 
 /**
+ * Shorten common chain names for display
+ */
+export const shortenChainName = (chainName: string): string => {
+  if (!chainName) return chainName;
+  
+  const chainNameMap: Record<string, string> = {
+    'Binance Smart Chain': 'BSC',
+    'Binance Chain': 'BNB',
+    'Polygon': 'Polygon',
+    'Arbitrum One': 'Arbitrum',
+    'Optimism': 'Optimism',
+    'Base': 'Base',
+    'Avalanche': 'AVAX',
+    'Fantom': 'FTM',
+  };
+  
+  // Check for exact match first
+  if (chainNameMap[chainName]) {
+    return chainNameMap[chainName];
+  }
+  
+  // Check for case-insensitive match
+  const lowerChainName = chainName.toLowerCase();
+  for (const [key, value] of Object.entries(chainNameMap)) {
+    if (key.toLowerCase() === lowerChainName) {
+      return value;
+    }
+  }
+  
+  // Return original if no match found
+  return chainName;
+};
+
+/**
  * Get chain display info for a token
  */
 export const getChainDisplayInfo = (token: ProcessedAsset, chains: any[]) => {
@@ -86,7 +120,7 @@ export const getChainDisplayInfo = (token: ProcessedAsset, chains: any[]) => {
   }
   
   return {
-    name: chain.name,
+    name: shortenChainName(chain.name),
     symbol: chain.symbol,
     isActive: chain.isWalletActive,
     explorerUrl: chain.explorerUrl,

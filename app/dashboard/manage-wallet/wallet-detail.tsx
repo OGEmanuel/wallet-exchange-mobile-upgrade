@@ -94,7 +94,7 @@ const WalletDetail: React.FC<WalletDetailProps> = () => {
       }
 
       setIsEditingName(false);
-      await refreshPortfolio(); // Refresh to get updated data
+      await refreshPortfolio(wallet._id, true);
     } catch (error) {
       console.error("Failed to update wallet name:", error);
       Alert.alert("Error", "Failed to update wallet name");

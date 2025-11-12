@@ -4,7 +4,7 @@ import {
 } from '@/interfaces/portfolio.interface';
 import { zapSDKService } from '@/src/core/sdk/zap-sdk.service';
 // import { SupportedCurrency } from '@/src/core/supported-currencies/supported-currencies-context'; // Not used
-import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, IUserPortfolio, UserPortfolioData, WalletGroupPortfolioData } from '@zap/blockchain-sdk';
+import { AccountPortfolioData, IChain, ICurrency, ISupportedCurrency, IUserPortfolio, UserPortfolioData } from '@zap/blockchain-sdk';
 
 export class PortfolioService {
   private static supportedCurrencies: ISupportedCurrency[] = [];
@@ -173,7 +173,7 @@ export class PortfolioService {
       const { supportedCurrenciesMap, accountMap } = this.extractTokenData(normalizedTokenList, accounts, supportedCurrencies);
 
       // Map accounts to ProcessedAssets
-      const assets: ProcessedAsset[] = normalizedTokenList.map((token: IUserPortfolio) => {
+      const assets: ProcessedAsset[] = normalizedTokenList.map((token) => {
         try {
           const supportedCurrencyId = (token.supportedCurrencyId as unknown as ISupportedCurrency)._id ? (token.supportedCurrencyId as unknown as ISupportedCurrency)._id : token.supportedCurrencyId;
           const supportedCurrency = supportedCurrenciesMap.get(supportedCurrencyId);
@@ -190,14 +190,15 @@ export class PortfolioService {
           const isStable = typeof supportedCurrency?.isStable === 'boolean'
             ? supportedCurrency?.isStable
             : (supportedCurrency?.currencyId as ICurrency)?.isStable || false;
+          const balance = token?.balance || account?.balance || 0;
 
           return {
             id: token._id || supportedCurrency?._id || 'unknown',
             accountId: account?._id || 'unknown',
-            symbol: currency?.symbol || '',
-            name: currency?.name || '',
-            balance: account?.balance || 0,
-            totalUsdValue: account?.balance && token.price ? account?.balance * token.price : 0,
+            symbol: currency?.symbol || supportedCurrency?.symbol || '',
+            name: currency?.name || supportedCurrency?.name || '',
+            balance,
+            totalUsdValue: balance && token.price ? balance * token.price : 0,
             price: token.price || 0,
             change: 0,
             changeType: 'positive' as const,
@@ -298,122 +299,6 @@ export class PortfolioService {
   }
 
   /**
-   * Calculate aggregated balances for wallet groups
-   * This solves the issue where backend gives individual account balances
-   * but not aggregated wallet/wallet group totals
-   */
-  static calculateAggregatedBalances(portfolioData: UserPortfolioData): {
-    walletBalances: Map<string, number>;
-    walletGroupBalances: Map<string, number>;
-    totalPortfolioValue: number;
-  } {
-    const walletBalances = new Map<string, number>();
-    const walletGroupBalances = new Map<string, number>();
-    let totalPortfolioValue = 0;
-
-    try {
-      const { mainWalletGroupPortfolio, walletGroupPortfolios } = portfolioData;
-
-      // Process all wallet groups, not just the main one
-      const allWalletGroups = {
-        ...walletGroupPortfolios,
-        // Include main wallet group if it exists
-        ...(mainWalletGroupPortfolio?.walletGroup?._id && {
-          [mainWalletGroupPortfolio.walletGroup._id]: mainWalletGroupPortfolio
-        })
-      };
-
-      if (!allWalletGroups || Object.keys(allWalletGroups).length === 0) {
-        return { walletBalances, walletGroupBalances, totalPortfolioValue };
-      }
-
-      // Group accounts by wallet and wallet group
-      const walletMap = new Map<string, { accounts: AccountPortfolioData[], totalValue: number }>();
-      const walletGroupMap = new Map<string, { wallets: Set<string>, totalValue: number }>();
-
-      // Process each wallet group
-      // Note: walletGroupPortfolios is Record<string, number>, but mainWalletGroupPortfolio is WalletGroupPortfolioData
-      Object.entries(allWalletGroups).forEach(([groupId, walletGroupValue]) => {
-        // Skip if it's a number (from walletGroupPortfolios Record<string, number>)
-        if (typeof walletGroupValue === 'number') {
-          return;
-        }
-
-        const walletGroupPortfolio = walletGroupValue as WalletGroupPortfolioData;
-        if (!walletGroupPortfolio?.mainWalletPortfolio?.accounts) {
-          return;
-        }
-
-        const accounts = walletGroupPortfolio.mainWalletPortfolio.accounts;
-        const walletGroupId = walletGroupPortfolio.walletGroup?._id;
-        const walletId = walletGroupPortfolio.mainWalletPortfolio.walletId;
-
-        accounts.forEach((account: AccountPortfolioData) => {
-          const accountValue = account.totalUsdValue || 0;
-
-          // Aggregate by wallet
-          if (!walletMap.has(walletId)) {
-            walletMap.set(walletId, { accounts: [], totalValue: 0 });
-          }
-          const walletData = walletMap.get(walletId)!;
-          walletData.accounts.push(account);
-          walletData.totalValue += accountValue;
-
-          // Aggregate by wallet group
-          if (walletGroupId) {
-            if (!walletGroupMap.has(walletGroupId)) {
-              walletGroupMap.set(walletGroupId, { wallets: new Set(), totalValue: 0 });
-            }
-            const groupData = walletGroupMap.get(walletGroupId)!;
-            groupData.wallets.add(walletId);
-            groupData.totalValue += accountValue;
-          }
-        });
-      });
-
-      // Store wallet balances
-      walletMap.forEach((data, walletId) => {
-        walletBalances.set(walletId, data.totalValue);
-        totalPortfolioValue += data.totalValue;
-      });
-
-      // Store wallet group balances
-      walletGroupMap.forEach((data, walletGroupId) => {
-        walletGroupBalances.set(walletGroupId, data.totalValue);
-      });
-
-    } catch (error) {
-      console.error('Failed to calculate aggregated balances:', error);
-    }
-
-    return { walletBalances, walletGroupBalances, totalPortfolioValue };
-  }
-
-  /**
-   * Get cached aggregated balances for a specific wallet
-   */
-  static getWalletBalance(walletId: string, portfolioData: UserPortfolioData): number {
-    const { walletBalances } = this.calculateAggregatedBalances(portfolioData);
-    return walletBalances.get(walletId) || 0;
-  }
-
-  /**
-   * Get cached aggregated balances for a specific wallet group
-   */
-  static getWalletGroupBalance(walletGroupId: string, portfolioData: UserPortfolioData): number {
-    const { walletGroupBalances } = this.calculateAggregatedBalances(portfolioData);
-    return walletGroupBalances.get(walletGroupId) || 0;
-  }
-
-  /**
-   * Get total portfolio value from aggregated balances
-   */
-  static getTotalPortfolioValue(portfolioData: UserPortfolioData): number {
-    const { totalPortfolioValue } = this.calculateAggregatedBalances(portfolioData);
-    return totalPortfolioValue;
-  }
-
-  /**
    * Format currency value with 2 decimal places and comma separators
    */
   static formatCurrency(value: number): string {
@@ -436,28 +321,41 @@ export class PortfolioService {
   /**
    * Format balance with smart decimal handling and comma separators
    */
-  static formatBalance(balance: number, decimals: number = 8): string {
-    if (balance === 0) return '0';
+  static formatBalance(balance: number | string, decimals: number = 8): string {
+    // Handle undefined, null, or invalid values
+    if (balance === undefined || balance === null) {
+      return '0';
+    }
+
+    // Convert string to number if needed
+    const numBalance = typeof balance === 'string' ? parseFloat(balance) : balance;
+
+    // Check if conversion resulted in invalid number
+    if (isNaN(numBalance)) {
+      return '0';
+    }
+
+    if (numBalance === 0) return '0';
 
     // Smart decimal formatting based on value size
-    if (balance < 0.000001) {
+    if (numBalance < 0.000001) {
       // Very small values: show up to 8 decimal places
-      return balance.toFixed(8).replace(/\.?0+$/, '');
-    } else if (balance < 0.001) {
+      return numBalance.toFixed(8).replace(/\.?0+$/, '');
+    } else if (numBalance < 0.001) {
       // Small values: show up to 6 decimal places
-      return balance.toFixed(6).replace(/\.?0+$/, '');
-    } else if (balance < 1) {
+      return numBalance.toFixed(6).replace(/\.?0+$/, '');
+    } else if (numBalance < 1) {
       // Medium values: show up to 4 decimal places
-      return balance.toFixed(4).replace(/\.?0+$/, '');
-    } else if (balance < 1000) {
+      return numBalance.toFixed(4).replace(/\.?0+$/, '');
+    } else if (numBalance < 1000) {
       // Large values: show up to 2 decimal places
-      return balance.toFixed(2).replace(/\.?0+$/, '');
+      return numBalance.toFixed(2).replace(/\.?0+$/, '');
     } else {
       // Very large values: use comma formatting with 2 decimal places
       return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
-      }).format(balance);
+      }).format(numBalance);
     }
   }
 

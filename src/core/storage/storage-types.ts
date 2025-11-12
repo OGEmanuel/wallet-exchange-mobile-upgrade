@@ -43,7 +43,15 @@ export const StorageKeys = {
   PROCESSED_PORTFOLIO_TIMESTAMP: "processedPortfolioTimestamp", // Cache timestamp for processed portfolio
   AGGREGATED_BALANCES: "aggregatedBalances", // Cached aggregated wallet and wallet group balances
   AGGREGATED_BALANCES_TIMESTAMP: "aggregatedBalancesTimestamp", // Cache timestamp for aggregated balances
+  WALLET_CHAINS: "walletChains", // Cached wallet chains data
+  WALLET_CHAINS_TIMESTAMP: "walletChainsTimestamp", // Cache timestamp for wallet chains
+  DEFAULT_TOKENS: "defaultTokens", // Cached default tokens data
+  DEFAULT_TOKENS_TIMESTAMP: "defaultTokensTimestamp", // Cache timestamp for default tokens
+  SUPPORTED_CURRENCIES_FOR_SWAP: "supportedCurrenciesForSwap", // Cached supported currencies for swap
+  SUPPORTED_CURRENCIES_FOR_SWAP_TIMESTAMP: "supportedCurrenciesForSwapTimestamp", // Cache timestamp for supported currencies for swap
   EXCHANGE_AUTH_STATE: "exchangeAuthState", // Exchange authentication state
+  WALLET_USER_ID: "wallet_user_id", // Cached wallet user ID for fast authentication check
+  EXCHANGE_USER_ID: "exchange_user_id", // Cached exchange user ID for fast authentication check
   PIN: "pin", // User PIN for authentication
   COLOR_THEME: "colorTheme",
   COLOR_THEME_USER_SET: "colorTheme_user_set",

@@ -401,7 +401,15 @@ authority.`}
 
   // If being used as standalone modal, wrap with Modal
   return (
-    <Modal visible={visible} style={{ backgroundColor: "transparent" }}>
+    <Modal 
+      visible={visible} 
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => {
+        onRequestClose?.();
+        setVisible?.(false);
+      }}
+    >
       <Pressable
         onPress={() => {
           onRequestClose?.();
@@ -409,6 +417,9 @@ authority.`}
         }}
         style={styles.bg}
       />
+      <View style={styles.modalContent}>
+        {content}
+      </View>
     </Modal>
   );
 };
@@ -473,6 +484,11 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: "center",
     justifyContent: "center",
+  },
+  modalContent: {
+    flex: 1,
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
 });
 

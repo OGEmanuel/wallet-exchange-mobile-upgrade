@@ -1,9 +1,7 @@
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
-import { SIZES } from "@/data";
 import useActiveTheme from "@/hooks/useTheme";
 import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
-import { getDeviceIpAndLocation } from "@/src/core/utils/device-info-utils";
 import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
@@ -12,7 +10,7 @@ import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useCallback, useEffect, useRef } from "react";
+import React, { PropsWithChildren, useCallback, useRef } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
@@ -116,47 +114,7 @@ const SelectTrack = () => {
     }
   }, [user?._id, currentExchangeUser, fetchUserById]);
 
-  useEffect(() => {
-    // Skip if login has already been initiated
-    if (loginInitiatedRef.current) {
-      return;
-    }
-
-    const handleLoginAsGuest = async () => {
-      if (currentExchangeUser) {
-        triggerFetchUserData();
-        loginInitiatedRef.current = true;
-        return;
-      }
-
-      // Mark as initiated before making the call
-      loginInitiatedRef.current = true;
-
-      // Fetch device IP and location, then login as guest
-      try {
-        const { ip, location } = await getDeviceIpAndLocation();
-        await loginAsGuest({
-          ip: ip || undefined,
-          platform: "mobile",
-          location: location || undefined,
-        });
-      } catch (error) {
-        console.warn("Failed to fetch device IP and location, proceeding without it:", error);
-        // Proceed with login even if device info fetch fails
-        try {
-          await loginAsGuest({
-            platform: "mobile",
-          });
-        } catch (loginError) {
-          console.error("Failed to login as guest:", loginError);
-          // Reset flag on error so we can retry
-          loginInitiatedRef.current = false;
-        }
-      }
-    };
-
-    handleLoginAsGuest();
-  }, [currentExchangeUser, triggerFetchUserData, loginAsGuest]);
+  // Removed automatic guest login - guest login now happens only when needed for crypto-to-crypto trades
 
   const theme = useTheme<Theme>();
 
@@ -254,7 +212,7 @@ export default SelectTrack;
 
 const styles = StyleSheet.create({
   container: {
-    width: SIZES.width * 0.9,
+    width: "90%",
     alignSelf: "center",
     marginTop: 54,
   },

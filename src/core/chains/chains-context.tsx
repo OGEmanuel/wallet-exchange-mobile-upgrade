@@ -6,8 +6,10 @@
  */
 
 import { IChain, ICurrency } from "@zap/blockchain-sdk";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
+import { StorageKeys } from "../storage/storage-types";
 import { useSupportedCurrencies } from "../supported-currencies/supported-currencies-context";
 
 interface ChainsContextType {
@@ -15,6 +17,7 @@ interface ChainsContextType {
   chains: IChain[];
   walletChains: IChain[];
   chainsMap: Map<string, IChain>;
+  setWalletChains: (chains: IChain[]) => void;
   isLoading: boolean;
   error: string | null;
   lastFetched: Date | null;
@@ -50,12 +53,70 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+  // Load wallet chains from cache
+  const loadWalletChainsFromCache = async (): Promise<IChain[] | null> => {
+    try {
+      const cachedData = await SecureStore.getItemAsync(StorageKeys.WALLET_CHAINS);
+      if (!cachedData) return null;
+
+      const timestamp = await SecureStore.getItemAsync(StorageKeys.WALLET_CHAINS_TIMESTAMP);
+      if (!timestamp) return null;
+
+      const cacheTime = parseInt(timestamp);
+      const now = Date.now();
+      if (now - cacheTime > CACHE_DURATION) {
+        console.log("⚠️ Wallet chains cache expired");
+        return null;
+      }
+
+      const parsedData = JSON.parse(cachedData);
+      console.log("✅ Loaded wallet chains from cache:", parsedData.length);
+      return parsedData;
+    } catch (error) {
+      console.error("Error loading wallet chains from cache:", error);
+      return null;
+    }
+  };
+
+  // Save wallet chains to cache
+  const saveWalletChainsToCache = async (chains: IChain[]): Promise<void> => {
+    try {
+      await SecureStore.setItemAsync(StorageKeys.WALLET_CHAINS, JSON.stringify(chains));
+      await SecureStore.setItemAsync(StorageKeys.WALLET_CHAINS_TIMESTAMP, Date.now().toString());
+      console.log("✅ Saved wallet chains to cache");
+    } catch (error) {
+      console.error("Error saving wallet chains to cache:", error);
+    }
+  };
+
+  // Load from cache on mount
+  useEffect(() => {
+    const loadFromCache = async () => {
+      const cachedChains = await loadWalletChainsFromCache();
+      if (cachedChains && cachedChains.length > 0) {
+        setWalletChains(cachedChains);
+        setChains(cachedChains);
+        setLastFetched(new Date());
+        console.log("✅ Wallet chains loaded from cache on mount");
+        // Refresh in background (non-blocking) - don't wait for SDK
+        setTimeout(() => {
+          refreshChains().catch(err => {
+            console.warn("Background wallet chains refresh failed:", err);
+          });
+        }, 0);
+      }
+    };
+    loadFromCache();
+  }, []);
+
   const getChainImage = (chainId: string): string => {
     const chain = chainsMap.get(chainId);
     const nativeCurrency = chain?.nativeCurrencyId as ICurrency;
     if (chain?.isEVM && nativeCurrency?.symbol !== chain?.symbol) {
       if (chain?.symbol?.toUpperCase() === "BASE") {
-        return "https://altcoinsbox.com/wp-content/uploads/2023/02/base-logo-in-blue.svg";
+        return "https://res.cloudinary.com/dbkwvangu/image/upload/v1762418105/currencies/logos/base.svg";
       }
       const currency = getSupportedCurrencyBySymbol(chain?.symbol);
 
@@ -84,6 +145,9 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
 
       setWalletChains(walletChainsData);
       setChains(walletChainsData); // For now, we only need wallet chains
+
+      // Save to cache after fetching
+      await saveWalletChainsToCache(walletChainsData);
 
       setLastFetched(new Date());
       console.log("✅ Chains loaded successfully:", walletChainsData.length);
@@ -157,6 +221,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   const contextValue: ChainsContextType = {
     chains,
     walletChains,
+    setWalletChains,
     chainsMap,
     isLoading,
     error,

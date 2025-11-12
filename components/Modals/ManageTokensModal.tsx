@@ -7,12 +7,13 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput } from "react-native";
-import { SvgUri } from "react-native-svg";
 // import zapSDKService from '@/src/core/sdk/zap-sdk.service';
 import SelectChainBottomSheet from "@/components/bottomsheets/SelectChainBottomSheet";
+import SmartImage from "@/components/general/SmartImage";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
 import { formatCurrency, formatNumber } from "@/src/core/utils/format-utils";
+import { shortenChainName } from "@/utils/chainFiltering";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
@@ -33,15 +34,13 @@ const CryptoIcon = React.memo(({ image }: { image?: string }) => {
       alignItems="center"
     >
       {image ? (
-        <SvgUri
-          uri={image}
+        <SmartImage
+          source={{ uri: image }}
           width={35}
           height={35}
+          borderRadius={20}
           onError={() => {
             console.log("Failed to load token image:", image);
-          }}
-          style={{
-            borderRadius: 20,
           }}
         />
       ) : (
@@ -146,7 +145,6 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 
     try {
       await onToggleToken(assetId, newStatus === "ENABLED");
-      console.log(`Token ${newStatus.toLowerCase()} successfully:`, assetId);
     } catch (error) {
       console.error("Failed to toggle token:", error);
       // Revert optimistic update on error
@@ -280,8 +278,8 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                       overflow="hidden"
                     >
                       {chain.chainImage ? (
-                        <SvgUri
-                          uri={chain.chainImage}
+                        <SmartImage
+                          source={{ uri: chain.chainImage }}
                           width={28}
                           height={28}
                           onError={() => {
@@ -379,7 +377,7 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                                 fontSize={10}
                                 color="disabledTextColor"
                               >
-                                {token.chainName}
+                                {shortenChainName(token.chainName)}
                               </CustomText>
                             </Box>
                           </Box>
@@ -405,8 +403,15 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
 
                       <Pressable
                         onPress={() => {
-                          if (!togglingTokens.has(token.supportedCurrencyId)) {
-                            handleToggleToken(token.supportedCurrencyId, token.status);
+                          if (
+                            !togglingTokens.has(
+                              token.supportedCurrencyId as string
+                            )
+                          ) {
+                            handleToggleToken(
+                              token.supportedCurrencyId as string,
+                              token.status
+                            );
                           }
                         }}
                         style={({ pressed }) => ({
@@ -417,9 +422,12 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                       >
                         <Switch
                           value={
-                            optimisticTokenStates.has(token.supportedCurrencyId)
-                              ? optimisticTokenStates.get(token.supportedCurrencyId) ===
-                                "ENABLED"
+                            optimisticTokenStates.has(
+                              token.supportedCurrencyId as string
+                            )
+                              ? optimisticTokenStates.get(
+                                  token.supportedCurrencyId as string
+                                ) === "ENABLED"
                               : token.status === "ENABLED"
                           }
                           trackColor={{
@@ -427,13 +435,22 @@ const ManageTokensModal: React.FC<ManageTokensModalProps> = ({
                             true: "success",
                           }}
                           onValueChange={() => {
-                            if (!togglingTokens.has(token.supportedCurrencyId)) {
-                              const currentStatus = optimisticTokenStates.has(
-                                token.supportedCurrencyId
+                            if (
+                              !togglingTokens.has(
+                                token.supportedCurrencyId as string
                               )
-                                ? optimisticTokenStates.get(token.supportedCurrencyId)!
+                            ) {
+                              const currentStatus = optimisticTokenStates.has(
+                                token.supportedCurrencyId as string
+                              )
+                                ? optimisticTokenStates.get(
+                                    token.supportedCurrencyId as string
+                                  )!
                                 : token.status;
-                              handleToggleToken(token.supportedCurrencyId, currentStatus);
+                              handleToggleToken(
+                                token.supportedCurrencyId as string,
+                                currentStatus
+                              );
                             }
                           }}
                           disabled={togglingTokens.has(token.id)}

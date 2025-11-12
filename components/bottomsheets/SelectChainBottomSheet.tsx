@@ -2,12 +2,13 @@ import { useChains } from "@/src/core/chains/chains-context";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetScrollView,
+  BottomSheetScrollView
 } from "@gorhom/bottom-sheet";
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
 import { Check, MoreHorizontalIcon, Search } from "lucide-react-native";
-import React, { forwardRef, useCallback } from "react";
+import React, { forwardRef, useCallback, useEffect } from "react";
 import { Pressable } from "react-native";
 import CustomInputWithoutForm from "../form/CustomInputWithoutForm";
 import Box from "../general/Box";
@@ -16,12 +17,13 @@ import CustomText from "../general/CustomText";
 
 interface SelectChainBottomSheetProps {
   onChainSelect?: (chainSymbol: string) => void;
+  onClose?: () => void;
 }
 
 const SelectChainBottomSheet = forwardRef<
-  BottomSheet,
+  BottomSheetMethods,
   SelectChainBottomSheetProps
->(({ onChainSelect }, ref) => {
+>(({ onChainSelect, onClose }, ref) => {
   const theme = useTheme<Theme>();
   const { walletChains, isLoading, getChainImage } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
@@ -48,12 +50,25 @@ const SelectChainBottomSheet = forwardRef<
     onChainSelect?.(chainSymbol);
   };
 
+  // Open the sheet when component mounts (only when conditionally rendered)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (ref && typeof ref !== 'function' && ref.current) {
+        ref.current.snapToIndex(0);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [ref]);
+
   const renderBackdrop = useCallback(
     (props: any) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
-        appearsOnIndex={1}
+        appearsOnIndex={0}
+        opacity={0.5}
+        pressBehavior="close"
+        enableTouchThrough={false}
       />
     ),
     []
@@ -63,9 +78,21 @@ const SelectChainBottomSheet = forwardRef<
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["75%"]}
+      snapPoints={["70%"]}
       enablePanDownToClose
+      enableContentPanningGesture={false}
+      enableOverDrag={false}
       backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: theme.colors.mainBackgroundColor,
+      }}
+      onChange={(index) => {
+        // Ensure it stays closed unless explicitly opened
+        if (index === -1) {
+          // Sheet is closed - call onClose if provided
+          onClose?.();
+        }
+      }}
       handleComponent={() => (
         <Box
           height={20}

@@ -1,11 +1,13 @@
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Image, ScrollView, StyleSheet, View } from "react-native";
 import { ConfettiMethods } from "react-native-fast-confetti";
+import { useSelector } from "react-redux";
 import EmailVerification from "../onboarding/EmailVerification";
 import EnterUsername from "../onboarding/EnterUsername";
 import LoginToZap from "../onboarding/LoginToZap";
@@ -34,17 +36,148 @@ export default function ZapperSiginBottomSheet({
 }) {
   const { colors } = useTheme<Theme>();
   const { authEmail } = useKyc();
+  const { exchangeUserData, handleExchangeLogin, isExchangeAuthenticated } = useExchangeAuth();
+  const { user: kycUser } = useSelector((state: AppRootState) => state.kyc);
   const confettiRef = useRef<ConfettiMethods>(null);
+  
+  // Use exchangeUserData if available, otherwise fall back to KYC user
+  const user = exchangeUserData || kycUser;
+  
+  // Determine initial step based on user's current onboarding status
+  // Note: This should NOT be called if user has username (handled separately)
+  const determineInitialStep = useCallback((): ScreenStep => {
+    if (!user) return "login";
+    
+    const { emailVerified, username: userUsername } = user;
+    
+    // If user has username, they've completed onboarding - should not reach here
+    // (this case is handled in useEffect to close immediately)
+    if (userUsername) {
+      return "login"; // Fallback, but should not be used
+    }
+    
+    // If email is verified but no username, show username entry
+    if (emailVerified && !userUsername) {
+      return "enterUsername";
+    }
+    
+    // If user has email but not verified, show email verification
+    if (user.email && !emailVerified) {
+      return "emailVerification";
+    }
+    
+    // Default to login
+    return "login";
+  }, [user]);
+  
   const [currentStep, setCurrentStep] = useState<ScreenStep>("login");
-  const { handleExchangeLogin } = useExchangeAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [isResending, setIsResending] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const hasClosedForUsernameRef = useRef(false);
+  const prevAuthStateRef = useRef<boolean | null>(null);
+  const prevUsernameRef = useRef<string | null>(null);
 
   useEffect(() => {
     confettiRef.current?.pause();
+    // Initialize prev auth state on mount
+    prevAuthStateRef.current = isExchangeAuthenticated;
+    prevUsernameRef.current = exchangeUserData?.username || null;
+    
+    // If user already has username when component mounts, close immediately
+    // Only check exchangeUserData (not kycUser) to ensure we have fresh exchange data
+    const hasUsername = exchangeUserData?.username;
+    if (isExchangeAuthenticated && hasUsername && !hasClosedForUsernameRef.current) {
+      console.log("✅ User already has username on mount, closing onboarding sheet immediately");
+      hasClosedForUsernameRef.current = true;
+      // Close immediately - user is fully logged in
+      setTimeout(() => {
+        onContinue?.();
+      }, 100);
+    }
   }, []);
+
+  // Check if user has username (fully logged in) - close sheet only after authentication
+  // Check both when auth state changes AND when exchangeUserData updates with username
+  useEffect(() => {
+    const wasAuthenticated = prevAuthStateRef.current;
+    const isNowAuthenticated = isExchangeAuthenticated;
+    const hasUsername = exchangeUserData?.username;
+    const prevUsername = prevUsernameRef.current;
+    
+    // Update refs for next check
+    prevAuthStateRef.current = isNowAuthenticated;
+    prevUsernameRef.current = hasUsername || null;
+    
+    // If user is not authenticated, don't close - let them log in
+    if (!isNowAuthenticated) {
+      hasClosedForUsernameRef.current = false;
+      return;
+    }
+    
+    // Check if user JUST became authenticated (was false, now true)
+    const justBecameAuthenticated = wasAuthenticated === false && isNowAuthenticated === true;
+    
+    // Check if username was just added (was null/undefined, now has value)
+    const usernameJustAdded = !prevUsername && hasUsername;
+    
+    // Only close if:
+    // 1. User is authenticated AND has username
+    // 2. Either they JUST became authenticated OR username was just added to exchangeUserData
+    // 3. We haven't closed yet
+    const shouldClose = hasUsername && 
+                       (justBecameAuthenticated || usernameJustAdded) &&
+                       !hasClosedForUsernameRef.current;
+    
+    if (shouldClose) {
+      console.log("✅ User is authenticated and has username, closing onboarding sheet");
+      hasClosedForUsernameRef.current = true;
+      // Close the sheet - user is fully logged in
+      // Use a delay to ensure the sheet has opened first
+      const timer = setTimeout(() => {
+        onContinue?.();
+      }, 1000); // Longer delay to ensure sheet is visible
+      return () => clearTimeout(timer);
+    }
+    
+    // Reset the ref if user doesn't have username (so it can check again when username is added)
+    if (!hasUsername) {
+      hasClosedForUsernameRef.current = false;
+    }
+  }, [isExchangeAuthenticated, exchangeUserData, onContinue]);
+
+  // Initialize step based on user data when component mounts
+  // Only set step if user doesn't have username (needs onboarding)
+  useEffect(() => {
+    // Only check exchangeUserData for username (not kycUser) to ensure we have fresh exchange data
+    // kycUser might have stale data from previous sessions
+    const hasUsername = exchangeUserData?.username;
+    
+    // Don't set step if user has username (will be closed by above effect or mount check)
+    if (hasUsername) {
+      // Don't set step - sheet will be closed
+      return;
+    }
+    
+    // Only set step if we have user data OR if we're not authenticated
+    // This prevents setting step to "login" when user data is still loading
+    if (!isExchangeAuthenticated && !user) {
+      // Not authenticated and no user data - show login
+      setCurrentStep("login");
+      return;
+    }
+    
+    // If authenticated but no username yet, or if we have user data, set appropriate step
+    if (isExchangeAuthenticated || user) {
+      const initialStep = determineInitialStep();
+      setCurrentStep(initialStep);
+      
+      if (user?.email) {
+        setEmail(user.email);
+      }
+    }
+  }, [determineInitialStep, user, exchangeUserData, kycUser, isExchangeAuthenticated]);
 
   // Screen transition function
   const transitionToNextScreen = (nextStep: ScreenStep) => {
@@ -66,7 +199,19 @@ export default function ZapperSiginBottomSheet({
     transitionToNextScreen("emailVerification");
   };
 
-  const handleEmailVerificationSuccess = () => {
+  const handleEmailVerificationSuccess = (userData?: any) => {
+    // Check username directly from the OTP verification response
+    // This is more reliable than waiting for exchangeUserData to update
+    const hasUsername = userData?.username || exchangeUserData?.username;
+    
+    if (hasUsername) {
+      // User already has username, close the sheet
+      console.log("✅ User has username after email verification, closing onboarding sheet");
+      onContinue?.();
+      return;
+    }
+    
+    // User doesn't have username, continue to username entry
     transitionToNextScreen("enterUsername");
   };
 
@@ -110,7 +255,7 @@ export default function ZapperSiginBottomSheet({
         return (
           <EmailVerification
             email={email}
-            onVerify={handleEmailVerificationSuccess}
+            onVerify={(code, userData) => handleEmailVerificationSuccess(userData)}
             onResend={handleResendEmail}
             isLoading={isResending}
             onCloseBottomSheet={() => {
