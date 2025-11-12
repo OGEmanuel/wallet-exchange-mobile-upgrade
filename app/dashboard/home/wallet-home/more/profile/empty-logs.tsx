@@ -17,10 +17,10 @@ const ActivityLogsEmptyState = () => {
         resizeMode="contain"
       />
       <CustomText variant="medium" fontSize={24}>
-        No Activity
+        No History
       </CustomText>
       <CustomText variant="body" fontSize={14} mb="l" mt="s">
-        No Activity yet!
+        You {`haven’t`} made any transactions yet.
       </CustomText>
 
       {/* <CustomButton
