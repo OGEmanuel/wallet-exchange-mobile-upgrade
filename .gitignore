@@ -28,6 +28,7 @@ dist/
 
 # Package files
 *.jar
+*.lock
 
 # Maven
 target/
