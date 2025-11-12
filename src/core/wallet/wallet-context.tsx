@@ -138,7 +138,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setupWebSocketListeners();
       setupAppStateListener();
       // Restore exchange authentication state
-      restoreExchangeAuthState();
+      // restoreExchangeAuthState();
     }
   }, [isInitialized]);
 
