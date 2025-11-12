@@ -184,7 +184,7 @@ const TwoFactorAuthInputBottomSheet = forwardRef<
             length={6}
             onCodeChange={handleCodeChange}
             onCodeComplete={handleCodeComplete}
-            autoFocus={true}
+            autoFocus={false}
             disabled={isVerifying}
             error={!!error}
           />

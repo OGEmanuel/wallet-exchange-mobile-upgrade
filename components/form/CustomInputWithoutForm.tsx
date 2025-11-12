@@ -1,7 +1,7 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Eye, EyeOff } from "lucide-react-native";
-import React, { JSX } from "react";
+import React, { JSX, useEffect, useRef } from "react";
 import { TextInputProps, ViewStyle } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
 import Box from "../general/Box";
@@ -25,7 +25,7 @@ interface Props {
 export default function CustomInputWithoutForm(
   props: Props & Omit<TextInputProps, "onChange">
 ) {
-  const { label, value, onChange, style, noBorder = true, ...rest } = props;
+  const { label, value, onChange, style, noBorder = true, autoFocus, ...rest } = props;
   const [focused, setFocused] = React.useState(false);
   const [borderOnFocus, setBorderOnFocus] = React.useState(
     props.borderOnFocus ?? true
@@ -37,8 +37,26 @@ export default function CustomInputWithoutForm(
       return true;
     }
   });
+  const inputRef = useRef<TextInput>(null);
 
   const theme = useTheme<Theme>();
+
+  // Handle autoFocus with a delay to prevent keyboard from popping up on app start
+  useEffect(() => {
+    if (autoFocus && inputRef.current) {
+      // Add a longer delay to ensure the component is fully visible and user is ready
+      // This prevents the keyboard from popping up unexpectedly on app start
+      // Only focus if the component is actually visible (not on initial app load)
+      const focusTimer = setTimeout(() => {
+        // Double-check that the input still exists and component is mounted
+        if (inputRef.current) {
+          inputRef.current?.focus();
+        }
+      }, 1000); // Increased delay to 1 second for bottom sheets
+      
+      return () => clearTimeout(focusTimer);
+    }
+  }, [autoFocus]);
   return (
     <Box width={"100%"}>
       {label && (
@@ -71,7 +89,9 @@ export default function CustomInputWithoutForm(
       >
         {props?.iconLeft && props.iconLeft}
         <TextInput
+          ref={inputRef}
           {...(rest as any)}
+          autoFocus={false}
           style={[
             {
               flex: 1,

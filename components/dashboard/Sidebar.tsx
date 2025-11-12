@@ -637,9 +637,10 @@ const Sidebar = () => {
       </LinearGradient>
       <Box flex={1}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
           <Box paddingHorizontal="m" paddingTop="l">
             <Box
@@ -685,7 +686,7 @@ const Sidebar = () => {
             </Box>
           </Box>
 
-          <Box paddingHorizontal="m" marginTop="l" mb="3xl">
+          <Box paddingHorizontal="m" marginTop="l" mb="l">
             <CustomText
               variant="bodySubheader"
               fontSize={14}
@@ -710,20 +711,23 @@ const Sidebar = () => {
               ))}
             </Box>
           </Box>
-        </ScrollView>
-      </Box>
-      <Box width={"100%"} height={140}>
-        <ScrollView
-          horizontal
-          contentContainerStyle={{
-            width: "100%",
-            height: "100%",
-            paddingLeft: 20,
-            paddingTop: 20,
-          }}
-        >
-          <LearnWithZapCards />
-          <LearnWithZapCards />
+
+          {/* Learn with Zap section - now inside ScrollView */}
+          <Box width={"100%"} marginTop="l" marginBottom="xl" paddingHorizontal="m">
+            <Box width={"100%"} height={140}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingLeft: 0,
+                  paddingRight: 20,
+                }}
+              >
+                <LearnWithZapCards />
+                <LearnWithZapCards />
+              </ScrollView>
+            </Box>
+          </Box>
         </ScrollView>
       </Box>
       {isZapperBottomSheetVisible && (

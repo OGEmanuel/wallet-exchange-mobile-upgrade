@@ -155,7 +155,7 @@ export default function EmailVerification({
             onCodeChange={handleCodeChange}
             onCodeComplete={handleCodeComplete}
             onResend={handleResend}
-            autoFocus={true}
+            autoFocus={false}
             disabled={isLoading}
             resendTimer={resendTimer}
             instructionText="Please enter the 6-digit OTP sent to"
