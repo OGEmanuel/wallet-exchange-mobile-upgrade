@@ -325,8 +325,9 @@ const TokenDetails = () => {
       }
 
       // Get transaction history for this specific account
-      if (!finalSelectedToken.accountId) {
-        console.warn("No accountId found for token:", finalSelectedToken);
+      // Check if accountId is missing or invalid (including 'unknown' placeholder)
+      if (!finalSelectedToken.accountId || finalSelectedToken.accountId === 'unknown') {
+        console.warn("No valid accountId found for token:", finalSelectedToken);
         setTokenHistory([]);
         return;
       }

@@ -435,19 +435,41 @@ class ZapSDKService {
 
       // Handle token refresh race condition
       if (error.message?.includes("Token refresh already in progress")) {
-        console.warn(`⏳ Token refresh in progress for ${context}, waiting...`);
-        // Wait a bit and retry once
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        try {
-          return await operation();
-        } catch (retryError: any) {
-          console.error(`❌ Retry failed for ${context}:`, retryError.message);
-          const networkError = NetworkErrorHandler.handleSDKError(
-            retryError,
-            context
-          );
-          throw networkError;
+        console.warn(`⏳ Token refresh in progress for ${context}, waiting with exponential backoff...`);
+        
+        // Retry with exponential backoff (up to 3 attempts)
+        const maxRetries = 3;
+        const baseDelay = 1500; // Start with 1.5 seconds
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const delay = baseDelay * Math.pow(2, attempt); // 1.5s, 3s, 6s
+          console.log(`⏳ Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          
+          try {
+            console.log(`🔄 Retrying ${context} after token refresh wait...`);
+            return await operation();
+          } catch (retryError: any) {
+            // If it's still a token refresh error and we have more retries, continue
+            if (retryError.message?.includes("Token refresh already in progress") && attempt < maxRetries - 1) {
+              console.warn(`⏳ Token refresh still in progress, will retry again...`);
+              continue;
+            }
+            
+            // If it's a different error or last attempt, throw it
+            console.error(`❌ Retry ${attempt + 1} failed for ${context}:`, retryError.message);
+            const networkError = NetworkErrorHandler.handleSDKError(
+              retryError,
+              context
+            );
+            throw networkError;
+          }
         }
+        
+        // If all retries failed, throw the original error
+        console.error(`❌ All retries exhausted for ${context} due to token refresh`);
+        const networkError = NetworkErrorHandler.handleSDKError(error, context);
+        throw networkError;
       }
 
       // Check if it's an auth error and record failure
@@ -523,12 +545,38 @@ class ZapSDKService {
     return response || null;
   }
 
+  // Helper to normalize seed phrase
+  private normalizeSeedPhrase(seedPhrase?: string): string | undefined {
+    if (!seedPhrase) return seedPhrase;
+    
+    // Trim and normalize whitespace (multiple spaces/newlines to single space)
+    // Convert to lowercase as BIP39 words are case-insensitive but SDK expects lowercase
+    return seedPhrase
+      .trim()
+      .split(/\s+/)
+      .filter(word => word.length > 0)
+      .map(word => word.toLowerCase())
+      .join(' ');
+  }
+
   // Wallet Operations
   public async createWalletGroupMultipurpose(
     params: CreateWalletGroupMultipurposeParams
   ) {
+    // Normalize seed phrase if provided (defensive normalization at SDK layer)
+    const normalizedParams = {
+      ...params,
+      seedPhrase: params.seedPhrase ? this.normalizeSeedPhrase(params.seedPhrase) : undefined,
+    };
+    
+    console.log("🔍 SDK Service: Normalizing seed phrase before SDK call:", {
+      originalSeedPhrase: params.seedPhrase ? params.seedPhrase.substring(0, 30) + "..." : undefined,
+      normalizedSeedPhrase: normalizedParams.seedPhrase ? normalizedParams.seedPhrase.substring(0, 30) + "..." : undefined,
+      wordCount: normalizedParams.seedPhrase ? normalizedParams.seedPhrase.split(' ').length : 0,
+    });
+    
     return this.executeWithNetworkHandling(
-      () => this.getSDK().createWalletGroupMultipurpose(params),
+      () => this.getSDK().createWalletGroupMultipurpose(normalizedParams),
       "createWalletGroupMultipurpose"
     );
   }

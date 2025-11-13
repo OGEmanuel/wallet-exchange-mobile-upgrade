@@ -686,7 +686,7 @@ const Sidebar = () => {
             </Box>
           </Box>
 
-          <Box paddingHorizontal="m" marginTop="l" mb="l">
+          <Box paddingHorizontal="m" marginTop="l" mb="3xl">
             <CustomText
               variant="bodySubheader"
               fontSize={14}
@@ -712,12 +712,21 @@ const Sidebar = () => {
             </Box>
           </Box>
 
-          {/* Learn with Zap section - now inside ScrollView */}
-          <Box width={"100%"} marginTop="l" marginBottom="xl" paddingHorizontal="m">
-            <Box width={"100%"} height={140}>
+          {/* Learn with Zap section - moved inside main ScrollView */}
+          <Box paddingHorizontal="m" marginTop="l" marginBottom="xl">
+            <CustomText
+              variant="bodySubheader"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="m"
+            >
+              LEARN WITH ZAP
+            </CustomText>
+            <Box width={"100%"} minHeight={140}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled={true}
                 contentContainerStyle={{
                   paddingLeft: 0,
                   paddingRight: 20,
@@ -736,12 +745,18 @@ const Sidebar = () => {
           ref={zapperBottomSheetRef}
           onContinue={() => {
             zapperBottomSheetRef.current?.close();
-            setIsZapperBottomSheetVisible(false);
+            // Delay state update to ensure sheet closes first
+            setTimeout(() => {
+              setIsZapperBottomSheetVisible(false);
+            }, 350);
           }}
           onClose={() => {
-            setIsZapperBottomSheetVisible(false);
             zapperBottomSheetRef.current?.close();
             zapLinkBottomSheetRef.current?.close();
+            // Delay state update to ensure sheet closes first
+            setTimeout(() => {
+              setIsZapperBottomSheetVisible(false);
+            }, 350);
           }}
         />
       )}

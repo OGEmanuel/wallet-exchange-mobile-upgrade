@@ -31,6 +31,10 @@ const AppBottomSheet = ({
 }: AppBottomSheetProps) => {
   const theme = useTheme<Theme>();
 
+  if (!isVisible) {
+    return null;
+  }
+
   return (
     <Modal
       visible={isVisible}
@@ -39,9 +43,16 @@ const AppBottomSheet = ({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)" 
+          }}
           activeOpacity={1}
           onPress={onClose}
           disabled={!dismissable}
@@ -55,7 +66,8 @@ const AppBottomSheet = ({
               borderTopRightRadius: 32,
               padding: padding,
               minHeight: minHeight,
-              maxHeight: maxHeight,
+              maxHeight: maxHeight || '80%',
+              width: '100%',
             }}
           >
             {showTopBar && <Box

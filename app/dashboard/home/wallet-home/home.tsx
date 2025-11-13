@@ -50,7 +50,6 @@ const Home = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { chainsMap, getChainImage } = useChains();
   const { defaultTokens, enrichSupportedCurrenciesWithBalances } = useSupportedCurrencies();
-  const { loadAllDataFromCache } = useWallet();
   const theme = useTheme<Theme>();
   const sendTokenRef = useRef<BottomSheet>(null);
   const recieveTokenRef = useRef<BottomSheet>(null);
@@ -66,6 +65,7 @@ const Home = () => {
     refreshPortfolio,
     isInitializing,
     isRefreshingPortfolio,
+    loadAllDataFromCache,
   } = useWallet();
 
   const { getCurrentWalletEnabledBalance } = useAggregatedBalances();

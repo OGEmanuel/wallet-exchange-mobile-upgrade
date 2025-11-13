@@ -1,10 +1,7 @@
-import { Theme } from "@/theme";
-import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { forwardRef, useCallback, useImperativeHandle } from "react";
 import {
   Dimensions,
-  StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -16,7 +13,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withTiming
 } from "react-native-reanimated";
 import { Box, CustomText } from "../general";
 
@@ -60,7 +57,6 @@ const AnimatedGradientBottomSheet = forwardRef<
     },
     ref
   ) => {
-    const theme = useTheme<Theme>();
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const context = useSharedValue({ y: 0 });
     const isOpen = useSharedValue(false);
@@ -101,6 +97,8 @@ const AnimatedGradientBottomSheet = forwardRef<
         } else {
           const targetY = SCREEN_HEIGHT - snapPointsArray[index];
           translateY.value = withTiming(targetY, { duration: 300 });
+          backdropOpacity.value = withTiming(1, { duration: 300 });
+          isOpen.value = true;
         }
       },
       [snapPointsArray, close]
@@ -111,6 +109,7 @@ const AnimatedGradientBottomSheet = forwardRef<
       close,
       snapToIndex,
     }));
+
 
     const gesture = Gesture.Pan()
       .onStart(() => {
@@ -146,14 +145,20 @@ const AnimatedGradientBottomSheet = forwardRef<
       });
 
     const animatedSheetStyle = useAnimatedStyle(() => {
+      const isVisible = translateY.value < SCREEN_HEIGHT - 10; // 10px threshold for closed
       return {
         transform: [{ translateY: translateY.value }],
+        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+        zIndex: isVisible ? 1000 : -1, // Only on top when visible
       };
     });
 
     const animatedBackdropStyle = useAnimatedStyle(() => {
+      const isVisible = translateY.value < SCREEN_HEIGHT - 10; // 10px threshold for closed
       return {
         opacity: backdropOpacity.value,
+        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+        zIndex: isVisible ? 999 : -1, // Behind sheet but on top when visible
       };
     });
 
@@ -176,10 +181,30 @@ const AnimatedGradientBottomSheet = forwardRef<
       }
     }, [close, enablePanDownToClose]);
 
+    const wrapperStyle = useAnimatedStyle(() => {
+      const isVisible = translateY.value < SCREEN_HEIGHT - 10;
+      return {
+        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+      };
+    });
+
     return (
-      <>
-        <StatusBar barStyle="light-content" />
-        <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
+      <Animated.View 
+        style={[
+          { 
+            position: "absolute", 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+          }, 
+          wrapperStyle
+        ]}
+      >
+        <Animated.View 
+          style={[styles.backdrop, animatedBackdropStyle]}
+          collapsable={false}
+        >
           <TouchableOpacity
             style={styles.backdropTouchable}
             activeOpacity={1}
@@ -188,7 +213,9 @@ const AnimatedGradientBottomSheet = forwardRef<
         </Animated.View>
 
         <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.container, animatedSheetStyle]}>
+          <Animated.View 
+            style={[styles.container, animatedSheetStyle]}
+          >
             <LinearGradient
               colors={gradientColors as any}
               locations={[0, 0.25, 1] as any}
@@ -236,10 +263,12 @@ const AnimatedGradientBottomSheet = forwardRef<
             </LinearGradient>
           </Animated.View>
         </GestureDetector>
-      </>
+      </Animated.View>
     );
   }
 );
+
+AnimatedGradientBottomSheet.displayName = "AnimatedGradientBottomSheet";
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -249,6 +278,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 999,
   },
   backdropTouchable: {
     flex: 1,
@@ -259,6 +289,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 1000,
   },
   gradientContainer: {
     borderTopLeftRadius: 24,
