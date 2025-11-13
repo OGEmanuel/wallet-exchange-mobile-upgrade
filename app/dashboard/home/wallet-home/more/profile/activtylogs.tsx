@@ -2,13 +2,11 @@ import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomText, PageWrapper } from "@/components/general";
-import { useWallet } from "@/src/core/wallet/wallet-context";
-import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { router } from "expo-router";
 import { Search } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import ActivityLogsEmptyState from "./empty-logs";
 
 const ItemCard = () => {
@@ -45,37 +43,37 @@ const ItemCard = () => {
 const ActivityLogs = () => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activities, setActivities] = useState<any | null>(null);
-  const [loadingUser, setLoadingUser] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { getExchangeUser } = useWallet();
+  // const [activities, setActivities] = useState<any | null>(null);
+  // const [loadingUser, setLoadingUser] = useState(false);
+  // const [error, setError] = useState<string | null>(null);
+  // const { getExchangeUser } = useWallet();
 
-  const settings = useSettings();
+  // const settings = useSettings();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      setLoadingUser(true);
-      setError(null);
-      try {
-        const userData = await getExchangeUser();
-        if (userData) {
-          const response = await settings.getActivities(userData);
-          setActivities(response);
-          // setUsername(userData.username || "");
-          // setPhone(userData.phone || "");
-        }
-      } catch (err: any) {
-        console.error("Failed to fetch user profile:", err);
-        setError(err?.message || "Failed to load user profile");
-      } finally {
-        setLoadingUser(false);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchUser = async () => {
+  //     setLoadingUser(true);
+  //     setError(null);
+  //     try {
+  //       const userData = await getExchangeUser();
+  //       if (userData) {
+  //         const response = await settings.getActivities(userData);
+  //         setActivities(response);
+  //         // setUsername(userData.username || "");
+  //         // setPhone(userData.phone || "");
+  //       }
+  //     } catch (err: any) {
+  //       console.error("Failed to fetch user profile:", err);
+  //       setError(err?.message || "Failed to load user profile");
+  //     } finally {
+  //       setLoadingUser(false);
+  //     }
+  //   };
 
-    fetchUser();
-  }, [getExchangeUser]);
+  //   fetchUser();
+  // }, [getExchangeUser]);
 
-  console.log(activities);
+  // console.log(activities);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
