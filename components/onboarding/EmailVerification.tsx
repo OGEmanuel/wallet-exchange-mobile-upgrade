@@ -77,15 +77,15 @@ export default function EmailVerification({
         // Check if verification was successful
         // If response is false, it means 2FA is required (handled separately)
         // Only proceed if we have a valid response object with user data
-        if (response && typeof response === 'object' && 'data' in response) {
+        if (response && typeof response === "object" && "data" in response) {
           const responseData = response as ExchangeValidateOtpResponse;
-          
+
           // Check if 2FA is required (response has twoFA flag but no user)
-          const requires2FA = 
-            responseData.message?.toLowerCase().includes('2fa required') ||
-            responseData.message?.toLowerCase().includes('2fa') ||
+          const requires2FA =
+            responseData.message?.toLowerCase().includes("2fa required") ||
+            responseData.message?.toLowerCase().includes("2fa") ||
             (responseData.data as any)?.twoFA === true;
-          
+
           if (requires2FA && !responseData.data?.user) {
             // 2FA is required - the 2FA input sheet should already be showing
             // Don't show error here, just wait for 2FA input
@@ -121,9 +121,14 @@ export default function EmailVerification({
         console.error("Email verification error:", error);
         // Only show error if it's not a 2FA-related error
         // 2FA errors should be handled by the 2FA input sheet
-        const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
-        const is2FAError = errorMessage.toLowerCase().includes('2fa') || errorMessage.toLowerCase().includes('totp');
-        
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "An error occurred. Please try again.";
+        const is2FAError =
+          errorMessage.toLowerCase().includes("2fa") ||
+          errorMessage.toLowerCase().includes("totp");
+
         if (!is2FAError) {
           setError(errorMessage);
         }
@@ -167,10 +172,9 @@ export default function EmailVerification({
 
         <Box
           style={{
-            position: "absolute",
-            bottom: 150,
+            position: "relative",
             width: SCREEN_WIDTH * 0.9,
-            alignSelf: "center",
+            marginTop: 40,
           }}
         >
           <CustomButton
