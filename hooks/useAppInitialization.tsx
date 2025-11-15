@@ -23,26 +23,45 @@ export const useAppInitialization = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        console.log("Starting app initialization...");
         setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
         // Load persisted user data
+        console.log("Loading user data...");
         const persistedUser = await storageService.get<UserModel>(
           StorageKeys.USER_PROFILE
         );
         if (persistedUser) {
           dispatch(kycActions.setUser(persistedUser));
           console.log("User data loaded from storage:", persistedUser);
+        } else {
+          console.log("No user data found in storage");
         }
 
         // Load persisted token data
+        console.log("Loading token data...");
         const persistedTokens = await storageService.get<TokenData>(
           StorageKeys.TOKEN_DATA
         );
         if (persistedTokens) {
           console.log("Token data loaded from storage");
           // You can dispatch token actions here if you have a token reducer
+        } else {
+          console.log("No token data found in storage");
         }
 
+        // Load persisted exchange user data
+        console.log("Loading exchange user data...");
+        const persistedExchangeUser = await storageService.get<UserModel>(
+          StorageKeys.EXCHANGE_USER_DATA
+        );
+        if (persistedExchangeUser) {
+          console.log("Exchange user data loaded from storage:", persistedExchangeUser._id);
+        } else {
+          console.log("No exchange user data found in storage");
+        }
+
+        console.log("Setting initialization complete...");
         setState({
           isInitialized: true,
           isLoading: false,

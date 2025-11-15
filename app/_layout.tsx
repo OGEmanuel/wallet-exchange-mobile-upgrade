@@ -25,7 +25,7 @@ import { useFonts } from "expo-font";
 import { SplashScreen, Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAtom } from "jotai";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Appearance,
   NativeEventSubscription,
@@ -77,7 +77,10 @@ export default function RootLayout() {
       },
     },
   });
+  
+  // Prevent auto-hide and track initialization state
   SplashScreen.preventAutoHideAsync();
+  const [isAppReady, setIsAppReady] = useState(false);
   const colorScheme = useColorScheme();
   const [colorTheme, setColorTheme] = useAtom(colorThemeAtom);
 
@@ -105,11 +108,57 @@ export default function RootLayout() {
     NewScience_Thin_Extended: require("../assets/fonts/New_Science_Thin_Extended.otf"),
   });
 
+  // Hide splash screen when fonts are loaded and app is ready
   useEffect(() => {
-    if (fontsLoaded || error) {
-      SplashScreen.hideAsync();
+    async function prepare() {
+      try {
+        // Wait for fonts to load
+        if (fontsLoaded || error) {
+          // Wait for app initialization
+          if (isAppReady) {
+            console.log('Hiding splash screen - all ready');
+            await SplashScreen.hideAsync();
+          }
+        }
+      } catch (e) {
+        console.warn('Error hiding splash screen:', e);
+        // Force hide splash screen even if there's an error
+        try {
+          await SplashScreen.hideAsync();
+        } catch (hideError) {
+          console.error('Failed to hide splash screen:', hideError);
+        }
+      }
     }
-  }, [fontsLoaded, error]);
+
+    prepare();
+  }, [fontsLoaded, error, isAppReady]);
+
+  // Additional safety net - force hide splash screen after 5 seconds
+  useEffect(() => {
+    const safetyTimeout = setTimeout(async () => {
+      try {
+        console.log('Safety timeout - forcing splash screen hide');
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.error('Safety timeout failed to hide splash screen:', e);
+      }
+    }, 5000);
+
+    return () => clearTimeout(safetyTimeout);
+  }, []);
+
+  // Fallback timeout to ensure app doesn't get stuck
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!isAppReady) {
+        console.warn('App initialization timeout, forcing app ready state');
+        setIsAppReady(true);
+      }
+    }, 3000); // 3 seconds timeout
+
+    return () => clearTimeout(timeout);
+  }, [isAppReady]);
 
   React.useEffect(() => {
     let subscription: NativeEventSubscription;
@@ -162,6 +211,11 @@ export default function RootLayout() {
 
   // Early return after all hooks are called
   if (!fontsLoaded && !error) {
+    return null;
+  }
+
+  // Don't render anything until app is ready - this keeps splash screen visible
+  if (!isAppReady) {
     return null;
   }
 
