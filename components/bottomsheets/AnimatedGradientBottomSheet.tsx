@@ -101,7 +101,7 @@ const AnimatedGradientBottomSheet = forwardRef<
           isOpen.value = true;
         }
       },
-      [snapPointsArray, close]
+      [snapPointsArray, close, translateY, backdropOpacity, isOpen]
     );
 
     useImperativeHandle(ref, () => ({
@@ -149,7 +149,8 @@ const AnimatedGradientBottomSheet = forwardRef<
       return {
         transform: [{ translateY: translateY.value }],
         pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
-        zIndex: isVisible ? 1000 : -1, // Only on top when visible
+        // Move completely off-screen when closed to prevent any interference
+        top: isVisible ? 0 : SCREEN_HEIGHT * 2,
       };
     });
 
@@ -158,7 +159,8 @@ const AnimatedGradientBottomSheet = forwardRef<
       return {
         opacity: backdropOpacity.value,
         pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
-        zIndex: isVisible ? 999 : -1, // Behind sheet but on top when visible
+        // Move completely off-screen when closed to prevent any interference
+        top: isVisible ? 0 : SCREEN_HEIGHT * 2,
       };
     });
 
@@ -181,26 +183,8 @@ const AnimatedGradientBottomSheet = forwardRef<
       }
     }, [close, enablePanDownToClose]);
 
-    const wrapperStyle = useAnimatedStyle(() => {
-      const isVisible = translateY.value < SCREEN_HEIGHT - 10;
-      return {
-        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
-      };
-    });
-
     return (
-      <Animated.View 
-        style={[
-          { 
-            position: "absolute", 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0,
-          }, 
-          wrapperStyle
-        ]}
-      >
+      <>
         <Animated.View 
           style={[styles.backdrop, animatedBackdropStyle]}
           collapsable={false}
@@ -215,6 +199,7 @@ const AnimatedGradientBottomSheet = forwardRef<
         <GestureDetector gesture={gesture}>
           <Animated.View 
             style={[styles.container, animatedSheetStyle]}
+            pointerEvents="box-none"
           >
             <LinearGradient
               colors={gradientColors as any}
@@ -263,7 +248,7 @@ const AnimatedGradientBottomSheet = forwardRef<
             </LinearGradient>
           </Animated.View>
         </GestureDetector>
-      </Animated.View>
+      </>
     );
   }
 );
