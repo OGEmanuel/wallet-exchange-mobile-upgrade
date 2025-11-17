@@ -1,6 +1,5 @@
 import { AppRootState } from "@/app/core/store/store";
 import images from "@/assets/images";
-import { AssetChartDetails } from "@/components";
 import { CoinData } from "@/interfaces/account.interface";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Share from "expo-sharing";
@@ -17,6 +16,7 @@ import {
 import { Download, Share as ShareX, X } from "react-native-feather";
 import ViewShot from "react-native-view-shot";
 import { useSelector } from "react-redux";
+import AssetChartDetails from "./AssetChartDetails";
 
 // Define the param list for the screen
 type MarketStackParamList = {

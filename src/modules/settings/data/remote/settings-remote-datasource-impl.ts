@@ -22,7 +22,6 @@ import {
 import zapSDKService from "@/src/core/sdk/zap-sdk.service";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
-import { AccountModel } from "../../domain/entities/models/Account-model";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
 import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
@@ -42,6 +41,7 @@ import { GetCurrencyParam } from "../../domain/entities/params/get-currency-para
 import { SettingsParams } from "../../domain/entities/params/settings-params";
 import { UpdateSettingsBody } from "../../domain/entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-user-details-params";
+import { AccountModel } from "../../domain/entities/models/Account-model";
 import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
 import { SettingsRemoteDataSource } from "./settings-remote-datasource";
 
