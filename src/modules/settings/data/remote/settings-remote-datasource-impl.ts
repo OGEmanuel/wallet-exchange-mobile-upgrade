@@ -24,7 +24,6 @@ import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AccountModel } from "../../domain/entities/models/Account-model";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
-import { ActivityLogModel } from "../../domain/entities/models/activity-log-model";
 import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
 import { CountryModel } from "../../domain/entities/models/country-model";
@@ -34,6 +33,7 @@ import { ICreateAddressBook } from "../../domain/entities/params/create-addressb
 import { IDeleteaddressParam } from "../../domain/entities/params/delete-address-param";
 import { EditAddressParam } from "../../domain/entities/params/edit-address-params";
 import { IGetAccount } from "../../domain/entities/params/get-account-param";
+import { ActivityLogModel } from "../../domain/entities/models/activity-log-model";
 import { IActivityLogsParams } from "../../domain/entities/params/get-activity-logs-data-params";
 import { IGetAddressParam } from "../../domain/entities/params/get-address-param";
 import { GetBanksParams } from "../../domain/entities/params/get-bank-param";
