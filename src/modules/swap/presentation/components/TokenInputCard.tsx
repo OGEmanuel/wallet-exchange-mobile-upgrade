@@ -10,6 +10,7 @@ import {
 import Box from "@/components/general/Box";
 import CustomButton from "@/components/general/CustomButton";
 import CustomText from "@/components/general/CustomText";
+import SkeletonLoader from "@/components/general/SkeletonLoader";
 
 import icons from "@/assets/icons";
 import { Theme } from "@/theme";
@@ -39,6 +40,8 @@ interface TokenInputCardProps {
   hasError?: boolean;
   errorColor?: string;
   onFocus?: () => void;
+  isLoading?: boolean; // For numbers/amounts loading (initial load)
+  isCurrenciesLoading?: boolean; // For currencies loading
 }
 
 const TokenInputCard: React.FC<TokenInputCardProps> = ({
@@ -61,6 +64,8 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
   hasError = false,
   errorColor = "#FF6B6B",
   onFocus,
+  isLoading = false,
+  isCurrenciesLoading = false,
 }) => {
   const theme = useTheme<Theme>();
 
@@ -100,45 +105,63 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
             $
           </CustomText>
         )}
-        <TextInput
-          onFocus={onFocus || (() => {})}
-          value={amount}
-          onChangeText={handleInputChange}
-          placeholder="0"
-          placeholderTextColor={theme.colors.bodyTextColor}
-          keyboardType="numeric"
-          style={{
-            fontSize: 24,
-            fontWeight: "500",
-            color: hasError ? errorColor : theme.colors.headerTextColor,
-            flex: 1,
-            paddingVertical: 8,
-            paddingHorizontal: 0,
-            fontFamily: "NewScience_Bold",
-          }}
-        />
-
-        <TouchableOpacity
-          style={[
-            styles.selectedToken,
-            { backgroundColor: theme.colors.mainBackgroundColor },
-          ]}
-          onPress={onTokenSelect || (() => {})}
-        >
-          <Image source={tokenImage} style={styles.selectedTokenImage} />
-          <CustomText
-            variant="body"
-            style={{ fontSize: 14, fontWeight: "500" }}
-            marginRight="s"
-          >
-            {tokenCode || tokenSymbol}
-          </CustomText>
-          <Image
-            source={icons.down}
-            style={styles.selectedTokenArrow}
-            tintColor={theme.colors.bodyTextColor}
+        {isLoading ? (
+          <SkeletonLoader
+            width="60%"
+            height={28}
+            borderRadius={8}
+            isLoading={true}
           />
-        </TouchableOpacity>
+        ) : (
+          <TextInput
+            onFocus={onFocus || (() => {})}
+            value={amount}
+            onChangeText={handleInputChange}
+            placeholder="0"
+            placeholderTextColor={theme.colors.bodyTextColor}
+            keyboardType="numeric"
+            style={{
+              fontSize: 24,
+              fontWeight: "500",
+              color: hasError ? errorColor : theme.colors.headerTextColor,
+              flex: 1,
+              paddingVertical: 8,
+              paddingHorizontal: 0,
+              fontFamily: "NewScience_Bold",
+            }}
+          />
+        )}
+
+        {isCurrenciesLoading ? (
+          <SkeletonLoader
+            width={107}
+            height={36}
+            borderRadius={18}
+            isLoading={true}
+          />
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.selectedToken,
+              { backgroundColor: theme.colors.mainBackgroundColor },
+            ]}
+            onPress={onTokenSelect || (() => {})}
+          >
+            <Image source={tokenImage} style={styles.selectedTokenImage} />
+            <CustomText
+              variant="body"
+              style={{ fontSize: 14, fontWeight: "500" }}
+              marginRight="s"
+            >
+              {tokenCode || tokenSymbol}
+            </CustomText>
+            <Image
+              source={icons.down}
+              style={styles.selectedTokenArrow}
+              tintColor={theme.colors.bodyTextColor}
+            />
+          </TouchableOpacity>
+        )}
       </Box>
 
       {isReceive ? null : (
@@ -160,9 +183,19 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
               width={24}
               height={24}
             />
-            <CustomText ml="s" color="placeholderTextColor" variant="body">
-              {usdValue}
-            </CustomText>
+            {isLoading ? (
+              <SkeletonLoader
+                width={80}
+                height={16}
+                borderRadius={4}
+                isLoading={true}
+                style={{ marginLeft: 8 }}
+              />
+            ) : (
+              <CustomText ml="s" color="placeholderTextColor" variant="body">
+                {usdValue}
+              </CustomText>
+            )}
           </Box>
           {showBalance && (
             <Box
@@ -170,15 +203,25 @@ const TokenInputCard: React.FC<TokenInputCardProps> = ({
               justifyContent="center"
               alignItems="center"
             >
-              <CustomText
-                color="placeholderTextColor"
-                fontSize={12}
-                variant="body"
-                marginRight="s"
-              >
-                Bal: {balance}
-              </CustomText>
-              {showMaxButton && (
+              {isLoading ? (
+                <SkeletonLoader
+                  width={100}
+                  height={16}
+                  borderRadius={4}
+                  isLoading={true}
+                  style={{ marginRight: 8 }}
+                />
+              ) : (
+                <CustomText
+                  color="placeholderTextColor"
+                  fontSize={12}
+                  variant="body"
+                  marginRight="s"
+                >
+                  Bal: {balance}
+                </CustomText>
+              )}
+              {showMaxButton && !isLoading && (
                 <CustomButton
                   width={50}
                   height={25}

@@ -2,14 +2,37 @@ import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import { Box, CustomText, PageWrapper } from "@/components/general";
+import { useWallet } from "@/src/core/wallet/wallet-context";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import { ActivityLogModel } from "@/src/modules/settings/domain/entities/models/activity-log-model";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
-import React from "react";
-import { ScrollView } from "react-native-gesture-handler";
+import React, { useEffect, useState } from "react";
+import { FlatList } from "react-native";
+import ActivityLogsEmptyState from "./empty-logs";
 
-const ItemCard = () => {
+const ItemCard = (props: { logs: ActivityLogModel }) => {
+  const { logs } = props;
+
+  function formatDateReadable(dateString: string): string {
+    const date = new Date(dateString);
+
+    const day = date.getDate();
+    const month = date.toLocaleString("en-US", { month: "short" });
+    const year = date.getFullYear();
+
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12 || 12; // convert to 12-hour format
+
+    return `${day} ${month} ${year}, ${hours}:${minutes}${ampm}`;
+  }
+
   return (
     <Box
       width={"100%"}
@@ -28,12 +51,12 @@ const ItemCard = () => {
         position="relative"
       ></Box>
       <Box ml="m">
-        <CustomText fontSize={14}>Login</CustomText>
+        <CustomText fontSize={14}>{logs.type}</CustomText>
         <CustomText fontSize={12} mt="s">
-          You transaction from 40 ETH To20 BTC was completed successfully{" "}
+          {logs.description}
         </CustomText>
         <CustomText fontSize={10} color="disabledTextColor" mt="s">
-          27 Dec 2022, 11:58AM
+          {formatDateReadable(logs.createdAt.toISOString())}
         </CustomText>
       </Box>
     </Box>
@@ -41,7 +64,81 @@ const ItemCard = () => {
 };
 
 const ActivityLogs = () => {
+  const router = useRouter();
   const theme = useTheme<Theme>();
+  const settings = useSettings();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [logs, setLogs] = useState<ActivityLogModel[]>([]);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { getExchangeUser } = useWallet();
+  const [user, setUser] = useState<UserModel | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      setLoadingUser(true);
+      setError(null);
+      try {
+        const userData = await getExchangeUser();
+        if (userData) {
+          setUser(userData);
+        }
+      } catch (err: any) {
+        console.error("Failed to fetch user profile:", err);
+        setError(err?.message || "Failed to load user profile");
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUser();
+  }, [getExchangeUser]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchLogs() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // ✅ STEP 1: Call the hook method with parameters
+        const response = await settings.getActivities({
+          userId: user?._id, // Required: user ID
+          user, // Optional: full user object
+          page: 1, // Optional: pagination
+          pageSize: 10, // Optional: page size
+          startDate: new Date(), // Optional: filter by date
+          endDate: new Date(),
+        });
+
+        if (!mounted) return;
+
+        // ✅ STEP 2: Extract data from response
+        const activities = response?.data || [];
+
+        console.log("✅ Fetched activities:", activities);
+        setLogs(activities);
+      } catch (err: any) {
+        if (mounted) {
+          setError(err?.message || "Failed to fetch activity logs");
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    fetchLogs();
+    return () => {
+      mounted = false;
+    };
+  }, [user?._id]);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />
@@ -63,8 +160,8 @@ const ActivityLogs = () => {
             <CustomInputWithoutForm
               placeholder="Search"
               placeholderTextColor={theme.colors.disabledTextColor}
-              value=""
-              onChange={() => {}}
+              value={searchQuery}
+              onChange={handleSearchChange}
               iconLeft={<Search size={20} color={theme.colors.bodyTextColor} />}
             />
           </Box>
@@ -76,14 +173,16 @@ const ActivityLogs = () => {
           />
         </Box>
       </Box>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        {Array.from([
-          1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        ]).map((item, index) => (
-          <ItemCard key={index.toString()} />
-        ))}
-      </ScrollView>
+      {logs.length === 0 ? (
+        <ActivityLogsEmptyState />
+      ) : (
+        <FlatList
+          data={logs}
+          keyExtractor={(log) => log._id}
+          renderItem={(logsData) => <ItemCard logs={logsData.item} />}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
+      )}
     </PageWrapper>
   );
 };

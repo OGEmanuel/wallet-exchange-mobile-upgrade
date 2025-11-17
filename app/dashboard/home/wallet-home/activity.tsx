@@ -12,6 +12,7 @@ import Box from "@/components/general/Box";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import PageWrapper from "@/components/general/PageWrapper";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useExchange from "@/src/modules/exchange/presentation/hooks/useExchange";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import { AppRootState } from "@/state";
@@ -41,6 +42,7 @@ const Activity = () => {
   const { exchangeActivities, hasMore } = useSelector(
     (state: AppRootState) => state.exchange
   );
+  const { isExchangeAuthenticated, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
 
   // Filter activities based on search query
   const filteredActivities = exchangeActivities.filter((activity) => {
@@ -77,7 +79,13 @@ const Activity = () => {
 
   // Fetch initial data
   const loadActivities = useCallback(async (page: number, reset = false) => {
-    // if (activeTab !== "EXCHANGE") return; // Always load since we only have exchange
+    // Check authentication first
+    if (!isExchangeAuthenticated || !user?._id) {
+      console.log("⚠️ User not authenticated, prompting login");
+      showExchangeLogin();
+      setIsLoading(false);
+      return;
+    }
     
     console.log("loadActivities called", { page, reset });
     setIsLoading(true);
@@ -121,14 +129,17 @@ const Activity = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, fetchExchangeActivities, dispatch]);
+  }, [user, fetchExchangeActivities, dispatch, isExchangeAuthenticated, showExchangeLogin]);
 
   // Load initial data
   useEffect(() => {
-    if (user?._id) {
+    if (isExchangeAuthenticated && user?._id) {
       loadActivities(1, true);
+    } else if (!isExchangeAuthenticated) {
+      // Show login prompt if not authenticated
+      showExchangeLogin();
     }
-  }, [user?._id, loadActivities]); // Include loadActivities but it's stable due to useCallback
+  }, [user?._id, isExchangeAuthenticated, loadActivities, showExchangeLogin]); // Include loadActivities but it's stable due to useCallback
 
   const handleFilterClick = () => {
     if (activityFilterRef.current) {
@@ -150,6 +161,13 @@ const Activity = () => {
       filteredCount: filteredActivities.length,
       totalCount: exchangeActivities.length
     });
+    
+    // Check authentication first
+    if (!isExchangeAuthenticated || !user?._id) {
+      console.log("⚠️ User not authenticated, prompting login");
+      showExchangeLogin();
+      return;
+    }
     
     // Don't load more if already loading
     if (isLoadingMore || fetchingExchangeActivities) {
@@ -215,7 +233,7 @@ const Activity = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length]);
+  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length, isExchangeAuthenticated, showExchangeLogin]);
 
   const handleEndReached = useCallback(() => {
     console.log("📱 onEndReached triggered by FlatList");
@@ -306,6 +324,7 @@ const Activity = () => {
         {/* BOTTOM SHEET */}
         <ActivityFilterBottomSheet ref={activityFilterRef} />
         <BuyActivityBottomSheet ref={buyActivityRef} />
+        {ExchangeLoginBottomSheet && <ExchangeLoginBottomSheet />}
         <SentBottomSheet ref={sentActivityRef} />
         <RecieveBottomSheet ref={recieveActivityRef} />
         <ApprovedBottomSheet ref={approvedActivityRef} />

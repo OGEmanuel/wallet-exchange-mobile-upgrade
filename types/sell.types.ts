@@ -26,6 +26,7 @@ export type SellFlowStep =
   | "select-currency"
   | "amount"
   | "select-bank"
+  | "order_details"
   | "details"
   | "confirm"
   | "success";

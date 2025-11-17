@@ -33,7 +33,11 @@ import { Theme } from "@/theme";
 import { createErrorModalProps } from "@/utils/error-handler";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { ICurrency, SendTransactionRequest } from "@zap/blockchain-sdk";
+import {
+  ICurrency,
+  ISupportedCurrency,
+  SendTransactionRequest,
+} from "@zap/blockchain-sdk";
 import { ethers } from "ethers";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Clipboard from "expo-clipboard";
@@ -961,9 +965,12 @@ const SendToken = () => {
             // Try multiple matching strategies (same as token details page)
             const matchesId = token.id === tokenId;
             const matchesSupportedId =
-              token.supportedCurrencyId?._id === tokenId;
+              (token.supportedCurrencyId as ISupportedCurrency)?._id ===
+              tokenId;
             const matchesSupportedIdString =
-              token.supportedCurrencyId?._id?.toString() === tokenId;
+              (
+                token.supportedCurrencyId as ISupportedCurrency
+              )?._id?.toString() === tokenId;
             const matchesIdString = token.id?.toString() === tokenId;
 
             // Check if supportedCurrencyId is a string that matches

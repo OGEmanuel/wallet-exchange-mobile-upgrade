@@ -1,23 +1,19 @@
-import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import storageService from "@/src/core/storage/app-storage";
-import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { StorageKeys } from "@/src/core/storage/storage-types";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
-import { ExchangeValidateOtpResponse, UserModel } from "@zap/blockchain-sdk";
-import { router } from "expo-router";
+import { ExchangeValidateOtpResponse } from "@zap/blockchain-sdk";
 import React, { useEffect, useState } from "react";
-import { Alert, Keyboard, Pressable } from "react-native";
+import { Keyboard, Pressable } from "react-native";
 import OTPInput from "../form/OTPInput";
 import { CustomButton, CustomText } from "../general";
 import Box from "../general/Box";
 
 interface EmailVerificationProps {
   email?: string;
-  onVerify?: (code: string) => void;
+  onVerify?: (code: string, userData?: any) => void;
   onResend?: () => void;
   isLoading?: boolean;
   onCloseBottomSheet?: () => void;
@@ -36,10 +32,7 @@ export default function EmailVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme<Theme>();
-  const { hideAllBottomSheets } = useAppBottomSheet();
-  const { handleExchangeValidateOtp, exchangeUserData, getExchangeUser } =
-    useExchangeAuth();
-  const { fetchUserById } = useKyc();
+  const { handleExchangeValidateOtp } = useExchangeAuth();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -82,19 +75,30 @@ export default function EmailVerification({
         console.log("Email verification response:", response);
 
         // Check if verification was successful
-        if (response) {
+        // If response is false, it means 2FA is required (handled separately)
+        // Only proceed if we have a valid response object with user data
+        if (response && typeof response === "object" && "data" in response) {
+          const responseData = response as ExchangeValidateOtpResponse;
+
+          // Check if 2FA is required (response has twoFA flag but no user)
+          const requires2FA =
+            responseData.message?.toLowerCase().includes("2fa required") ||
+            responseData.message?.toLowerCase().includes("2fa") ||
+            (responseData.data as any)?.twoFA === true;
+
+          if (requires2FA && !responseData.data?.user) {
+            // 2FA is required - the 2FA input sheet should already be showing
+            // Don't show error here, just wait for 2FA input
+            setIsVerifying(false);
+            return;
+          }
+
           await storageService.setItem(
             StorageKeys.TOKEN_DATA,
-            JSON.stringify(
-              (response as ExchangeValidateOtpResponse).data?.session || ""
-            )
+            JSON.stringify(responseData.data?.session || "")
           );
 
-          // Check if user data has username
-          let exchangeUser = exchangeUserData;
-
-          const userData = (response as ExchangeValidateOtpResponse)?.data
-            ?.user;
+          const userData = responseData.data?.user;
 
           if (userData) {
             await storageService.setItem(
@@ -103,64 +107,31 @@ export default function EmailVerification({
             );
           }
 
-          if (!userData?.username) {
-            // exchangeUser = await getExchangeUser();
+          // Only call onVerify if we have user data (full login successful)
+          if (userData) {
+            onVerify?.(code, userData);
           }
-
-          const userResponse = await fetchUserById(userData as UserModel);
-          exchangeUser = userResponse?.data ?? null;
-
-          if (exchangeUser?.username) {
-            // User has username, close bottom sheet and navigate to app
-            console.log(
-              "User has username, closing bottom sheet and navigating to app"
-            );
-            hideAllBottomSheets();
-            if (onCloseBottomSheet) {
-              onCloseBottomSheet();
-            }
-            // check if the user has faceId enabled
-            const faceIdEnabled = pinStorageService.getFaceIdValue();
-            if (!faceIdEnabled) {
-              router.push("/dashboard/home/wallet-home/swap");
-            } else {
-              // trigger the faceid scanning
-              const val = await pinStorageService.triggerFaceId();
-              if (val) {
-                router.push("/dashboard/home/wallet-home/swap");
-              } else {
-                Alert.alert("Error", "Face ID verification failed", [
-                  {
-                    isPreferred: true,
-                    onPress: async () => {
-                      const val = await pinStorageService.triggerFaceId();
-                      if (val) {
-                        router.push("/dashboard/home/wallet-home/swap");
-                      }
-                    },
-                    style: "default",
-                    text: "try again",
-                  },
-                  {
-                    isPreferred: true,
-                    onPress: () => router.push("/"),
-                    style: "default",
-                    text: "Cancel",
-                  },
-                ]);
-              }
-            }
-          } else {
-            // User doesn't have username, continue with normal flow
-            onVerify?.(code);
-          }
+        } else if (response === false) {
+          // 2FA is required - don't show error, the 2FA input sheet will handle it
+          // Just reset the verifying state
         } else {
           setError("Invalid OTP. Please try again.");
         }
       } catch (error) {
         console.error("Email verification error:", error);
-        const errorMessage = error instanceof Error ? error.message : "An error occurred. Please try again.";
-        setError(errorMessage);
+        // Only show error if it's not a 2FA-related error
+        // 2FA errors should be handled by the 2FA input sheet
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "An error occurred. Please try again.";
+        const is2FAError =
+          errorMessage.toLowerCase().includes("2fa") ||
+          errorMessage.toLowerCase().includes("totp");
+
+        if (!is2FAError) {
+          setError(errorMessage);
+        }
         // Error handling is already done by the API service with toast notifications
       } finally {
         setIsVerifying(false);
@@ -189,7 +160,7 @@ export default function EmailVerification({
             onCodeChange={handleCodeChange}
             onCodeComplete={handleCodeComplete}
             onResend={handleResend}
-            autoFocus={true}
+            autoFocus={false}
             disabled={isLoading}
             resendTimer={resendTimer}
             instructionText="Please enter the 6-digit OTP sent to"
@@ -201,10 +172,9 @@ export default function EmailVerification({
 
         <Box
           style={{
-            position: "absolute",
-            bottom: 150,
+            position: "relative",
             width: SCREEN_WIDTH * 0.9,
-            alignSelf: "center",
+            marginTop: 40,
           }}
         >
           <CustomButton

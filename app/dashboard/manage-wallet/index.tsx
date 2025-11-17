@@ -4,6 +4,7 @@ import CustomText from "@/components/general/CustomText";
 import Identicon from "@/components/general/Identicon";
 import ImportWalletModal from "@/components/Modals/ImportWalletModal";
 import { useAggregatedBalances } from "@/hooks/useAggregatedBalances";
+import { PortfolioService } from "@/services/portfolio.service";
 import { listWalletGroupBackups } from "@/src/core/utils/backup-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
@@ -101,14 +102,14 @@ const ManageWalletScreen = () => {
 
     // Use aggregated balance instead of manual calculation
     const totalValue = userWalletGroup.aggregatedBalance || 0;
-    const formattedValue = formatCurrency(totalValue);
+    const formattedValue = PortfolioService.formatCurrency(totalValue);
 
     // If this wallet group doesn't exist in our map, create it
     if (!walletGroupsMap.has(walletGroupId)) {
       walletGroupsMap.set(walletGroupId, {
         id: walletGroupId,
         name: walletGroupName,
-        totalValue: "$0.00", // Will be calculated from all wallets
+        totalValue: PortfolioService.formatCurrency(0), // Will be calculated from all wallets
         wallets: [],
         isBackedUp: backupStatuses[walletGroupId] || false,
       });
@@ -136,7 +137,7 @@ const ManageWalletScreen = () => {
 
       return {
         ...group,
-        totalValue: formatCurrency(totalValue),
+        totalValue: PortfolioService.formatCurrency(totalValue),
       };
     }
   );
@@ -155,11 +156,6 @@ const ManageWalletScreen = () => {
       `/dashboard/manage-wallet/wallet-group-detail?walletGroupId=${group.id}`
     );
   };
-
-  // const handleWalletPress = (wallet: any) => {
-  //   // Navigate to wallet details
-  //   console.log("Navigate to wallet:", wallet.name);
-  // };
 
   // Animation functions
   const animateTabSwitch = (newTab: "wallets" | "watchlist") => {

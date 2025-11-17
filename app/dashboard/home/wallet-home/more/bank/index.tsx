@@ -20,14 +20,15 @@ import { useTheme } from "@shopify/restyle";
 import { ISupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import { Search } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { ScrollView, TextInput, TouchableOpacity } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshControl, ScrollView, TextInput, TouchableOpacity } from "react-native";
 
 const BankAccountsScreen = () => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAccount, setSelectedAccount] = useState<UserBankAccount | null>(null);
   const [showAddAccountBottomSheet, setShowAddAccountBottomSheet] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const bankAccountsBottomSheetRef = useRef<BottomSheet>(null);
   const { supportedCurrenciesForSwap } = useSupportedCurrencies();
@@ -46,6 +47,20 @@ const BankAccountsScreen = () => {
   useEffect(() => {
     fetchBankAccounts();
   }, [fetchBankAccounts]);
+
+  // Handle pull to refresh
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await fetchBankAccounts();
+    } catch (error) {
+      console.error("Failed to refresh bank accounts:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, fetchBankAccounts]);
 
   // Filter bank accounts based on search query
   const filteredBankAccounts = bankAccounts.filter((account) =>
@@ -103,7 +118,10 @@ const BankAccountsScreen = () => {
     
     // User is verified, show bank account bottom sheet
     setShowAddAccountBottomSheet(true);
+    // Use setTimeout to ensure the component is mounted before calling snapToIndex
+    setTimeout(() => {
     bankAccountsBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
   };
 
   const handleAccountSelect = (account: UserBankAccount) => {
@@ -117,36 +135,35 @@ const BankAccountsScreen = () => {
     setShowAddAccountBottomSheet(false);
   };
 
-  const renderAccountList = () => (
-    <Box flex={1} bg="mainBackgroundColor" marginTop="l" marginHorizontal="m">
-      <Box
-        backgroundColor="secondaryBackgroundColor"
-        borderRadius={30}
-        paddingHorizontal="m"
-        marginBottom="m"
-        flexDirection="row"
-        alignItems="center"
-      >
-        <Search size={18} color={theme.colors.bodyTextColor} />
-        <TextInput
-          style={{
-            flex: 1,
-            padding: 13,
-            color: theme.colors.headerTextColor,
-            fontSize: 15,
-          }}
-          placeholder="Search accounts"
-          placeholderTextColor={theme.colors.disabledTextColor}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </Box>
+  const renderSearchBar = () => (
+    <Box
+      backgroundColor="secondaryBackgroundColor"
+      borderRadius={30}
+      paddingHorizontal="m"
+      marginBottom="m"
+      flexDirection="row"
+      alignItems="center"
+    >
+      <Search size={18} color={theme.colors.bodyTextColor} />
+      <TextInput
+        style={{
+          flex: 1,
+          padding: 13,
+          color: theme.colors.headerTextColor,
+          fontSize: 15,
+        }}
+        placeholder="Search accounts"
+        placeholderTextColor={theme.colors.disabledTextColor}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+    </Box>
+  );
 
-      <ScrollView
-        style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
+  const renderAccountList = () => (
+    <Box flex={1} width="100%">
+      {renderSearchBar()}
+      <Box>
         {filteredBankAccounts.map((account) => (
           <TouchableOpacity
             key={account._id}
@@ -160,32 +177,39 @@ const BankAccountsScreen = () => {
             />
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </Box>
     </Box>
   );
 
-  const renderEmptyState = () => (
-    <Box
-      bg="mainBackgroundColor"
-      flex={1}
-      marginTop="s"
-      marginHorizontal="m"
-      alignItems="center"
-      justifyContent="center"
-    >
-      <EmptyState
-        title="No Accounts"
-        info="You haven't added any accounts. Add a bank account to receive your naira"
-        onPress={handleAddAccount}
-        source={require("@/assets/images/noBank.png")}
+  const renderEmptyState = (showSearchBar: boolean = false) => (
+    <Box flex={1} width="100%">
+      {showSearchBar && renderSearchBar()}
+      <Box
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        paddingHorizontal="m"
       >
-        <CustomButton
-          text="+ Add New Account"
+        <EmptyState
+          title={showSearchBar ? "No Results" : "No Accounts"}
+          info={
+            showSearchBar
+              ? "No accounts match your search. Try a different search term."
+              : "You haven't added any accounts. Add a bank account to receive your naira"
+          }
           onPress={handleAddAccount}
-          borderRadius={30}
-          width={200}
-        />
-      </EmptyState>
+          source={require("@/assets/images/noBank.png")}
+        >
+          {!showSearchBar && (
+            <CustomButton
+              text="+ Add New Account"
+              onPress={handleAddAccount}
+              borderRadius={30}
+              width={200}
+            />
+          )}
+        </EmptyState>
+      </Box>
     </Box>
   );
 
@@ -193,56 +217,67 @@ const BankAccountsScreen = () => {
     <PageWrapper>
       <SettingsHeader title="Accounts" onBackPress={() => router.back()} />
 
-      <Box
-        width="100%"
-        alignItems="center"
-        flexDirection="row"
-        justifyContent="center"
-        paddingHorizontal="l"
-        position="relative"
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primaryColor}
+            colors={[theme.colors.primaryColor]}
+          />
+        }
+        contentContainerStyle={{ flexGrow: 1 }}
       >
-        {bankAccounts.length > 0 && (
-          <Box position="absolute" right={16} top={0} zIndex={1}>
-            <CustomButton
-              text="+ New"
-              onPress={handleAddAccount}
-              width={70}
-              height={30}
-              borderRadius={50}
-            />
-          </Box>
-        )}
-
-        {isLoadingBankAccounts ? (
-          <Box flex={1} alignItems="center" justifyContent="center" marginTop="xl">
-            <CustomText variant="body" color="bodyTextColor">
-              Loading accounts...
-            </CustomText>
-          </Box>
-        ) : errorBankAccounts ? (
-          <Box flex={1} alignItems="center" justifyContent="center" marginTop="xl">
-            <CustomText variant="body" color="error">
-              {errorBankAccounts}
-            </CustomText>
-            <Box marginTop="m">
+        <Box flex={1} p="m" position="relative">
+          {bankAccounts.length > 0 && (
+            <Box position="absolute" right={16} top={16} zIndex={1}>
               <CustomButton
-                text="Retry"
-                onPress={fetchBankAccounts}
-                borderRadius={30}
+                text="+ New"
+                onPress={handleAddAccount}
+                width={70}
+                height={43}
+                borderRadius={50}
               />
             </Box>
-          </Box>
-        ) : filteredBankAccounts.length > 0 ? (
-          renderAccountList()
-        ) : (
-          renderEmptyState()
-        )}
-      </Box>
+          )}
 
-      {showAddAccountBottomSheet && (
+          {isLoadingBankAccounts ? (
+            <Box flex={1} alignItems="center" justifyContent="center" marginTop="xl">
+              <CustomText variant="body" color="bodyTextColor">
+                Loading accounts...
+              </CustomText>
+            </Box>
+          ) : errorBankAccounts ? (
+            <Box flex={1} alignItems="center" justifyContent="center" marginTop="xl">
+              <CustomText variant="body" color="error">
+                {errorBankAccounts}
+              </CustomText>
+              <Box marginTop="m">
+                <CustomButton
+                  text="Retry"
+                  onPress={fetchBankAccounts}
+                  borderRadius={30}
+                />
+              </Box>
+            </Box>
+          ) : bankAccounts.length > 0 ? (
+            filteredBankAccounts.length > 0 ? (
+              renderAccountList()
+            ) : (
+              renderEmptyState(true)
+            )
+          ) : (
+            renderEmptyState(false)
+          )}
+        </Box>
+      </ScrollView>
+
         <BankAccountsBottomSheet
           ref={bankAccountsBottomSheetRef}
           targetCurrency={ngnCurrency}
+        initialView={showAddAccountBottomSheet ? "add" : "list"}
           onBankAccountSelect={(account) => {
             if (account) {
               handleAccountAdded();
@@ -256,7 +291,6 @@ const BankAccountsScreen = () => {
             bankAccountsBottomSheetRef.current?.close();
           }}
         />
-      )}
     </PageWrapper>
   );
 };

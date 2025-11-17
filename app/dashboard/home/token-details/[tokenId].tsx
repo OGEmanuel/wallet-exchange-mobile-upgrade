@@ -14,7 +14,7 @@ import {
   ScrollView,
   StatusBar,
 } from "react-native";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import TokenGraph from "@/components/dashboard/market/TokenGraph";
 import {
@@ -32,6 +32,9 @@ import {
 import ThemedGlassIcon from "@/assets/svg/wallet-icons-components/ThemedGlassIcon";
 import QRCodeBottomSheet from "@/components/bottomsheets/QRCodeBottomSheet";
 import TransactionDetailsBottomSheet from "@/components/bottomsheets/TransactionDetailsBottomSheet";
+import SelectBuyTokens from "@/components/bottomsheets/buy/SelectBuyTokens";
+import TradeSelectBottomSheet from "@/components/bottomsheets/home/BuyBottomSheet";
+import SellFlowBottomSheet from "@/components/bottomsheets/sell/SellBottomsheet";
 import ActionButtons from "@/components/dashboard/ActionButtons";
 import BalanceCard from "@/components/dashboard/BalanceCard";
 import TransactionCardSkeleton from "@/components/dashboard/TransactionCardSkeleton";
@@ -43,9 +46,12 @@ import PageWrapper from "@/components/general/PageWrapper";
 import ZapLoader from "@/components/general/ZapLoader";
 import TokenHistoryCard from "@/components/wallet/TokenHistoryCard";
 import { isSameDay } from "@/configs/helpers";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { PortfolioService } from "@/services/portfolio.service";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { formatCurrency, formatDate } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import { setBuyStage, setBuyToken } from "@/src/modules/buy/presentation/state/buy-slice";
 import { AppRootState } from "@/state";
 import {
   selectAllSupportedTokens,
@@ -115,6 +121,8 @@ const TokenDetails = () => {
 
   const router = useRouter();
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
+  const { supportedCurrenciesForSwap } = useSupportedCurrencies();
   const { portfolio, mainUserWalletGroup, getTransactionHistory, getAddress } =
     useWallet();
 
@@ -127,8 +135,8 @@ const TokenDetails = () => {
   // Fallback: manually find token if selector doesn't work
   const allTokens = useSelector(selectAllSupportedTokens);
   const portfolioAssets = processedPortfolio?.assets || [];
-  const marketTokens =
-    useSelector((state: AppRootState) => state.market.marketTokens) || [];
+  const marketTokensRaw = useSelector((state: AppRootState) => state.market.marketTokens);
+  const marketTokens = React.useMemo(() => marketTokensRaw || [], [marketTokensRaw]);
 
   const fallbackToken = allTokens?.find((token) => {
     // Try multiple matching strategies
@@ -234,6 +242,7 @@ const TokenDetails = () => {
   const [showStickyActions, setShowStickyActions] = useState(false);
   const stickyAnim = useRef(new Animated.Value(0)).current;
   const receiveBottomSheetRef = useRef<BottomSheet>(null);
+  const { tradeBottomSheetRef, buyTokensBottomSheetRef, sellTokensBottomSheetRef } = useBottomSheetRefs();
   const SCREEN_WIDTH = Dimensions.get("window").width;
 
   // Tab animation effect
@@ -285,6 +294,9 @@ const TokenDetails = () => {
   const [selectedTransaction, setSelectedTransaction] =
     useState<BlockchainTransaction | null>(null);
   const transactionDetailsRef = useRef<BottomSheet>(null);
+  const hasFetchedTokenDetailsRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const prevTokenIdRef = useRef<string | undefined>(undefined);
 
   // Open bottom sheet when transaction is selected
   useEffect(() => {
@@ -340,8 +352,23 @@ const TokenDetails = () => {
     console.log("📞 fetchTokenDetailsCallback called");
     console.log("   - tokenId:", tokenId);
     console.log("   - finalSelectedToken exists:", !!finalSelectedToken);
+    console.log("   - hasFetchedTokenDetailsRef:", hasFetchedTokenDetailsRef.current);
+    console.log("   - isFetchingRef:", isFetchingRef.current);
+
+    // Prevent multiple simultaneous fetches
+    if (isFetchingRef.current) {
+      console.log("⏭️ Already fetching token details, skipping");
+      return;
+    }
+
+    if (hasFetchedTokenDetailsRef.current) {
+      console.log("⏭️ Already fetched token details, skipping");
+      return;
+    }
 
     if (tokenId && finalSelectedToken) {
+      isFetchingRef.current = true;
+      hasFetchedTokenDetailsRef.current = true;
       console.log("✅ Conditions met, starting fetch process");
       setIsTokenDetailsLoading(true);
       try {
@@ -488,8 +515,10 @@ const TokenDetails = () => {
         console.error("❌ Failed to fetch token details:", error);
         setTokenDetails(null);
         setHistoricalRates(null);
+        hasFetchedTokenDetailsRef.current = false; // Reset on error so we can retry
       } finally {
         setIsTokenDetailsLoading(false);
+        isFetchingRef.current = false;
       }
     } else {
       console.log("❌ Fetch conditions not met:");
@@ -500,13 +529,31 @@ const TokenDetails = () => {
     }
   }, [tokenId, finalSelectedToken, marketTokens]);
 
-  // Fetch token details on mount
+  // Fetch token details on mount or when tokenId/finalSelectedToken changes
   useEffect(() => {
+    // Reset fetch flag when tokenId or finalSelectedToken changes
+    const currentTokenId = finalSelectedToken?.id || 
+      (typeof finalSelectedToken?.supportedCurrencyId === 'object' 
+        ? finalSelectedToken?.supportedCurrencyId?._id 
+        : finalSelectedToken?.supportedCurrencyId) ||
+      tokenId;
+    
+    if (prevTokenIdRef.current !== currentTokenId) {
+      hasFetchedTokenDetailsRef.current = false;
+      isFetchingRef.current = false;
+      prevTokenIdRef.current = currentTokenId;
+    }
+    
     console.log("🔄 useEffect triggered to fetch token details");
     console.log("   - tokenId:", tokenId);
     console.log("   - finalSelectedToken:", !!finalSelectedToken);
-    fetchTokenDetailsCallback();
-  }, [fetchTokenDetailsCallback]);
+    console.log("   - currentTokenId:", currentTokenId);
+    
+    if (tokenId && finalSelectedToken && !hasFetchedTokenDetailsRef.current && !isFetchingRef.current) {
+      fetchTokenDetailsCallback();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tokenId, finalSelectedToken?.id, finalSelectedToken?.supportedCurrencyId]);
 
   // Update available periods when historical rates data changes
   useEffect(() => {
@@ -633,20 +680,37 @@ const TokenDetails = () => {
     switch (action) {
       case "receive":
         // Show receive bottom sheet
-        receiveBottomSheetRef.current?.snapToIndex(0);
+        if (receiveBottomSheetRef.current) {
+          receiveBottomSheetRef.current.snapToIndex(0);
+        }
         break;
       case "send":
-        router.push(`/dashboard/home/send-token?tokenId=${tokenId}`);
+        // Navigate to send token page with tokenId
+        router.push(`/dashboard/home/send-token?tokenId=${encodeURIComponent(tokenId)}`);
         break;
       case "trade":
-        // Navigate to trade flow
+        // Open trade bottom sheet (Buy/Sell selection)
+        tradeBottomSheetRef.current?.snapToIndex(0);
         break;
       case "swap":
-        router.replace(`/dashboard/home/wallet-home/swap`);
-        // Navigate to swap flow
+        // Navigate to swap screen
+        router.push(`/dashboard/home/wallet-home/swap`);
         break;
       case "buy":
-        // router.push(`/dashboard/home/wallet-home/buy`);
+        // Find token in supportedCurrenciesForSwap and pre-select it
+        const buyToken = supportedCurrenciesForSwap.find(
+          (c) => c._id === tokenId || (c.currencyId as any)?._id === tokenId
+        );
+        if (buyToken && (buyToken.currencyId as any)?.isCrypto) {
+          dispatch(setBuyToken(buyToken));
+          dispatch(setBuyStage("currency_select")); // Skip token selection
+        } else {
+          dispatch(setBuyStage("crypto_select")); // Start from token selection if not found
+        }
+        // Open buy flow
+        setTimeout(() => {
+          buyTokensBottomSheetRef.current?.snapToIndex(0);
+        }, 100);
         break;
     }
   };
@@ -1928,6 +1992,13 @@ const TokenDetails = () => {
           transactionDetailsRef.current?.close();
         }}
       />
+
+      {/* Trade Select Bottom Sheet */}
+      <TradeSelectBottomSheet ref={tradeBottomSheetRef} />
+      
+      {/* Buy and Sell Bottom Sheets */}
+      <SelectBuyTokens ref={buyTokensBottomSheetRef} />
+      <SellFlowBottomSheet ref={sellTokensBottomSheetRef} />
     </PageWrapper>
   );
 };
