@@ -12,12 +12,12 @@ import {
 import icons from "../../assets/icons";
 import { CryptoData } from "../../interfaces/account.interface";
 import { useAppDispatch, useAppSelector, useAppUtilities } from "../hooks";
-import TokenImage from "../TokenImage";
 import {
   Currency,
   formatAccountValue,
   formatToSigFigMax6Digits,
 } from "../utils/cryptoHelpers";
+import TokenImage from "./TokenImage";
 
 function TableItem({
   data,

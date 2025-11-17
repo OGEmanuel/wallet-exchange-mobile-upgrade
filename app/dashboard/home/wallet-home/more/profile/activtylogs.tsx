@@ -73,7 +73,7 @@ const ActivityLogs = () => {
   const [loadingUser, setLoadingUser] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { getExchangeUser } = useWallet();
-  const [user, setUser] = useState<UserModel | null>(null);
+  const [user, setUser] = useState<UserModel | undefined>(undefined);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -103,19 +103,14 @@ const ActivityLogs = () => {
       setError(null);
 
       try {
-        // ✅ STEP 1: Call the hook method with parameters
         const response = await settings.getActivities({
-          userId: user?._id, // Required: user ID
-          user, // Optional: full user object
-          page: 1, // Optional: pagination
-          pageSize: 10, // Optional: page size
-          startDate: new Date(), // Optional: filter by date
-          endDate: new Date(),
+          user,
+          page: 1,
+          limit: 10,
         });
 
         if (!mounted) return;
 
-        // ✅ STEP 2: Extract data from response
         const activities = response?.data || [];
 
         console.log("✅ Fetched activities:", activities);
