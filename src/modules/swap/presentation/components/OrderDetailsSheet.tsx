@@ -4,11 +4,12 @@ import { Box, CustomButton, CustomText } from "@/components/general";
 import SmartImage from "@/components/general/SmartImage";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
+import useAppUtilities from "@/hooks/useAppUtilities";
 import { useChains } from "@/src/core/chains/chains-context";
 import {
-  formatNumber,
   formatWalletAddress,
 } from "@/src/core/utils/format-utils";
+import { useSocketConnection } from "@/src/core/websocket/useSocketConnection";
 import { AppRootState } from "@/state";
 import { selectAssetBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
@@ -51,6 +52,7 @@ const ORDER_STATUSES = {
 interface OrderDetailsSheetProps {
   orderDetails?: CreateOrderResponse;
   onClose?: () => void;
+  onStatusChange?: (newStatus: string) => void;
   title?: string;
 }
 
@@ -62,11 +64,19 @@ export interface OrderDetailsSheetRef {
 const OrderDetailsSheet = forwardRef<
   OrderDetailsSheetRef,
   OrderDetailsSheetProps
->(({ orderDetails, onClose, title = "Order Details" }, ref) => {
+>(({ orderDetails, onClose, onStatusChange, title = "Order Details" }, ref) => {
   const theme = useTheme<Theme>();
   const [activeTab, setActiveTab] = useState<"summary" | "details">("summary");
   const bottomSheetRef = useRef<BottomSheet>(null);
   const { getChainBySymbol, getChainImage } = useChains();
+  const { subscribeToOrderStatus, isConnected, connect } = useSocketConnection();
+  const { getApproximateAmount } = useAppUtilities();
+  
+  // Track initial order status to detect changes
+  const initialOrderStatusRef = useRef<string | null>(null);
+  
+  // Track if we've set up the listener
+  const listenerSetupRef = useRef(false);
 
   // Get order details early for hooks
   const isSellCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
@@ -123,16 +133,132 @@ const OrderDetailsSheet = forwardRef<
     },
   }));
 
-  // Auto-open when orderDetails is set
-  // Note: This is a backup - the parent component should handle opening
+  // Track initial order status when orderDetails changes
   useEffect(() => {
-    if (orderDetails && bottomSheetRef.current) {
-      console.log("📋 OrderDetailsSheet: orderDetails set, will auto-open:", orderDetails._id);
-      // Don't auto-open here - let the parent component handle it
-      // This prevents conflicts with manual opening
-      // The parent will call open() after the main sheet is closed
+    if (orderDetails) {
+      const currentStatus = orderDetails.status || "PENDING";
+      initialOrderStatusRef.current = currentStatus;
+      console.log("📋 OrderDetailsSheet: Tracking initial order status:", currentStatus, "for order:", orderDetails._id);
     }
   }, [orderDetails]);
+
+  // Ensure socket connection when sheet opens
+  useEffect(() => {
+    if (orderDetails?._id && !isConnected) {
+      console.log("📋 OrderDetailsSheet: Socket not connected, attempting to connect...");
+      connect();
+    }
+  }, [orderDetails?._id, isConnected, connect]);
+
+  // Get all possible order IDs to match against (parent, child, and current)
+  // Check both the stored IDs and nested structures
+  const orderIdsToMatch = useMemo(() => {
+    if (!orderDetails?._id) return [];
+    return [
+      orderDetails._id,
+      (orderDetails as any)?.childOrderId,
+      (orderDetails as any)?.parentOrderId,
+      (orderDetails as any)?.childOrder?._id,
+      (orderDetails as any)?.parentOrder?._id,
+    ].filter(Boolean);
+  }, [orderDetails]);
+
+  // Listen for order status changes and dismiss sheet when status changes
+  useEffect(() => {
+    if (!orderDetails?._id || orderIdsToMatch.length === 0) {
+      return;
+    }
+
+    // Ensure socket connection is established
+    const setupConnection = async () => {
+      if (!isConnected) {
+        console.log("📋 OrderDetailsSheet: Socket not connected, attempting to connect...");
+        try {
+          await connect();
+        } catch (err) {
+          console.warn("📋 OrderDetailsSheet: Failed to connect socket:", err);
+        }
+      }
+    };
+    setupConnection();
+
+    // Don't wait for isConnected - SDK subscription should work regardless
+    // The ExchangeSocketLibrary subscription will be set up asynchronously
+    console.log("📋 OrderDetailsSheet: Setting up socket listener for order:", orderDetails._id, "isConnected:", isConnected);
+    console.log("📋 OrderDetailsSheet: Listening for order IDs:", orderIdsToMatch);
+
+    // Subscribe to order status updates
+    const unsubscribe = subscribeToOrderStatus((data) => {
+      // Extract order ID from various possible fields
+      const eventOrderId = data.order?._id || data.transaction?._id || data.transactionId;
+      const eventStatus = data.status || data.order?.status || data.transaction?.status;
+      
+      // Also check nested order structures
+      const nestedOrderId = data.order?.childOrder?._id || data.order?.parentOrder?._id;
+      const allEventOrderIds = [eventOrderId, nestedOrderId].filter(Boolean);
+
+      console.log("📋 OrderDetailsSheet: Received socket event:", {
+        eventOrderId,
+        nestedOrderId,
+        allEventOrderIds,
+        eventStatus,
+        currentOrderId: orderDetails._id,
+        orderIdsToMatch,
+      });
+
+      // Check if the event order ID matches any of our order IDs (parent, child, or current)
+      const isMatchingOrder = allEventOrderIds.some(id => 
+        orderIdsToMatch.some(matchId => id === matchId)
+      );
+
+      if (!isMatchingOrder) {
+        console.log("📋 OrderDetailsSheet: Ignoring event - order ID mismatch. Event IDs:", allEventOrderIds, "Expected IDs:", orderIdsToMatch);
+        return;
+      }
+
+      console.log("📋 OrderDetailsSheet: Processing event for current order:", {
+        eventStatus,
+        initialStatus: initialOrderStatusRef.current,
+        matchedOrderId: allEventOrderIds.find(id => orderIdsToMatch.includes(id)),
+      });
+
+      // Check if status has changed from initial status
+      if (eventStatus && initialOrderStatusRef.current && eventStatus !== initialOrderStatusRef.current) {
+        console.log("📋 OrderDetailsSheet: Order status changed from", initialOrderStatusRef.current, "to", eventStatus, "- dismissing sheet and opening progress");
+        
+        // Notify parent about status change (so it can open SwapProgressSheet)
+        if (onStatusChange) {
+          onStatusChange(eventStatus);
+        }
+        
+        // Close the sheet
+        if (bottomSheetRef.current) {
+          bottomSheetRef.current.close();
+        }
+        
+        // Call onClose callback if provided
+        if (onClose) {
+          onClose();
+        }
+        
+        // Update the initial status ref to prevent multiple dismissals
+        initialOrderStatusRef.current = eventStatus;
+      } else if (eventStatus && !initialOrderStatusRef.current) {
+        // If we haven't set initial status yet, set it now
+        initialOrderStatusRef.current = eventStatus;
+        console.log("📋 OrderDetailsSheet: Set initial status:", eventStatus);
+      }
+    });
+
+    listenerSetupRef.current = true;
+
+    // Cleanup on unmount
+    return () => {
+      console.log("📋 OrderDetailsSheet: Cleaning up socket listener");
+      unsubscribe();
+      listenerSetupRef.current = false;
+    };
+  }, [orderDetails?._id, orderIdsToMatch, subscribeToOrderStatus, onClose, onStatusChange, isConnected, connect]);
 
   // Always render the BottomSheet so the ref is available, but show empty content when no orderDetails
   if (!orderDetails) {
@@ -279,8 +405,8 @@ const OrderDetailsSheet = forwardRef<
                 />
                 <CustomText variant="subheader" style={{ fontSize: 22 }}>
                   {isBuyCrypto
-                    ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
-                    : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
+                    ? getApproximateAmount(orderDetails.buyAmount, true) + " " + buySymbol
+                    : buySymbol + getApproximateAmount(orderDetails.buyAmount, false)}
                 </CustomText>
               </View>
             </Box>
@@ -303,8 +429,8 @@ const OrderDetailsSheet = forwardRef<
               <CustomText variant="body" flex={1} style={{ fontSize: 12 }}>
                 We will complete your transaction of{" "}
                 {isSellCrypto
-                  ? formatNumber(orderDetails.sellAmount) + " " + sellSymbol
-                  : sellSymbol + formatNumber(orderDetails.sellAmount, 2)}{" "}
+                  ? getApproximateAmount(orderDetails.sellAmount, true) + " " + sellSymbol
+                  : sellSymbol + getApproximateAmount(orderDetails.sellAmount, false)}{" "}
                 after we confirm receipt of your deposit.
               </CustomText>
             </Box>
@@ -369,8 +495,8 @@ const OrderDetailsSheet = forwardRef<
                     />
                     <CustomText variant="subheader" style={{ fontSize: 22 }}>
                       {isBuyCrypto
-                        ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
-                        : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
+                        ? getApproximateAmount(orderDetails.buyAmount, true) + " " + buySymbol
+                        : buySymbol + getApproximateAmount(orderDetails.buyAmount, false)}
                     </CustomText>
                   </View>
                 </Box>

@@ -1,4 +1,5 @@
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import useAppUtilities from "@/hooks/useAppUtilities";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
@@ -23,7 +24,8 @@ const ActivityItemCard = ({
   status = "PENDING",
 }: IProps) => {
   const dispatch = useDispatch();
-  const { getApproximateAmount, getAmountToReceive } = useUtilities();
+  const { getApproximateAmount } = useAppUtilities();
+  const { getAmountToReceive } = useUtilities();
   const {
     buyActivityRef,
     sentActivityRef,
