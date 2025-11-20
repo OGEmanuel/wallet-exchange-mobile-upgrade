@@ -1,11 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
-import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
-import {
-  Dimensions,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
+import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolate,
@@ -13,7 +13,7 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withTiming,
 } from "react-native-reanimated";
 import { Box, CustomText } from "../general";
 
@@ -117,7 +117,6 @@ const AnimatedGradientBottomSheet = forwardRef<
       snapToIndex,
     }));
 
-
     const gesture = Gesture.Pan()
       .onStart(() => {
         context.value = { y: translateY.value };
@@ -192,7 +191,7 @@ const AnimatedGradientBottomSheet = forwardRef<
 
     return (
       <>
-        <Animated.View 
+        <Animated.View
           style={[styles.backdrop, animatedBackdropStyle]}
           collapsable={false}
         >

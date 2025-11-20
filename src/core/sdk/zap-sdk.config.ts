@@ -15,12 +15,14 @@ export interface SDKConfig {
   retryAttempts?: number;
 }
 
+const stagingBaseURL = 'https://zap-server-v2-bz6g.onrender.com';
+const productionBaseURL = 'https://api.zap.africa';
+const developmentBaseURL = 'https://test-backend-2.zap.africa';
+
 export const getSDKConfig = (): SDKConfig => {
   const isDev = __DEV__;
   // let isLocal = Constants.expoConfig?.extra?.environment === 'local';
   let isLocal = false;
-
-  console.log(isDev, isLocal, "----------------isDev and isLocal----------------");
   
   if (isLocal) {
     return {
@@ -35,7 +37,7 @@ export const getSDKConfig = (): SDKConfig => {
   
   if (isDev) {
     return {
-      baseURL: 'https://test-backend-2.zap.africa',
+      baseURL: stagingBaseURL,
       environment: 'staging',
       platform: 'react-native',
       enableLogging: true,
@@ -45,7 +47,7 @@ export const getSDKConfig = (): SDKConfig => {
   }
   
   return {
-    baseURL: 'https://test-backend-2.zap.africa',
+    baseURL: stagingBaseURL,
     environment: 'production',
     platform: 'react-native',
     enableLogging: false,

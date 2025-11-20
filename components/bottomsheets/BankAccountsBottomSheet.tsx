@@ -19,16 +19,15 @@ import React, {
 import {
   Animated,
   FlatList,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
+  TouchableWithoutFeedback
 } from "react-native";
-import { SvgUri } from "react-native-svg";
 import EmptyState from "../dashboard/market/EmptyState";
+import BankIcon from "../general/BankIcon";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
@@ -183,18 +182,12 @@ const BankAccountsBottomSheet = forwardRef<
           justifyContent="space-between"
         >
           <Box flexDirection="row" alignItems="center" flex={1}>
-            <Box
-              width={40}
-              height={40}
-              borderRadius={20}
-              backgroundColor="primaryColor"
-              alignItems="center"
-              justifyContent="center"
-              marginRight="m"
-            >
-              <CustomText variant="body" color="white" fontSize={12}>
-                {(item.bankId as unknown as Bank)?.name?.charAt(0) || "B"}
-              </CustomText>
+            <Box marginRight="m">
+              <BankIcon
+                bankAccount={item}
+                size={40}
+                borderRadius={20}
+              />
             </Box>
             <Box flex={1}>
               <CustomText variant="body" color="headerTextColor" fontSize={16}>
@@ -235,49 +228,13 @@ const BankAccountsBottomSheet = forwardRef<
         }}
       >
         <Box flexDirection="row" alignItems="center">
-          {item.icon ? (
-            (() => {
-              const isSvg = item.icon.toLowerCase().endsWith(".svg");
-              if (isSvg) {
-                return (
-                  <Box
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    marginRight="m"
-                    overflow="hidden"
-                  >
-                    <SvgUri uri={item.icon} width={40} height={40} />
-                  </Box>
-                );
-              }
-              return (
-                <Image
-                  source={{ uri: item.icon }}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    marginRight: 16,
-                  }}
-                />
-              );
-            })()
-          ) : (
-            <Box
-              width={40}
-              height={40}
+          <Box marginRight="m">
+            <BankIcon
+              bank={item}
+              size={40}
               borderRadius={20}
-              backgroundColor="primaryColor"
-              alignItems="center"
-              justifyContent="center"
-              marginRight="m"
-            >
-              <CustomText variant="body" color="white" fontSize={12}>
-                {item.name?.charAt(0) || "B"}
-              </CustomText>
-            </Box>
-          )}
+            />
+          </Box>
           <CustomText variant="body" color="headerTextColor" fontSize={16}>
             {item.name}
           </CustomText>

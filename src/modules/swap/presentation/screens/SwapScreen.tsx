@@ -24,6 +24,7 @@ import { ZapperSiginBottomSheet } from "@/components";
 import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
 import BankAccountsBottomSheet from "@/components/bottomsheets/BankAccountsBottomSheet";
 import ZapLinkBottomSheet from "@/components/bottomsheets/ZapLinkBottomSheet";
+import SmartImage from "@/components/general/SmartImage";
 import KYCFlowManager from "@/components/kyc/KYCFlowManager";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
@@ -714,17 +715,13 @@ const Swap = () => {
                     }}
                   >
                     <Box flex={1} flexDirection="row" alignItems="center">
-                      <Image
-                        source={{
-                          uri: (bankAccountSelected?.bankId as unknown as Bank)
-                            ?.icon,
-                        }}
-                        style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 3,
-                          marginRight: 7,
-                        }}
+                      <SmartImage
+                        source={{ uri: (bankAccountSelected?.bankId as unknown as Bank)
+                          ?.icon || ""}}
+                        width={20}
+                        height={20}
+                        borderRadius={3}
+                        style={{ marginRight: 7 }}
                       />
                       <CustomText
                         color="headerTextColor"

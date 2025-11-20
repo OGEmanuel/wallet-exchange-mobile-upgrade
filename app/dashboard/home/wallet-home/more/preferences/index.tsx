@@ -15,32 +15,42 @@ interface ItemCardProps {
   title: string;
   icon: React.ReactNode;
   onPress: () => void;
+  disabled?: boolean;
 }
 
-const ItemCard = ({ title, icon, onPress }: ItemCardProps) => {
+const ItemCard = ({ title, icon, onPress, disabled = false }: ItemCardProps) => {
   const theme = useTheme<Theme>();
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       style={({ pressed }) => ({
         width: "100%",
         height: 50,
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        opacity: pressed ? 0.5 : 1,
+        opacity: disabled ? 0.5 : pressed ? 0.7 : 1,
         marginBottom: 5,
       })}
     >
       <Box flexDirection="row" alignItems="center">
         {icon}
-        <CustomText variant="bodyMedium" fontSize={16} ml="m">
+        <CustomText 
+          variant="bodyMedium" 
+          fontSize={16} 
+          ml="m"
+          color={disabled ? "disabledTextColor" : "bodyTextColor"}
+        >
           {title}
         </CustomText>
       </Box>
 
-      <ChevronRight size={20} color={theme.colors.bodyTextColor} />
+      <ChevronRight 
+        size={20} 
+        color={disabled ? theme.colors.disabledTextColor : theme.colors.bodyTextColor} 
+      />
     </Pressable>
   );
 };
@@ -54,12 +64,17 @@ const PreferencesIndex = () => {
       {
         title: "Default Currency",
         icon: (
-          <Money4 width={24} height={24} color={theme.colors.bodyTextColor} />
+          <Money4 
+            width={24} 
+            height={24} 
+            color={theme.colors.disabledTextColor} 
+          />
         ),
         onPress: () => {
           // TODO: Implement currency selection bottom sheet
           console.log("Currency selection not yet implemented");
         },
+        disabled: true,
       },
       {
         title: "Appearance",
@@ -67,11 +82,12 @@ const PreferencesIndex = () => {
           <ThemedThemeIcon
             width={24}
             height={24}
-            darkModeColor={theme.colors.bodyTextColor}
-            lightModeColor={theme.colors.bodyTextColor}
+            darkModeColor={theme.colors.disabledTextColor}
+            lightModeColor={theme.colors.disabledTextColor}
           />
         ),
         onPress: () => appearanceBottomSheetRef.current?.snapToIndex(1),
+        disabled: true,
       },
       {
         title: "Notifications",
@@ -86,12 +102,17 @@ const PreferencesIndex = () => {
       {
         title: "Language",
         icon: (
-          <Speech width={24} height={24} color={theme.colors.bodyTextColor} />
+          <Speech 
+            width={24} 
+            height={24} 
+            color={theme.colors.disabledTextColor} 
+          />
         ),
         onPress: () => {
           // TODO: Implement language selection bottom sheet
           console.log("Language selection not yet implemented");
         },
+        disabled: true,
       },
       // {
       //   title: "App Icon",
@@ -99,7 +120,7 @@ const PreferencesIndex = () => {
       //   onPress: () => {},
       // },
     ],
-    [theme.colors.bodyTextColor, appearanceBottomSheetRef]
+    [theme.colors.bodyTextColor, theme.colors.disabledTextColor, appearanceBottomSheetRef]
   );
 
   return (

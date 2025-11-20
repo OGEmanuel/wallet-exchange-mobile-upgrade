@@ -170,6 +170,26 @@ export class PortfolioService {
 
       const accounts = mainWalletGroupPortfolio.mainWalletPortfolio.accounts || [];
       const normalizedTokenList = this.normalizeUserTokenList(userTokenList);
+      
+      // Check for duplicates in userTokenList (same supportedCurrencyId but different _id)
+      const tokenIdCounts = new Map<string, number>();
+      normalizedTokenList.forEach((token) => {
+        const supportedCurrencyId = typeof token.supportedCurrencyId === 'string'
+          ? token.supportedCurrencyId
+          : (token.supportedCurrencyId as any)?._id;
+        if (supportedCurrencyId) {
+          tokenIdCounts.set(supportedCurrencyId, (tokenIdCounts.get(supportedCurrencyId) || 0) + 1);
+        }
+      });
+      
+      const duplicates = Array.from(tokenIdCounts.entries()).filter(([_, count]) => count > 1);
+      if (duplicates.length > 0) {
+        console.log(
+          `⚠️ Found ${duplicates.length} duplicate supportedCurrencyIds in userTokenList:`,
+          duplicates.map(([id, count]) => `${id} (${count} entries)`)
+        );
+      }
+      
       const { supportedCurrenciesMap, accountMap } = this.extractTokenData(normalizedTokenList, accounts, supportedCurrencies);
 
       // Map accounts to ProcessedAssets
@@ -263,17 +283,80 @@ export class PortfolioService {
         }
       });
 
-      const sortedAssets = assets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
+      // Deduplicate assets by supportedCurrencyId (same currency + chain should only appear once)
+      // Priority: 1) Has price, 2) Higher balance, 3) Enabled status
+      const assetMap = new Map<string, ProcessedAsset>();
+      assets.forEach((asset) => {
+        // Ensure key is always a string
+        const key = typeof asset.supportedCurrencyId === 'string' 
+          ? asset.supportedCurrencyId 
+          : (asset.supportedCurrencyId as any)?._id || asset.id;
+        const existing = assetMap.get(key);
+        
+        if (!existing) {
+          assetMap.set(key, asset);
+        } else {
+          // Priority order for keeping duplicates:
+          // 1. Has price (price > 0) - most important for USD value calculation
+          // 2. Higher balance
+          // 3. Enabled status
+          const assetHasPrice = asset.price > 0;
+          const existingHasPrice = existing.price > 0;
+          
+          if (assetHasPrice && !existingHasPrice) {
+            // Asset has price, existing doesn't - keep asset
+            assetMap.set(key, asset);
+          } else if (!assetHasPrice && existingHasPrice) {
+            // Existing has price, asset doesn't - keep existing but merge balance if asset has higher balance
+            if (asset.balance > existing.balance) {
+              // Merge: keep existing (has price) but update balance and recalculate USD value
+              existing.balance = asset.balance;
+              existing.totalUsdValue = existing.balance * existing.price;
+            }
+            // Otherwise keep existing as-is (do nothing)
+          } else if (asset.balance > existing.balance) {
+            // Both have or don't have price, but asset has higher balance
+            // If existing has price but asset doesn't, merge the price
+            if (existingHasPrice && !assetHasPrice) {
+              asset.price = existing.price;
+              asset.totalUsdValue = asset.balance * asset.price;
+            }
+            assetMap.set(key, asset);
+          } else if (
+            asset.balance === existing.balance && 
+            asset.status === 'ENABLED' && 
+            existing.status !== 'ENABLED'
+          ) {
+            // Same balance, but asset is enabled and existing isn't
+            // If existing has price but asset doesn't, merge the price
+            if (existingHasPrice && !assetHasPrice) {
+              asset.price = existing.price;
+              asset.totalUsdValue = asset.balance * asset.price;
+            }
+            assetMap.set(key, asset);
+          } else if (assetHasPrice && existingHasPrice && asset.price !== existing.price) {
+            // Both have prices but different - keep the one with higher balance, or merge if needed
+            if (asset.balance >= existing.balance) {
+              assetMap.set(key, asset);
+            }
+            // Otherwise keep existing
+          }
+          // Otherwise keep existing (do nothing)
+        }
+      });
+      
+      const deduplicatedAssets = Array.from(assetMap.values());
+      const sortedAssets = deduplicatedAssets.sort((a, b) => b.totalUsdValue - a.totalUsdValue);
       const enabledAssets = sortedAssets.filter(asset => asset.status === 'ENABLED');
       const disabledAssets = sortedAssets.filter(asset => asset.status === 'DISABLED' || asset.status === 'HIDDEN');
-      const totalUsdValue = assets.reduce((sum, asset) => sum + asset.totalUsdValue, 0);
+      const totalUsdValue = deduplicatedAssets.reduce((sum, asset) => sum + asset.totalUsdValue, 0);
 
       return {
         totalUsdValue,
         assets: sortedAssets,
         enabledAssets,
         disabledAssets,
-        totalAssets: assets.length,
+        totalAssets: deduplicatedAssets.length,
         enabledCount: enabledAssets.length,
         disabledCount: disabledAssets.length,
       };

@@ -1,13 +1,10 @@
 /**
  * SDK-based Address Book Service
  * 
- * Handles all address book operations using the Zap SDK with proper token management
- * and authentication for both exchange and wallet users.
+ * Handles all address book operations using the Zap SDK's addressBook client.
+ * According to the SDK guide, address book operations require wallet authentication.
  */
 
-import { ENVIRONMENTS } from '@/configs/environments';
-import axios from 'axios';
-import { httpClient } from '../api/http-client';
 import { zapSDKService } from './zap-sdk.service';
 
 export interface AddressBookItem {
@@ -15,6 +12,10 @@ export interface AddressBookItem {
   name: string;
   address: string;
   chainId: string;
+  userId?: string;
+  icon?: string | null;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   chainSymbol?: string;
   chainName?: string;
   createdAt?: string;
@@ -25,71 +26,20 @@ export interface CreateAddressBookRequest {
   name: string;
   address: string;
   chainId: string;
+  icon?: string;
 }
 
 export interface UpdateAddressBookRequest {
-  _id: string;
   name?: string;
   address?: string;
   chainId?: string;
+  icon?: string;
 }
 
 class AddressBookSDKService {
   private static instance: AddressBookSDKService;
-  private baseURL: string;
 
-  private constructor() {
-    this.baseURL = ENVIRONMENTS.EXPO_PUBLIC_STAGING_BASE_URL || 
-                   process.env.EXPO_PUBLIC_API_BASE_URL || 
-                   "https://test-backend-2.zap.africa";
-  }
-
-  /**
-   * Get exchange token from SDK for authenticated requests
-   */
-  private async getExchangeToken(): Promise<string | null> {
-    try {
-      const sdk = zapSDKService.getSDK();
-      if (!sdk) return null;
-      
-      // Check if exchange user is authenticated
-      const isAuthenticated = await sdk.isExchangeAuthenticated();
-      if (!isAuthenticated) return null;
-      
-      // Get the actual exchange token from the SDK
-      const tokens = await sdk.exchangeAuth.getTokens();
-      const token = tokens?.token || null;
-      console.log("🔑 Exchange token retrieved:", token ? "Token available" : "No token");
-      return token;
-    } catch (error) {
-      console.error('Failed to get exchange token:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Make authenticated request using exchange token
-   */
-  private async makeExchangeRequest(method: string, url: string, data?: any, params?: any) {
-    const token = await this.getExchangeToken();
-    console.log("token ", token)
-    if (!token) {
-      throw new Error('Exchange authentication required');
-    }
-
-    const response = await axios({
-      method,
-      url: `${this.baseURL}${url}`,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      data,
-      params,
-    });
-
-    return response;
-  }
+  private constructor() {}
 
   public static getInstance(): AddressBookSDKService {
     if (!AddressBookSDKService.instance) {
@@ -99,40 +49,59 @@ class AddressBookSDKService {
   }
 
   /**
-   * Get user addresses using HTTP client with proper authentication
+   * Get the SDK instance and ensure wallet authentication
+   */
+  private async getSDK() {
+    const sdk = zapSDKService.getSDK();
+    if (!sdk) {
+      throw new Error('SDK not initialized');
+    }
+    
+    // Check if wallet is authenticated (required for address book operations)
+    const isWalletAuthenticated = await sdk.isWalletAuthenticated();
+    if (!isWalletAuthenticated) {
+      throw new Error('Wallet authentication required. Please login with wallet authentication first.');
+    }
+    
+    return sdk;
+  }
+
+  /**
+   * Get all address book entries for the current authenticated user
+   * Uses SDK's addressBook.getAll() method
    */
   public async getUserAddresses(userId: string, isExchangeUser: boolean = false): Promise<AddressBookItem[]> {
     try {
       console.log('🔍 SDK: Fetching user addresses for:', userId, 'isExchangeUser:', isExchangeUser);
       
-      if (isExchangeUser) {
-        // For exchange users, use exchange authentication
-        console.log('🔍 Exchange user detected - using exchange authentication');
-        
-        const response = await this.makeExchangeRequest('GET', `/address-book/user/${userId}`);
-        
-        console.log('✅ SDK: Exchange user addresses fetched successfully:', (response?.data as AddressBookItem[])?.length || 0);
-        return (response?.data as AddressBookItem[]) || [];
-      }
+      // Note: According to SDK guide, address book requires wallet authentication
+      // Exchange users may need to use wallet auth for address book operations
+      const sdk = await this.getSDK();
       
-      // Use HTTP client which handles authentication through TokenManager for wallet users
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.get(`/address-book/user/${userId}`);
-        },
-        'Get User Addresses'
-      );
-
-      console.log('✅ SDK: User addresses fetched successfully:', (response?.data as AddressBookItem[])?.length || 0);
-      return (response?.data as AddressBookItem[]) || [];
-    } catch (error) {
+      // Use SDK's addressBook.getAll() method
+      // This gets all entries for the currently authenticated wallet user
+      const entries = await sdk.addressBook.getAll({ bypassCache: false });
+      
+      console.log('✅ SDK: User addresses fetched successfully:', entries?.length || 0);
+      return (entries as AddressBookItem[]) || [];
+    } catch (error: any) {
       console.error('❌ SDK: Failed to fetch user addresses:', error);
+      // If wallet auth fails, try to get by userId as fallback
+      if (error?.message?.includes('authentication')) {
+        try {
+          const sdk = await this.getSDK();
+          const entries = await sdk.addressBook.getAllByUserId(userId, { bypassCache: false });
+          return (entries as AddressBookItem[]) || [];
+        } catch {
+          throw error; // Throw original error
+        }
+      }
       throw error;
     }
   }
 
   /**
-   * Create new address book entry using HTTP client with proper authentication
+   * Create new address book entry using SDK's addressBook.create() method
    */
   public async createAddressBook(
     userId: string, 
@@ -142,40 +111,35 @@ class AddressBookSDKService {
     try {
       console.log('🔍 SDK: Creating address book entry:', { userId, addressData, isExchangeUser });
       
-      if (isExchangeUser) {
-        // For exchange users, use exchange authentication
-        console.log('🔍 Exchange user detected - using exchange authentication');
-        
-        const response = await this.makeExchangeRequest('POST', '/address-book', {
-          ...addressData,
-          userId,
-        });
+      const sdk = await this.getSDK();
+      
+      // Use SDK's addressBook.create() method
+      // According to guide, this requires wallet authentication
+      const entry = await sdk.addressBook.create({
+        name: addressData.name,
+        address: addressData.address,
+        chainId: addressData.chainId,
+        icon: addressData.icon,
+      });
 
-        console.log('✅ SDK: Exchange address book entry created successfully:', response?.data);
-        return response?.data as AddressBookItem;
+      console.log('✅ SDK: Address book entry created successfully:', entry);
+      return entry as AddressBookItem;
+    } catch (error: any) {
+      console.error('❌ SDK: Failed to create address book entry:', error);
+      
+      // Provide more helpful error messages
+      if (error?.code === 'VALIDATION_ERROR') {
+        throw new Error(error.message || 'Invalid address or chain. Please check your input.');
+      } else if (error?.code === 'AUTH_ERROR') {
+        throw new Error('Wallet authentication required. Please login with wallet authentication first.');
       }
       
-      // For wallet users, use the standard SDK authentication
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.post('/address-book', {
-            ...addressData,
-            userId,
-          });
-        },
-        'Create Address Book Entry'
-      );
-
-      console.log('✅ SDK: Address book entry created successfully:', response?.data);
-      return response?.data as AddressBookItem;
-    } catch (error) {
-      console.error('❌ SDK: Failed to create address book entry:', error);
       throw error;
     }
   }
 
   /**
-   * Update address book entry using HTTP client with SDK authentication
+   * Update address book entry using SDK's addressBook.update() method
    */
   public async updateAddressBook(
     addressId: string, 
@@ -184,67 +148,88 @@ class AddressBookSDKService {
     try {
       console.log('🔍 SDK: Updating address book entry:', { addressId, addressData });
       
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.put(`/address-book/${addressId}`, addressData);
-        },
-        'Update Address Book Entry'
-      );
+      const sdk = await this.getSDK();
+      
+      // Use SDK's addressBook.update() method
+      const updatedEntry = await sdk.addressBook.update(addressId, {
+        name: addressData.name,
+        address: addressData.address,
+        chainId: addressData.chainId,
+        icon: addressData.icon,
+      });
 
-      console.log('✅ SDK: Address book entry updated successfully:', response?.data);
-      return response?.data as AddressBookItem;
-    } catch (error) {
+      console.log('✅ SDK: Address book entry updated successfully:', updatedEntry);
+      return updatedEntry as AddressBookItem;
+    } catch (error: any) {
       console.error('❌ SDK: Failed to update address book entry:', error);
+      
+      if (error?.code === 'NOT_FOUND') {
+        throw new Error('Address book entry not found');
+      } else if (error?.code === 'AUTH_ERROR') {
+        throw new Error('Wallet authentication required');
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Delete address book entry using HTTP client with SDK authentication
+   * Delete address book entry using SDK's addressBook.delete() method
    */
   public async deleteAddressBook(addressId: string): Promise<boolean> {
     try {
       console.log('🔍 SDK: Deleting address book entry:', addressId);
       
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.delete(`/address-book/${addressId}`);
-        },
-        'Delete Address Book Entry'
-      );
+      const sdk = await this.getSDK();
+      
+      // Use SDK's addressBook.delete() method
+      const deleted = await sdk.addressBook.delete(addressId);
 
-      console.log('✅ SDK: Address book entry deleted successfully');
-      return true;
-    } catch (error) {
+      console.log('✅ SDK: Address book entry deleted successfully:', deleted);
+      return deleted;
+    } catch (error: any) {
       console.error('❌ SDK: Failed to delete address book entry:', error);
+      
+      if (error?.code === 'NOT_FOUND') {
+        throw new Error('Address book entry not found');
+      } else if (error?.code === 'AUTH_ERROR') {
+        throw new Error('Wallet authentication required');
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Get address book entry by ID using HTTP client with SDK authentication
+   * Get address book entry by ID using SDK's addressBook.getById() method
    */
   public async getAddressBookById(addressId: string): Promise<AddressBookItem> {
     try {
       console.log('🔍 SDK: Fetching address book entry:', addressId);
       
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.get(`/address-book/${addressId}`);
-        },
-        'Get Address Book Entry'
-      );
+      const sdk = await this.getSDK();
+      
+      // Use SDK's addressBook.getById() method
+      const entry = await sdk.addressBook.getById(addressId, { bypassCache: false });
 
-      console.log('✅ SDK: Address book entry fetched successfully:', response?.data);
-      return response?.data as AddressBookItem;
-    } catch (error) {
+      console.log('✅ SDK: Address book entry fetched successfully:', entry);
+      return entry as AddressBookItem;
+    } catch (error: any) {
       console.error('❌ SDK: Failed to fetch address book entry:', error);
+      
+      if (error?.code === 'NOT_FOUND') {
+        throw new Error('Address book entry not found');
+      } else if (error?.code === 'AUTH_ERROR') {
+        throw new Error('Wallet authentication required');
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Search addresses by name or address using HTTP client with SDK authentication
+   * Search addresses by name or address
+   * Since SDK doesn't have a search method, we fetch all and filter client-side
    */
   public async searchAddresses(
     userId: string, 
@@ -253,20 +238,56 @@ class AddressBookSDKService {
     try {
       console.log('🔍 SDK: Searching addresses:', { userId, query });
       
-      const response = await zapSDKService.executeWithNetworkHandling(
-        async () => {
-          return await httpClient.get(`/address-book/user/${userId}/search`, {
-            params: { q: query }
-          });
-        },
-        'Search Addresses'
+      const sdk = await this.getSDK();
+      
+      // Get all entries and filter client-side
+      const allEntries = await sdk.addressBook.getAll({ bypassCache: false });
+      
+      if (!query || query.trim().length === 0) {
+        return (allEntries as AddressBookItem[]) || [];
+      }
+      
+      const lowerQuery = query.toLowerCase();
+      const filtered = allEntries.filter((entry: any) => 
+        entry.name?.toLowerCase().includes(lowerQuery) ||
+        entry.address?.toLowerCase().includes(lowerQuery)
       );
 
-      console.log('✅ SDK: Address search completed:', (response?.data as AddressBookItem[])?.length || 0);
-      return (response?.data as AddressBookItem[]) || [];
-    } catch (error) {
+      console.log('✅ SDK: Address search completed:', filtered?.length || 0);
+      return (filtered as AddressBookItem[]) || [];
+    } catch (error: any) {
       console.error('❌ SDK: Failed to search addresses:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Clear address book cache for a user
+   */
+  public clearUserCache(userId: string): void {
+    try {
+      const sdk = zapSDKService.getSDK();
+      if (sdk) {
+        sdk.addressBook.clearUserCache(userId);
+        console.log('✅ SDK: Address book cache cleared for user:', userId);
+      }
+    } catch (error) {
+      console.warn('⚠️ SDK: Failed to clear address book cache:', error);
+    }
+  }
+
+  /**
+   * Clear all address book cache
+   */
+  public clearCache(): void {
+    try {
+      const sdk = zapSDKService.getSDK();
+      if (sdk) {
+        sdk.addressBook.clearCache();
+        console.log('✅ SDK: All address book cache cleared');
+      }
+    } catch (error) {
+      console.warn('⚠️ SDK: Failed to clear address book cache:', error);
     }
   }
 }

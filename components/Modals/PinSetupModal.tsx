@@ -189,9 +189,10 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({
 
           {/* Buttons */}
           <Box flexDirection="row" gap="m">
-            <Box flex={1}>
+            <Box flex={1} width={"100%"}>
               <CustomButton
                 text="Skip"
+                width={"100%"}
                 onPress={onClose}
                 bgColor={theme.colors.inActiveBtnColor}
                 color={theme.colors.bodyTextColor}
@@ -201,9 +202,10 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({
               />
             </Box>
 
-            <Box flex={1}>
+            <Box flex={1} width={"100%"}>
               <CustomButton
                 text="Create Pin"
+                width={"100%"}
                 onPress={handleCreatePin}
                 bgColor={theme.colors.primaryColor}
                 color={theme.colors.white}

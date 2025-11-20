@@ -2,8 +2,8 @@
 import { Buffer } from "buffer";
 import "react-native-get-random-values";
 
-// import { PinGuard } from "@/components/auth/PinGuard";
 import { AppInitializer } from "@/components/AppInitializer";
+import { PinGuard } from "@/components/auth/PinGuard";
 import BottomSheetManager from "@/components/bottomsheet/BottomSheetManager";
 import LoadingModal from "@/components/Modals/LoadingModal";
 import { InternetConnectionProvider } from "@/context/InternetConnectionContext";
@@ -243,7 +243,7 @@ export default function RootLayout() {
                                         : "dark-content"
                                     }
                                   />
-                                  {/* <PinGuard /> */}
+                                  <PinGuard />
                                   <Stack screenOptions={{ headerShown: false }}>
                                     <Stack.Screen
                                       name="index"

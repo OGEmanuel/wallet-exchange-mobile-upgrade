@@ -1,8 +1,11 @@
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import { TokenData } from "@/src/core/api/models";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { twoFactorAuthService } from "@/src/core/services/two-factor-auth.service";
 import storageService from "@/src/core/storage/app-storage";
 import { StorageKeys } from "@/src/core/storage/storage-types";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { Theme } from "@/theme";
-import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { ExchangeValidateOtpResponse } from "@zap/blockchain-sdk";
 import React, { useEffect, useState } from "react";
@@ -33,6 +36,7 @@ export default function EmailVerification({
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme<Theme>();
   const { handleExchangeValidateOtp } = useExchangeAuth();
+  const { setIsExchangeAuthenticated, setExchangeUserData, setCurrentExchangeUser } = useWallet();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -87,9 +91,138 @@ export default function EmailVerification({
             (responseData.data as any)?.twoFA === true;
 
           if (requires2FA && !responseData.data?.user) {
-            // 2FA is required - the 2FA input sheet should already be showing
-            // Don't show error here, just wait for 2FA input
-            setIsVerifying(false);
+            // 2FA is required - show the 2FA input sheet
+            const partialToken = (responseData.data as any)?.partialToken;
+            if (partialToken) {
+              setIsVerifying(false);
+              // Show 2FA input bottom sheet
+              twoFactorAuthService.show2FAInput(async (totpCode: string) => {
+                try {
+                  setIsVerifying(true);
+                  // Complete login with 2FA code using twoFA.login
+                  const loginResult = await zapSDKService.loginWithTwoFa({
+                    code: totpCode,
+                    partialToken: partialToken,
+                  });
+                  
+                  console.log("2FA login result:", JSON.stringify(loginResult, null, 2));
+                  
+                  // Handle the login result
+                  // The login result should have user, token, refreshToken, and session
+                  if (loginResult && typeof loginResult === "object") {
+                    const loginData = loginResult as any;
+                    
+                    // Extract user data and tokens from the result
+                    // The SDK's twoFA.login might return the response in a different structure
+                    const userData = loginData.user || loginData.data?.user || loginData.data?.data?.user;
+                    const token = loginData.token || loginData.data?.token || loginData.jwt || loginData.data?.jwt || loginData.data?.data?.token || loginData.data?.data?.jwt;
+                    const refreshToken = loginData.refreshToken || loginData.data?.refreshToken || loginData.data?.data?.refreshToken;
+                    const session = loginData.session || loginData.data?.session || loginData.data?.data?.session;
+                    
+                    console.log("🔍 Extracted from 2FA login:", {
+                      hasUserData: !!userData,
+                      hasToken: !!token,
+                      hasRefreshToken: !!refreshToken,
+                      hasSession: !!session,
+                      tokenLength: token?.length,
+                    });
+                    
+                    // Store token in TokenData format that the SDK expects
+                    // Use token, jwt, or session - whichever is available
+                    const finalToken = token || session;
+                    if (finalToken) {
+                      const tokenData: TokenData = {
+                        token: finalToken,
+                        refreshToken: refreshToken || null,
+                        expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+                      };
+                      
+                      // Use storageService.save to properly store the TokenData object
+                      await storageService.save(StorageKeys.TOKEN_DATA, tokenData);
+                      
+                      console.log("✅ Token stored after 2FA login:", { 
+                        hasToken: !!tokenData.token, 
+                        hasRefreshToken: !!tokenData.refreshToken,
+                        tokenPreview: tokenData.token?.substring(0, 20) + "..."
+                      });
+                      
+                      // Try to set the token in the SDK's exchangeAuth provider if possible
+                      // The SDK's exchangeAuth provider should read from storage, but we'll try to set it explicitly
+                      try {
+                        const sdk = zapSDKService.getSDK();
+                        if (sdk && sdk.exchangeAuth) {
+                          // Check if SDK has a method to set tokens
+                          // Some SDKs require explicit token setting after manual login
+                          if (typeof (sdk.exchangeAuth as any).setToken === 'function') {
+                            await (sdk.exchangeAuth as any).setToken(finalToken, refreshToken);
+                            console.log("✅ Token set in SDK exchangeAuth provider");
+                          } else if (typeof (sdk.exchangeAuth as any).updateToken === 'function') {
+                            await (sdk.exchangeAuth as any).updateToken(finalToken, refreshToken);
+                            console.log("✅ Token updated in SDK exchangeAuth provider");
+                          } else if (typeof (sdk.exchangeAuth as any).refreshToken === 'function') {
+                            // Try to refresh the token provider to read from storage
+                            await (sdk.exchangeAuth as any).refreshToken();
+                            console.log("✅ Token provider refreshed");
+                          }
+                          
+                          // Verify the SDK can now get the token
+                          try {
+                            const tokens = await sdk.exchangeAuth.getTokens();
+                            console.log("🔍 SDK exchangeAuth tokens after setting:", {
+                              hasToken: !!tokens?.token,
+                              tokenPreview: tokens?.token?.substring(0, 20) + "..."
+                            });
+                          } catch (verifyError) {
+                            console.warn("⚠️ Could not verify token in SDK:", verifyError);
+                          }
+                        }
+                      } catch (sdkError) {
+                        console.warn("⚠️ Could not set token in SDK exchangeAuth provider:", sdkError);
+                        // This is not critical - the SDK should read from storage
+                      }
+                      
+                      // Add a small delay to ensure storage is fully written before SDK tries to read
+                      await new Promise(resolve => setTimeout(resolve, 100));
+                    } else {
+                      console.error("❌ No token found in 2FA login response");
+                    }
+
+                    if (userData) {
+                      await storageService.setItem(
+                        StorageKeys.USER_PROFILE,
+                        JSON.stringify(userData)
+                      );
+                      
+                      // Update wallet context state to mark user as authenticated
+                      setIsExchangeAuthenticated(true);
+                      setCurrentExchangeUser(userData._id || null);
+                      setExchangeUserData(userData);
+                    }
+
+                    // Call onVerify with user data
+                    if (userData) {
+                      onVerify?.(code, userData);
+                    } else {
+                      throw new Error("User data not found in login response");
+                    }
+                  } else {
+                    throw new Error("Failed to complete login with 2FA");
+                  }
+                } catch (error: any) {
+                  console.error("2FA login error:", error);
+                  const errorMessage =
+                    error instanceof Error
+                      ? error.message
+                      : "Invalid 2FA code. Please try again.";
+                  throw new Error(errorMessage);
+                } finally {
+                  setIsVerifying(false);
+                }
+              });
+            } else {
+              setError("2FA is required but partial token is missing. Please try again.");
+              setIsVerifying(false);
+            }
             return;
           }
 
@@ -140,9 +273,14 @@ export default function EmailVerification({
   };
 
   return (
-    <>
-      <Pressable onPress={() => Keyboard.dismiss()} style={{ flex: 1 }}>
-        <Box alignItems="center" marginBottom="s" marginTop="xl">
+    <Box
+      paddingHorizontal="m"
+      paddingBottom="xl"
+      width="100%"
+      style={{ minHeight: 400 }}
+    >
+      <Pressable onPress={() => Keyboard.dismiss()}>
+        <Box alignItems="center" marginBottom="m" marginTop="l">
           <CustomText
             variant="header"
             fontSize={24}
@@ -154,13 +292,13 @@ export default function EmailVerification({
           </CustomText>
         </Box>
 
-        <Box marginTop="l">
+        <Box marginTop="l" alignItems="center">
           <OTPInput
             length={6}
             onCodeChange={handleCodeChange}
             onCodeComplete={handleCodeComplete}
             onResend={handleResend}
-            autoFocus={false}
+            autoFocus={true}
             disabled={isLoading}
             resendTimer={resendTimer}
             instructionText="Please enter the 6-digit OTP sent to"
@@ -171,11 +309,9 @@ export default function EmailVerification({
         </Box>
 
         <Box
-          style={{
-            position: "relative",
-            width: SCREEN_WIDTH * 0.9,
-            marginTop: 40,
-          }}
+          marginTop="xl"
+          width="100%"
+          alignItems="center"
         >
           <CustomButton
             text={isVerifying ? "Verifying..." : "Verify"}
@@ -196,6 +332,6 @@ export default function EmailVerification({
           />
         </Box>
       </Pressable>
-    </>
+    </Box>
   );
 }

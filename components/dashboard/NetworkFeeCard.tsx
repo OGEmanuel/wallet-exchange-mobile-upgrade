@@ -69,7 +69,7 @@ const NetworkFeeCard = ({
           >
             {PortfolioService.formatCurrency(networkFee?.feeInUSD || 0)}
           </CustomText>
-          <CryptoIcon image={selectedToken?.image} size={12} />
+          <CryptoIcon image={selectedToken?.chainImage} size={12} />
         </Box>
         <CustomText variant="body" fontSize={12}>
           {(() => {

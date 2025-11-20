@@ -6,8 +6,8 @@ import SentBottomSheet from "@/components/bottomsheets/SentBottomSheet";
 import ActivityEmptyState from "@/components/dashboard/ActivityEmptyState";
 import ActivityItemCard from "@/components/dashboard/ActivityItemCard";
 import ActivitySearchBar from "@/components/dashboard/ActivitySearchBar";
+import { AppBar } from "@/components/general";
 // import ActivityTabar from "@/components/dashboard/ActivityTabar";
-import AppBar from "@/components/general/AppBar";
 import Box from "@/components/general/Box";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import PageWrapper from "@/components/general/PageWrapper";
@@ -42,12 +42,16 @@ const Activity = () => {
   const { exchangeActivities, hasMore } = useSelector(
     (state: AppRootState) => state.exchange
   );
-  const { isExchangeAuthenticated, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
+  const {
+    isExchangeAuthenticated,
+    showExchangeLogin,
+    ExchangeLoginBottomSheet,
+  } = useExchangeAuth();
 
   // Filter activities based on search query
   const filteredActivities = exchangeActivities.filter((activity) => {
     if (!searchQuery.trim()) return true;
-    
+
     const query = searchQuery.toLowerCase();
     const searchableText = [
       activity.buyCurrency?.currencyId?.name,
@@ -56,8 +60,11 @@ const Activity = () => {
       activity.sellCurrency?.currencyId?.code,
       activity.status,
       activity._id,
-    ].filter(Boolean).join(" ").toLowerCase();
-    
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
     return searchableText.includes(query);
   });
 
@@ -67,7 +74,7 @@ const Activity = () => {
     filteredActivitiesCount: filteredActivities.length,
     hasMore,
     currentPage,
-    searchQuery: searchQuery.trim()
+    searchQuery: searchQuery.trim(),
   });
 
   const { fetchExchangeActivities, fetchingExchangeActivities } = useExchange();
@@ -78,58 +85,74 @@ const Activity = () => {
   const [error, setError] = useState<Error | null>(null);
 
   // Fetch initial data
-  const loadActivities = useCallback(async (page: number, reset = false) => {
-    // Check authentication first
-    if (!isExchangeAuthenticated || !user?._id) {
-      console.log("⚠️ User not authenticated, prompting login");
-      showExchangeLogin();
-      setIsLoading(false);
-      return;
-    }
-    
-    console.log("loadActivities called", { page, reset });
-    setIsLoading(true);
-    setIsError(false);
-    setError(null);
-    
-    try {
-      const response = await fetchExchangeActivities({
-        user,
-        page,
-        limit: LIMIT,
-      });
-      
-      console.log("API response received", { 
-        page, 
-        dataLength: response.data?.length,
-        responseStructure: response
-      });
-      
-      // Update hasMore based on server response
-      // The response.data is the ExchangeActivitiesResponse with activities and pagination
-      const activitiesData = response.data as any;
-      console.log("Activities data structure:", activitiesData);
-      
-      if (activitiesData?.pagination) {
-        const hasMore = activitiesData.pagination.hasMore || false;
-        console.log("Using pagination metadata", { hasMore, pagination: activitiesData.pagination });
-        dispatch(exchangeActions.setHasMore(hasMore));
-      } else {
-        // Fallback: if no pagination metadata, check if we got less than limit
-        const activities = activitiesData?.activities || activitiesData || [];
-        const dataLength = activities.length;
-        const hasMore = dataLength >= LIMIT;
-        console.log("Using fallback logic", { dataLength, hasMore, limit: LIMIT });
-        dispatch(exchangeActions.setHasMore(hasMore));
+  const loadActivities = useCallback(
+    async (page: number, reset = false) => {
+      // Check authentication first
+      if (!isExchangeAuthenticated || !user?._id) {
+        console.log("⚠️ User not authenticated, prompting login");
+        showExchangeLogin();
+        setIsLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("loadActivities error:", err);
-      setIsError(true);
-      setError(err as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, fetchExchangeActivities, dispatch, isExchangeAuthenticated, showExchangeLogin]);
+
+      console.log("loadActivities called", { page, reset });
+      setIsLoading(true);
+      setIsError(false);
+      setError(null);
+
+      try {
+        const response = await fetchExchangeActivities({
+          user,
+          page,
+          limit: LIMIT,
+        });
+
+        console.log("API response received", {
+          page,
+          dataLength: response.data?.length,
+          responseStructure: response,
+        });
+
+        // Update hasMore based on server response
+        // The response.data is the ExchangeActivitiesResponse with activities and pagination
+        const activitiesData = response.data as any;
+        console.log("Activities data structure:", activitiesData);
+
+        if (activitiesData?.pagination) {
+          const hasMore = activitiesData.pagination.hasMore || false;
+          console.log("Using pagination metadata", {
+            hasMore,
+            pagination: activitiesData.pagination,
+          });
+          dispatch(exchangeActions.setHasMore(hasMore));
+        } else {
+          // Fallback: if no pagination metadata, check if we got less than limit
+          const activities = activitiesData?.activities || activitiesData || [];
+          const dataLength = activities.length;
+          const hasMore = dataLength >= LIMIT;
+          console.log("Using fallback logic", {
+            dataLength,
+            hasMore,
+            limit: LIMIT,
+          });
+          dispatch(exchangeActions.setHasMore(hasMore));
+        }
+      } catch (err) {
+        console.error("loadActivities error:", err);
+        setIsError(true);
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      user,
+      fetchExchangeActivities,
+      dispatch,
+      isExchangeAuthenticated,
+      showExchangeLogin,
+    ]
+  );
 
   // Load initial data
   useEffect(() => {
@@ -152,23 +175,23 @@ const Activity = () => {
   };
 
   const handleLoadMore = useCallback(async () => {
-    console.log("🚀 handleLoadMore called", { 
-      isLoadingMore, 
-      hasMore, 
-      fetchingExchangeActivities, 
+    console.log("🚀 handleLoadMore called", {
+      isLoadingMore,
+      hasMore,
+      fetchingExchangeActivities,
       currentPage,
       searchQuery,
       filteredCount: filteredActivities.length,
-      totalCount: exchangeActivities.length
+      totalCount: exchangeActivities.length,
     });
-    
+
     // Check authentication first
     if (!isExchangeAuthenticated || !user?._id) {
       console.log("⚠️ User not authenticated, prompting login");
       showExchangeLogin();
       return;
     }
-    
+
     // Don't load more if already loading
     if (isLoadingMore || fetchingExchangeActivities) {
       console.log("Load more blocked: already loading");
@@ -184,36 +207,41 @@ const Activity = () => {
     // If we have a search query, only load more if we have no filtered results
     // This allows loading more data to potentially find search matches
     if (searchQuery.trim() && filteredActivities.length > 0) {
-      console.log("Load more blocked: search has results, no need to load more");
+      console.log(
+        "Load more blocked: search has results, no need to load more"
+      );
       return;
     }
 
     console.log("Loading more data for page:", currentPage + 1);
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
-    
+
     try {
       const response = await fetchExchangeActivities({
         user,
         page: nextPage,
         limit: LIMIT,
       });
-      
+
       // Check if we got data back
       const activitiesData = response.data as any;
       const activities = activitiesData?.activities || activitiesData || [];
-      
+
       console.log("Load more response:", {
         page: nextPage,
         dataLength: activities.length,
-        responseStructure: response
+        responseStructure: response,
       });
-      
+
       // Only increment currentPage if we got data
       if (activities && activities.length > 0) {
-        console.log("Load more completed with data, incrementing page to:", nextPage);
+        console.log(
+          "Load more completed with data, incrementing page to:",
+          nextPage
+        );
         setCurrentPage(nextPage);
-        
+
         // Update hasMore based on server response
         if (activitiesData?.pagination) {
           const hasMore = activitiesData.pagination.hasMore || false;
@@ -233,7 +261,21 @@ const Activity = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length, isExchangeAuthenticated, showExchangeLogin]);
+  }, [
+    currentPage,
+    hasMore,
+    isLoadingMore,
+    fetchingExchangeActivities,
+    fetchExchangeActivities,
+    user,
+    LIMIT,
+    dispatch,
+    searchQuery,
+    filteredActivities.length,
+    exchangeActivities.length,
+    isExchangeAuthenticated,
+    showExchangeLogin,
+  ]);
 
   const handleEndReached = useCallback(() => {
     console.log("📱 onEndReached triggered by FlatList");
@@ -265,8 +307,7 @@ const Activity = () => {
   );
 
   const keyExtractor = useCallback(
-    (item: ExchangeActivityModel, index: number) =>
-      `activity-${index}`,
+    (item: ExchangeActivityModel, index: number) => `activity-${index}`,
     []
   );
 
@@ -275,16 +316,17 @@ const Activity = () => {
       <Box flex={1} bg="mainBackgroundColor">
         <AppBar
           title="Activity"
-          variant="bodySubheader"
+          variant="subheader"
           paddingHorizontal={0}
           height={30}
-          fontSize={18}
+          leading={null}
+          trailing={null}
         />
         <Box height={20} />
         <Box paddingHorizontal="m">
           {/* <ActivityTabar activeTab={activeTab} onPress={setActiveTab} /> */}
-          <ActivitySearchBar 
-            onFilterPress={() => handleFilterClick()} 
+          <ActivitySearchBar
+            onFilterPress={() => handleFilterClick()}
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
           />
@@ -297,7 +339,9 @@ const Activity = () => {
           onRetry={handleRefresh}
           isEmpty={!isLoading && filteredActivities.length === 0}
           emptyComponent={<ActivityEmptyState />}
-          existingData={filteredActivities.length > 0 ? filteredActivities : undefined}
+          existingData={
+            filteredActivities.length > 0 ? filteredActivities : undefined
+          }
         >
           <FlatList
             contentContainerStyle={{
@@ -327,7 +371,7 @@ const Activity = () => {
         {ExchangeLoginBottomSheet && <ExchangeLoginBottomSheet />}
         <SentBottomSheet ref={sentActivityRef} />
         <RecieveBottomSheet ref={recieveActivityRef} />
-        <ApprovedBottomSheet ref={approvedActivityRef} />
+        <ApprovedBottomSheet ref={approvedActivityRef as any} />
       </Box>
     </PageWrapper>
   );

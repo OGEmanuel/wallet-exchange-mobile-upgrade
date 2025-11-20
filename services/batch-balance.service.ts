@@ -93,12 +93,46 @@ export class BatchBalanceService {
     // create map of supportedCurrencyId to account
     const supportedCurrencyToAccount = new Map<string, AccountPortfolioData>();
     accounts.forEach((account) => {
-      supportedCurrencyToAccount.set(account.supportedCurrencyId._id, account);
+      // Handle both string and object formats for supportedCurrencyId
+      const supportedCurrencyId = typeof account.supportedCurrencyId === 'string'
+        ? account.supportedCurrencyId
+        : account.supportedCurrencyId?._id;
+      
+      if (supportedCurrencyId) {
+        supportedCurrencyToAccount.set(supportedCurrencyId, account);
+      } else {
+        console.warn(`⚠️ Account ${account?._id} has invalid supportedCurrencyId:`, account.supportedCurrencyId);
+      }
     });
 
     tokenList.forEach((userToken) => {
-      const supportedCurrency = userToken.supportedCurrencyId as unknown as ISupportedCurrency;
-      if (!supportedCurrency) {
+      // Handle both string and object formats for supportedCurrencyId
+      const supportedCurrencyIdRaw = userToken.supportedCurrencyId;
+      let supportedCurrency: ISupportedCurrency | undefined;
+      let supportedCurrencyId: string | undefined;
+
+      // Extract supportedCurrencyId and supportedCurrency object
+      if (typeof supportedCurrencyIdRaw === 'string') {
+        supportedCurrencyId = supportedCurrencyIdRaw;
+        // If it's a string, we can't proceed because we need the full object for chainId and tokenAddress
+        console.warn(`⚠️ Token ${userToken._id} has supportedCurrencyId as string but no full object. Skipping.`);
+        return;
+      } else if (supportedCurrencyIdRaw && typeof supportedCurrencyIdRaw === 'object') {
+        supportedCurrency = supportedCurrencyIdRaw as unknown as ISupportedCurrency;
+        // Safely extract _id - it might not exist
+        supportedCurrencyId = (supportedCurrency as any)?._id;
+        
+        if (!supportedCurrencyId) {
+          console.warn(`⚠️ Token ${userToken._id} has supportedCurrencyId object but no _id property:`, supportedCurrencyIdRaw);
+          return;
+        }
+      } else {
+        console.warn(`⚠️ Token ${userToken._id} has invalid supportedCurrencyId type:`, typeof supportedCurrencyIdRaw, supportedCurrencyIdRaw);
+        return;
+      }
+
+      if (!supportedCurrency || !supportedCurrencyId) {
+        console.warn(`⚠️ Token ${userToken._id} missing required supportedCurrency data. Skipping.`);
         return;
       }
 
@@ -117,9 +151,6 @@ export class BatchBalanceService {
         return;
       }
 
-      // Find matching account from portfolio by supportedCurrencyId
-      const supportedCurrencyId = supportedCurrency._id;
-
       const matchingAccount = supportedCurrencyToAccount.get(supportedCurrencyId);
 
       // Skip if no matching account - we can't update an account that doesn't exist
@@ -132,11 +163,11 @@ export class BatchBalanceService {
       }
 
       tokens.push({
-        accountId: matchingAccount?._id || supportedCurrency._id,
-        supportedCurrencyId: supportedCurrency._id,
+        accountId: matchingAccount?._id || supportedCurrencyId,
+        supportedCurrencyId: supportedCurrencyId,
         tokenAddress: supportedCurrency?.tokenAddress || '',
         chainSymbol,
-        chainId: chainId as string,
+        chainId: (chainId as IChain)?._id || (chainId as string) || '',
         walletAddress,
       });
     });
@@ -226,28 +257,49 @@ export class BatchBalanceService {
   }
 
   /**
-   * Fetch batch balances for multiple address groups in parallel
+   * Fetch batch balances for multiple address groups with concurrency limiting
+   * to prevent rate limiting (429 errors)
    */
   static async fetchBatchBalancesForAllAddresses(
-    requests: AssetBatchBalanceRequest[]
+    requests: AssetBatchBalanceRequest[],
+    maxConcurrency: number = 3 // Limit concurrent requests to avoid rate limiting
   ): Promise<Map<string, AssetBatchBalanceResponse>> {
     const results = new Map<string, AssetBatchBalanceResponse>();
 
-    // Execute all batch requests in parallel
-    const promises = requests.map(async (request) => {
+    // Process requests in batches to avoid rate limiting
+    for (let i = 0; i < requests.length; i += maxConcurrency) {
+      const batch = requests.slice(i, i + maxConcurrency);
+      
+      // Execute batch requests in parallel
+      const batchPromises = batch.map(async (request) => {
       try {
         const response = await this.fetchBatchBalances(request);
         results.set(request.targetAddress.toLowerCase(), response);
-      } catch (error) {
+        } catch (error: any) {
+          // Check if it's a rate limit error
+          if (error?.status === 429 || error?.code === 'RATE_LIMITED') {
+            console.warn(
+              `⚠️ Rate limited for ${request.targetAddress}, will retry in next batch`
+            );
+            // Don't add to results, will be retried if needed
+          } else {
         console.error(
           `Failed to fetch batch balances for ${request.targetAddress}:`,
           error
         );
+          }
         // Continue with other requests even if one fails
       }
     });
 
-    await Promise.allSettled(promises);
+      // Wait for current batch to complete before starting next batch
+      await Promise.allSettled(batchPromises);
+      
+      // Add a small delay between batches to avoid rate limiting
+      if (i + maxConcurrency < requests.length) {
+        await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay between batches
+      }
+    }
 
     return results;
   }
@@ -302,7 +354,8 @@ export class BatchBalanceService {
     portfolioData: UserPortfolioData,
     balanceResults: Map<string, AssetBatchBalanceResult>,
     nativeBalances?: Map<string, { balance: number; balanceFormatted?: string }>, // chainSymbol -> native balance from SDK
-    supportedCurrenciesMap?: Map<string, ISupportedCurrency> // supportedCurrencyId -> supportedCurrency
+    supportedCurrenciesMap?: Map<string, ISupportedCurrency>, // supportedCurrencyId -> supportedCurrency
+    chainsMap?: Map<string, IChain> // chainId -> IChain for looking up chain symbols
   ): UserPortfolioData {
     // Clone portfolio data to avoid mutations
     const updatedPortfolio: UserPortfolioData = JSON.parse(JSON.stringify(portfolioData));
@@ -327,14 +380,25 @@ export class BatchBalanceService {
 
     const userTokenList = PortfolioService.normalizeUserTokenList(updatedPortfolio.userTokenList);
 
+    // Build supportedCurrenciesMap from userTokenList if not provided
+    const finalSupportedCurrenciesMap = supportedCurrenciesMap || new Map<string, ISupportedCurrency>();
+    if (!supportedCurrenciesMap) {
+      userTokenList.forEach((token) => {
+        const supportedCurrency = token.supportedCurrencyId as unknown as ISupportedCurrency;
+        if (supportedCurrency && supportedCurrency._id) {
+          finalSupportedCurrenciesMap.set(supportedCurrency._id, supportedCurrency);
+        }
+      });
+    }
+
     // STEP 1: Clear ALL backend balance data first (we don't use backend balances)
     // This ensures we start fresh and only use batch balance results (including native balances from SDK)
     const clearAllBackendBalances = () => {
       // Clear in mainWalletGroupPortfolio
-      if (
-        updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts
-      ) {
-        updatedPortfolio.mainWalletGroupPortfolio.mainWalletPortfolio.accounts.forEach(
+    if (
+      updatedPortfolio.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts
+    ) {
+      updatedPortfolio.mainWalletGroupPortfolio.mainWalletPortfolio.accounts.forEach(
           (account: AccountPortfolioData) => {
             // Clear ALL balances (including native tokens) - we'll set them from SDK
             account.balance = 0;
@@ -348,8 +412,8 @@ export class BatchBalanceService {
     // Helper function to update an account's balance from batch results
     const updateAccountBalance = (account: any, balance: number) => {
       // Update balance from batch results (not from backend)
-      account.balance = balance;
-      account.balanceUpdatedAt = new Date().toISOString();
+                  account.balance = balance;
+                  account.balanceUpdatedAt = new Date().toISOString();
 
       updatedCount++;
     };
@@ -365,13 +429,16 @@ export class BatchBalanceService {
     let nativeTokensUpdated = 0;
     let autoEnabledCount = 0;
 
+    // Track which native tokens we've already processed to avoid duplicates
+    const processedNativeTokens = new Set<string>(); // chainSymbol -> processed
+
     if (
       userTokenList.length > 0
     ) {
       userTokenList.forEach(
         (token) => {
           const supportedCurrencyId = (token.supportedCurrencyId as unknown as ISupportedCurrency)._id ? (token.supportedCurrencyId as unknown as ISupportedCurrency)._id : token.supportedCurrencyId;
-          const supportedCurrency = supportedCurrenciesMap?.get(supportedCurrencyId);
+          const supportedCurrency = finalSupportedCurrenciesMap.get(supportedCurrencyId);
           const balanceResult = balanceResults.get(supportedCurrencyId);
 
 
@@ -384,12 +451,47 @@ export class BatchBalanceService {
             contractTokensUpdated++;
           } else if (isNativeTokenAccount(supportedCurrency) && nativeBalances) {
             // Native tokens: get balance from SDK nativeBalances (not from backend)
-            const chainSymbol = this.getChainSymbol(supportedCurrency?.chainId as IChain, supportedCurrency);
+            const chainId = supportedCurrency?.chainId;
+            const chainSymbol = this.getChainSymbol(chainId, supportedCurrency, chainsMap);
+            
+            // Skip if we've already processed this native token (same chainSymbol)
+            if (chainSymbol && processedNativeTokens.has(chainSymbol)) {
+              // Still update the balance for this duplicate entry, but don't log again
+              if (nativeBalances.has(chainSymbol)) {
+                const nativeBalance = nativeBalances.get(chainSymbol)!;
+                const balance = nativeBalance.balance || 0;
+                updateAccountBalance(token, balance);
+              }
+              return; // Skip logging for duplicates
+            }
+            
+            if (chainSymbol) {
+              processedNativeTokens.add(chainSymbol);
+            }
+            
             if (chainSymbol && nativeBalances.has(chainSymbol)) {
               const nativeBalance = nativeBalances.get(chainSymbol)!;
               const balance = nativeBalance.balance || 0;
               updateAccountBalance(token, balance);
               nativeTokensUpdated++;
+            } else if (chainSymbol) {
+              // This is expected if the user doesn't have an address on this chain
+              // The batch balance API only returns native balances for chains where addresses exist
+              const tokenSymbol = supportedCurrency?.symbol || 
+                                 (supportedCurrency?.currencyId as ICurrency)?.symbol || 
+                                 supportedCurrencyId || 
+                                 'unknown';
+              console.log(
+                `ℹ️ Native token balance not available for ${chainSymbol} (${tokenSymbol}). This is expected if no address exists on this chain. Available chains with balances: ${Array.from(nativeBalances.keys()).join(', ') || 'none'}`
+              );
+            } else {
+              const tokenSymbol = supportedCurrency?.symbol || 
+                                 (supportedCurrency?.currencyId as ICurrency)?.symbol || 
+                                 supportedCurrencyId || 
+                                 'unknown';
+              console.warn(
+                `⚠️ Could not determine chainSymbol for native token: ${tokenSymbol} (ID: ${supportedCurrencyId})`
+              );
             }
           }
           if (
@@ -409,10 +511,55 @@ export class BatchBalanceService {
 
   /**
    * Helper to get chain symbol from chainId or supportedCurrency
+   * Handles both IChain objects and chain ID strings
    */
-  private static getChainSymbol(chainId?: IChain, supportedCurrency?: ISupportedCurrency): string {
-    if (!chainId || !supportedCurrency) return '';
-    return chainId.symbol || (supportedCurrency.chainId as IChain)?.symbol || '';
+  private static getChainSymbol(
+    chainId?: IChain | string, 
+    supportedCurrency?: ISupportedCurrency,
+    chainsMap?: Map<string, IChain>
+  ): string {
+    // If chainId is a string (ID), try to look it up in chainsMap first
+    if (typeof chainId === 'string' && chainsMap) {
+      const chain = chainsMap.get(chainId);
+      if (chain?.symbol) {
+        return chain.symbol;
+      }
+    }
+
+    // If chainId is a string (ID), try to get symbol from supportedCurrency
+    if (typeof chainId === 'string') {
+      // Try to get chain symbol from supportedCurrency's chainId
+      if (supportedCurrency?.chainId) {
+        const chain = supportedCurrency.chainId as IChain;
+        if (typeof chain === 'object' && chain.symbol) {
+          return chain.symbol;
+        }
+      }
+      return '';
+    }
+
+    // If chainId is an IChain object
+    if (chainId && typeof chainId === 'object' && 'symbol' in chainId) {
+      return chainId.symbol || '';
+    }
+    
+    // Fallback: try to get from supportedCurrency
+    if (supportedCurrency?.chainId) {
+      // If chainId is a string, try chainsMap
+      if (typeof supportedCurrency.chainId === 'string' && chainsMap) {
+        const chain = chainsMap.get(supportedCurrency.chainId);
+        if (chain?.symbol) {
+          return chain.symbol;
+        }
+      }
+      // Otherwise try as IChain object
+      const chain = supportedCurrency.chainId as IChain;
+      if (typeof chain === 'object' && chain.symbol) {
+        return chain.symbol;
+      }
+    }
+    
+    return '';
   }
 }
 

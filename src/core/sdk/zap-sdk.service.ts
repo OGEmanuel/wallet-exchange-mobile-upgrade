@@ -6,6 +6,7 @@
  */
 
 import { UpdateSettingsBody } from "@/src/modules/settings/domain/entities/params/update-settings-body";
+import { logoutUser } from "@/utils/clear-device-data";
 import {
   AddTokenRequest,
   CreateOrderRequest,
@@ -25,6 +26,8 @@ import {
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
+import storageService from "../storage/app-storage";
+import { StorageKeys } from "../storage/storage-types";
 import WalletCredentialsStorage from "../storage/wallet-credentials-storage";
 import { NetworkErrorHandler } from "../utils/network-error-handler";
 import { createSDKInstance, getSDKConfig } from "./zap-sdk.config";
@@ -99,6 +102,81 @@ class ZapSDKService {
 
     this.initializationPromise = this._initialize();
     return this.initializationPromise;
+  }
+
+  /**
+   * Clear all data on app start ONLY if environment changed or not stored
+   * This ensures clean state when switching environments (staging/production)
+   * 
+   * WHAT GETS CLEARED (only when environment changes):
+   * ✅ All authentication tokens (exchange & wallet)
+   * ✅ All user data (exchange user & wallet user)
+   * ✅ All wallet groups and portfolio data
+   * ✅ All cached chains, tokens, and currencies
+   * ✅ All wallet credentials and PIN data
+   * ✅ All React state (wallet groups, portfolio, auth state)
+   * ✅ SDK instance and internal cache
+   * 
+   * This effectively logs out the user and wipes all their data,
+   * making the app start fresh when switching environments.
+   */
+  /**
+   * Clear all data on app start ONLY if environment changed or not stored
+   * @returns true if data was cleared, false if skipped (environment unchanged)
+   */
+  public async clearDataOnAppStart(): Promise<boolean> {
+    try {
+      console.log("🔍 [APP START] ========================================");
+      console.log("🔍 [APP START] Checking if data clearing is needed...");
+      const config = getSDKConfig();
+      const currentBaseURL = config.baseURL;
+      console.log("🔍 [APP START] Current environment:", currentBaseURL);
+      
+      // Check if environment is stored
+      const storedEnvironment = await storageService.get<string>(StorageKeys.SDK_ENVIRONMENT);
+      console.log("🔍 [APP START] Stored environment:", storedEnvironment || "(none - first run)");
+      
+      // Only clear data if:
+      // 1. No environment is stored (first time running the app)
+      // 2. Environment has changed (switching between staging/production)
+      const shouldClearData = !storedEnvironment || storedEnvironment !== currentBaseURL;
+      
+      if (!shouldClearData) {
+        console.log("✅ [APP START] Environment unchanged - skipping data clear");
+        console.log("✅ [APP START] User data will be preserved");
+        console.log("🔍 [APP START] ========================================");
+        return false; // Data was not cleared
+      }
+      
+      // Environment changed or first run - clear all data
+      if (!storedEnvironment) {
+        console.log("🧹 [APP START] First app run - clearing all cached data for fresh start...");
+      } else {
+        console.log("🧹 [APP START] Environment changed - clearing all cached data...");
+        console.log("🧹 [APP START] Previous:", storedEnvironment);
+        console.log("🧹 [APP START] Current:", currentBaseURL);
+        console.log("🧹 [APP START] This will wipe the current logged-in user and all their data");
+      }
+      
+      // Clear all environment-specific data
+      console.log("🧹 [APP START] Starting data clearing process...");
+      await this.clearEnvironmentData();
+      
+      // Store current environment after clearing
+      console.log("🧹 [APP START] Storing current environment...");
+      await this.storeCurrentEnvironment(currentBaseURL);
+      
+      console.log("✅ [APP START] Data cleared and environment saved");
+      console.log("✅ [APP START] App is now in a fresh state - user must log in again");
+      console.log("🔍 [APP START] ========================================");
+      return true; // Data was cleared
+    } catch (error) {
+      console.error("❌ [APP START] Error clearing data on app start:", error);
+      console.error("❌ [APP START] Error details:", JSON.stringify(error, null, 2));
+      // Don't throw - allow app to continue even if clearing fails
+      // Return false since clearing failed
+      return false;
+    }
   }
 
   /**
@@ -183,6 +261,18 @@ class ZapSDKService {
     try {
       console.log("🚀 Initializing Zap SDK...");
 
+      const config = getSDKConfig();
+      const currentBaseURL = config.baseURL;
+
+      // Data should have been cleared already via clearDataOnAppStart()
+      // Just verify environment is stored (it should be from clearDataOnAppStart)
+      const storedEnvironment = await storageService.get<string>(StorageKeys.SDK_ENVIRONMENT);
+      if (!storedEnvironment || storedEnvironment !== currentBaseURL) {
+        // Safety check: if environment wasn't stored, store it now
+        await this.storeCurrentEnvironment(currentBaseURL);
+      }
+
+      // Create fresh SDK instance
       this.sdk = createSDKInstance();
       await this.sdk.initialize();
 
@@ -431,10 +521,18 @@ class ZapSDKService {
       console.log(`🔄 Executing SDK call: ${context}`);
       return await operation();
     } catch (error: any) {
-      console.log(`❌ SDK call failed: ${context}`, error.message);
+      // Check if this is a known staging issue - if so, skip verbose error logging
+      // NetworkErrorHandler.handleSDKError will handle the logging appropriately
+      const isKnownStagingIssue = NetworkErrorHandler.isKnownStagingIssue(error);
+      
+      if (!isKnownStagingIssue) {
+        // Only log full error details for non-staging issues
+        const errorMessage = error?.message || error?.toString() || 'Unknown error';
+        console.log(`❌ SDK call failed: ${context}`, errorMessage);
+      }
 
       // Handle token refresh race condition
-      if (error.message?.includes("Token refresh already in progress")) {
+      if (error?.message?.includes("Token refresh already in progress")) {
         console.warn(`⏳ Token refresh in progress for ${context}, waiting with exponential backoff...`);
         
         // Retry with exponential backoff (up to 3 attempts)
@@ -446,24 +544,25 @@ class ZapSDKService {
           console.log(`⏳ Waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}...`);
           await new Promise((resolve) => setTimeout(resolve, delay));
           
-          try {
+        try {
             console.log(`🔄 Retrying ${context} after token refresh wait...`);
-            return await operation();
-          } catch (retryError: any) {
+          return await operation();
+        } catch (retryError: any) {
             // If it's still a token refresh error and we have more retries, continue
-            if (retryError.message?.includes("Token refresh already in progress") && attempt < maxRetries - 1) {
+            if (retryError?.message?.includes("Token refresh already in progress") && attempt < maxRetries - 1) {
               console.warn(`⏳ Token refresh still in progress, will retry again...`);
               continue;
             }
             
             // If it's a different error or last attempt, throw it
-            console.error(`❌ Retry ${attempt + 1} failed for ${context}:`, retryError.message);
-            const networkError = NetworkErrorHandler.handleSDKError(
-              retryError,
-              context
-            );
-            throw networkError;
-          }
+            const retryErrorMessage = retryError?.message || retryError?.toString() || 'Unknown error';
+            console.error(`❌ Retry ${attempt + 1} failed for ${context}:`, retryErrorMessage);
+          const networkError = NetworkErrorHandler.handleSDKError(
+            retryError,
+            context
+          );
+          throw networkError;
+        }
         }
         
         // If all retries failed, throw the original error
@@ -475,7 +574,8 @@ class ZapSDKService {
       // Check if it's an auth error and record failure
       if (this.isAuthError(error)) {
         this.recordAuthFailure();
-        console.warn(`🔒 Authentication error in ${context}:`, error.message);
+        const authErrorMessage = error?.message || error?.toString() || 'Authentication error';
+        console.warn(`🔒 Authentication error in ${context}:`, authErrorMessage);
         console.warn(
           `🔒 Circuit breaker status:`,
           this.getCircuitBreakerStatus()
@@ -490,7 +590,11 @@ class ZapSDKService {
         }
       }
 
+      // Handle SDK error - this will check for known staging issues and log appropriately
       const networkError = NetworkErrorHandler.handleSDKError(error, context);
+      
+      // For known staging issues, we still throw the error but with less verbose logging
+      // The calling code should handle these gracefully (e.g., use fallback values)
       throw networkError;
     }
   }
@@ -1705,6 +1809,269 @@ class ZapSDKService {
       console.error("❌ Failed to disable two factor authentication:", error);
       // Re-throw error so the component can handle it
       throw error;
+    }
+  }
+
+  public async loginWithTwoFa({ code, partialToken }: { code: string; partialToken: string }) {
+    try {
+      // Auto-initialize SDK if not already initialized
+      if (!this.isInitialized || !this.sdk) {
+        console.log(`🔧 SDK not initialized for loginWithTwoFa, auto-initializing...`);
+        await this.initialize();
+      }
+      // Use twoFA.login to complete login with 2FA code and partialToken
+      return await this.sdk!.twoFA.login(code, partialToken);
+    } catch (error) {
+      console.error("❌ Failed to complete login with 2FA:", error);
+      // Re-throw error so the component can handle it
+      throw error;
+    }
+  }
+
+  /**
+   * Check if environment has changed and clear data if needed
+   * Returns the previous baseURL if it exists, null otherwise
+   */
+  private async checkAndHandleEnvironmentChange(currentBaseURL: string): Promise<string | null> {
+    try {
+      console.log("🔍 [ENV CHECK] Checking environment change...");
+      const previousBaseURL = await storageService.get<string>(StorageKeys.SDK_ENVIRONMENT);
+      console.log("🔍 [ENV CHECK] Previous:", previousBaseURL || "(none)", "| Current:", currentBaseURL);
+      
+      // If no previous environment stored, this is first run - just store it
+      if (!previousBaseURL) {
+        console.log("📝 [ENV CHECK] First SDK initialization, storing environment:", currentBaseURL);
+        return null;
+      }
+
+      // If environment hasn't changed, no action needed
+      if (previousBaseURL === currentBaseURL) {
+        console.log("✅ [ENV CHECK] Environment unchanged:", currentBaseURL);
+        return previousBaseURL;
+      }
+
+      // Environment has changed - clear all cached data
+      console.warn("⚠️ [ENV CHECK] Environment changed detected!");
+      console.warn(`   Previous: ${previousBaseURL}`);
+      console.warn(`   Current:  ${currentBaseURL}`);
+      console.warn("🔄 [ENV CHECK] Clearing all cached data and authentication state...");
+
+      // Clear all environment-specific data
+      await this.clearEnvironmentData();
+
+      console.log("✅ [ENV CHECK] Environment data cleared successfully");
+      return previousBaseURL;
+    } catch (error) {
+      console.error("❌ [ENV CHECK] Error checking environment change:", error);
+      // Don't block initialization if check fails
+      return null;
+    }
+  }
+
+  /**
+   * Store current environment/baseURL for future change detection
+   */
+  private async storeCurrentEnvironment(baseURL: string): Promise<void> {
+    try {
+      await storageService.save(StorageKeys.SDK_ENVIRONMENT, baseURL);
+      console.log("📝 Stored current SDK environment:", baseURL);
+    } catch (error) {
+      console.error("❌ Failed to store SDK environment:", error);
+      // Don't throw - this is not critical
+    }
+  }
+
+  /**
+   * Clear all environment-specific cached data
+   * This is called when switching between environments (staging/production)
+   */
+  private async clearEnvironmentData(): Promise<void> {
+    try {
+      console.log("🗑️ Clearing ALL environment-specific data...");
+
+      // IMPORTANT: Clear SDK instance FIRST to prevent it from reading old tokens
+      if (this.sdk) {
+        try {
+          // Try to clear SDK's internal token storage
+          const sdk = this.sdk as any;
+          if (sdk.exchangeAuth) {
+            // Try to clear exchange auth tokens
+            if (typeof sdk.exchangeAuth.clearTokens === 'function') {
+              await sdk.exchangeAuth.clearTokens();
+              console.log("✅ SDK exchangeAuth tokens cleared");
+            }
+            if (typeof sdk.exchangeAuth.logout === 'function') {
+              await sdk.exchangeAuth.logout();
+              console.log("✅ SDK exchangeAuth logged out");
+            }
+          }
+          if (sdk.walletAuth) {
+            // Try to clear wallet auth tokens
+            if (typeof sdk.walletAuth.clearTokens === 'function') {
+              await sdk.walletAuth.clearTokens();
+              console.log("✅ SDK walletAuth tokens cleared");
+            }
+            if (typeof sdk.walletAuth.logout === 'function') {
+              await sdk.walletAuth.logout();
+              console.log("✅ SDK walletAuth logged out");
+            }
+          }
+          // Clear SDK cache
+          this.sdk.clearCache();
+          console.log("✅ SDK internal cache cleared");
+        } catch (error) {
+          console.warn("⚠️ Could not clear SDK tokens/cache:", error);
+        }
+      }
+
+      // IMPORTANT: Get wallet group IDs and MAIN_WALLET_GROUP_ID BEFORE clearing storage
+      // We need these to clear wallet-specific portfolio cache
+      let cachedWalletGroups: any[] = [];
+      let mainWalletGroupId: string | null = null;
+      try {
+        cachedWalletGroups = await storageService.get<any[]>(StorageKeys.USER_WALLET_GROUPS) || [];
+        console.log(`🗑️ Found ${cachedWalletGroups.length} cached wallet groups to clear portfolio cache for`);
+        
+        // Also get MAIN_WALLET_GROUP_ID to clear its portfolio cache
+        mainWalletGroupId = await SecureStore.getItemAsync(StorageKeys.MAIN_WALLET_GROUP_ID);
+        if (mainWalletGroupId) {
+          console.log(`🗑️ Found MAIN_WALLET_GROUP_ID: ${mainWalletGroupId}`);
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not get wallet groups/main wallet ID before clearing:", error);
+      }
+
+      // Reset SDK state BEFORE clearing storage (so SDK can't read old tokens)
+      this.sdk = null;
+      this.isInitialized = false;
+      this.initializationPromise = null;
+      this.resetAuthCircuitBreakerInternal();
+
+      // Now clear all storage (tokens, user data, etc.)
+      await logoutUser();
+
+      // Clear the old environment key (we'll store the new one after initialization)
+      await storageService.remove(StorageKeys.SDK_ENVIRONMENT);
+
+      // Clear chains cache (stored in SecureStore)
+      console.log("🗑️ Clearing chains cache...");
+      await SecureStore.deleteItemAsync(StorageKeys.WALLET_CHAINS).catch(() => {});
+      await SecureStore.deleteItemAsync(StorageKeys.WALLET_CHAINS_TIMESTAMP).catch(() => {});
+
+      // Clear wallet groups cache (stored in SecureStore, not AsyncStorage!)
+      console.log("🗑️ Clearing wallet groups cache from SecureStore...");
+      await SecureStore.deleteItemAsync(StorageKeys.USER_WALLET_GROUPS).catch(() => {});
+      await SecureStore.deleteItemAsync(StorageKeys.USER_WALLET_GROUPS_TIMESTAMP).catch(() => {});
+      console.log("✅ Wallet groups cache cleared from SecureStore");
+
+      // Clear default tokens cache (stored in SecureStore)
+      console.log("🗑️ Clearing default tokens cache...");
+      await SecureStore.deleteItemAsync(StorageKeys.DEFAULT_TOKENS).catch(() => {});
+      await SecureStore.deleteItemAsync(StorageKeys.DEFAULT_TOKENS_TIMESTAMP).catch(() => {});
+
+      // Clear supported currencies for swap cache (stored in SecureStore)
+      console.log("🗑️ Clearing supported currencies cache...");
+      await SecureStore.deleteItemAsync(StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP).catch(() => {});
+      await SecureStore.deleteItemAsync(StorageKeys.SUPPORTED_CURRENCIES_FOR_SWAP_TIMESTAMP).catch(() => {});
+
+      // Clear portfolio cache for MAIN_WALLET_GROUP_ID before clearing the ID itself
+      if (mainWalletGroupId) {
+        console.log(`🗑️ Clearing portfolio cache for MAIN_WALLET_GROUP_ID: ${mainWalletGroupId}...`);
+        await SecureStore.deleteItemAsync(`${StorageKeys.PORTFOLIO_DATA}_${mainWalletGroupId}`).catch(() => {});
+        await SecureStore.deleteItemAsync(`${StorageKeys.PORTFOLIO_TIMESTAMP}_${mainWalletGroupId}`).catch(() => {});
+        await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES}_${mainWalletGroupId}`).catch(() => {});
+        await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${mainWalletGroupId}`).catch(() => {});
+        console.log(`   ✅ Cleared portfolio cache for MAIN_WALLET_GROUP_ID: ${mainWalletGroupId}`);
+      }
+      
+      // Clear MAIN_WALLET_GROUP_ID - this is used to determine which wallet's portfolio to load
+      console.log("🗑️ Clearing main wallet group ID...");
+      await SecureStore.deleteItemAsync(StorageKeys.MAIN_WALLET_GROUP_ID).catch(() => {});
+
+      // Double-check: Ensure TOKEN_DATA is definitely cleared
+      await storageService.remove(StorageKeys.TOKEN_DATA);
+      console.log("✅ Double-checked: TOKEN_DATA cleared");
+
+      // Clear portfolio cache keys from SecureStore
+      // Note: SecureStore doesn't support getAllKeys(), so we can't enumerate
+      // But we can try to clear known patterns. The actual clearing happens
+      // when wallet groups are loaded and we know the wallet IDs.
+      // For now, we'll clear the main portfolio keys that don't have wallet-specific suffixes
+      try {
+        console.log("🗑️ Clearing portfolio cache keys from SecureStore...");
+        
+        // Clear base portfolio keys (non-wallet-specific)
+        await SecureStore.deleteItemAsync(StorageKeys.PORTFOLIO_DATA).catch(() => {});
+        await SecureStore.deleteItemAsync(StorageKeys.PORTFOLIO_TIMESTAMP).catch(() => {});
+        await SecureStore.deleteItemAsync(StorageKeys.PROCESSED_PORTFOLIO).catch(() => {});
+        await SecureStore.deleteItemAsync(StorageKeys.PROCESSED_PORTFOLIO_TIMESTAMP).catch(() => {});
+        await SecureStore.deleteItemAsync(StorageKeys.AGGREGATED_BALANCES).catch(() => {});
+        await SecureStore.deleteItemAsync(StorageKeys.AGGREGATED_BALANCES_TIMESTAMP).catch(() => {});
+        
+        // Clear wallet-specific portfolio cache using the wallet groups we fetched earlier
+        if (cachedWalletGroups && Array.isArray(cachedWalletGroups) && cachedWalletGroups.length > 0) {
+          console.log(`🗑️ Clearing portfolio cache for ${cachedWalletGroups.length} wallet groups...`);
+          for (const group of cachedWalletGroups) {
+            const walletId = group._id || group.id;
+            if (walletId) {
+              // Clear wallet-specific portfolio cache
+              await SecureStore.deleteItemAsync(`${StorageKeys.PORTFOLIO_DATA}_${walletId}`).catch(() => {});
+              await SecureStore.deleteItemAsync(`${StorageKeys.PORTFOLIO_TIMESTAMP}_${walletId}`).catch(() => {});
+              await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES}_${walletId}`).catch(() => {});
+              await SecureStore.deleteItemAsync(`${StorageKeys.AGGREGATED_BALANCES_TIMESTAMP}_${walletId}`).catch(() => {});
+              console.log(`   ✅ Cleared portfolio cache for wallet: ${walletId}`);
+            }
+          }
+          console.log(`✅ Cleared portfolio cache for ${cachedWalletGroups.length} wallet groups`);
+        } else {
+          console.log("⚠️ No wallet groups found to clear portfolio cache for");
+        }
+        
+        console.log("✅ Portfolio cache keys cleared");
+      } catch (error) {
+        console.warn("⚠️ Could not clear portfolio cache keys:", error);
+      }
+
+      // IMPORTANT: Reset wallet credentials when environment changes
+      // Wallets created in the old environment don't exist in the new environment
+      // So we need to mark them as pending so they can be recreated
+      try {
+        console.log("🔄 Resetting wallet credentials for new environment...");
+        const allCredentials = await WalletCredentialsStorage.getAllCredentials();
+        const walletIds = Object.keys(allCredentials);
+        
+        if (walletIds.length > 0) {
+          console.log(`🔄 Found ${walletIds.length} wallet credentials to reset...`);
+          for (const walletId of walletIds) {
+            const wallet = allCredentials[walletId];
+            // Reset creation status so wallets can be recreated in the new environment
+            // Keep the credentials (seed phrase, private key, etc.) but mark as not created
+            await WalletCredentialsStorage.resetWalletForNewEnvironment(walletId);
+            console.log(`   ✅ Reset wallet: ${wallet.name} (${walletId})`);
+          }
+          console.log(`✅ Reset ${walletIds.length} wallet credentials for new environment`);
+        } else {
+          console.log("ℹ️ No wallet credentials found to reset");
+        }
+      } catch (error) {
+        console.warn("⚠️ Could not reset wallet credentials:", error);
+        // Don't throw - allow app to continue even if reset fails
+      }
+
+      console.log("✅ ALL environment data cleared successfully");
+      console.log("   ✅ SDK instance destroyed");
+      console.log("   ✅ Exchange user data");
+      console.log("   ✅ Wallet user data");
+      console.log("   ✅ Portfolio data");
+      console.log("   ✅ Wallet groups");
+      console.log("   ✅ Chains cache");
+      console.log("   ✅ Default tokens cache");
+      console.log("   ✅ Supported currencies cache");
+      console.log("   ✅ All authentication tokens");
+      console.log("   ✅ All authentication state");
+    } catch (error) {
+      console.error("❌ Error clearing environment data:", error);
+      // Don't throw - try to continue with initialization
     }
   }
 }

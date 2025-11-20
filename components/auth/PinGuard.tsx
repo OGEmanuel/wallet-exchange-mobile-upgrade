@@ -1,23 +1,40 @@
 import { PinEntryModal } from "@/components/Modals/PinEntryModal";
+import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import theme from "@/theme";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import ZapLoader from "../general/ZapLoader";
 
 export const PinGuard: React.FC = () => {
   const [showPinEntry, setShowPinEntry] = useState(false);
-  const [showPinSetup, setShowPinSetup] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+  const [hasCheckedPin, setHasCheckedPin] = useState(false);
 
-  const handlePinSetupComplete = () => {
-    setShowPinSetup(false);
-    // setHasCheckedPin(true); // Mark as checked to prevent re-checking
-    console.log("✅ PIN setup completed, user can now access app");
-  };
+  useEffect(() => {
+    const checkPinOnMount = async () => {
+      try {
+        setIsChecking(true);
+        const hasPin = await pinStorageService.hasPin();
+        if (hasPin) {
+          setShowPinEntry(true);
+        }
+        setHasCheckedPin(true);
+      } catch (error) {
+        console.error("Failed to check PIN status:", error);
+        setHasCheckedPin(true);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    if (!hasCheckedPin) {
+      checkPinOnMount();
+    }
+  }, [hasCheckedPin]);
 
   const handlePinEntrySuccess = () => {
-    // setShowPinEntry(false);
-    // setHasCheckedPin(true); // Mark as checked to prevent re-checking
+    setShowPinEntry(false);
+    setHasCheckedPin(true);
     console.log("✅ PIN verified successfully, user can access app");
   };
 
@@ -40,14 +57,14 @@ export const PinGuard: React.FC = () => {
     );
   }
 
-  // Show PIN entry if PIN exists
-  if (showPinEntry) {
+  // Show PIN entry if PIN exists and we've checked
+  if (showPinEntry && hasCheckedPin && !isChecking) {
     return (
       <PinEntryModal
         visible={showPinEntry}
         onSuccess={handlePinEntrySuccess}
         onClose={() => setShowPinEntry(false)}
-        type="SETUP"
+        type="VERIFY"
       />
     );
   }

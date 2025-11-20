@@ -11,7 +11,7 @@ import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useSelector } from "react-redux";
 import { CustomText, LoaderWrapper } from "../general";
@@ -67,11 +67,19 @@ export default function IdentityVerification({
     });
   }, []);
 
+  // Use a ref to track the last country ID to prevent infinite loops
+  const lastCountryIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (selectedCountry) {
-      triggerFetchDocumentTypes();
+    if (selectedCountry?._id) {
+      // Only fetch if the country ID has actually changed
+      if (lastCountryIdRef.current !== selectedCountry._id) {
+        lastCountryIdRef.current = selectedCountry._id;
+        triggerFetchDocumentTypes();
+      }
     }
-  }, [selectedCountry]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountry?._id]);
 
   // useEffect(() => {
   //   if (documentTypes) {

@@ -18,12 +18,13 @@ import CustomText from "../general/CustomText";
 interface SelectChainBottomSheetProps {
   onChainSelect?: (chainSymbol: string) => void;
   onClose?: () => void;
+  shouldAutoOpen?: boolean; // Control whether to auto-open on mount
 }
 
 const SelectChainBottomSheet = forwardRef<
   BottomSheetMethods,
   SelectChainBottomSheetProps
->(({ onChainSelect, onClose }, ref) => {
+>(({ onChainSelect, onClose, shouldAutoOpen = false }, ref) => {
   const theme = useTheme<Theme>();
   const { walletChains, isLoading, getChainImage } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
@@ -50,15 +51,29 @@ const SelectChainBottomSheet = forwardRef<
     onChainSelect?.(chainSymbol);
   };
 
-  // Open the sheet when component mounts (only when conditionally rendered)
+  // Track previous value to detect when shouldAutoOpen changes from false to true
+  // Initialize to false to prevent auto-open on initial mount
+  const prevShouldAutoOpen = React.useRef(false);
+  
+  // Open the sheet when shouldAutoOpen becomes true (not on initial mount if false)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (ref && typeof ref !== 'function' && ref.current) {
-        ref.current.snapToIndex(0);
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, [ref]);
+    // Only open if shouldAutoOpen is true AND it changed from false to true
+    // This prevents opening on initial mount when shouldAutoOpen is false
+    if (shouldAutoOpen && !prevShouldAutoOpen.current) {
+      const timer = setTimeout(() => {
+        if (ref && typeof ref !== 'function' && ref.current) {
+          ref.current.snapToIndex(0);
+        }
+      }, 100);
+      prevShouldAutoOpen.current = shouldAutoOpen;
+      return () => clearTimeout(timer);
+    }
+    
+    // Update the ref to track the current value (only if it actually changed)
+    if (prevShouldAutoOpen.current !== shouldAutoOpen) {
+      prevShouldAutoOpen.current = shouldAutoOpen;
+    }
+  }, [shouldAutoOpen, ref]); // Only run when shouldAutoOpen changes
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -113,14 +128,15 @@ const SelectChainBottomSheet = forwardRef<
         style={{
           flex: 1,
           backgroundColor: theme.colors.mainBackgroundColor,
-          minHeight: 400, // Ensure consistent minimum height
         }}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingVertical: 25,
-          paddingBottom: 100, // Add bottom padding for tab bar
-          flexGrow: 1, // Allow content to grow but maintain minimum height
+          paddingBottom: 150, // Increased padding for tab bar and safe area
+          flexGrow: 1,
         }}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
       >
         <CustomInputWithoutForm
           value={searchQuery}

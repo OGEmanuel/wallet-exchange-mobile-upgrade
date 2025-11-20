@@ -46,7 +46,6 @@ export const WalletPinSetupStep: React.FC<WalletPinSetupStepProps> = ({
   ]).current;
 
   const isValidPin = pin.length === 4;
-  const pinsMatch = pin === confirmPin && confirmPin.length === 4;
 
   useEffect(() => {
     Animated.timing(fadeInAnimation, {
@@ -97,7 +96,9 @@ export const WalletPinSetupStep: React.FC<WalletPinSetupStepProps> = ({
       pin === actualConfirmPin && actualConfirmPin.length === 4;
 
     if (!doPinsMatch) {
-      setPinError("PINs do not match");
+      setPinError("PINs do not match. Please try again.");
+      // Clear the confirm PIN so user has to re-enter it
+      setConfirmPin("");
       return;
     }
 
@@ -128,8 +129,11 @@ export const WalletPinSetupStep: React.FC<WalletPinSetupStepProps> = ({
         setConfirmPin(newPin);
         // Auto-continue when confirm PIN is complete
         if (newPin.length === 4) {
-          // Call handleContinue immediately with the new PIN value
-          handleContinue(newPin);
+          // Use setTimeout to ensure state update is processed before validation
+          setTimeout(() => {
+            handleContinue(newPin);
+          }, 100);
+          return;
         }
       } else {
         setPin(newPin);

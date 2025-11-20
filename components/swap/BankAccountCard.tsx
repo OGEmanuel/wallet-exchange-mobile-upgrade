@@ -1,10 +1,10 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { Bank, UserBankAccount } from "@zap/blockchain-sdk";
-import { Image } from "expo-image";
+import { UserBankAccount } from "@zap/blockchain-sdk";
 import { CheckCircle2 } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { CustomText } from "../general";
+import BankIcon from "../general/BankIcon";
 import Box from "../general/Box";
 
 interface BankAccountCardProps {
@@ -35,14 +35,11 @@ const BankAccountCard = ({
         borderColor={selected ? "secondaryColor" : "borderColor"}
         borderRadius={10}
       >
-        <Box width={40} height={40} borderRadius={7} overflow="hidden">
-          <Image
-            source={{
-              uri: (bankAccount.bankId as unknown as Bank)?.icon,
-            }}
-            style={{ width: 40, height: 40, borderRadius: 7 }}
-          />
-        </Box>
+        <BankIcon
+          bankAccount={bankAccount}
+          size={40}
+          borderRadius={7}
+        />
 
         <Box flex={1}>
           <CustomText

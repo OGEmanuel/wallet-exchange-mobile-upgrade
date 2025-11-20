@@ -67,6 +67,16 @@ export class NetworkErrorHandler {
    * Parse error and return structured network error info
    */
   static parseError(error: any): NetworkError {
+    // Handle null/undefined errors
+    if (!error) {
+      return {
+        message: 'An unexpected error occurred',
+        isNetworkError: false,
+        isTimeoutError: false,
+        isServerError: false,
+      };
+    }
+
     const isNetwork = this.isNetworkError(error);
     const isTimeout = this.isTimeoutError(error);
     const isServer = this.isServerError(error);
@@ -80,13 +90,17 @@ export class NetworkErrorHandler {
         message = 'Network error. Please check your internet connection.';
       }
     } else if (isServer) {
-      message = error.message || 'Server error. Please try again later.';
-    } else if (error.message) {
+      message = (error && error.message) ? error.message : 'Server error. Please try again later.';
+    } else if (error && error.message) {
       message = error.message;
+    } else if (typeof error === 'string') {
+      message = error;
+    } else if (error && typeof error.toString === 'function') {
+      message = error.toString();
     }
 
     return {
-      code: error.code || error.status,
+      code: (error && (error.code || error.status)) || undefined,
       message,
       isNetworkError: isNetwork,
       isTimeoutError: isTimeout,
@@ -117,12 +131,36 @@ export class NetworkErrorHandler {
   }
 
   /**
+   * Check if error is a known staging environment issue that can be safely ignored
+   */
+  static isKnownStagingIssue(error: any): boolean {
+    if (!error) return false;
+    
+    const errorMessage = error.message || error.toString() || '';
+    const knownIssues = [
+      'Missing chain/token info',
+      'chain/token info for',
+    ];
+    
+    return knownIssues.some(issue =>
+      errorMessage.toLowerCase().includes(issue.toLowerCase())
+    );
+  }
+
+  /**
    * Handle SDK errors with network detection
    */
   static handleSDKError(error: any, context: string = 'SDK call'): NetworkError {
-    console.error(`❌ ${context} failed:`, error);
-
     const networkError = this.parseError(error);
+    
+    // Check if this is a known staging environment issue
+    if (this.isKnownStagingIssue(error)) {
+      // Log as warning instead of error for known staging issues
+      console.warn(`⚠️ [STAGING] ${context} - Known staging issue (using fallback):`, networkError.message);
+      return networkError;
+    }
+
+    console.error(`❌ ${context} failed:`, error);
 
     if (networkError.isNetworkError) {
       console.error(`🌐 Network error in ${context}:`, networkError.message);

@@ -6,18 +6,21 @@ import { PortfolioService } from "@/services/portfolio.service";
 import { default as zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
+import { setProcessedPortfolio } from "@/state/reducers/portfolio.reducer";
 import {
   selectAllSupportedTokens,
   selectEnabledPortfolioAssets,
+  selectProcessedPortfolio,
 } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { ISupportedCurrency } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
@@ -25,7 +28,6 @@ import SmartImage from "../general/SmartImage";
 import ManageTokensModal from "../Modals/ManageTokensModal";
 import AssetCardSkeleton from "./AssetCardSkeleton";
 import PortfolioErrorState from "./PortfolioErrorState";
-import { ISupportedCurrency } from "@zap/blockchain-sdk";
 
 const CryptoIcon = ({ image, symbol }: { image?: string; symbol?: string }) => {
   const [imageError, setImageError] = React.useState(false);
@@ -208,10 +210,23 @@ const AssetsSection = ({
 
   // Redux state
   const enabledAssets = useSelector(selectEnabledPortfolioAssets);
+  const processedPortfolio = useSelector(selectProcessedPortfolio);
   const { isPortfolioLoading, portfolioError } = useSelector(
     (state: AppRootState) => state.portfolio
   );
   const insets = useSafeAreaInsets();
+
+  // Debug: Log enabled assets
+  useEffect(() => {
+    console.log("🔍 [AssetsSection] Portfolio state:", {
+      hasProcessedPortfolio: !!processedPortfolio,
+      totalAssets: processedPortfolio?.assets?.length || 0,
+      enabledAssetsCount: enabledAssets?.length || 0,
+      enabledAssets: enabledAssets?.map(a => ({ symbol: a.symbol, status: a.status, balance: a.balance })) || [],
+      isPortfolioLoading,
+      portfolioError,
+    });
+  }, [processedPortfolio, enabledAssets, isPortfolioLoading, portfolioError]);
 
   const handleManagePress = () => {
     onManagePress();
@@ -373,6 +388,7 @@ const AssetsSection = ({
 };
 
 const AssetsSectionWithModal = (props: AssetsSectionProps) => {
+  const dispatch = useDispatch();
   const { isPortfolioLoading } = useSelector(
     (state: AppRootState) => state.portfolio
   );
@@ -383,6 +399,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
 
   // Redux state for modal
   const allTokens = useSelector(selectAllSupportedTokens);
+  const processedPortfolio = useSelector(selectProcessedPortfolio);
 
   const handleManagePress = () => {
     setShowManageModal(true);
@@ -393,6 +410,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
 
     // Store original portfolio state for potential rollback on error (function scope)
     let originalPortfolio: typeof portfolio = null;
+    let originalProcessedPortfolio: typeof processedPortfolio = null;
     let optimisticUpdateApplied = false;
 
     try {
@@ -413,6 +431,7 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
           console.log(`✅ Conditions met for optimistic update, proceeding...`);
           // Store original state for rollback
           originalPortfolio = JSON.parse(JSON.stringify(portfolio));
+          originalProcessedPortfolio = processedPortfolio ? JSON.parse(JSON.stringify(processedPortfolio)) : null;
           // Deep clone to ensure React detects the change
           const updatedPortfolio = JSON.parse(JSON.stringify(portfolio));
 
@@ -443,12 +462,55 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
               status: newStatus,
             };
 
+            // IMPORTANT: Assign the updated userTokenList back to the portfolio
+            updatedPortfolio.userTokenList = userTokenList;
+
             console.log(
               `🔄 Optimistic update: Token ${assetId} status changed from ${oldStatus} to ${newStatus}`
             );
 
             // Update portfolio state - this should trigger useEffect in home.tsx
             setPortfolio(updatedPortfolio);
+            
+            // ALSO immediately update the processed portfolio in Redux so the UI reflects the change
+            if (processedPortfolio) {
+              const updatedProcessedPortfolio = {
+                ...processedPortfolio,
+                assets: processedPortfolio.assets.map((asset) => {
+                  // Match by supportedCurrencyId (can be string or object with _id)
+                  const assetSupportedCurrencyId =
+                    typeof asset.supportedCurrencyId === "string"
+                      ? asset.supportedCurrencyId
+                      : (asset.supportedCurrencyId as any)?._id;
+                  
+                  if (assetSupportedCurrencyId === assetId) {
+                    // Update this asset's status
+                    return {
+                      ...asset,
+                      status: newStatus as "ENABLED" | "DISABLED" | "HIDDEN",
+                    };
+                  }
+                  return asset;
+                }),
+              };
+              
+              // Recalculate enabled/disabled assets
+              updatedProcessedPortfolio.enabledAssets = updatedProcessedPortfolio.assets.filter(
+                (asset) => asset.status === "ENABLED"
+              ) as ProcessedAsset[];
+              updatedProcessedPortfolio.disabledAssets = updatedProcessedPortfolio.assets.filter(
+                (asset) => asset.status === "DISABLED" || asset.status === "HIDDEN"
+              ) as ProcessedAsset[];
+              updatedProcessedPortfolio.enabledCount = updatedProcessedPortfolio.enabledAssets.length;
+              updatedProcessedPortfolio.disabledCount = updatedProcessedPortfolio.disabledAssets.length;
+              
+              // Update Redux immediately
+              dispatch(setProcessedPortfolio(updatedProcessedPortfolio));
+              console.log(
+                `✅ Processed portfolio updated in Redux immediately - UI should reflect change`
+              );
+            }
+            
             optimisticUpdateApplied = true;
 
             console.log(
@@ -512,6 +574,18 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
               result,
               responseTime: `${Date.now() - startTime}ms`,
             });
+          }
+
+          // Immediately refresh portfolio to update the processed portfolio and Redux state
+          // This ensures the token list in the modal reflects the change immediately
+          if (props.onRefreshPortfolio) {
+            console.log("🔄 Immediately refreshing portfolio to update processed state...");
+            // Use a small delay to ensure backend has processed the change
+            setTimeout(() => {
+              if (props.onRefreshPortfolio) {
+                props.onRefreshPortfolio();
+              }
+            }, 500);
           }
 
           // Schedule a delayed refresh (10 seconds) to eventually sync with backend
@@ -581,6 +655,13 @@ const AssetsSectionWithModal = (props: AssetsSectionProps) => {
                 : 0,
             });
             setPortfolio(originalPortfolio);
+            
+            // Also revert the processed portfolio in Redux
+            if (originalProcessedPortfolio) {
+              dispatch(setProcessedPortfolio(originalProcessedPortfolio));
+              console.log("✅ Processed portfolio reverted in Redux");
+            }
+            
             optimisticUpdateApplied = false;
             console.log(
               "✅ Optimistic update reverted - UI should show original state"

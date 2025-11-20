@@ -63,6 +63,7 @@ export default function OTPInput({
     if (disabled) return;
 
     const newCode = [...code];
+    const previousValue = newCode[index];
     newCode[index] = value;
     setCode(newCode);
 
@@ -70,7 +71,7 @@ export default function OTPInput({
     onCodeChange?.(codeString);
 
     if (value && index < length - 1) {
-      // Move to next input
+      // Move to next input when a digit is entered
       inputRefs.current[index + 1]?.focus();
       setFocusedIndex(index + 1);
     } else if (value && index === length - 1) {
@@ -78,12 +79,24 @@ export default function OTPInput({
       if (codeString.length === length) {
         onCodeComplete?.(codeString);
       }
+    } else if (!value && previousValue && index > 0) {
+      // If cell was cleared (backspace on filled cell), move to previous cell
+      // Use setTimeout to ensure the focus happens after the current input loses focus
+      setTimeout(() => {
+        inputRefs.current[index - 1]?.focus();
+        setFocusedIndex(index - 1);
+      }, 0);
     }
   };
 
   const handleKeyPress = (key: string, index: number) => {
     if (key === "Backspace" && !code[index] && index > 0) {
-      // Move to previous input on backspace
+      // If current cell is empty and backspace is pressed, move to previous cell and clear it
+      const newCode = [...code];
+      newCode[index - 1] = "";
+      setCode(newCode);
+      const codeString = newCode.join("");
+      onCodeChange?.(codeString);
       inputRefs.current[index - 1]?.focus();
       setFocusedIndex(index - 1);
     }
@@ -137,8 +150,9 @@ export default function OTPInput({
       {/* OTP Input Fields */}
       <Box
         flexDirection="row"
-        justifyContent="space-between"
+        justifyContent="center"
         marginVertical="m"
+        style={{ gap: 2 }}
       >
         {code.map((digit, index) => (
           <Pressable
@@ -155,6 +169,7 @@ export default function OTPInput({
                   : theme.colors.borderColor,
                 backgroundColor: theme.colors.secondaryBackgroundColor,
                 borderWidth: 1,
+                marginHorizontal: 4, // Add horizontal margin for spacing
               },
             ]}
             onPress={() => handlePress(index)}
@@ -190,7 +205,7 @@ export default function OTPInput({
       {errorText ? (
         <Box mb="s">
           <CustomText color="error" variant="body" textAlign="center">
-            {typeof errorText === 'string' ? errorText : errorText?.message || 'An error occurred'}
+            {typeof errorText === 'string' ? errorText : 'An error occurred'}
           </CustomText>
         </Box>
       ) : null}

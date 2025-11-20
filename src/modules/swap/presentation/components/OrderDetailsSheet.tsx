@@ -1,16 +1,21 @@
 import Icons from "@/assets/icons";
 import { TouchableIcon } from "@/components";
+import ConfirmSend from "@/components/bottomsheets/send/ConfirmSend";
 import { Box, CustomButton, CustomText } from "@/components/general";
+import BankIcon from "@/components/general/BankIcon";
 import SmartImage from "@/components/general/SmartImage";
 import SwitchTab from "@/components/general/SwitchTab";
 import { SIZES } from "@/data";
+import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { useChains } from "@/src/core/chains/chains-context";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
 import {
   formatNumber,
   formatWalletAddress,
 } from "@/src/core/utils/format-utils";
+import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
-import { selectAssetBySupportedCurrencyId } from "@/state/selectors/portfolio.selectors";
+import { selectAssetBySupportedCurrencyId, selectProcessedPortfolio } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -26,27 +31,19 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
+  useState
 } from "react";
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { useSelector } from "react-redux";
 import { CreateOrderResponse } from "../../domain/entities/order.types";
 import OverviewDetails from "./OverviewDetails";
 
-const ORDER_STATUSES = {
-  PENDING: "PENDING",
-  DEPOSIT_CONFIRMING: "DEPOSIT_CONFIRMING",
-  DEPOSIT_CONFIRMED: "DEPOSIT_CONFIRMED",
-  WITHDRAWAL_CONFIRMING: "WITHDRAWAL_CONFIRMING",
-  WITHDRAWAL_CONFIRMED: "WITHDRAWAL_CONFIRMED",
-  FILLED: "FILLED",
-  OVERPAID: "OVERPAID",
-  UNDERPAID: "UNDERPAID",
-  REFUNDED: "REFUNDED",
-  FAILED: "FAILED",
-  EXPIRED: "EXPIRED",
-};
+enum FeeSpeed {
+  Standard = "Standard",
+  Fast = "Fast",
+  Instant = "Instant",
+}
 
 interface OrderDetailsSheetProps {
   orderDetails?: CreateOrderResponse;
@@ -64,9 +61,22 @@ const OrderDetailsSheet = forwardRef<
   OrderDetailsSheetProps
 >(({ orderDetails, onClose, title = "Order Details" }, ref) => {
   const theme = useTheme<Theme>();
+  const tabBarHeight = Platform.OS === "ios" ? 90 : 70;
   const [activeTab, setActiveTab] = useState<"summary" | "details">("summary");
+  const [networkFee, setNetworkFee] = useState<{
+    fee: number;
+    feeInUSD: number;
+    speed: FeeSpeed;
+    gasPrice?: number;
+    gasLimit?: number;
+    feeRate?: number;
+  } | null>(null);
+  const [isCalculatingFee, setIsCalculatingFee] = useState(false);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const { getChainBySymbol, getChainImage } = useChains();
+  const confirmSendRef = useRef<BottomSheet>(null);
+  const { getChainBySymbol, getChainImage, chainsMap } = useChains();
+  const { getPrivateKey, getAddress, mainUserWalletGroup } = useWallet();
+  const processedPortfolio = useSelector(selectProcessedPortfolio);
 
   // Get order details early for hooks
   const isSellCrypto = orderDetails?.sellCurrency?.currencyId?.isCrypto;
@@ -110,10 +120,125 @@ const OrderDetailsSheet = forwardRef<
     return walletChainId === orderChainId;
   }, [walletToken, sendCurrency, sendChain, sendCurrencySupportedId, orderDetails]);
 
+  // Calculate amount to send from order details (must be before early return)
+  const sendAmount = useMemo(() => {
+    if (!orderDetails) return "0";
+    // For buy orders: user sends buyAmount (crypto)
+    // For sell orders: user sends sellAmount (crypto)
+    if (isBuyCrypto) {
+      return orderDetails.buyAmount?.toString() || "0";
+    } else {
+      return orderDetails.sellAmount?.toString() || "0";
+    }
+  }, [orderDetails, isBuyCrypto]);
+
+  // Calculate network fee when amount and token are available (must be before early return)
+  useEffect(() => {
+    const calculateFee = async () => {
+      if (!walletToken || !depositAddress || !sendChain || !sendAmount || parseFloat(sendAmount) <= 0) {
+        return;
+      }
+
+      try {
+        setIsCalculatingFee(true);
+        const chainSymbol = sendChain.symbol;
+        const fromAddress = await getAddress(chainSymbol, mainUserWalletGroup?._id);
+        
+        if (!fromAddress) {
+          console.warn("No address found for chain:", chainSymbol);
+          return;
+        }
+
+        const gasEstimate = await zapSDKService.estimateTransactionCost(
+          depositAddress,
+          parseFloat(sendAmount),
+          fromAddress,
+          chainSymbol,
+          {
+            tokenContractAddress: walletToken.tokenAddress || "",
+            tokenAddress: walletToken.tokenAddress || "",
+            tokenMintAddress: walletToken.tokenAddress || "",
+            memo: "",
+            feeRate: null,
+          }
+        );
+
+        const chainToUse = chainsMap.get(walletToken.chainId);
+        if (!chainToUse) {
+          throw new Error("Chain not found");
+        }
+
+        // Get native token price for fee calculation
+        const nativeToken = processedPortfolio?.assets.find(
+          (asset: ProcessedAsset) => {
+            return (
+              asset.symbol.toUpperCase() ===
+                ((chainToUse?.nativeCurrencyId as any)?.symbol || "").toUpperCase() &&
+              asset.chainSymbol.toUpperCase() === chainToUse?.symbol.toUpperCase()
+            );
+          }
+        );
+        const nativePrice = nativeToken?.price || 0;
+
+        let feeData = {
+          fee: 0,
+          feeInUSD: 0,
+          speed: FeeSpeed.Standard,
+          gasPrice: 0,
+          gasLimit: 0,
+          feeRate: 0,
+        };
+
+        if (chainToUse?.isEVM) {
+          feeData.fee = (gasEstimate as any)?.gasPrice
+            ? Number((gasEstimate as any).gasPrice) * Number((gasEstimate as any).gasLimit || 21000) / 1e18
+            : 0.001; // Default fallback
+          feeData.feeInUSD = feeData.fee * nativePrice;
+          feeData.gasPrice = (gasEstimate as any)?.gasPrice || 0;
+          feeData.gasLimit = (gasEstimate as any)?.gasLimit || 21000;
+        } else if (chainToUse?.symbol === "SOL") {
+          feeData.fee = (gasEstimate as any)?.fee || 0.000005;
+          feeData.feeInUSD = feeData.fee * nativePrice;
+        } else if (chainToUse?.symbol === "BTC") {
+          feeData.fee = (gasEstimate as any)?.feeRate || 0.00001;
+          feeData.feeInUSD = feeData.fee * nativePrice;
+          feeData.feeRate = (gasEstimate as any)?.feeRate || 0.00001;
+        } else if (chainToUse?.symbol === "TRX") {
+          feeData.fee = (gasEstimate as any)?.fee || 0;
+          feeData.feeInUSD = 0; // TRX fees are typically 0
+        }
+
+        setNetworkFee(feeData);
+      } catch (error) {
+        console.error("Failed to calculate network fee:", error);
+        // Set default fee
+        setNetworkFee({
+          fee: 0.001,
+          feeInUSD: 0,
+          speed: FeeSpeed.Standard,
+        });
+      } finally {
+        setIsCalculatingFee(false);
+      }
+    };
+
+    if (orderDetails) {
+      calculateFee();
+    }
+  }, [walletToken, depositAddress, sendChain, sendAmount, getAddress, mainUserWalletGroup?._id, chainsMap, processedPortfolio, orderDetails]);
+
+  const copyToClipboard = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert("Copied", "Address copied to clipboard");
+  };
+
   useImperativeHandle(ref, () => ({
     open: () => {
+      console.log("📋 OrderDetailsSheet: open() called via ref");
       if (bottomSheetRef.current) {
         bottomSheetRef.current.snapToIndex(0);
+      } else {
+        console.warn("📋 OrderDetailsSheet: bottomSheetRef.current is null");
       }
     },
     close: () => {
@@ -124,47 +249,22 @@ const OrderDetailsSheet = forwardRef<
   }));
 
   // Auto-open when orderDetails is set
-  // Note: This is a backup - the parent component should handle opening
   useEffect(() => {
     if (orderDetails && bottomSheetRef.current) {
-      console.log("📋 OrderDetailsSheet: orderDetails set, will auto-open:", orderDetails._id);
-      // Don't auto-open here - let the parent component handle it
-      // This prevents conflicts with manual opening
-      // The parent will call open() after the main sheet is closed
+      console.log("📋 OrderDetailsSheet: orderDetails set, auto-opening:", orderDetails._id);
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        if (bottomSheetRef.current) {
+          bottomSheetRef.current.snapToIndex(0);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [orderDetails]);
 
-  // Always render the BottomSheet so the ref is available, but show empty content when no orderDetails
-  if (!orderDetails) {
-    return (
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={["90%"]}
-        enablePanDownToClose
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-          />
-        )}
-      >
-        <BottomSheetView style={{ flex: 1 }}>
-          <View />
-        </BottomSheetView>
-      </BottomSheet>
-    );
-  }
-
-  const copyToClipboard = async (text: string) => {
-    await Clipboard.setStringAsync(text);
-    Alert.alert("Copied", "Address copied to clipboard");
-  };
-
-  // Handle send from wallet navigation
+  // Handle send from wallet - open confirm send bottom sheet
   const handleSendFromWallet = () => {
-    if (!depositAddress || !sendChain || !currencyMatches) {
+    if (!depositAddress || !sendChain || !currencyMatches || !walletToken) {
       Alert.alert(
         "Cannot Send",
         "Currency or chain mismatch. Please ensure you're sending the correct currency on the correct chain."
@@ -172,17 +272,80 @@ const OrderDetailsSheet = forwardRef<
       return;
     }
     
-    // Find the token ID from the currency
-    const tokenId = sendCurrencySupportedId || sendCurrency?._id || (sendCurrency as any)?.currencyId?._id;
-    
-    if (tokenId) {
-      router.push(`/dashboard/home/send-token?tokenId=${encodeURIComponent(tokenId)}&address=${encodeURIComponent(depositAddress)}`);
-    } else {
-      Alert.alert("Error", "Unable to determine token ID for sending");
+    // Open confirm send bottom sheet
+    confirmSendRef.current?.snapToIndex(0);
+  };
+
+  // Handle actual send transaction
+  const handleConfirmSend = async () => {
+    if (!walletToken || !depositAddress || !sendChain || !sendAmount) {
+      Alert.alert("Error", "Missing required information for sending");
+      return;
+    }
+
+    try {
+      const privateKey = await getPrivateKey(sendChain.symbol, mainUserWalletGroup?._id);
+      if (!privateKey) {
+        Alert.alert("Error", "Private key not found. Please unlock your wallet.");
+        return;
+      }
+
+      const fromAddress = await getAddress(sendChain.symbol, mainUserWalletGroup?._id);
+      if (!fromAddress) {
+        Alert.alert("Error", "Address not found for this chain.");
+        return;
+      }
+
+      const chainSymbol = sendChain.symbol.toUpperCase();
+      const chain = chainsMap.get(walletToken.chainId);
+
+      let baseParams: any = {
+        fromAddress,
+        toAddress: depositAddress,
+        amount: parseFloat(sendAmount),
+        privateKey,
+        tokenDecimals: walletToken.decimals,
+        chainSymbol: chainSymbol,
+      };
+
+      if ((chain as any)?.isEVM) {
+        baseParams.tokenAddress = walletToken.tokenAddress || undefined;
+      } else if (chain?.symbol === "SOL") {
+        baseParams.tokenMintAddress = walletToken.tokenAddress || undefined;
+      } else if (chain?.symbol === "TRX") {
+        baseParams.tokenAddress = walletToken.tokenAddress || undefined;
+      }
+
+      // Send transaction
+      const result = await zapSDKService.sendTransaction(baseParams);
+      console.log("✅ Transaction sent successfully:", result);
+
+      // Close confirm send sheet
+      confirmSendRef.current?.close();
+
+      // Navigate to success screen
+      router.push({
+        pathname: "/dashboard/home/send-token/success",
+        params: {
+          txHash: result,
+          amount: sendAmount,
+          tokenSymbol: walletToken.symbol || "ETH",
+          recipientAddress: depositAddress,
+          networkFee: networkFee?.fee?.toString() || "0",
+          networkName: sendChain.name || "Ethereum",
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Transaction failed:", error);
+      Alert.alert(
+        "Transaction Failed",
+        error?.message || "Failed to send transaction. Please try again."
+      );
     }
   };
 
   return (
+    <>
     <BottomSheet
       ref={bottomSheetRef}
       index={-1}
@@ -263,31 +426,29 @@ const OrderDetailsSheet = forwardRef<
                 YOU SEND
               </CustomText>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Image
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    marginRight: 10,
-                  }}
-                  contentFit="fill"
+                <SmartImage
                   source={
                     orderDetails?.buyCurrency?.currencyId?.logo ||
                     orderDetails?.buyCurrency?.image ||
                     ""
                   }
+                  width={20}
+                  height={20}
+                  style={{ marginRight: 10, borderRadius: 10 }}
                 />
                 <CustomText variant="subheader" style={{ fontSize: 22 }}>
                   {isBuyCrypto
-                    ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
-                    : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
+                    ? formatNumber(orderDetails?.buyAmount || 0) + " " + buySymbol
+                    : buySymbol + formatNumber(orderDetails?.buyAmount || 0, 2)}
                 </CustomText>
               </View>
             </Box>
+            {orderDetails && (
             <OverviewDetails
-              key={orderDetails?._id}
+                key={orderDetails._id}
               orderDetails={orderDetails}
             />
+            )}
 
             {/* Info Box */}
             <Box
@@ -303,8 +464,8 @@ const OrderDetailsSheet = forwardRef<
               <CustomText variant="body" flex={1} style={{ fontSize: 12 }}>
                 We will complete your transaction of{" "}
                 {isSellCrypto
-                  ? formatNumber(orderDetails.sellAmount) + " " + sellSymbol
-                  : sellSymbol + formatNumber(orderDetails.sellAmount, 2)}{" "}
+                  ? formatNumber(orderDetails?.sellAmount || 0) + " " + sellSymbol
+                  : sellSymbol + formatNumber(orderDetails?.sellAmount || 0, 2)}{" "}
                 after we confirm receipt of your deposit.
               </CustomText>
             </Box>
@@ -353,24 +514,20 @@ const OrderDetailsSheet = forwardRef<
                     YOU SEND
                   </CustomText>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Image
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        marginRight: 10,
-                      }}
-                      contentFit="fill"
+                    <SmartImage
                       source={
                         orderDetails?.buyCurrency?.currencyId?.logo ||
                         orderDetails?.buyCurrency?.image ||
                         ""
                       }
+                      width={20}
+                      height={20}
+                      style={{ marginRight: 10, borderRadius: 10 }}
                     />
                     <CustomText variant="subheader" style={{ fontSize: 22 }}>
                       {isBuyCrypto
-                        ? formatNumber(orderDetails.buyAmount) + " " + buySymbol
-                        : buySymbol + formatNumber(orderDetails.buyAmount, 2)}
+                        ? formatNumber(orderDetails?.buyAmount || 0) + " " + buySymbol
+                        : buySymbol + formatNumber(orderDetails?.buyAmount || 0, 2)}
                     </CustomText>
                   </View>
                 </Box>
@@ -398,17 +555,20 @@ const OrderDetailsSheet = forwardRef<
                   </CustomText>
                   <Box flexDirection="row">
                     {isBuyCrypto ? (
-                      <Image
-                        source={getChainImage(buyChain?._id || "")}
-                        style={{ width: 20, height: 20, marginRight: 10 }}
-                      />
-                    ) : (
                       <SmartImage
-                        source={orderDetails?.depositAccount?.bankId?.icon || ""}
+                        source={getChainImage(buyChain?._id || "")}
                         width={20}
                         height={20}
                         style={{ marginRight: 10 }}
                       />
+                    ) : (
+                      <Box marginRight="s">
+                        <BankIcon
+                          bank={orderDetails?.depositAccount?.bankId as any}
+                          size={20}
+                          borderRadius={4}
+                        />
+                      </Box>
                     )}
                     <CustomText>
                       {isBuyCrypto
@@ -481,8 +641,9 @@ const OrderDetailsSheet = forwardRef<
                       text={hasBalance ? "Send from Wallet" : "Insufficient Balance"}
                       onPress={handleSendFromWallet}
                       width="100%"
-                      borderRadius={50}
-                      bgColor={hasBalance && currencyMatches ? "secondaryColor" : "disabledTextColor"}
+                      borderRadius={56}
+                      bgColor={hasBalance && currencyMatches ? theme.colors.primaryColor : theme.colors.disabledTextColor}
+                      color="white"
                       disabled={!hasBalance || !currencyMatches}
                     />
                     {!currencyMatches && (
@@ -515,6 +676,24 @@ const OrderDetailsSheet = forwardRef<
         )}
       </BottomSheetView>
     </BottomSheet>
+    {/* Confirm Send Bottom Sheet - rendered as sibling to avoid nesting issues */}
+    {walletToken && (
+      <ConfirmSend
+        ref={confirmSendRef}
+        send={handleConfirmSend}
+        selectedToken={walletToken}
+        recipientAddress={depositAddress || ""}
+        amount={sendAmount}
+        usdValue={parseFloat(sendAmount) * (walletToken.price || 0)}
+        networkFee={networkFee}
+        onClose={() => confirmSendRef.current?.close()}
+        onTransactionComplete={() => {
+          console.log("Transaction completed");
+        }}
+        bottomInset={tabBarHeight}
+      />
+    )}
+    </>
   );
 });
 

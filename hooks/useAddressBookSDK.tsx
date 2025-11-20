@@ -6,7 +6,7 @@
  */
 
 import { AddressBookItem, addressBookSDKService, CreateAddressBookRequest, UpdateAddressBookRequest } from '@/src/core/sdk/address-book-sdk.service';
-import { selectUser } from '@/state/reducers/kyc-reducer';
+import { AppRootState } from '@/state';
 import { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useExchangeAuth } from './useExchangeAuth';
@@ -17,7 +17,7 @@ export const useAddressBookSDK = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { isExchangeAuthenticated, exchangeUserData } = useExchangeAuth();
-  const user = useSelector(selectUser);
+  const { user } = useSelector((state: AppRootState) => state.kyc);
 
   /**
    * Get user addresses based on current tab

@@ -128,45 +128,82 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   };
 
   const refreshChains = async () => {
+    console.log("🔄 [CHAINS] refreshChains called");
     try {
       setIsLoading(true);
       setError(null);
 
       // Check if user is wallet authenticated before fetching chains
       const walletUserId = await zapSDKService.getCurrentUserId();
+      console.log("🔍 [CHAINS] Checking authentication", {
+        walletUserId,
+        hasUserId: !!walletUserId,
+      });
+      
       if (!walletUserId) {
-        console.log("⚠️ User not authenticated, skipping wallet chains fetch");
+        console.warn("⚠️ [CHAINS] User not authenticated, skipping wallet chains fetch");
         setIsLoading(false);
         return;
       }
 
+      console.log("✅ [CHAINS] User authenticated, fetching wallet chains...");
       // Fetch wallet chains (chains that support wallet operations)
       const walletChainsData = await zapSDKService.getWalletChains();
+      console.log("✅ [CHAINS] Wallet chains fetched", {
+        count: walletChainsData?.length || 0,
+      });
+
+      if (!walletChainsData || walletChainsData.length === 0) {
+        console.warn("⚠️ [CHAINS] No wallet chains returned from API");
+      }
 
       setWalletChains(walletChainsData);
       setChains(walletChainsData); // For now, we only need wallet chains
 
       // Save to cache after fetching
       await saveWalletChainsToCache(walletChainsData);
+      console.log("✅ [CHAINS] Wallet chains saved to cache");
 
       setLastFetched(new Date());
-      console.log("✅ Chains loaded successfully:", walletChainsData.length);
+      console.log("✅ [CHAINS] Chains loaded successfully:", walletChainsData.length);
     } catch (err: any) {
       // Handle authentication errors gracefully
       const errorMessage = err?.message || "";
+      const errorStatus = err?.status || err?.code;
+      
       const isAuthError =
         errorMessage.includes("No authentication token") ||
         errorMessage.includes("No refresh token") ||
         errorMessage.includes("Refresh token is invalid") ||
         errorMessage.includes("re-authenticate") ||
-        err?.status === 401;
+        errorMessage.includes("Invalid authentication token") ||
+        errorMessage.includes("Token refresh failed") ||
+        errorMessage.includes("Session not found") ||
+        errorStatus === 401 ||
+        errorStatus === 500; // Session not found returns 500
 
       if (isAuthError) {
-        console.log("⚠️ Authentication required to load wallet chains");
-        // Don't set error for auth issues - user just needs to log in
+        console.warn("⚠️ [CHAINS] Authentication required to load wallet chains", {
+          error: err?.message,
+          status: errorStatus,
+          code: err?.code,
+        });
+        // Don't set error for auth issues - user just needs to log in or token needs refresh
+        // The chains will be loaded automatically once authentication is established
         setError(null);
+        
+        // If it's a session not found error, we might want to retry after a delay
+        // when authentication is re-established
+        if (errorMessage.includes("Session not found") || errorStatus === 500) {
+          console.log("🔄 [CHAINS] Session not found - chains will be loaded after re-authentication");
+        }
       } else {
-        console.error("❌ Failed to load chains:", err);
+        console.error("❌ [CHAINS] Failed to load chains:", {
+          error: err,
+          message: err?.message,
+          status: errorStatus,
+          code: err?.code,
+        });
         setError(err instanceof Error ? err.message : "Failed to load chains");
       }
     } finally {
@@ -176,6 +213,7 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
 
   // Function to load chains immediately (for when user is authenticated)
   const loadChainsNow = () => {
+    console.log("🚀 [CHAINS] loadChainsNow called");
     refreshChains();
   };
 

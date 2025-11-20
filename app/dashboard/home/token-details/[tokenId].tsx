@@ -453,72 +453,80 @@ const TokenDetails = () => {
           throw new Error("SDK or markets module not available");
         }
 
-        // Fetch token details and historical rates in parallel
-        // Note: SDK may not support period parameter, so we get all data and filter client-side
-        console.log(
-          "🕐 Fetching historical rates (period filtering will be done client-side):",
-          graphPeriod
-        );
-        const [tokenDetailsResponse, historicalRatesResponse] =
-          await Promise.all([
-            sdk.markets.getTokenDetails(marketCurrencyId),
-            sdk.markets.getHistoricalRates(marketCurrencyId),
-          ]);
-
-        console.log("📈 Historical rates response:", historicalRatesResponse);
-        console.log("🔍 Historical rates structure:");
-        console.log("   - Type:", typeof historicalRatesResponse);
-        console.log("   - Keys:", Object.keys(historicalRatesResponse || {}));
-        console.log("   - Data property:", historicalRatesResponse?.data);
-        console.log(
-          "   - Data keys:",
-          Object.keys(historicalRatesResponse?.data || {})
-        );
-        console.log("   - Rates array:", historicalRatesResponse?.data?.rates);
-        console.log(
-          "   - Rates length:",
-          historicalRatesResponse?.data?.rates?.length
-        );
-
-        if (historicalRatesResponse?.data?.rates?.length > 0) {
-          console.log(
-            "   - First rate entry:",
-            historicalRatesResponse.data.rates[0]
-          );
-          console.log(
-            "   - Last rate entry:",
-            historicalRatesResponse.data.rates[
-              historicalRatesResponse.data.rates.length - 1
-            ]
-          );
-
-          // Check the structure of rate entries
-          const sampleRate = historicalRatesResponse.data.rates[0];
-          console.log("   - Rate entry keys:", Object.keys(sampleRate || {}));
-          console.log("   - Rate values:", {
-            close: sampleRate?.close,
-            open: sampleRate?.open,
-            high: sampleRate?.high,
-            low: sampleRate?.low,
-            price: sampleRate?.price,
-            value: sampleRate?.value,
-            timestamp: sampleRate?.timestamp,
-            date: sampleRate?.date,
-          });
-        }
-
+        // Fetch token details first (required for page to render)
+        console.log("🕐 Fetching token details for:", marketCurrencyId);
+        const tokenDetailsResponse = await sdk.markets.getTokenDetails(marketCurrencyId);
+        
         console.log("💡 Token details response:", tokenDetailsResponse);
 
-        // Store the token details in state
+        // Store the token details in state immediately so page can render
         setTokenDetails(tokenDetailsResponse);
-        setHistoricalRates(historicalRatesResponse);
+        
+        // Set loading to false so page can render
+        setIsTokenDetailsLoading(false);
+        
+        // Fetch historical rates separately (non-blocking)
+        // Page will render even if this fails
+        console.log("🕐 Fetching historical rates (non-blocking) for:", marketCurrencyId);
+        sdk.markets.getHistoricalRates(marketCurrencyId)
+          .then((historicalRatesResponse) => {
+            console.log("📈 Historical rates response:", historicalRatesResponse);
+            console.log("🔍 Historical rates structure:");
+            console.log("   - Type:", typeof historicalRatesResponse);
+            console.log("   - Keys:", Object.keys(historicalRatesResponse || {}));
+            console.log("   - Data property:", historicalRatesResponse?.data);
+            console.log(
+              "   - Data keys:",
+              Object.keys(historicalRatesResponse?.data || {})
+            );
+            console.log("   - Rates array:", historicalRatesResponse?.data?.rates);
+            console.log(
+              "   - Rates length:",
+              historicalRatesResponse?.data?.rates?.length
+            );
+
+            if (historicalRatesResponse?.data?.rates?.length > 0) {
+              console.log(
+                "   - First rate entry:",
+                historicalRatesResponse.data.rates[0]
+              );
+              console.log(
+                "   - Last rate entry:",
+                historicalRatesResponse.data.rates[
+                  historicalRatesResponse.data.rates.length - 1
+                ]
+              );
+
+              // Check the structure of rate entries
+              const sampleRate = historicalRatesResponse.data.rates[0];
+              console.log("   - Rate entry keys:", Object.keys(sampleRate || {}));
+              console.log("   - Rate values:", {
+                close: sampleRate?.close,
+                open: sampleRate?.open,
+                high: sampleRate?.high,
+                low: sampleRate?.low,
+                price: sampleRate?.price,
+                value: sampleRate?.value,
+                timestamp: sampleRate?.timestamp,
+                date: sampleRate?.date,
+              });
+            }
+            
+            // Update historical rates state when available
+            setHistoricalRates(historicalRatesResponse);
+          })
+          .catch((error) => {
+            console.warn("⚠️ Failed to fetch historical rates (non-blocking):", error);
+            // Page continues to work without historical rates
+            setHistoricalRates(null);
+          });
       } catch (error) {
         console.error("❌ Failed to fetch token details:", error);
         setTokenDetails(null);
         setHistoricalRates(null);
         hasFetchedTokenDetailsRef.current = false; // Reset on error so we can retry
-      } finally {
         setIsTokenDetailsLoading(false);
+      } finally {
         isFetchingRef.current = false;
       }
     } else {
