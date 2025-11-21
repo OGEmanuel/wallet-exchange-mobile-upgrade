@@ -2,7 +2,6 @@ import icons from "@/assets/icons";
 import { ARROW_DARK_LEFT_SVG, ARROW_LEFT_SVG } from "@/assets/svgs";
 import { Box, CustomText } from "@/components/general";
 import { showErrorToast, showSuccessToast } from "@/src/core/utils/toast-utils";
-import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
 import { marketActions } from "@/src/modules/market/presentation/state/market-slice";
 import { AppRootState } from "@/state";
@@ -15,6 +14,7 @@ import { SvgXml } from "react-native-svg";
 import { useDispatch, useSelector } from "react-redux";
 import TokenImage from "./TokenImage";
 import TouchableIcon from "./TouchableIcon";
+import { MarketTokenModel } from "@/src/modules/market/domain/entities/models/market-token-model";
 
 interface AssetHeaderProps {
   asset?: any;

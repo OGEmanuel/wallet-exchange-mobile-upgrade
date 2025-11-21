@@ -1,3 +1,4 @@
+import useAppUtilities from "@/hooks/useAppUtilities";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { formatWalletAddress } from "@/src/core/utils/format-utils";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
@@ -24,7 +25,8 @@ const ActivityItemCard = ({
   status = "PENDING",
 }: IProps) => {
   const dispatch = useDispatch();
-  const { getApproximateAmount, getAmountToReceive } = useUtilities();
+  const { getApproximateAmount } = useAppUtilities();
+  const { getAmountToReceive } = useUtilities();
   const {
     approvedActivityRef,
   } = useBottomSheetRefs();

@@ -1,5 +1,5 @@
 import { CoinData } from "@/interfaces/account.interface";
-import { SIZES } from "@/lib/utils/screen-sizes";
+import { SIZES } from "@/lib/utils";
 import { NavigationProp, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useColorScheme } from "nativewind";

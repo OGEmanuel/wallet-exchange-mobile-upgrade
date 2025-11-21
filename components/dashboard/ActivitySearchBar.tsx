@@ -1,6 +1,4 @@
-import {
-  ThemedSearchIcon
-} from "@/assets/svg/wallet-icons-components";
+import { ThemedSearchIcon } from "@/assets/svg/wallet-icons-components";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
@@ -13,7 +11,11 @@ interface IProps {
   onSearchChange: (query: string) => void;
 }
 
-const ActivitySearchBar = ({ onFilterPress, searchQuery, onSearchChange }: IProps) => {
+const ActivitySearchBar = ({
+  onFilterPress,
+  searchQuery,
+  onSearchChange,
+}: IProps) => {
   const theme = useTheme<Theme>();
   return (
     <Box width={"100%"} height={50} flexDirection="row" marginVertical="m">
