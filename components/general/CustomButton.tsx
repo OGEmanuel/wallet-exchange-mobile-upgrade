@@ -1,4 +1,4 @@
-import theme, { Theme } from "@/theme";
+import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import * as Haptics from "expo-haptics";
 import React, { JSX, useRef } from "react";
@@ -24,7 +24,7 @@ interface IProps {
   disabled?: boolean;
   disabledColor?: string;
   borderRadius?: number;
-  onPress: () => void;
+  onPress?: () => void;
   trailingIcon?: JSX.Element;
   leadingIcon?: JSX.Element;
   iconPosition?: "LEFT" | "RIGHT";
@@ -45,7 +45,7 @@ export default function CustomButton({
   fontSize = 14,
   disabled = false,
   borderRadius = 10,
-  disabledColor = theme.colors.disabledTextColor,
+  disabledColor,
   iconPosition = "LEFT",
   variant = "body",
   leadingIcon,
@@ -54,6 +54,9 @@ export default function CustomButton({
 }: IProps) {
   const theme = useTheme<Theme>();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // Default disabled color to black if not provided
+  const finalDisabledColor = disabledColor || theme.colors.black;
 
   const handlePressIn = () => {
     if (isLoading || disabled) return;
@@ -78,7 +81,7 @@ export default function CustomButton({
   };
 
   const handlePress = () => {
-    if (isLoading || disabled) {
+    if (isLoading || disabled || !onPress) {
       return;
     }
     if (shouldVibrate) {
@@ -99,7 +102,7 @@ export default function CustomButton({
           borderColor: borderColor || theme.colors.borderColor,
           backgroundColor:
             disabled || isLoading
-              ? disabledColor
+              ? finalDisabledColor
               : bgColor || theme.colors.primaryColor,
           borderRadius,
           flexDirection: "row",

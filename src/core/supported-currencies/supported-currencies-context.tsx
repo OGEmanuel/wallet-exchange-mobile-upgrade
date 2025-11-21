@@ -10,9 +10,11 @@ import * as SecureStore from "expo-secure-store";
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
-  useState,
+  useRef,
+  useState
 } from "react";
 import { default as zapSDKService } from "../sdk/zap-sdk.service";
 import { StorageKeys } from "../storage/storage-types";
@@ -297,6 +299,29 @@ export const SupportedCurrenciesProvider: React.FC<
       );
 
       console.log("✅ Supported currencies fetched:", currencies.length);
+      
+      // Debug: Check if BTC currency has chain information
+      const btcCurrency = currencies.find((c: ISupportedCurrency) => 
+        (c.chainId as Partial<IChain>)?.symbol === "BTC" || 
+        (c.currencyId as Partial<ICurrency>)?.symbol === "BTC"
+      );
+      if (btcCurrency) {
+        console.log("🔍 BTC Currency Structure:", {
+          _id: btcCurrency._id,
+          chainId: btcCurrency.chainId,
+          chainIdType: typeof btcCurrency.chainId,
+          chainIdSymbol: (btcCurrency.chainId as Partial<IChain>)?.symbol,
+          chainIdId: typeof btcCurrency.chainId === 'string' 
+            ? btcCurrency.chainId 
+            : (btcCurrency.chainId as any)?._id,
+          currencyId: btcCurrency.currencyId,
+          currencySymbol: (btcCurrency.currencyId as Partial<ICurrency>)?.symbol,
+          hasChainInfo: !!btcCurrency.chainId,
+        });
+      } else {
+        console.warn("⚠️ BTC currency not found in supported currencies");
+      }
+      
       setBaseSupportedCurrencies(currencies);
       // Initially set without balances, will be enriched when portfolio loads
       setSupportedCurrenciesForSwap(currencies.map(c => ({ ...c })));
@@ -426,8 +451,29 @@ export const SupportedCurrenciesProvider: React.FC<
     );
   };
 
+  // Track last enriched data to prevent unnecessary updates
+  const lastEnrichedDataRef = useRef<string | null>(null);
+
   // Enrich supported currencies with balances from portfolio assets
-  const enrichSupportedCurrenciesWithBalances = (assets: any[]) => {
+  const enrichSupportedCurrenciesWithBalances = useCallback((assets: any[]) => {
+    // Create a key from assets to detect if data has changed
+    const assetsKey = assets && assets.length > 0
+      ? JSON.stringify(assets.map(a => ({
+          id: a.id,
+          balance: a.balance,
+          supportedCurrencyId: typeof a.supportedCurrencyId === 'string' 
+            ? a.supportedCurrencyId 
+            : (a.supportedCurrencyId as ISupportedCurrency)?._id
+        })))
+      : '[]';
+    
+    // Skip if data hasn't changed
+    if (assetsKey === lastEnrichedDataRef.current) {
+      return;
+    }
+    
+    lastEnrichedDataRef.current = assetsKey;
+
     if (!assets || assets.length === 0) {
       // Reset to base currencies without balances
       setSupportedCurrenciesForSwap(baseSupportedCurrencies.map(c => ({ ...c })));
@@ -480,7 +526,7 @@ export const SupportedCurrenciesProvider: React.FC<
     });
 
     setSupportedCurrenciesForSwap(enriched);
-  };
+  }, [baseSupportedCurrencies]);
 
   const contextValue: SupportedCurrenciesContextType = {
     // State

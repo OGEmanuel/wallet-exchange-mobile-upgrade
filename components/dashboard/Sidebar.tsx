@@ -12,6 +12,7 @@ import ThemedNumpadIcon from "@/assets/svg/wallet-icons-components/ThemedNumpadI
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { pinStorageService } from "@/src/core/storage/pin-storage.service";
 import { StorageKeys } from "@/src/core/storage/storage-types";
+import { transformCloudinaryUrl } from "@/src/core/utils/cloudinary-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
@@ -24,6 +25,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Link, Setting4 } from "iconsax-react-nativejs";
+import { User } from "lucide-react-native";
 import React, {
   useCallback,
   useEffect,
@@ -42,7 +44,6 @@ import ZapperSiginBottomSheet from "../bottomsheets/ZapperSiginBottomSheet";
 import Box from "../general/Box";
 import CustomText from "../general/CustomText";
 import SmartImage from "../general/SmartImage";
-import LearnWithZapCards from "./LearnWithZapCards";
 import SidebarItemCard from "./SidebarItemCard";
 
 const Sidebar = () => {
@@ -65,10 +66,11 @@ const Sidebar = () => {
   // User is logged in if they have a username OR if they have an exchange user ID
 
   // Load user data from storage or fetch if we have a user ID but no user data
+  // IMPORTANT: Only load if we don't have user data - don't overwrite existing data
   useEffect(() => {
     const loadUserData = async () => {
-      // If we have user data, no need to load
-      if (userData?.username || userData?._id) {
+      // If we have user data with avatar, don't reload (prevents flickering)
+      if (userData?.username || (userData?._id && userData?.avatar)) {
         return;
       }
 
@@ -115,6 +117,16 @@ const Sidebar = () => {
     userData,
   ]);
 
+  // Refresh user data when exchangeUserData changes (e.g., after avatar update)
+  // This ensures the avatar updates immediately when changed elsewhere
+  useEffect(() => {
+    if (exchangeUserData?._id && currentExchangeUser === exchangeUserData._id) {
+      // User data exists and matches current user, ensure it's up to date
+      // The exchangeUserData from wallet context should already be updated
+      // This effect just ensures the component re-renders with the new data
+    }
+  }, [exchangeUserData?.avatar?.url, exchangeUserData?.avatar?.backgroundColor, currentExchangeUser, exchangeUserData?._id]);
+
   const [hasHardware, setHasHardware] = useState(false);
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
     useState(false);
@@ -138,8 +150,8 @@ const Sidebar = () => {
   useEffect(() => {
     const loadBiometricPreference = async () => {
       try {
-        const value = pinStorageService.getFaceIdValue();
-        setIsBiometricEnabled(value);
+        const value = await SecureStore.getItemAsync(StorageKeys.BIOMETRIC_ENABLED);
+        setIsBiometricEnabled(value === "true");
       } catch (error) {
         console.error("Failed to load biometric preference:", error);
       }
@@ -179,9 +191,8 @@ const Sidebar = () => {
 
   const handleDisconnectZapExchange = async () => {
     try {
-      logoutFromExchange().then(() => {
-        zapLinkBottomSheetRef.current?.close();
-      });
+      await logoutFromExchange()
+      zapLinkBottomSheetRef.current?.close();
     } catch (error) {
       console.error("Logout from exchange failed:", error);
     }
@@ -278,10 +289,8 @@ const Sidebar = () => {
 
   const handleCheck = () => {
     if (!isUserLoggedIn) {
-      // Not connected - show connect modal
-      // zapLinkBottomSheetRef.current?.snapToIndex(0);
-      setIsZapperBottomSheetVisible(true);
-      zapperBottomSheetRef.current?.snapToIndex(0);
+      // Not connected - show ZapLink modal first (which then leads to login)
+      zapLinkBottomSheetRef.current?.snapToIndex(0);
     } else {
       // Connected - go to profile
       router.push("/dashboard/home/wallet-home/more/profile");
@@ -371,23 +380,28 @@ const Sidebar = () => {
   // Sidebar data
   const SIDEBAR_DATA: ISidebarItem[] = useMemo(
     () => [
-      ...(isUserLoggedIn
-        ? [
-            {
-              icon: (
-                <ThemedBankAccountIcon
-                  width={20}
-                  height={20}
-                  darkModeColor={theme.colors.bodyTextColor}
-                  lightModeColor={theme.colors.bodyTextColor}
-                />
-              ),
-              title: "Bank Accounts",
-              link: "/dashboard/home/wallet-home/more/bank",
-              isActive: false,
-            },
-          ]
-        : []),
+      {
+        icon: (
+          <ThemedBankAccountIcon
+            width={20}
+            height={20}
+            darkModeColor={
+              isUserLoggedIn
+                ? theme.colors.bodyTextColor
+                : theme.colors.disabledTextColor
+            }
+            lightModeColor={
+              isUserLoggedIn
+                ? theme.colors.bodyTextColor
+                : theme.colors.disabledTextColor
+            }
+          />
+        ),
+        title: "Bank Accounts",
+        link: "/dashboard/home/wallet-home/more/bank",
+        isActive: false,
+        disabled: !isUserLoggedIn,
+      },
       {
         icon: (
           <ThemedAddressBookIcon
@@ -427,7 +441,7 @@ const Sidebar = () => {
         isActive: false,
       },
     ],
-    [theme.colors.bodyTextColor, isUserLoggedIn]
+    [theme.colors.bodyTextColor, theme.colors.disabledTextColor, isUserLoggedIn]
   );
 
   const SIDEBAR_SECURITY_DATA: ISidebarItem[] = useMemo(() => {
@@ -592,28 +606,92 @@ const Sidebar = () => {
                   width: 40,
                   height: 40,
                   borderRadius: 20,
-                  backgroundColor: displayAvatar?.backgroundColor,
+                  backgroundColor: displayAvatar?.backgroundColor || theme.colors.fadedPrimaryColor,
+                  overflow: "hidden",
                 }}
                 android_ripple={{ color: "rgba(255, 255, 255, 0.2)" }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                {({ pressed }) => (
-                  <SmartImage
-                    source={{ uri: displayAvatar?.url || "" }}
-                    width={40}
-                    height={40}
-                    borderRadius={20}
-                    style={pressed ? { opacity: 0.7 } : undefined}
-                  />
-                )}
+                {({ pressed }) => {
+                  if (!displayAvatar?.url) {
+                    return (
+                      <Box
+                        width={40}
+                        height={40}
+                        borderRadius={20}
+                        bg="fadedPrimary"
+                        justifyContent="center"
+                        alignItems="center"
+                        style={{
+                          backgroundColor: displayAvatar?.backgroundColor || theme.colors.fadedPrimaryColor,
+                          opacity: pressed ? 0.7 : 1,
+                        }}
+                      >
+                        <User
+                          size={24}
+                          color={theme.colors.bodyTextColor}
+                        />
+                      </Box>
+                    );
+                  }
+                  
+                  // Use the original URL directly (asset.cloudinary.com URLs work in browsers)
+                  const avatarUrl = transformCloudinaryUrl(displayAvatar.url);
+                  
+                  return (
+                    <SmartImage
+                      key={`${avatarUrl}-${displayAvatar.backgroundColor}`}
+                      source={{ 
+                        uri: avatarUrl // Use original URL without cache-busting to test
+                      }}
+                      width={40}
+                      height={40}
+                      borderRadius={20}
+                      resizeMode="cover"
+                      style={pressed ? { opacity: 0.7 } : undefined}
+                      onError={(error: any) => {
+                        // Log all errors to help debug
+                        console.warn("⚠️ Avatar image failed to load:", avatarUrl, error);
+                      }}
+                      onLoad={() => {
+                        // Silently handle successful loads
+                      }}
+                      fallback={
+                        <Box
+                          width={40}
+                          height={40}
+                          borderRadius={20}
+                          bg="fadedPrimary"
+                          justifyContent="center"
+                          alignItems="center"
+                          style={{
+                            backgroundColor: displayAvatar?.backgroundColor || theme.colors.fadedPrimaryColor,
+                          }}
+                        >
+                          <User
+                            size={24}
+                            color={theme.colors.bodyTextColor}
+                          />
+                        </Box>
+                      }
+                    />
+                  );
+                }}
               </Pressable>
             ) : (
-              <SmartImage
-                source={require("@/assets/images/personplaceholder.png")}
+              <Box
                 width={40}
                 height={40}
                 borderRadius={20}
-              />
+                bg="fadedPrimary"
+                justifyContent="center"
+                alignItems="center"
+              >
+                <User
+                  size={24}
+                  color={theme.colors.bodyTextColor}
+                />
+              </Box>
             )}
           </Box>
           <Box marginLeft="s">
@@ -655,55 +733,51 @@ const Sidebar = () => {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          {isUserLoggedIn && (
-            <Box paddingHorizontal="m" paddingTop="l">
-              <Box
-                width={"100%"}
-                height={"auto"}
-                p="s"
-                bg="surfaceContainer"
-                borderColor="borderColor"
-                borderRadius={12}
-              >
-                {SIDEBAR_DATA.map((item, index) => (
-                  <SidebarItemCard
-                    key={item.title || index.toString()}
-                    {...item}
-                  />
-                ))}
-              </Box>
+          <Box paddingHorizontal="m" paddingTop="l">
+            <Box
+              width={"100%"}
+              height={"auto"}
+              p="s"
+              bg="surfaceContainer"
+              borderColor="borderColor"
+              borderRadius={12}
+            >
+              {SIDEBAR_DATA.map((item, index) => (
+                <SidebarItemCard
+                  key={item.title || index.toString()}
+                  {...item}
+                />
+              ))}
             </Box>
-          )}
+          </Box>
 
-          {isUserLoggedIn && (
-            <Box paddingHorizontal="m" marginTop="l">
-              <CustomText
-                variant="bodySubheader"
-                fontSize={14}
-                color="disabledTextColor"
-                marginBottom="m"
-              >
-                SECURITY
-              </CustomText>
-              <Box
-                width={"100%"}
-                height={"auto"}
-                p="s"
-                bg="surfaceContainer"
-                borderColor="borderColor"
-                borderRadius={12}
-              >
-                {SIDEBAR_SECURITY_DATA.map((item, index) => (
-                  <SidebarItemCard
-                    key={item.title || index.toString()}
-                    {...item}
-                  />
-                ))}
-              </Box>
+          <Box paddingHorizontal="m" marginTop="l">
+            <CustomText
+              variant="bodySubheader"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="m"
+            >
+              SECURITY
+            </CustomText>
+            <Box
+              width={"100%"}
+              height={"auto"}
+              p="s"
+              bg="surfaceContainer"
+              borderColor="borderColor"
+              borderRadius={12}
+            >
+              {SIDEBAR_SECURITY_DATA.map((item, index) => (
+                <SidebarItemCard
+                  key={item.title || index.toString()}
+                  {...item}
+                />
+              ))}
             </Box>
-          )}
+          </Box>
 
-          <Box paddingHorizontal="m" marginTop="l" mb="l">
+          <Box paddingHorizontal="m" marginTop="l" mb="3xl">
             <CustomText
               variant="bodySubheader"
               fontSize={14}
@@ -728,27 +802,37 @@ const Sidebar = () => {
               ))}
             </Box>
           </Box>
+
+          {/* Learn with Zap section - hidden for now */}
+          {/* <Box paddingHorizontal="m" marginTop="l" marginBottom="xl">
+            <CustomText
+              variant="bodySubheader"
+              fontSize={14}
+              color="disabledTextColor"
+              marginBottom="m"
+            >
+              LEARN WITH ZAP
+            </CustomText>
+            <Box width={"100%"} minHeight={140}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{
+                  paddingLeft: 0,
+                  paddingRight: 20,
+                }}
+              >
+                <LearnWithZapCards />
+                <LearnWithZapCards />
+              </ScrollView>
+            </Box>
+          </Box> */}
         </ScrollView>
-      </Box>
-      {/* Learn with Zap section - now inside ScrollView */}
-      <Box width={"100%"} marginTop="l" marginBottom="xl" paddingHorizontal="m">
-        <Box width={"100%"} height={140}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingLeft: 0,
-              paddingRight: 20,
-            }}
-          >
-            <LearnWithZapCards />
-            <LearnWithZapCards />
-          </ScrollView>
-        </Box>
       </Box>
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
-          key="zapper-bottom-sheet"
+          key="zapper-bottom-more"
           ref={zapperBottomSheetRef}
           onContinue={() => {
             zapperBottomSheetRef.current?.close();
@@ -756,9 +840,6 @@ const Sidebar = () => {
           }}
           onClose={() => {
             setIsZapperBottomSheetVisible(false);
-            zapperBottomSheetRef.current?.close();
-            zapLinkBottomSheetRef.current?.close();
-            zapperBottomSheetRef.current?.snapToIndex(-1);
           }}
         />
       )}

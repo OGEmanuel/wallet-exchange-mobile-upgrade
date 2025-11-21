@@ -16,12 +16,13 @@ const SidebarItemCard = ({
   trailingItem,
   disablClick = false,
   onPress,
+  disabled = false,
 }: ISidebarItem) => {
   const theme = useTheme<Theme>();
   return (
     <Pressable
       onPress={() => {
-        if (!disablClick) {
+        if (!disablClick && !disabled) {
           if (onPress) {
             onPress();
           } else {
@@ -29,8 +30,10 @@ const SidebarItemCard = ({
           }
         }
       }}
+      disabled={disabled}
       style={{
         width: "100%",
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <Box
@@ -47,7 +50,13 @@ const SidebarItemCard = ({
             variant="bodySubheader"
             ml="s"
             fontSize={14}
-            color={isActive ? "tabBarActiveColor" : "bodyTextColor"}
+            color={
+              disabled
+                ? "disabledTextColor"
+                : isActive
+                ? "tabBarActiveColor"
+                : "bodyTextColor"
+            }
           >
             {title}
           </CustomText>
@@ -56,7 +65,14 @@ const SidebarItemCard = ({
           {trailingItem ? (
             trailingItem
           ) : (
-            <ChevronRight size={20} color={theme.colors.bodyTextColor} />
+            <ChevronRight
+              size={20}
+              color={
+                disabled
+                  ? theme.colors.disabledTextColor
+                  : theme.colors.bodyTextColor
+              }
+            />
           )}
         </Box>
       </Box>

@@ -43,6 +43,7 @@ interface ConfirmSendProps {
   } | null;
   onClose?: () => void;
   onTransactionComplete?: () => void;
+  bottomInset?: number;
 }
 
 const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
@@ -54,6 +55,7 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
     usdValue,
     networkFee,
     onClose,
+    bottomInset,
   } = props;
   const theme = useTheme<Theme>();
   const { mainUserWalletGroup } = useWallet();
@@ -117,7 +119,7 @@ const ConfirmSend = forwardRef<BottomSheet, ConfirmSendProps>((props, ref) => {
     <BottomSheet
       ref={ref}
       index={-1}
-      snapPoints={["70%"]}
+      snapPoints={[bottomInset ? "80%" : "70%"]}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       style={{

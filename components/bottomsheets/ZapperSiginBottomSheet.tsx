@@ -2,7 +2,7 @@ import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
-import { SCREEN_HEIGHT } from "@gorhom/bottom-sheet";
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Image, ScrollView, StyleSheet, View } from "react-native";
@@ -75,6 +75,12 @@ export default function ZapperSiginBottomSheet({
   const [username, setUsername] = useState("");
   const [isResending, setIsResending] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  
+  // Initialize animation value to 0 (centered) for initial render
+  useEffect(() => {
+    slideAnim.setValue(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const hasClosedForUsernameRef = useRef(false);
   const prevAuthStateRef = useRef<boolean | null>(null);
   const prevUsernameRef = useRef<string | null>(null);
@@ -181,16 +187,21 @@ export default function ZapperSiginBottomSheet({
 
   // Screen transition function
   const transitionToNextScreen = (nextStep: ScreenStep) => {
-    // Start from the right (positive translateX value)
-    slideAnim.setValue(300);
+    // Start from the right (positive translateX value) - off screen
+    slideAnim.setValue(SCREEN_WIDTH || 400);
 
+    // Set the new step immediately so it renders
+    setCurrentStep(nextStep);
+
+    // Use requestAnimationFrame to ensure the new screen is rendered before animating
+    requestAnimationFrame(() => {
+      // Animate to center (0)
     Animated.timing(slideAnim, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
     }).start();
-
-    setCurrentStep(nextStep);
+    });
   };
 
   // Navigation handlers
@@ -297,7 +308,16 @@ export default function ZapperSiginBottomSheet({
         ]}
         onClose={onClose}
       >
-        <ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            paddingBottom: 40,
+            flexGrow: 1,
+            paddingHorizontal: 0,
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          style={{ flex: 1 }}
+        >
           <View style={styles.handle} />
           <View style={styles.backContainer}></View>
           <Image
@@ -313,7 +333,8 @@ export default function ZapperSiginBottomSheet({
           <Animated.View
             style={{
               transform: [{ translateX: slideAnim }],
-              flex: 1,
+              width: "100%",
+              overflow: "hidden",
             }}
           >
             {renderCurrentScreen()}

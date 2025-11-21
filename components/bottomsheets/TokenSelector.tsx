@@ -16,13 +16,14 @@ import { selectStage, setStage } from "@/state/reducers/recievePage.reducer";
 import { selectAllSupportedTokens } from "@/state/selectors/portfolio.selectors";
 import { Theme } from "@/theme";
 import { shortenChainName } from "@/utils/chainFiltering";
+import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import { ICurrency } from "@zap/blockchain-sdk";
 import { ArrowRight2 } from "iconsax-react-nativejs";
 import { MoreHorizontalIcon } from "lucide-react-native";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, TextInput } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import ChainLogo from "../general/ChainLogo";
 import ReceiveQRCode from "./recieve/ReceiveQRCode";
@@ -62,11 +63,19 @@ CryptoIcon.displayName = "CryptoIcon";
 interface TokenSelectorProps {
   mode: "send" | "receive" | "swap" | "sell" | "buy";
   onTokenSelect: (token: ProcessedAsset | any) => void;
+  chainBottomSheetRef?: React.RefObject<BottomSheetMethods | null>;
+  onChainSelect?: (chainSymbol: string) => void;
+  onChainSelectCallbackRef?: React.MutableRefObject<((chainSymbol: string) => void) | null>;
+  shouldAutoOpenChainSelector?: boolean; // Control whether to auto-open chain selector
 }
 
 const TokenSelector: React.FC<TokenSelectorProps> = ({
   mode,
   onTokenSelect,
+  chainBottomSheetRef: externalChainBottomSheetRef,
+  onChainSelect: externalOnChainSelect,
+  onChainSelectCallbackRef,
+  shouldAutoOpenChainSelector = false, // Default to false - only auto-open when explicitly requested
 }) => {
   const theme = useTheme<Theme>();
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,8 +95,45 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
     searchSupportedCurrenciesForSwap,
   } = useSupportedCurrencies();
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
-  const chainBottomSheetRef = useRef<BottomSheetMethods>(null);
-  const [showChainSelector, setShowChainSelector] = useState(false);
+  const internalChainBottomSheetRef = useRef<BottomSheetMethods>(null);
+  // Use external ref if provided (for sell flow), otherwise use internal ref
+  const chainBottomSheetRef = externalChainBottomSheetRef || internalChainBottomSheetRef;
+
+  // When using external ref, wrap externalOnChainSelect to also update internal state
+  // Store a ref to setSelectedChain so we can update it from the wrapped callback
+  const setSelectedChainRef = useRef(setSelectedChain);
+  useEffect(() => {
+    setSelectedChainRef.current = setSelectedChain;
+  }, []);
+
+  // Wrap externalOnChainSelect to also update internal state when using external ref
+  const wrappedExternalOnChainSelect = useCallback((chainSymbol: string) => {
+    if (externalChainBottomSheetRef) {
+      // Update internal state when using external ref
+      setSelectedChainRef.current(chainSymbol);
+    }
+    // Call the original callback
+    externalOnChainSelect?.(chainSymbol);
+  }, [externalOnChainSelect, externalChainBottomSheetRef]);
+
+  // Expose wrapped callback via ref so SelectTokenStep/SellBottomsheet can use it
+  useEffect(() => {
+    if (onChainSelectCallbackRef && externalChainBottomSheetRef) {
+      onChainSelectCallbackRef.current = wrappedExternalOnChainSelect;
+    }
+  }, [onChainSelectCallbackRef, externalChainBottomSheetRef, wrappedExternalOnChainSelect]);
+
+  // Create a wrapper for onChainSelect that updates internal state
+  const handleChainSelect = useCallback((chainSymbol: string) => {
+    setSelectedChain(chainSymbol);
+    // Use wrapped callback if external ref, otherwise use original
+    const callback = externalChainBottomSheetRef 
+      ? wrappedExternalOnChainSelect 
+      : externalOnChainSelect;
+    callback?.(chainSymbol);
+    chainBottomSheetRef.current?.close();
+  }, [externalOnChainSelect, chainBottomSheetRef, externalChainBottomSheetRef, wrappedExternalOnChainSelect]);
+
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(
     null
@@ -96,6 +142,9 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   // For receive mode, get the current stage
   const stage = useSelector(selectStage);
   const dispatch = useDispatch();
+
+  // Note: Auto-opening is now handled by SelectChainBottomSheet's shouldAutoOpen prop
+  // We don't need to manually open it here since SelectChainBottomSheet handles it internally
 
   // Portfolio data now comes from Redux selectors
 
@@ -358,7 +407,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           {/* Stacked chain icons on the right */}
           <Pressable
             onPress={() => {
-              setShowChainSelector(true);
+              chainBottomSheetRef.current?.snapToIndex(0);
             }}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
           >
@@ -434,7 +483,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           Your tokens ({(filteredTokens || []).length})
         </CustomText>
 
-        <ScrollView
+        <BottomSheetScrollView
           style={{
             backgroundColor: theme.colors.secondaryBackgroundColor,
             borderRadius: 12,
@@ -446,7 +495,6 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
           }}
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
-          scrollEnabled={true}
           keyboardShouldPersistTaps="handled"
         >
           {(
@@ -622,7 +670,7 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               );
             })
           )}
-        </ScrollView>
+        </BottomSheetScrollView>
       </Box>
 
       {/* Import Token Modal - Self-contained */}
@@ -634,22 +682,15 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
         mainUserWalletGroup={mainUserWalletGroup}
       />
 
-      {/* Chain Selection Bottom Sheet - Only render when needed */}
-      {showChainSelector && (
+      {/* Chain Selection Bottom Sheet - Only render if using internal ref (not provided externally) */}
+      {!externalChainBottomSheetRef && (
         <SelectChainBottomSheet
           ref={chainBottomSheetRef}
-          onChainSelect={(chainSymbol) => {
-            setSelectedChain(chainSymbol);
-            chainBottomSheetRef.current?.close();
-            // Close after a short delay to allow animation
-            setTimeout(() => {
-              setShowChainSelector(false);
-            }, 300);
-          }}
+          onChainSelect={handleChainSelect}
           onClose={() => {
-            // Handle close when user swipes down or taps backdrop
-            setShowChainSelector(false);
+            chainBottomSheetRef.current?.close();
           }}
+          shouldAutoOpen={shouldAutoOpenChainSelector}
         />
       )}
     </Box>

@@ -149,10 +149,7 @@ export default function SaveAddressBottomSheet({
           onPress={handleSave}
           disabled={!addressName.trim() || isSaving}
           width="100%"
-          height={56}
           borderRadius={50}
-          bgColor="primaryColor"
-          color="white"
         />
           </Box>
         </Pressable>

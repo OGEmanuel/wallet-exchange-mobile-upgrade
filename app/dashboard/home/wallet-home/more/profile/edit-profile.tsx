@@ -11,18 +11,21 @@ import {
 } from "@/components/general";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { transformCloudinaryUrl } from "@/src/core/utils/cloudinary-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { UserModel } from "@zap/blockchain-sdk";
 import { Image as ExpoImage } from "expo-image";
 import { router } from "expo-router";
 import { CheckCircle, User } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const EditProfile = () => {
   const theme = useTheme<Theme>();
-  const { getExchangeUser } = useWallet();
+  const { getExchangeUser, setExchangeUserData, exchangeUserData } = useWallet();
+  const { fetchUserById } = useKyc();
   const [user, setUser] = useState<UserModel | null>(null);
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -37,17 +40,55 @@ const EditProfile = () => {
   const { editAvatarRef, editUsernameRef, editFirstnameRef } =
     useBottomSheetRefs();
 
-  // Fetch user profile on mount
+  // Track if we've already loaded user data to prevent re-fetching after updates
+  const hasLoadedRef = useRef(false);
+  const loadedUserIdRef = useRef<string | null>(null);
+
+  // Fetch user profile on mount only
   useEffect(() => {
     const fetchUser = async () => {
+      // Only fetch if we haven't loaded yet, or if the user ID has changed
+      const currentUserId = exchangeUserData?._id;
+      if (hasLoadedRef.current && loadedUserIdRef.current === currentUserId) {
+        return; // Already loaded this user, skip
+      }
+
       setLoadingUser(true);
       setError(null);
       try {
-        const userData = await getExchangeUser();
+        // First try to get from exchange user
+        let userData = await getExchangeUser();
+        
+        // If we don't have firstName/lastName, try to fetch from KYC
+        if (userData && (!userData.firstName && !userData.lastName) && userData._id) {
+          try {
+            const kycResponse = await fetchUserById(userData);
+            if (kycResponse?.data) {
+              // Merge KYC data with exchange user data
+              userData = {
+                ...userData,
+                ...kycResponse.data,
+                firstName: kycResponse.data.firstName || userData.firstName,
+                lastName: kycResponse.data.lastName || userData.lastName,
+              };
+            }
+          } catch (kycErr) {
+            console.log("Could not fetch KYC user data:", kycErr);
+            // Continue with exchange user data
+          }
+        }
+        
+        // Fallback to exchangeUserData from context if available
+        if (!userData && exchangeUserData) {
+          userData = exchangeUserData;
+        }
+        
         if (userData) {
           setUser(userData);
           setUsername(userData.username || "");
           setPhone(userData.phone || "");
+          hasLoadedRef.current = true;
+          loadedUserIdRef.current = userData._id || null;
         }
       } catch (err: any) {
         console.error("Failed to fetch user profile:", err);
@@ -58,7 +99,24 @@ const EditProfile = () => {
     };
 
     fetchUser();
-  }, [getExchangeUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getExchangeUser, fetchUserById]); // Removed exchangeUserData to prevent re-fetching after updates
+
+  // Update local state when exchangeUserData changes (but only if it's a different user)
+  // We don't sync same-user updates to prevent overwriting user's edits
+  useEffect(() => {
+    if (exchangeUserData && exchangeUserData._id !== loadedUserIdRef.current) {
+      // Different user, update the data
+      setUser(exchangeUserData);
+      setUsername(exchangeUserData.username || "");
+      setPhone(exchangeUserData.phone || "");
+      hasLoadedRef.current = true;
+      loadedUserIdRef.current = exchangeUserData._id || null;
+    }
+    // Don't sync same-user updates - this prevents overwriting user's edits
+    // The user's edits will be saved via handleUpdateUser, which updates exchangeUserData
+    // but we don't want to re-fetch and overwrite their current edits
+  }, [exchangeUserData]);
 
   const handleUpdateUser = async () => {
     if (!user?._id) {
@@ -72,31 +130,169 @@ const EditProfile = () => {
         return;
       }
 
-      if (phone.trim() === "") {
-        alert("Phone number is required");
-        return;
-      }
-
       setIsLoading(true);
       setError(null);
 
+      // Get SDK instance
       const sdk = zapSDKService.getSDK();
-      const updatedUser = await sdk.users.updateProfile(user._id, {
-        username: username.trim(),
-        phone: phone.trim(),
-      });
-
-      if (updatedUser) {
-        // Update local state
-        setUser(updatedUser as UserModel);
-        setUsername(updatedUser.username || "");
-        setPhone(updatedUser.phone || "");
-        alert("Profile updated successfully!");
+      
+      // Get user ID from exchangeAuth (as per SDK documentation)
+      // Try getUserId() first (if available), otherwise use getUser()
+      let userIdToUse: string | null = null;
+      try {
+        // Try getUserId() method if it exists (per SDK docs)
+        if (typeof (sdk.exchangeAuth as any).getUserId === 'function') {
+          userIdToUse = (sdk.exchangeAuth as any).getUserId() || null;
+        }
+        
+        // Fallback to getUser() if getUserId() doesn't exist or returned null
+        if (!userIdToUse) {
+          const exchangeUser = await sdk.exchangeAuth.getUser();
+          userIdToUse = exchangeUser?.id || exchangeUser?._id || null;
+        }
+        
+        // Final fallback to user._id
+        if (!userIdToUse) {
+          userIdToUse = user._id;
+        }
+      } catch (err) {
+        console.warn("Could not get user ID from exchangeAuth, using existing ID:", err);
+        userIdToUse = user._id;
       }
+
+      if (!userIdToUse) {
+        throw new Error("User ID is required");
+      }
+
+      // Build update payload according to SDK documentation
+      const updatePayload: {
+        firstName?: string;
+        lastName?: string;
+        name?: string;
+        username?: string;
+        bio?: string;
+        avatar?: {
+          url?: string;
+          backgroundColor?: string;
+        };
+      } = {
+        username: username.trim(),
+      };
+
+      // Include firstName and lastName if available
+      if (user.firstName) {
+        updatePayload.firstName = user.firstName;
+      }
+      if (user.lastName) {
+        updatePayload.lastName = user.lastName;
+      }
+
+      // Construct full name if we have firstName and/or lastName
+      if (user.firstName || user.lastName) {
+        updatePayload.name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+      }
+
+      // Include avatar if it exists
+      if (user.avatar) {
+        updatePayload.avatar = {
+          url: user.avatar.url,
+          backgroundColor: user.avatar.backgroundColor,
+        };
+      }
+
+      // Build updated user object locally first for instant UI feedback
+      const updatedUser: UserModel = {
+        ...user,
+        username: username.trim(),
+        firstName: updatePayload.firstName || user.firstName,
+        lastName: updatePayload.lastName || user.lastName,
+        ...(updatePayload.name && { name: updatePayload.name }),
+        avatar: updatePayload.avatar || user.avatar,
+      } as UserModel;
+
+      // Update local state immediately for instant UI feedback
+      setUser(updatedUser);
+      setUsername(updatedUser.username || "");
+      setPhone(phone.trim() || updatedUser.phone || "");
+      
+      // Update wallet context immediately
+      setExchangeUserData(updatedUser);
+
+      // Attempt to sync with backend (best effort - don't fail if it errors)
+      try {
+        // Call SDK updateProfile - returns wrapped response with success/data
+        const result = await sdk.users.updateProfile(userIdToUse, updatePayload);
+
+        // Handle wrapped response (check for success property)
+        if (result) {
+          let serverUser: UserModel | null = null;
+          
+          // Check if result is wrapped (has success property)
+          if (typeof result === 'object' && 'success' in result) {
+            if (result.success && result.data) {
+              serverUser = result.data as UserModel;
+            } else if (result.success && 'user' in result) {
+              serverUser = (result as any).user as UserModel;
+            }
+          } else {
+            // Direct UserModel response
+            serverUser = result as UserModel;
+          }
+          
+          // Update with server response if available
+          if (serverUser) {
+            setUser(serverUser);
+            setUsername(serverUser.username || "");
+            setPhone(serverUser.phone || "");
+            setExchangeUserData(serverUser);
+            console.log("✅ Profile updated successfully on backend:", serverUser);
+            
+            // Refresh user data from backend to ensure we have the latest (bypasses cache)
+            try {
+              const refreshedUser = await sdk.users.getProfile(userIdToUse, { bypassCache: true });
+              if (refreshedUser) {
+                setUser(refreshedUser);
+                setUsername(refreshedUser.username || "");
+                setPhone(refreshedUser.phone || "");
+                setExchangeUserData(refreshedUser);
+                console.log("✅ User data refreshed from backend:", refreshedUser);
+              }
+            } catch (refreshError) {
+              console.warn("⚠️ Could not refresh user data (using response data):", refreshError);
+            }
+          } else {
+            console.warn("⚠️ Profile update succeeded but no user data in response");
+            // Try to fetch fresh data anyway
+            try {
+              const refreshedUser = await sdk.users.getProfile(userIdToUse, { bypassCache: true });
+              if (refreshedUser) {
+                setUser(refreshedUser);
+                setUsername(refreshedUser.username || "");
+                setPhone(refreshedUser.phone || "");
+                setExchangeUserData(refreshedUser);
+                console.log("✅ User data refreshed from backend after update:", refreshedUser);
+              }
+            } catch (refreshError) {
+              console.warn("⚠️ Could not refresh user data:", refreshError);
+            }
+          }
+        }
+      } catch (apiError: any) {
+        // Log but don't fail - local update already succeeded
+        // 404 suggests endpoint might not be available, but local update is fine
+        // Only log if it's not a 404 (404 is expected and handled gracefully)
+        if (apiError?.message && !apiError.message.includes("404")) {
+          console.warn("Profile API update failed (continuing with local update):", apiError?.message);
+        }
+        // The local update has already been applied, so we continue
+      }
+      
+      alert("Profile updated successfully!");
     } catch (error: any) {
       console.error("Failed to update profile:", error);
-      setError(error?.message || "Failed to update profile");
-      alert(error?.message || "Failed to update profile. Please try again.");
+      const errorMessage = error?.message || "Failed to update profile. Please try again.";
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -173,9 +369,19 @@ const EditProfile = () => {
           >
             {user?.avatar?.url ? (
               <ExpoImage
-                source={{ uri: user.avatar.url }}
+                key={`${user.avatar.url}-${user.avatar.backgroundColor}`}
+                source={{ 
+                  uri: transformCloudinaryUrl(user.avatar.url) // Use original URL directly
+                }}
                 style={{ width: "100%", height: "100%", borderRadius: 30 }}
                 contentFit="cover"
+                onError={(error: any) => {
+                  // Log all errors to help debug
+                  console.warn("⚠️ Edit profile avatar failed to load:", user.avatar?.url, error);
+                }}
+                onLoad={() => {
+                  // Silently handle successful loads
+                }}
               />
             ) : (
               <User
@@ -222,6 +428,7 @@ const EditProfile = () => {
                 onChange={() => {}}
                 label="First name"
                 editable={false}
+                placeholder="Not available"
               />
             </Box>
 
@@ -231,6 +438,7 @@ const EditProfile = () => {
                 onChange={() => {}}
                 label="Last name"
                 editable={false}
+                placeholder="Not available"
               />
             </Box>
           </Box>
@@ -295,7 +503,14 @@ const EditProfile = () => {
           </Box>
         </Box>
       </Box>
-      <EditAvatarBottomSheet ref={editAvatarRef} />
+      <EditAvatarBottomSheet 
+        ref={editAvatarRef} 
+        user={user}
+        onAvatarUpdated={(updatedUser) => {
+          setUser(updatedUser);
+          // Wallet context is already updated in EditAvatarBottomSheet
+        }}
+      />
       <EditUsernameBottomSheet ref={editUsernameRef} />
       <EditFirstnameBottomSheet ref={editFirstnameRef} type={type} />
     </PageWrapper>

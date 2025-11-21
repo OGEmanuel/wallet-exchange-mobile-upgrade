@@ -12,7 +12,7 @@ import { useWallet } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { IUserWalletGroup } from "@/types/main";
 import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -86,7 +86,7 @@ export const useAggregatedBalances = () => {
   };
 
   // Load aggregated balances from cache for the current main wallet group
-  const loadFromCache = async (
+  const loadFromCache = useCallback(async (
     userWalletGroupId: string
   ): Promise<any | null> => {
     try {
@@ -105,10 +105,10 @@ export const useAggregatedBalances = () => {
       console.error("Error loading aggregated balances from cache:", error);
       return null;
     }
-  };
+  }, [mainUserWalletGroup?._id]);
 
   // Save aggregated balances to cache for the current main wallet group
-  const saveToCache = async (
+  const saveToCache = useCallback(async (
     balanceData: BalanceCache,
     userWalletGroupId: string
   ): Promise<void> => {
@@ -134,7 +134,7 @@ export const useAggregatedBalances = () => {
     } catch (error) {
       console.error("Error saving aggregated balances to cache:", error);
     }
-  };
+  }, [mainUserWalletGroup?._id]);
 
   // Clear aggregated balances cache for the current main wallet group
   const clearCache = async (userWalletGroupId: string): Promise<void> => {
@@ -160,10 +160,21 @@ export const useAggregatedBalances = () => {
     }
   };
 
+  // Track if calculateAllBalances is currently running to prevent infinite loops
+  const isCalculatingRef = useRef(false);
+  // Use a ref to access balanceCache without adding it to dependencies
+  const balanceCacheRef = useRef<Map<string, BalanceCache>>(new Map());
+
   // Calculate balances for ALL user wallet groups using the main portfolio data
   // We get the processed portfolio value and cache for all the other user wallet groups
-  const calculateAllBalances = async () => {
+  const calculateAllBalances = useCallback(async () => {
     if (!userWalletGroups || !isWalletAuthenticated) {
+      return;
+    }
+
+    // Prevent concurrent executions
+    if (isCalculatingRef.current) {
+      console.log("⏭️ calculateAllBalances already running, skipping...");
       return;
     }
     
@@ -174,6 +185,7 @@ export const useAggregatedBalances = () => {
     }
 
     try {
+      isCalculatingRef.current = true;
       setIsLoading(true);
       setError(null);
 
@@ -182,14 +194,44 @@ export const useAggregatedBalances = () => {
       const walletGroupBalances = new Map<string, number>();
 
       // This ensures balances don't go to 0 when switching wallets
-      const newBalanceCache = new Map<string, BalanceCache>(balanceCache);
+      // Use ref to access balanceCache without adding it to dependencies
+      const newBalanceCache = new Map<string, BalanceCache>(balanceCacheRef.current);
       console.log(
-        `📊 calculateAllBalances: Starting with ${balanceCache.size} wallets in balanceCache`
+        `📊 calculateAllBalances: Starting with ${newBalanceCache.size} wallets in balanceCache`
       );
-      if (balanceCache.size > 0) {
-        Array.from(balanceCache.entries()).forEach(([id, data]) => {
+      if (newBalanceCache.size > 0) {
+        Array.from(newBalanceCache.entries()).forEach(([id, data]) => {
           console.log(`  - Wallet ${id}: $${data?.walletBalance || 0}`);
         });
+      }
+      for (const userWalletGroup of userWalletGroups) {
+        const userWalletGroupId = userWalletGroup._id;
+        const isMainWalletGroup =
+          userWalletGroupId === mainUserWalletGroup?._id;
+        
+        if (!isMainWalletGroup) {
+          const existingBalanceData = newBalanceCache.get(userWalletGroupId);
+          if (!existingBalanceData || existingBalanceData.walletBalance === 0) {
+            try {
+              const cachedBalances = await loadFromCache(userWalletGroupId);
+              if (cachedBalances) {
+                const balanceData = {
+                  userWalletGroupId,
+                  walletId: userWalletGroup.walletId?._id,
+                  walletGroupId: userWalletGroup.walletGroupId?._id,
+                  walletBalance: cachedBalances.walletBalance || 0,
+                  walletGroupBalance: cachedBalances.walletGroupBalance || 0,
+                  totalPortfolioValue: cachedBalances.walletBalance || 0,
+                  timestamp: Date.now(),
+                };
+                newBalanceCache.set(userWalletGroupId, balanceData);
+                await saveToCache(balanceData, userWalletGroupId);
+              }
+            } catch (err) {
+              // On error, keep existing balance if it exists
+            }
+          }
+        }
       }
 
       // Process each user wallet group and get their balances
@@ -215,29 +257,45 @@ export const useAggregatedBalances = () => {
           existingBalanceData &&
           existingBalanceData.walletBalance > 0
         ) {
-          // If we already have a valid balance in cache, preserve it (only for non-main wallets)
+          // If we already have a valid balance in cache, preserve it
           // This prevents balances from going to 0 during wallet switching
           walletBalance = existingBalanceData.walletBalance || 0;
           walletGroupBalance =
             (walletGroupBalances.get(walletGroupId) || 0) + walletBalance;
+          console.log(
+            `💰 Preserving cached balance for wallet ${userWalletGroupId}: $${walletBalance}`
+          );
         } else {
-          // For other wallet groups OR if no cached balance, try to load from cache
+          // For wallet groups without cached balance, try to load from cache
           try {
             const cachedBalances = await loadFromCache(userWalletGroupId);
-            if (cachedBalances) {
+            if (cachedBalances && cachedBalances.walletBalance > 0) {
               walletBalance = cachedBalances.walletBalance || 0;
               walletGroupBalance =
                 (walletGroupBalances.get(walletGroupId) || 0) + walletBalance;
+              console.log(
+                `📦 Loaded balance from cache for wallet ${userWalletGroupId}: $${walletBalance}`
+              );
             } else {
-              // No cache available, keep existing balance if it exists, otherwise 0
-              walletBalance = 0;
-              walletGroupBalance = 0;
+              // No cache available, preserve existing balance if it exists, otherwise 0
+              walletBalance = existingBalanceData?.walletBalance || 0;
+              walletGroupBalance =
+                (walletGroupBalances.get(walletGroupId) || 0) + walletBalance;
+              if (walletBalance === 0) {
+                console.log(
+                  `⚠️ No balance found for wallet ${userWalletGroupId}, setting to 0`
+                );
+              }
             }
           } catch (err) {
             // On error, preserve existing balance if it exists
             walletBalance = existingBalanceData?.walletBalance || 0;
             walletGroupBalance =
               (walletGroupBalances.get(walletGroupId) || 0) + walletBalance;
+            console.error(
+              `❌ Error loading balance for wallet ${userWalletGroupId}:`,
+              err
+            );
           }
         }
         walletGroupBalances.set(walletGroupId, walletGroupBalance);
@@ -259,6 +317,7 @@ export const useAggregatedBalances = () => {
 
       // Update the balance cache
       setBalanceCache(newBalanceCache);
+      balanceCacheRef.current = newBalanceCache;
       console.log(
         `✅ calculateAllBalances: Updated balanceCache with ${newBalanceCache.size} wallets`
       );
@@ -298,14 +357,17 @@ export const useAggregatedBalances = () => {
       setError("Failed to calculate all balances");
     } finally {
       setIsLoading(false);
+      isCalculatingRef.current = false;
     }
-  };
+  }, [userWalletGroups, isWalletAuthenticated, processedPortfolio, mainUserWalletGroup, portfolio, loadFromCache, saveToCache]);
 
   // Clear balance cache when main wallet group changes
   // Use a ref to track the previous wallet ID to detect actual changes
   const prevWalletIdRef = React.useRef<string | undefined>(
     mainUserWalletGroup?._id
   );
+  const lastCalculationTimeRef = React.useRef<number>(0);
+  const CALCULATION_DEBOUNCE_MS = 1000; // Don't calculate more than once per second
 
   useEffect(() => {
     const currentWalletId = mainUserWalletGroup?._id;
@@ -316,26 +378,34 @@ export const useAggregatedBalances = () => {
         `🔄 Wallet changed from ${prevWalletId} to ${currentWalletId} - preserving other wallet balances`
       );
 
-      if (userWalletGroups && userWalletGroups.length > 0) {
+      const now = Date.now();
+      if (userWalletGroups && userWalletGroups.length > 0 && !isCalculatingRef.current && (now - lastCalculationTimeRef.current) > CALCULATION_DEBOUNCE_MS) {
+        lastCalculationTimeRef.current = now;
         calculateAllBalances();
       }
     }
 
     // Update ref to current wallet ID
     prevWalletIdRef.current = currentWalletId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainUserWalletGroup?._id, userWalletGroups]);
 
   // Calculate balances when portfolio or userWalletGroups changes
   // Calculate for all wallets even if current portfolio is null (uses cache for non-current wallets)
   useEffect(() => {
+    const now = Date.now();
     if (
       userWalletGroups &&
       userWalletGroups.length > 0 &&
       isWalletAuthenticated &&
-      processedPortfolio
+      processedPortfolio &&
+      !isCalculatingRef.current &&
+      (now - lastCalculationTimeRef.current) > CALCULATION_DEBOUNCE_MS
     ) {
+      lastCalculationTimeRef.current = now;
       calculateAllBalances();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [processedPortfolio, userWalletGroups, isWalletAuthenticated]);
 
   // Refresh balances when userWalletGroups changes (even if portfolio isn't ready)
@@ -357,22 +427,27 @@ export const useAggregatedBalances = () => {
       currentWalletGroupsIds.length !== prevIds.length ||
       currentWalletGroupsIds.some((id, index) => id !== prevIds[index]);
 
+    const now = Date.now();
     if (
       hasChanged &&
       userWalletGroups &&
       userWalletGroups.length > 0 &&
-      isWalletAuthenticated
+      isWalletAuthenticated &&
+      !isCalculatingRef.current &&
+      (now - lastCalculationTimeRef.current) > CALCULATION_DEBOUNCE_MS
     ) {
       console.log(
         `🔄 Wallet groups changed (${prevLength} -> ${currentWalletGroupsLength}), refreshing aggregated balances`
       );
       // Refresh balances even if portfolio isn't ready - will use cache for non-main wallets
+      lastCalculationTimeRef.current = now;
       calculateAllBalances();
     }
 
     // Update refs
     prevWalletGroupsLengthRef.current = currentWalletGroupsLength;
     prevWalletGroupsIdsRef.current = currentWalletGroupsIds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userWalletGroups, isWalletAuthenticated]);
 
   // Get balance for a specific wallet (sum of all accounts in that wallet)

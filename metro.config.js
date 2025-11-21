@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
@@ -20,6 +21,23 @@ config.resolver.alias = {
   'string_decoder': 'string_decoder',
   'inherits': 'inherits',
   'to-buffer': 'to-buffer',
+};
+
+// Add extraNodeModules for better Node.js polyfill support
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  crypto: require.resolve('crypto-js'),
+  stream: require.resolve('readable-stream'),
+  buffer: require.resolve('buffer'),
+  util: require.resolve('util'),
+  events: require.resolve('events'),
+  path: require.resolve('path-browserify'),
+  os: require.resolve('os-browserify/browser'),
+  fs: require.resolve('react-native-level-fs'),
+  'cipher-base': require.resolve('cipher-base'),
+  'create-hash': require.resolve('create-hash'),
+  'string_decoder': require.resolve('string_decoder'),
+  inherits: require.resolve('inherits'),
 };
 
 // Add Node.js polyfills

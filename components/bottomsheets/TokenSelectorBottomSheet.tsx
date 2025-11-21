@@ -118,7 +118,11 @@ const TokenSelectorBottomSheet = forwardRef<
           paddingBottom: 100, // Add bottom padding for tab bar
         }}
       >
-        <TokenSelector mode={mode} onTokenSelect={handleTokenSelect} />
+        <TokenSelector
+          mode={mode}
+          onTokenSelect={handleTokenSelect}
+          shouldAutoOpenChainSelector={false}
+        />
       </BottomSheetView>
     </BottomSheet>
   );

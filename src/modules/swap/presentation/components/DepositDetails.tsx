@@ -1,7 +1,9 @@
 import icons from "@/assets/icons";
 import { CustomText } from "@/components/general";
+import BankIcon from "@/components/general/BankIcon";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { Bank } from "@zap/blockchain-sdk";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
@@ -143,10 +145,13 @@ const DepositDetails: React.FC<DepositDetailsProps> = ({
                     {orderDetails?.depositAccount?.bankId?.name ||
                       orderDetails?.buyCurrency?.defaultTradesProvider}
                   </Text>
-                  <Image
-                    source={{ uri: orderDetails?.depositAccount?.bankId?.icon }}
-                    style={styles.bankIcon}
-                  />
+                  <View style={styles.bankIcon}>
+                    <BankIcon
+                      bank={orderDetails?.depositAccount?.bankId as Bank}
+                      size={20}
+                      borderRadius={4}
+                    />
+                  </View>
                 </View>
               </View>
 

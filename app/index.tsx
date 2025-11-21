@@ -19,6 +19,8 @@ export default function HomeScreen() {
   const theme = useTheme<Theme>();
   const inset = useSafeAreaInsets();
 
+  // console.log('HomeScreen rendering:', { screenWidth, SIZES });
+
   // Cloud animations (3 clouds) - now vertical
   const cloud1Animation = useRef(new Animated.Value(0)).current;
   const cloud2Animation = useRef(new Animated.Value(0)).current;

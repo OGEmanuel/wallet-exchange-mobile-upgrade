@@ -16,16 +16,20 @@ import {
 import KYCFlowManager from "@/components/kyc/KYCFlowManager";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import { zapSDKService } from "@/src/core/sdk/zap-sdk.service";
+import { transformCloudinaryUrl } from "@/src/core/utils/cloudinary-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
 import { userHasAtleastOneDocumentApproved } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { Theme } from "@/theme";
 import BottomSheet from "@gorhom/bottom-sheet";
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { ChevronRight, User } from "lucide-react-native";
-import React, { useRef } from "react";
-import { Image, Pressable } from "react-native";
+import React, { useCallback, useEffect, useRef } from "react";
+import { Pressable } from "react-native";
 
 const ItemCard = ({
   icon,
@@ -79,11 +83,65 @@ const ItemCard = ({
 
 const ProfilePage = () => {
   const theme = useTheme<Theme>();
-  const { exchangeUserData, logoutFromExchange } = useWallet();
+  const { exchangeUserData, logoutFromExchange, setExchangeUserData, getExchangeUser } = useWallet();
   const { isUserLoggedIn } = useExchangeAuth();
   const { showBottomSheet } = useAppBottomSheet();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
-  const twoFactorAuthBottomSheetRef = useRef<BottomSheet>(null);
+  const twoFactorAuthBottomSheetRef = useRef<BottomSheetMethods>(null);
+  const lastRefreshTimeRef = useRef<number>(0);
+  const isRefreshingRef = useRef<boolean>(false);
+  const userIdRef = useRef<string | undefined>(exchangeUserData?._id);
+
+  // Update userId ref when exchangeUserData changes (but don't trigger refresh)
+  useEffect(() => {
+    userIdRef.current = exchangeUserData?._id;
+  }, [exchangeUserData?._id]);
+
+  // Refresh user data when page is focused to ensure avatar updates are visible
+  // Only refresh once per focus, and not more than once every 2 seconds
+  useFocusEffect(
+    useCallback(() => {
+      const refreshUserData = async () => {
+        // Prevent multiple simultaneous refreshes
+        if (isRefreshingRef.current) {
+          return;
+        }
+
+        // Throttle: don't refresh more than once every 2 seconds
+        const now = Date.now();
+        if (now - lastRefreshTimeRef.current < 2000) {
+          return;
+        }
+
+        isRefreshingRef.current = true;
+        lastRefreshTimeRef.current = now;
+
+        try {
+          // Use bypassCache to get fresh data
+          const sdk = zapSDKService.getSDK();
+          const userId = userIdRef.current; // Use ref to avoid stale closure
+          if (userId) {
+            const refreshedUser = await sdk.users.getProfile(userId, { bypassCache: true });
+            if (refreshedUser) {
+              setExchangeUserData(refreshedUser);
+              console.log("✅ Profile page: Refreshed user data with avatar:", refreshedUser.avatar);
+            }
+          } else {
+            // Fallback to getExchangeUser if no userId
+            const refreshedUser = await getExchangeUser();
+            if (refreshedUser) {
+              setExchangeUserData(refreshedUser);
+            }
+          }
+        } catch (error) {
+          console.warn("Could not refresh user data on profile page:", error);
+        } finally {
+          isRefreshingRef.current = false;
+        }
+      };
+      refreshUserData();
+    }, [getExchangeUser, setExchangeUserData]) // Removed exchangeUserData?._id to prevent loop
+  );
 
   const showKYCBottomSheet = (options?: { onComplete?: () => void; onClose?: () => void }) => {
     return showBottomSheet({
@@ -199,6 +257,8 @@ const ProfilePage = () => {
         router.push("/dashboard/home/wallet-home/more/profile/activtylogs"),
     },
   ];
+
+  console.log("walletUser?.avatar?.url", walletUser?.avatar?.url, transformCloudinaryUrl(walletUser?.avatar?.url || ""));
   return (
     <PageWrapper>
       <SettingsHeader title="Profile" onBackPress={() => router.back()} />
@@ -237,9 +297,20 @@ const ProfilePage = () => {
               }}
             >
               {walletUser?.avatar?.url ? (
-                <Image
-                  source={{ uri: walletUser?.avatar?.url }}
+                <ExpoImage
+                  key={`${walletUser.avatar.url}-${walletUser.avatar.backgroundColor}`}
+                  source={{ 
+                    uri: transformCloudinaryUrl(walletUser.avatar.url)
+                  }}
                   style={{ width: "100%", height: "100%", borderRadius: 50 }}
+                  contentFit="cover"
+                  onError={(error: any) => {
+                    // Log all errors to help debug
+                    console.warn("⚠️ Profile avatar failed to load:", walletUser.avatar?.url, error);
+                  }}
+                  onLoad={() => {
+                    // Silently handle successful loads
+                  }}
                 />
               ) : (
                 <User

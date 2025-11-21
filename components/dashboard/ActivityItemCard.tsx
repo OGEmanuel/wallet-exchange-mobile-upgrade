@@ -1,9 +1,10 @@
-import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
 import useAppUtilities from "@/hooks/useAppUtilities";
+import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { formatWalletAddress } from "@/src/core/utils/format-utils";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable } from "react-native";
 import { useDispatch } from "react-redux";
 import { Box, CustomText } from "../general";
@@ -27,9 +28,6 @@ const ActivityItemCard = ({
   const { getApproximateAmount } = useAppUtilities();
   const { getAmountToReceive } = useUtilities();
   const {
-    buyActivityRef,
-    sentActivityRef,
-    recieveActivityRef,
     approvedActivityRef,
   } = useBottomSheetRefs();
 
@@ -39,27 +37,6 @@ const ActivityItemCard = ({
       dispatch(exchangeActions.setSelectedActivity(activity));
       approvedActivityRef.current.expand();
     }
-  };
-
-  // Format address to show first 6 and last 4 characters
-  const formatAddress = (address?: string) => {
-    if (!address) return "0xd5321...de32";
-    if (address.length <= 12) return address;
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
-  // Abbreviate wallet address
-  const abbreviateWalletAddress = (
-    walletAddress?: string | null,
-    startLength = 5,
-    endLength = 4
-  ): string => {
-    if (!walletAddress) return "";
-    return (
-      walletAddress.slice(0, startLength) +
-      "..." +
-      walletAddress.slice(-endLength)
-    );
   };
 
   // Format date
@@ -116,57 +93,41 @@ const ActivityItemCard = ({
     }
   };
 
-  // Determine transaction type based on activity data
-  const getTransactionType = () => {
-    if (!activity) return type;
-
-    // Check if it's a buy or sell based on the activity data
-    if (activity.buyAmount && activity.buyCurrency) {
-      return "BUY";
-    } else if (activity.sellAmount && activity.sellCurrency) {
-      return "SELL";
-    } else if (activity.amountToReceive) {
-      return "SWAP";
-    }
-    return type;
-  };
-
   // Use activity data if available, otherwise fall back to legacy props
-  const displayType = getTransactionType();
-  const displayAmount =
-    activity?.buyAmount ||
-    activity?.sellAmount ||
-    activity?.amountToReceive ||
-    amount;
   const displayStatus = activity?.status || status;
   const displayCurrency =
     activity?.buyCurrency?.currencyId?.code ||
     activity?.sellCurrency?.currencyId?.code ||
     "USDT";
-  const displayAddress = formatAddress(
-    activity?.withdrawalAccount?.number ||
-      activity?.depositAccount?.number ||
-      activity?.withdrawalAccount?.walletAddress ||
-      activity?.depositAccount?.walletAddress
-  );
   const statusColors = getStatusColor(displayStatus);
 
-  // Calculate USD value
-  const usdValue = activity?.buyRate
-    ? (activity.buyAmount || 0) * activity.buyRate
-    : activity?.sellRate
-    ? (activity.sellAmount || 0) * activity.sellRate
-    : activity?.rate
-    ? (activity.amountToReceive || 0) * activity.rate
-    : displayAmount;
-
   // Get currency images for both buy and sell
-  const sellCurrencyImage = activity?.sellCurrency?.currencyId?.isCrypto
-    ? activity?.sellCurrency.currencyId.logo
-    : activity?.depositAccount?.bankId?.icon;
-  const buyCurrencyImage = activity?.buyCurrency?.currencyId?.isCrypto
-    ? activity?.buyCurrency.currencyId.logo
-    : activity?.withdrawalAccount?.bankId?.icon;
+  // For crypto: use currency logo, for fiat: use bank icon from banks list
+  const sellCurrencyImage = useMemo(() => {
+    if (
+      activity?.sellCurrency?.currencyId?.isCrypto ||
+      activity?.sellCurrency?.chainId
+    ) {
+      return activity?.sellCurrency?.currencyId?.logo;
+    }
+    // For fiat, try to get bank icon from the banks list
+    return activity?.withdrawalAccount?.bankId?.icon || null;
+  }, [activity?.sellCurrency?.currencyId, activity?.withdrawalAccount?.bankId]);
+
+  const buyCurrencyImage = useMemo(() => {
+    if (
+      activity?.buyCurrency?.currencyId?.isCrypto ||
+      activity?.buyCurrency?.chainId
+    ) {
+      return activity?.buyCurrency?.currencyId?.logo;
+    }
+    return activity?.depositAccount?.bankId?.icon || null;
+  }, [activity?.buyCurrency?.currencyId, activity?.depositAccount?.bankId]);
+
+  // Get currency codes for fallback
+  const buyCurrencyCode = activity?.buyCurrency?.currencyId?.code || "?";
+  const sellCurrencyCode = activity?.sellCurrency?.currencyId?.code || "?";
+
   const [sellImageError, setSellImageError] = useState(false);
   const [buyImageError, setBuyImageError] = useState(false);
 
@@ -184,45 +145,44 @@ const ActivityItemCard = ({
       <Box flexDirection="row" alignItems="center">
         {/* Currency Images - Side by Side */}
         <Box flexDirection="row" marginRight="m" alignItems="center">
-          {/* Buy Currency Image */}
-          {buyCurrencyImage && (
-            <Box
-              width={32}
-              height={32}
-              borderRadius={32}
-              bg="secondaryBackgroundColor"
-              justifyContent="center"
-              alignItems="center"
-              overflow="hidden"
-              borderWidth={2}
-              style={{ marginRight: buyCurrencyImage ? -10 : 0 }}
-              borderColor="mainBackgroundColor"
-              zIndex={1}
-            >
-              {!buyImageError ? (
-                <SmartImage
-                  source={{ uri: buyCurrencyImage }}
-                  width={24}
-                  height={24}
-                  borderRadius={12}
-                  resizeMode="cover"
-                  onError={() => {
-                    console.log(
-                      "Failed to load buy currency image:",
-                      buyCurrencyImage
-                    );
-                    setBuyImageError(true);
-                  }}
-                />
-              ) : (
-                <CustomText fontSize={10} color="white" fontWeight="bold">
-                  {activity?.buyCurrency?.currencyId?.code?.charAt(0) || "?"}
-                </CustomText>
-              )}
-            </Box>
-          )}
-          {/* Sell Currency Image */}
-          {sellCurrencyImage && (
+          {/* Buy Currency Image - Always show, even if no image URL */}
+          <Box
+            width={32}
+            height={32}
+            borderRadius={32}
+            bg="secondaryBackgroundColor"
+            justifyContent="center"
+            alignItems="center"
+            overflow="hidden"
+            style={{
+              marginRight: sellCurrencyImage || sellCurrencyCode ? -10 : 0,
+            }}
+            borderColor="mainBackgroundColor"
+            zIndex={1}
+          >
+            {buyCurrencyImage && !buyImageError ? (
+              <SmartImage
+                source={{ uri: buyCurrencyImage }}
+                width={24}
+                height={24}
+                borderRadius={12}
+                resizeMode="cover"
+                onError={() => {
+                  console.log(
+                    "Failed to load buy currency image:",
+                    buyCurrencyImage
+                  );
+                  setBuyImageError(true);
+                }}
+              />
+            ) : (
+              <CustomText fontSize={10} color="white" fontWeight="bold">
+                {buyCurrencyCode.charAt(0)}
+              </CustomText>
+            )}
+          </Box>
+          {/* Sell Currency Image - Always show if there's a sell currency */}
+          {activity?.sellCurrency && (
             <Box
               width={32}
               height={32}
@@ -235,7 +195,7 @@ const ActivityItemCard = ({
               borderColor="mainBackgroundColor"
               zIndex={2}
             >
-              {!sellImageError ? (
+              {sellCurrencyImage && !sellImageError ? (
                 <SmartImage
                   source={{ uri: sellCurrencyImage }}
                   width={24}
@@ -252,7 +212,7 @@ const ActivityItemCard = ({
                 />
               ) : (
                 <CustomText fontSize={10} color="white" fontWeight="bold">
-                  {activity?.sellCurrency?.currencyId?.code?.charAt(0) || "?"}
+                  {sellCurrencyCode.charAt(0)}
                 </CustomText>
               )}
             </Box>
@@ -268,9 +228,7 @@ const ActivityItemCard = ({
             >
               To{" "}
               {activity?.withdrawalAccount?.walletAddress
-                ? abbreviateWalletAddress(
-                    activity.withdrawalAccount.walletAddress
-                  )
+                ? formatWalletAddress(activity.withdrawalAccount.walletAddress)
                 : activity?.withdrawalAccount?.holderName ||
                   activity?.depositAccount?.holderName ||
                   "Unknown"}

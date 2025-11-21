@@ -1,5 +1,6 @@
 import { ARROW_DARK_LEFT_SVG, ARROW_LEFT_SVG } from "@/assets/svgs";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
+import BankIcon from "@/components/general/BankIcon";
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import { setSellSelectedBank, setSellStage } from "@/src/modules/sell/presentation/state/sell-slice";
@@ -8,7 +9,6 @@ import { Theme } from "@/theme";
 import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import { UserBankAccount } from "@zap/blockchain-sdk";
-import { Image } from "expo-image";
 import React, { useState } from "react";
 import { FlatList, Pressable } from "react-native";
 import { Search } from "react-native-feather";
@@ -119,12 +119,10 @@ const SelectBankStep = () => {
                   }}
                 >
                   <Box flexDirection="row" gap="s" alignItems="center">
-                    <Image
-                      source={{ 
-                        uri: (item.bankId as any)?.icon || "" 
-                      }}
-                      style={{ width: 40, height: 40, borderRadius: 20 }}
-                      contentFit="contain"
+                    <BankIcon
+                      bankAccount={item}
+                      size={40}
+                      borderRadius={20}
                     />
                     <Box>
                       <CustomText variant="bodyBold">

@@ -185,10 +185,31 @@ export const useSwapSDK = () => {
         throw new Error("SDK not initialized");
       }
 
-      // Use SDK to get order rates
+      // Validate that currencies have required information
+      if (!baseCurrency._id || !targetCurrency._id) {
+        console.warn("⚠️ Missing currency IDs, using fallback");
+        throw new Error("Missing currency IDs");
+      }
+
+      // Check if chain information is available (for debugging)
+      const baseChainId = baseCurrency.chainId;
+      const targetChainId = targetCurrency.chainId;
+      const baseChainSymbol = (baseChainId as Partial<IChain>)?.symbol;
+      const targetChainSymbol = (targetChainId as Partial<IChain>)?.symbol;
+
       console.log("🔄 Fetching order rates:", {
-        buySupportedCurrencyId: targetCurrency._id,
-        sellSupportedCurrencyId: baseCurrency._id,
+        baseCurrency: {
+          id: baseCurrency._id,
+          chainId: typeof baseChainId === 'string' ? baseChainId : (baseChainId as any)?._id,
+          chainSymbol: baseChainSymbol,
+          hasChainInfo: !!baseChainId,
+        },
+        targetCurrency: {
+          id: targetCurrency._id,
+          chainId: typeof targetChainId === 'string' ? targetChainId : (targetChainId as any)?._id,
+          chainSymbol: targetChainSymbol,
+          hasChainInfo: !!targetChainId,
+        },
         isBuyAmount,
         amount,
         ...(isBuyAmount
@@ -196,6 +217,20 @@ export const useSwapSDK = () => {
           : { sellAmount: amount }
         ),
       });
+
+      // Warn if chain info is missing (this might be the root cause)
+      if (!baseChainId && (baseCurrency.currencyId as Partial<ICurrency>)?.isCrypto) {
+        console.warn("⚠️ Base currency (crypto) is missing chainId:", {
+          currencyId: baseCurrency._id,
+          currencySymbol: (baseCurrency.currencyId as Partial<ICurrency>)?.symbol,
+        });
+      }
+      if (!targetChainId && (targetCurrency.currencyId as Partial<ICurrency>)?.isCrypto) {
+        console.warn("⚠️ Target currency (crypto) is missing chainId:", {
+          currencyId: targetCurrency._id,
+          currencySymbol: (targetCurrency.currencyId as Partial<ICurrency>)?.symbol,
+        });
+      }
 
       let rateResponse: any;
 

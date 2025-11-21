@@ -31,6 +31,7 @@ import { useOrderStatusUpdates } from "@/src/modules/swap/presentation/hooks/use
 import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useDispatch, useSelector } from "react-redux";
 import BankAccountsBottomSheet from "../BankAccountsBottomSheet";
+import SelectChainBottomSheet from "../SelectChainBottomSheet";
 import ConfirmTransactionModal from "./ConfirmTransactionModal";
 import AmountStep from "./steps/AmountStep";
 import ConfirmingStep from "./steps/ConfirmingStep";
@@ -54,6 +55,8 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const progressSheetRef = useRef<OrderDetailsSheetRef>(null);
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
   const bankAccountsBottomSheetRef = useRef<BottomSheet>(null);
+  const chainBottomSheetRef = useRef<BottomSheetMethods | null>(null);
+  const chainSelectCallbackRef = useRef<((chainSymbol: string) => void) | null>(null);
   const { isUserLoggedIn, exchangeUserData } = useExchangeAuth();
   const { logoutFromExchange } = useWallet();
   const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] = useState(false);
@@ -197,7 +200,11 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
   const renderStep = () => {
     switch (step) {
       case "select-token":
-        return <SelectTokenStep />;
+        return <SelectTokenStep 
+          chainBottomSheetRef={chainBottomSheetRef} 
+          onChainSelectCallbackRef={chainSelectCallbackRef}
+          shouldAutoOpenChainSelector={false}
+        />;
       case "select-currency":
         return <SelectCurrencyStep />;
       case "amount":
@@ -236,7 +243,7 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         index={-1}
         enableOverDrag={false}
         enableDynamicSizing={false}
-        snapPoints={["90%", "95%"]}
+        snapPoints={["85%", "85%"]}
         enablePanDownToClose
         bottomInset={bottomInset}
         handleIndicatorStyle={{
@@ -348,6 +355,22 @@ const SellFlowBottomSheet = forwardRef<BottomSheet, {}>((props, ref) => {
         progress={progress}
         currentStep={getCurrentStep()}
       />
+
+      {/* Chain Selection Bottom Sheet - Rendered at same level as sell bottom sheet */}
+      {step === "select-token" && (
+        <SelectChainBottomSheet
+          ref={chainBottomSheetRef}
+          onChainSelect={(chainSymbol: string) => {
+            // Call the callback from SelectTokenStep/TokenSelector
+            chainSelectCallbackRef.current?.(chainSymbol);
+            chainBottomSheetRef.current?.close();
+          }}
+          onClose={() => {
+            chainBottomSheetRef.current?.close();
+          }}
+          shouldAutoOpen={false}
+        />
+      )}
     </>
   );
 });

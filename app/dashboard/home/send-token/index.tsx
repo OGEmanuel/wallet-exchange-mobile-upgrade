@@ -86,7 +86,7 @@ enum FeeSpeed {
 }
 
 const SendToken = () => {
-  const { tokenId: rawTokenId } = useLocalSearchParams();
+  const { tokenId: rawTokenId, address: preFilledAddress } = useLocalSearchParams();
 
   // Handle different tokenId formats (same as other pages)
   let tokenId: string;
@@ -101,10 +101,20 @@ const SendToken = () => {
     tokenId = rawTokenId || "";
   }
 
+  // Handle pre-filled address
+  let initialAddress = "";
+  if (preFilledAddress) {
+    if (Array.isArray(preFilledAddress)) {
+      initialAddress = preFilledAddress[0] || "";
+    } else if (typeof preFilledAddress === "string") {
+      initialAddress = preFilledAddress;
+    }
+  }
+
   // Ensure tokenId is a string
   tokenId = String(tokenId);
   const [amount, setAmount] = useState<string>("");
-  const [recipientAddress, setRecipientAddress] = useState<string>("");
+  const [recipientAddress, setRecipientAddress] = useState<string>(initialAddress);
   const [selectedToken, setSelectedToken] = useState<ProcessedAsset | null>(
     null
   );
@@ -148,6 +158,23 @@ const SendToken = () => {
   const [isValidatingBalance, setIsValidatingBalance] = useState(false);
 
   const { chainsMap } = useChains();
+
+  // Update recipient address when preFilledAddress changes (e.g., from address book)
+  useEffect(() => {
+    if (preFilledAddress) {
+      let addressToSet = "";
+      if (Array.isArray(preFilledAddress)) {
+        addressToSet = preFilledAddress[0] || "";
+      } else if (typeof preFilledAddress === "string") {
+        addressToSet = preFilledAddress;
+      }
+      if (addressToSet && addressToSet !== recipientAddress) {
+        setRecipientAddress(addressToSet);
+        // Clear any existing validation errors when setting a new address
+        setAddressValidationError(null);
+      }
+    }
+  }, [preFilledAddress, recipientAddress]);
 
   // Error modal state
   const [errorModal, setErrorModal] = useState<{
@@ -647,6 +674,8 @@ const SendToken = () => {
             recipientAddress: recipientAddress,
             networkFee: networkFee?.fee || "0",
             networkName: selectedToken?.chainName || "Ethereum",
+            chainId: selectedToken?.chainId || "",
+            chainSymbol: selectedToken?.chainSymbol || "",
           },
         });
         return;
@@ -1555,6 +1584,10 @@ const SendToken = () => {
                   </CustomText>
                 </Pressable>
                 <Pressable
+                  onPress={() => router.push({
+                    pathname: "/dashboard/home/address-book",
+                    params: { tokenId: tokenId },
+                  })}
                   style={{ flexDirection: "row", alignItems: "center" }}
                 >
                   <ThemedBookIcon

@@ -76,8 +76,9 @@ export default function AssetInfo() {
 
   // Fetch currencies and token details when component mounts
   useEffect(() => {
-    fetchTokenDetailsCallback();
     fetchCurrenciesCallback();
+    fetchTokenDetailsCallback();
+    // Fetch token history separately (non-blocking)
     fetchTokenHistoryCallback();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -98,48 +99,63 @@ export default function AssetInfo() {
       setErrorMessage(null);
       try {
         // First fetch basic token details via the market hook
+        // This is the critical data needed for the page to render
         await fetchTokenDetails({
           body: id as string,
           params: {},
           extra: null,
         });
         
+        // Token details are now automatically stored in Redux state via the hook
+        // Set loading to false immediately so page can render
+        setIsLoading(false);
+        
         // Fetch enhanced details with news and historical rates using SDK directly
-        try {
-          const sdk = zapSDKService.getSDK();
-          if (sdk && sdk.markets) {
-            const [enhancedDetails, historicalRatesResponse] = await Promise.all([
-              sdk.markets.getTokenDetails(id as string),
-              sdk.markets.getHistoricalRates(id as string),
-            ]);
-            setEnhancedTokenDetails(enhancedDetails);
-            setHistoricalRates(historicalRatesResponse);
-            
-            // Set available periods based on data
-            if (historicalRatesResponse?.data?.rates) {
-              const periods = getAvailablePeriods(historicalRatesResponse.data.rates);
-              setAvailableGraphPeriods(periods);
+        // These are non-blocking - page will render even if they fail
+        const sdk = zapSDKService.getSDK();
+        if (sdk && sdk.markets) {
+          // Fire off enhanced details fetch without blocking
+          Promise.all([
+            sdk.markets.getTokenDetails(id as string).catch((err) => {
+              console.warn("Failed to fetch enhanced token details (non-blocking):", err);
+              return null;
+            }),
+            sdk.markets.getHistoricalRates(id as string).catch((err) => {
+              console.warn("Failed to fetch historical rates (non-blocking):", err);
+              return null;
+            }),
+          ]).then(([enhancedDetails, historicalRatesResponse]) => {
+            if (enhancedDetails) {
+              setEnhancedTokenDetails(enhancedDetails);
+            }
+            if (historicalRatesResponse) {
+              setHistoricalRates(historicalRatesResponse);
+              
+              // Set available periods based on data
+              if (historicalRatesResponse?.data?.rates) {
+                const periods = getAvailablePeriods(historicalRatesResponse.data.rates);
+                setAvailableGraphPeriods(periods);
+              }
             }
             console.log("Enhanced token details with news:", enhancedDetails);
             console.log("Historical rates:", historicalRatesResponse);
-          }
-        } catch (sdkError) {
-          console.warn("Failed to fetch enhanced token details:", sdkError);
-          // Continue with basic token details even if enhanced fetch fails
+          }).catch((err) => {
+            console.warn("Error in enhanced details fetch (non-blocking):", err);
+            // Page continues to work without enhanced details
+          });
         }
-        
-        // Token details are now automatically stored in Redux state via the hook
       } catch (err: any) {
         console.error("Error fetching token details:", err);
         setErrorMessage(err.message || "Failed to fetch token details");
-      } finally {
         setIsLoading(false);
+        // Page can still render with parsedAsset data even if this fails
       }
     }
      
   }, [id, fetchTokenDetails]);
 
   const fetchTokenHistoryCallback = useCallback(async () => {
+    // This is non-blocking - page will render even if it fails
     try {
       await fetchTokenHistory({
         body: id as string,
@@ -147,7 +163,8 @@ export default function AssetInfo() {
         extra: null,
       });
     } catch (err: any) {
-      console.error("Error fetching token history:", err);
+      console.warn("Error fetching token history (non-blocking):", err);
+      // Don't block page rendering - this is just additional data
     }
   }, [id, fetchTokenHistory]);
 
@@ -194,11 +211,11 @@ export default function AssetInfo() {
   return (
     <PageWrapper>
       <LoaderWrapper
-        isLoading={isLoading}
-        isError={!!errorMessage}
+        isLoading={isLoading && !parsedAsset}
+        isError={!!errorMessage && !parsedAsset}
         errorMessage={errorMessage}
         onRetry={fetchTokenDetailsCallback}
-        existingData={currentTokenDetails}
+        existingData={currentTokenDetails || parsedAsset}
         animationType="fade"
       >
         <Box flex={1} paddingBottom="xl">

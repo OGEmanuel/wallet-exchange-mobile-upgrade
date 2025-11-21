@@ -107,7 +107,7 @@ export class TokenManager {
 
       // Clear invalid tokens on final failure
       await this.clearTokens();
-      throw error;
+      return null; // Return null instead of throwing error
     }
   }
 
