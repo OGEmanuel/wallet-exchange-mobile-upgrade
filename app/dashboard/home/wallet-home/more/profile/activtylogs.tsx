@@ -69,7 +69,7 @@ const useGetActivityLogs = (page: number, limit: number, user?: UserModel) => {
   const settings = useSettings();
 
   return useQuery({
-    queryKey: queryKeys.activity.logs(),
+    queryKey: queryKeys.activity.logs(page, limit),
     queryFn: async () =>
       await settings.getActivities({
         user: user,
