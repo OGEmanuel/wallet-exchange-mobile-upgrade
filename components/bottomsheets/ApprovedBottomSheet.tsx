@@ -1,6 +1,18 @@
+import { Box, CustomButton, CustomText } from "@/components/general";
 import CryptoIcon from "@/components/general/CrptoIcon";
 import { useChains } from "@/src/core/chains/chains-context";
 import { showErrorToast, showSuccessToast } from "@/src/core/utils/toast-utils";
+import OrderDetailsSheet, {
+  OrderDetailsSheetRef,
+} from "@/src/modules/swap/presentation/components/OrderDetailsSheet";
+import SwapProgressSheet, {
+  OrderDetailsSheetRef as SwapProgressSheetRef,
+} from "@/src/modules/swap/presentation/components/SwapProgressSheet";
+import {
+  getActualTransactionStatus,
+  shouldShowExchangeSummary,
+  shouldShowProgressButton,
+} from "@/src/modules/swap/presentation/utils/transaction-status-utils";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
@@ -12,23 +24,28 @@ import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Copy } from "lucide-react-native";
-import React, { forwardRef, useCallback } from "react";
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
 import { Pressable, ScrollView } from "react-native";
 import { useSelector } from "react-redux";
-import { Box, CustomText } from "../general";
 
-const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>(
-  (props, ref) => {
-    const theme = useTheme<Theme>();
-    const { selectedActivity } = useSelector(
-      (state: AppRootState) => state.exchange
-    );
-    const {
-      getApproximateAmount,
-      getAmountToReceive,
-      getActualTransactionStatus,
-    } = useUtilities();
-    const { getChainById } = useChains();
+interface ApprovedBottomSheetProps {
+  onShowProgress?: () => void;
+}
+
+const ApprovedBottomSheet = forwardRef<
+  BottomSheet,
+  ApprovedBottomSheetProps
+>(({ onShowProgress }, ref) => {
+  const theme = useTheme<Theme>();
+  const { selectedActivity } = useSelector(
+    (state: AppRootState) => state.exchange
+  );
+  const {
+    getApproximateAmount,
+    getAmountToReceive,
+    getActualTransactionStatus,
+  } = useUtilities();
+  const { getChainById } = useChains();
 
     const renderBackdrop = useCallback(
       (props: any) => (
@@ -102,6 +119,13 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>(
       } catch (error) {
         console.error("Failed to copy to clipboard:", error);
         showErrorToast("Failed to copy");
+      }
+    };
+
+    // Handle show progress button press
+    const handleShowProgress = () => {
+      if (onShowProgress) {
+        onShowProgress();
       }
     };
 
@@ -692,6 +716,23 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>(
                     </Box>
                   </Box>
                 </Box>
+
+                {/* Show Progress Button - Conditionally rendered based on status */}
+                {shouldShowProgressButton(selectedActivity) && (
+                  <Box marginTop="l" marginBottom="m">
+                    <CustomButton
+                      text={
+                        shouldShowExchangeSummary(selectedActivity)
+                          ? "Show Deposit Details"
+                          : "View Progress"
+                      }
+                      onPress={handleShowProgress}
+                      width="100%"
+                      borderRadius={50}
+                      bgColor="secondaryColor"
+                    />
+                  </Box>
+                )}
               </>
             ) : (
               <Box alignItems="center" justifyContent="center" flex={1}>
@@ -713,4 +754,243 @@ const ApprovedBottomSheet = forwardRef<BottomSheet, Record<string, never>>(
 
 ApprovedBottomSheet.displayName = "ApprovedBottomSheet";
 
-export default ApprovedBottomSheet;
+/**
+ * Map ExchangeActivityModel to CreateOrderResponse format
+ * Handles both ExchangeActivityModel and childOrder structures
+ */
+const mapActivityToOrderDetails = (activity: any): any => {
+  if (!activity) return undefined;
+
+  // Use childOrder if available, otherwise use the activity itself
+  const order = activity.childOrder || activity;
+
+  // Helper to safely get nested values
+  const getValue = (path: string[], defaultValue: any = undefined) => {
+    let current: any = order;
+    for (const key of path) {
+      if (current?.[key] !== undefined && current?.[key] !== null) {
+        current = current[key];
+      } else {
+        current = activity;
+        for (const key2 of path) {
+          if (current?.[key2] !== undefined && current?.[key2] !== null) {
+            current = current[key2];
+          } else {
+            return defaultValue;
+          }
+        }
+        break;
+      }
+    }
+    return current !== undefined && current !== null ? current : defaultValue;
+  };
+
+  // Build the mapped order details
+  // Prefer childOrder._id if available, as socket events typically use child order ID
+  const childOrderId = activity?.childOrder?._id;
+  const parentOrderId = activity?._id;
+  const orderId = childOrderId || parentOrderId;
+  const mapped: any = {
+    _id: orderId,
+    // Store both parent and child order IDs for socket matching
+    parentOrderId: parentOrderId,
+    childOrderId: childOrderId,
+    status: getValue(['status'], activity?.status || "PENDING"),
+    createdAt: getValue(['createdAt'], activity?.createdAt),
+    updatedAt: getValue(['updatedAt'], activity?.updatedAt),
+    
+    // Amount fields - ensure they're numbers
+    buyAmount: typeof getValue(['buyAmount']) === 'number' 
+      ? getValue(['buyAmount']) 
+      : (typeof activity?.buyAmount === 'number' ? activity.buyAmount : undefined),
+    sellAmount: typeof getValue(['sellAmount']) === 'number'
+      ? getValue(['sellAmount'])
+      : (typeof activity?.sellAmount === 'number' ? activity.sellAmount : undefined),
+    lpFee: typeof getValue(['lpFee']) === 'number'
+      ? getValue(['lpFee'])
+      : (typeof activity?.lpFee === 'number' ? activity.lpFee : 0),
+    
+    // Currency fields - ensure they have the proper structure
+    buyCurrency: order.buyCurrency || activity.buyCurrency,
+    sellCurrency: order.sellCurrency || activity.sellCurrency,
+    
+    // Account fields - merge from both sources
+    depositAccount: order.depositAccount || activity.depositAccount || {
+      walletAddress: activity.depositAccount?.walletAddress || order.depositAccount?.walletAddress,
+      number: activity.depositAccount?.number || order.depositAccount?.number,
+      holderName: activity.depositAccount?.holderName || order.depositAccount?.holderName,
+      bankId: activity.depositAccount?.bankId || order.depositAccount?.bankId,
+    },
+    withdrawalAccount: order.withdrawalAccount || activity.withdrawalAccount || {
+      walletAddress: activity.withdrawalAccount?.walletAddress || order.withdrawalAccount?.walletAddress,
+      number: activity.withdrawalAccount?.number || order.withdrawalAccount?.number,
+      holderName: activity.withdrawalAccount?.holderName || order.withdrawalAccount?.holderName,
+      bankId: activity.withdrawalAccount?.bankId || order.withdrawalAccount?.bankId,
+    },
+    
+    // Rate fields
+    rate: order.rate || activity.rate,
+    buyRate: order.buyRate || activity.buyRate,
+    sellRate: order.sellRate || activity.sellRate,
+    
+    // Expiration
+    expiresAt: order.expiresAt || activity.expiresAt,
+  };
+
+  // Preserve any other important fields from the order
+  if (order && typeof order === 'object') {
+    Object.keys(order).forEach(key => {
+      if (!mapped.hasOwnProperty(key) && key !== 'childOrder') {
+        mapped[key] = order[key];
+      }
+    });
+  }
+
+  // Preserve any other important fields from the activity
+  if (activity && typeof activity === 'object') {
+    Object.keys(activity).forEach(key => {
+      if (!mapped.hasOwnProperty(key) && key !== 'childOrder') {
+        mapped[key] = activity[key];
+      }
+    });
+  }
+
+  return mapped;
+};
+
+// Wrapper component to include OrderDetailsSheet and SwapProgressSheet
+const ApprovedBottomSheetWithOrderDetails = forwardRef<
+  BottomSheet,
+  Record<string, never>
+>((props, ref) => {
+  const { selectedActivity } = useSelector(
+    (state: AppRootState) => state.exchange
+  );
+  const orderDetailsSheetRef = useRef<OrderDetailsSheetRef>(null);
+  const swapProgressSheetRef = useRef<SwapProgressSheetRef>(null);
+
+  // Map selectedActivity to OrderDetailsSheet format
+  const orderDetails = useMemo(() => {
+    return mapActivityToOrderDetails(selectedActivity);
+  }, [selectedActivity]);
+
+  // Handle show progress - route to appropriate component based on status
+  const handleShowProgress = useCallback(() => {
+    if (!orderDetails) return;
+
+    // If status is PENDING, show Exchange Summary (OrderDetailsSheet)
+    if (shouldShowExchangeSummary(selectedActivity)) {
+      if (orderDetailsSheetRef.current) {
+        orderDetailsSheetRef.current.open();
+      }
+    } else {
+      // Otherwise, show Transaction Progress (SwapProgressSheet)
+      if (swapProgressSheetRef.current) {
+        swapProgressSheetRef.current.open();
+      }
+    }
+  }, [orderDetails, selectedActivity]);
+
+  // Listen for status changes and automatically switch between sheets
+  useEffect(() => {
+    if (!selectedActivity) return;
+
+    const actualStatus = getActualTransactionStatus(selectedActivity);
+    
+    // If status changes from PENDING to DEPOSIT_CONFIRMING, close OrderDetailsSheet and open SwapProgressSheet
+    if (actualStatus === "DEPOSIT_CONFIRMING" || actualStatus === "DEPOSIT_CONFIRMED") {
+      // Close OrderDetailsSheet if open
+      if (orderDetailsSheetRef.current) {
+        orderDetailsSheetRef.current.close();
+      }
+      // Open SwapProgressSheet
+      setTimeout(() => {
+        if (swapProgressSheetRef.current) {
+          swapProgressSheetRef.current.open();
+        }
+      }, 300); // Small delay for smooth transition
+    }
+  }, [selectedActivity]);
+
+  // Get current order status for SwapProgressSheet
+  const currentOrderStatus = useMemo(() => {
+    return selectedActivity?.childOrder?.status || selectedActivity?.status || "PENDING";
+  }, [selectedActivity]);
+
+  // Calculate progress based on status
+  const getProgressFromStatus = (status: string): number => {
+    switch (status) {
+      case "PENDING":
+        return 0;
+      case "DEPOSIT_CONFIRMING":
+        return 25;
+      case "DEPOSIT_CONFIRMED":
+        return 50;
+      case "WITHDRAWAL_CONFIRMING":
+        return 75;
+      case "WITHDRAWAL_CONFIRMED":
+        return 90;
+      case "FILLED":
+        return 100;
+      default:
+        return 0;
+    }
+  };
+
+  const progress = getProgressFromStatus(currentOrderStatus);
+
+  // Get current step name
+  const getCurrentStep = (status: string): string => {
+    if (status === "DEPOSIT_CONFIRMING" || status === "PENDING") return "Confirming";
+    if (status === "DEPOSIT_CONFIRMED" || status === "WITHDRAWAL_CONFIRMING") return "Swapping";
+    if (status === "WITHDRAWAL_CONFIRMED") return "Sending";
+    if (status === "FILLED") return "Completed";
+    return "Confirming";
+  };
+
+  const currentStep = getCurrentStep(currentOrderStatus);
+
+  return (
+    <>
+      <ApprovedBottomSheet
+        ref={ref}
+        onShowProgress={handleShowProgress}
+      />
+      <OrderDetailsSheet
+        ref={orderDetailsSheetRef}
+        orderDetails={orderDetails}
+        onClose={() => {
+          orderDetailsSheetRef.current?.close();
+        }}
+        onStatusChange={(newStatus) => {
+          console.log("📋 ApprovedBottomSheet: Order status changed to", newStatus, "- opening SwapProgressSheet");
+          // Close OrderDetailsSheet if still open
+          if (orderDetailsSheetRef.current) {
+            orderDetailsSheetRef.current.close();
+          }
+          // Open SwapProgressSheet after a short delay
+          setTimeout(() => {
+            if (swapProgressSheetRef.current) {
+              swapProgressSheetRef.current.open();
+            }
+          }, 300);
+        }}
+      />
+      <SwapProgressSheet
+        ref={swapProgressSheetRef}
+        orderDetails={orderDetails}
+        orderStatus={currentOrderStatus}
+        progress={progress}
+        currentStep={currentStep}
+        onClose={() => {
+          swapProgressSheetRef.current?.close();
+        }}
+      />
+    </>
+  );
+});
+
+ApprovedBottomSheetWithOrderDetails.displayName =
+  "ApprovedBottomSheetWithOrderDetails";
+
+export default ApprovedBottomSheetWithOrderDetails;

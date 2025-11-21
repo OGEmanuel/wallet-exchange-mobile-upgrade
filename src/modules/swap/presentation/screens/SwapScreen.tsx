@@ -460,6 +460,7 @@ const Swap = () => {
         }
       >
         <Box flex={1} p="m">
+
           <CustomText variant="medium" textAlign="center" mb="m">
             Swap
           </CustomText>
