@@ -297,11 +297,11 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, EditAvatarBottomSheetProps
                   contentFit="cover"
                 />
               ) : (
-                <Image
-                  source={AVATARS[activeAvatarIndex]}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                />
+              <Image
+                source={AVATARS[activeAvatarIndex]}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+              />
               )}
             </Box>
           </Box>
@@ -365,25 +365,25 @@ const EditAvatarBottomSheet = forwardRef<BottomSheet, EditAvatarBottomSheetProps
                 ) : (
                   // Fallback to local avatars if SDK avatars not available
                   AVATARS.map((avatar, index) => (
-                    <Pressable
-                      key={index.toString()}
-                      onPress={() => setActiveAvatarIndex(index)}
-                      style={{
-                        width: "25%",
-                        aspectRatio: 1,
-                        marginBottom: 10,
-                        borderRadius: 50,
-                        borderWidth: activeAvatarIndex === index ? 2 : 0,
-                        borderColor: theme.colors.bodyTextColor,
-                        padding: 5,
-                      }}
-                    >
-                      <Image
-                        source={avatar}
-                        style={{ width: "100%", height: "100%", borderRadius: 8 }}
-                        contentFit="cover"
-                      />
-                    </Pressable>
+                  <Pressable
+                    key={index.toString()}
+                    onPress={() => setActiveAvatarIndex(index)}
+                    style={{
+                      width: "25%",
+                      aspectRatio: 1,
+                      marginBottom: 10,
+                      borderRadius: 50,
+                      borderWidth: activeAvatarIndex === index ? 2 : 0,
+                      borderColor: theme.colors.bodyTextColor,
+                      padding: 5,
+                    }}
+                  >
+                    <Image
+                      source={avatar}
+                      style={{ width: "100%", height: "100%", borderRadius: 8 }}
+                      contentFit="cover"
+                    />
+                  </Pressable>
                   ))
                 )}
               </Box>

@@ -9,7 +9,7 @@ import {
   SupportedCurrency,
   UserBankAccount
 } from "@zap/blockchain-sdk";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const useBankAccounts = () => {
   const [bankAccounts, setBankAccounts] = useState<UserBankAccount[]>([]);
@@ -32,8 +32,9 @@ export const useBankAccounts = () => {
   >(null);
 
   const { currentExchangeUser } = useWallet();
+  const isFetchingRef = useRef(false);
 
-  const fetchBanks = async () => {
+  const fetchBanks = useCallback(async () => {
     setIsLoadingBanks(true);
     try {
       const banks = await zapSDKService.getBanks();
@@ -43,7 +44,7 @@ export const useBankAccounts = () => {
     } finally {
       setIsLoadingBanks(false);
     }
-  };
+  }, []);
 
   // Helper function to deduplicate bank accounts based on bankId and account number
   const deduplicateBankAccounts = (accounts: UserBankAccount[]): UserBankAccount[] => {
@@ -76,7 +77,13 @@ export const useBankAccounts = () => {
     return Array.from(seen.values());
   };
 
-  const fetchBankAccounts = async () => {
+  const fetchBankAccounts = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    isFetchingRef.current = true;
     setIsLoadingBankAccounts(true);
     setErrorBankAccounts(null); // Clear previous errors
     try {
@@ -87,21 +94,46 @@ export const useBankAccounts = () => {
       // Deduplicate bank accounts before setting state
       const uniqueBankAccounts = deduplicateBankAccounts(bankAccounts);
       
-      // Log if duplicates were found
+      // Log if duplicates were found (only log once to avoid spam)
       if (bankAccounts.length !== uniqueBankAccounts.length) {
         console.log(
           `🔄 Removed ${bankAccounts.length - uniqueBankAccounts.length} duplicate bank account(s)`
         );
       }
       
-      setBankAccounts(uniqueBankAccounts);
+      // Only update state if the accounts actually changed
+      setBankAccounts((prevAccounts) => {
+        // Compare arrays to avoid unnecessary updates
+        if (prevAccounts.length !== uniqueBankAccounts.length) {
+          return uniqueBankAccounts;
+        }
+        
+        // Check if any account IDs changed
+        const prevIds = new Set(prevAccounts.map(a => a._id));
+        const newIds = new Set(uniqueBankAccounts.map(a => a._id));
+        
+        if (prevIds.size !== newIds.size) {
+          return uniqueBankAccounts;
+        }
+        
+        // Check if all IDs are the same
+        const idsChanged = Array.from(prevIds).some(id => !newIds.has(id));
+        if (idsChanged) {
+          return uniqueBankAccounts;
+        }
+        
+        // No changes, return previous to avoid re-render
+        return prevAccounts;
+      });
+      
       setErrorBankAccounts(null); // Ensure error is cleared on success
     } catch (error: any) {
       setErrorBankAccounts(error?.message);
     } finally {
       setIsLoadingBankAccounts(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [currentExchangeUser]);
 
   const getBankById = (bankId: string) => {
     return banks.find((bank) => bank._id === bankId);
@@ -193,11 +225,24 @@ export const useBankAccounts = () => {
     }
   };
 
+  const deleteBankAccount = useCallback(async (bankAccountId: string) => {
+    try {
+      await zapSDKService.deleteBankAccount(bankAccountId);
+      // Remove from local state immediately for better UX
+      setBankAccounts((prev) => prev.filter((account) => account._id !== bankAccountId));
+      // Refresh to ensure consistency
+      fetchBankAccounts();
+    } catch (error: any) {
+      console.error("Failed to delete bank account:", error);
+      throw error;
+    }
+  }, [fetchBankAccounts]);
+
   useEffect(() => {
     if (currentExchangeUser) {
       fetchBankAccounts();
     }
-  }, [currentExchangeUser]);
+  }, [currentExchangeUser, fetchBankAccounts]);
 
   useEffect(() => {
     fetchBanks();
@@ -219,6 +264,7 @@ export const useBankAccounts = () => {
     createBankAccount,
     isCreatingBankAccount,
     errorCreatingBankAccount,
+    deleteBankAccount,
     getBankById,
   };
 };

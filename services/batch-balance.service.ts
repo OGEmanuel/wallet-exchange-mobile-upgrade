@@ -46,7 +46,8 @@ export interface AssetBatchBalanceResponse {
 }
 
 interface TokenWithAddress {
-  accountId: string;
+  accountId?: string; // Optional - only needed if we want to update account balances, but we update userTokenList directly
+  tokenId?: string; // The userToken._id - used to identify the token in userTokenList
   supportedCurrencyId: string;
   tokenAddress: string | null;
   chainSymbol: string;
@@ -88,22 +89,69 @@ export class BatchBalanceService {
     }
 
     let skippedNoTokenAddress = 0;
-    let matchedAccounts = 0;
+    let skippedNoWalletAddress = 0;
+    let skippedStringSupportedCurrencyId = 0;
+    let skippedNoSupportedCurrencyId = 0;
+    let tokensWithoutAccount = 0; // Tokens without matching account but still processed
+    let tokensWithAccount = 0; // Tokens with matching account
+    let processedTokens = 0;
+
+    console.log(`🔍 Batch Balance: Processing ${tokenList.length} tokens from portfolio`);
+    console.log(`🔍 Batch Balance: Found ${accounts.length} accounts in portfolio`);
+
+    // Log all token supportedCurrencyIds for debugging
+    const tokenSupportedCurrencyIds = tokenList.map((token) => {
+      const supportedCurrencyIdRaw = token.supportedCurrencyId;
+      let supportedCurrencyId: string | undefined;
+      let hasTokenAddress = false;
+      let symbol: string | undefined;
+      
+      if (typeof supportedCurrencyIdRaw === 'string') {
+        supportedCurrencyId = supportedCurrencyIdRaw;
+      } else if (supportedCurrencyIdRaw && typeof supportedCurrencyIdRaw === 'object') {
+        supportedCurrencyId = (supportedCurrencyIdRaw as any)?._id;
+        hasTokenAddress = !!(supportedCurrencyIdRaw as any)?.tokenAddress;
+        symbol = (supportedCurrencyIdRaw as any)?.symbol || (supportedCurrencyIdRaw as any)?.currencyId?.symbol;
+      }
+      
+      return {
+        tokenId: token._id?.slice(-8) || 'unknown',
+        supportedCurrencyId: supportedCurrencyId?.slice(-8) || 'undefined',
+        hasTokenAddress,
+        symbol: symbol || 'N/A'
+      };
+    });
+    console.log(`🔍 Token supportedCurrencyIds (${tokenSupportedCurrencyIds.length} tokens):`, tokenSupportedCurrencyIds);
 
     // create map of supportedCurrencyId to account
     const supportedCurrencyToAccount = new Map<string, AccountPortfolioData>();
+    const accountDetails: {accountId: string, supportedCurrencyId: string | undefined, currencySymbol?: string}[] = [];
+    
     accounts.forEach((account) => {
       // Handle both string and object formats for supportedCurrencyId
       const supportedCurrencyId = typeof account.supportedCurrencyId === 'string'
         ? account.supportedCurrencyId
         : account.supportedCurrencyId?._id;
       
+      const currencySymbol = typeof account.supportedCurrencyId === 'object' && account.supportedCurrencyId
+        ? (account.supportedCurrencyId as any)?.currencyId?.symbol || (account.supportedCurrencyId as any)?.symbol
+        : undefined;
+      
       if (supportedCurrencyId) {
         supportedCurrencyToAccount.set(supportedCurrencyId, account);
+        accountDetails.push({accountId: account._id, supportedCurrencyId, currencySymbol});
       } else {
         console.warn(`⚠️ Account ${account?._id} has invalid supportedCurrencyId:`, account.supportedCurrencyId);
+        accountDetails.push({accountId: account._id, supportedCurrencyId: undefined, currencySymbol});
       }
     });
+
+    console.log(`🔍 Batch Balance: Mapped ${supportedCurrencyToAccount.size} accounts by supportedCurrencyId`);
+    console.log(`🔍 Account details:`, accountDetails.map(a => ({
+      accountId: a.accountId.slice(-8),
+      supportedCurrencyId: a.supportedCurrencyId?.slice(-8) || 'undefined',
+      currencySymbol: a.currencySymbol || 'N/A'
+    })));
 
     tokenList.forEach((userToken) => {
       // Handle both string and object formats for supportedCurrencyId
@@ -115,7 +163,8 @@ export class BatchBalanceService {
       if (typeof supportedCurrencyIdRaw === 'string') {
         supportedCurrencyId = supportedCurrencyIdRaw;
         // If it's a string, we can't proceed because we need the full object for chainId and tokenAddress
-        console.warn(`⚠️ Token ${userToken._id} has supportedCurrencyId as string but no full object. Skipping.`);
+        skippedStringSupportedCurrencyId++;
+        console.warn(`⚠️ Token ${userToken._id} has supportedCurrencyId as string (${supportedCurrencyId}) but no full object. Skipping.`);
         return;
       } else if (supportedCurrencyIdRaw && typeof supportedCurrencyIdRaw === 'object') {
         supportedCurrency = supportedCurrencyIdRaw as unknown as ISupportedCurrency;
@@ -123,15 +172,18 @@ export class BatchBalanceService {
         supportedCurrencyId = (supportedCurrency as any)?._id;
         
         if (!supportedCurrencyId) {
+          skippedNoSupportedCurrencyId++;
           console.warn(`⚠️ Token ${userToken._id} has supportedCurrencyId object but no _id property:`, supportedCurrencyIdRaw);
           return;
         }
       } else {
+        skippedNoSupportedCurrencyId++;
         console.warn(`⚠️ Token ${userToken._id} has invalid supportedCurrencyId type:`, typeof supportedCurrencyIdRaw, supportedCurrencyIdRaw);
         return;
       }
 
       if (!supportedCurrency || !supportedCurrencyId) {
+        skippedNoSupportedCurrencyId++;
         console.warn(`⚠️ Token ${userToken._id} missing required supportedCurrency data. Skipping.`);
         return;
       }
@@ -141,11 +193,17 @@ export class BatchBalanceService {
       const walletAddress = addressesByChain.get(chainSymbol);
 
       if (!walletAddress) {
+        skippedNoWalletAddress++;
+        // Only log if we have a chainSymbol (to avoid noise from tokens on chains without addresses)
+        if (chainSymbol) {
+          console.log(`ℹ️ Token ${supportedCurrency.symbol || supportedCurrencyId} on ${chainSymbol} skipped: No wallet address for this chain`);
+        }
         return;
       }
 
       // Skip tokens without tokenAddress (native tokens like ETH, SOL, BTC)
       // Batch balance API is for ERC20/SPL tokens with contract addresses
+      // Native balances are fetched separately via the batch balance API's nativeBalances response
       if (!supportedCurrency.tokenAddress) {
         skippedNoTokenAddress++;
         return;
@@ -153,24 +211,41 @@ export class BatchBalanceService {
 
       const matchingAccount = supportedCurrencyToAccount.get(supportedCurrencyId);
 
-      // Skip if no matching account - we can't update an account that doesn't exist
-      if (!matchingAccount) {
-        console.warn(
-          `⚠️ No matching account found for token ${supportedCurrency.symbol || supportedCurrencyId} on chain ${chainSymbol}. Skipping.`
-        );
+      // Note: We don't require a matching account anymore!
+      // We update balances directly on userTokenList items by supportedCurrencyId
+      // The accountId is optional and only used for reference
+      if (matchingAccount) {
+        tokensWithAccount++;
       } else {
-        matchedAccounts++;
+        tokensWithoutAccount++;
+        // Log but don't skip - we can still fetch balance for tokens in userTokenList
+        const tokenSymbol = supportedCurrency.symbol || (supportedCurrency.currencyId as any)?.symbol || 'unknown';
+        console.log(
+          `ℹ️ Token ${tokenSymbol} (${supportedCurrencyId?.slice(-8)}) on chain ${chainSymbol} has no matching account, but will still fetch balance from userTokenList.`
+        );
       }
 
+      processedTokens++;
       tokens.push({
-        accountId: matchingAccount?._id || supportedCurrencyId,
+        accountId: matchingAccount?._id, // Optional - only if account exists
+        tokenId: userToken._id, // The userToken._id for reference
         supportedCurrencyId: supportedCurrencyId,
-        tokenAddress: supportedCurrency?.tokenAddress || '',
+        tokenAddress: supportedCurrency.tokenAddress,
         chainSymbol,
         chainId: (chainId as IChain)?._id || (chainId as string) || '',
         walletAddress,
       });
     });
+
+    console.log(`📊 Batch Balance Extraction Summary:`);
+    console.log(`  ✅ Processed tokens: ${processedTokens}`);
+    console.log(`  ⏭️  Skipped - No tokenAddress (native tokens): ${skippedNoTokenAddress}`);
+    console.log(`  ⏭️  Skipped - No wallet address: ${skippedNoWalletAddress}`);
+    console.log(`  ⏭️  Skipped - String supportedCurrencyId: ${skippedStringSupportedCurrencyId}`);
+    console.log(`  ⏭️  Skipped - No supportedCurrencyId: ${skippedNoSupportedCurrencyId}`);
+    console.log(`  ℹ️  Tokens without matching account (still processed): ${tokensWithoutAccount}`);
+    console.log(`  ✅ Tokens with matching account: ${tokensWithAccount}`);
+    console.log(`  📦 Total tokens for batch fetch: ${tokens.length}`);
 
     return tokens;
   }

@@ -189,18 +189,18 @@ export default function ZapperSiginBottomSheet({
   const transitionToNextScreen = (nextStep: ScreenStep) => {
     // Start from the right (positive translateX value) - off screen
     slideAnim.setValue(SCREEN_WIDTH || 400);
-    
+
     // Set the new step immediately so it renders
     setCurrentStep(nextStep);
 
     // Use requestAnimationFrame to ensure the new screen is rendered before animating
     requestAnimationFrame(() => {
       // Animate to center (0)
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
     });
   };
 

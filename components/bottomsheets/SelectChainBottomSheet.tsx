@@ -1,3 +1,4 @@
+import { useTabBarHeight } from "@/hooks/useTabBarHeight";
 import { useChains } from "@/src/core/chains/chains-context";
 import { Theme } from "@/theme";
 import BottomSheet, {
@@ -29,7 +30,7 @@ const SelectChainBottomSheet = forwardRef<
   const { walletChains, isLoading, getChainImage } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
-
+  const { tabBarHeight } = useTabBarHeight();
   // Filter chains based on search query
   const filteredChains = walletChains.filter(
     (chain) =>
@@ -60,13 +61,13 @@ const SelectChainBottomSheet = forwardRef<
     // Only open if shouldAutoOpen is true AND it changed from false to true
     // This prevents opening on initial mount when shouldAutoOpen is false
     if (shouldAutoOpen && !prevShouldAutoOpen.current) {
-      const timer = setTimeout(() => {
-        if (ref && typeof ref !== 'function' && ref.current) {
-          ref.current.snapToIndex(0);
-        }
+    const timer = setTimeout(() => {
+      if (ref && typeof ref !== 'function' && ref.current) {
+        ref.current.snapToIndex(0);
+      }
       }, 100);
       prevShouldAutoOpen.current = shouldAutoOpen;
-      return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
     }
     
     // Update the ref to track the current value (only if it actually changed)
@@ -132,7 +133,7 @@ const SelectChainBottomSheet = forwardRef<
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingVertical: 25,
-          paddingBottom: 150, // Increased padding for tab bar and safe area
+          paddingBottom: tabBarHeight + 20,
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={true}
@@ -292,6 +293,7 @@ const SelectChainBottomSheet = forwardRef<
                 borderRadius={20}
                 paddingHorizontal="m"
                 mt="m"
+                style={{marginBottom: tabBarHeight + 10}}
               >
                 {otherChains.map((chain, index) => {
                   const chainImage = getChainImage

@@ -221,7 +221,7 @@ export default function EmailVerification({
               });
             } else {
               setError("2FA is required but partial token is missing. Please try again.");
-              setIsVerifying(false);
+            setIsVerifying(false);
             }
             return;
           }

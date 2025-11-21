@@ -26,6 +26,7 @@ import {
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
+import httpClient from "../api/http-client";
 import storageService from "../storage/app-storage";
 import { StorageKeys } from "../storage/storage-types";
 import WalletCredentialsStorage from "../storage/wallet-credentials-storage";
@@ -617,7 +618,7 @@ class ZapSDKService {
       console.log(`🔄 Executing SDK call (no auth check): ${context}`);
       return await operation();
     } catch (error: any) {
-      console.log(`❌ SDK call failed: ${context}`, error.message);
+      console.log(`❌ SDK call failed: ${context}`, error?.message);
 
       // Handle the error with network error handler
       const networkError = NetworkErrorHandler.handleSDKError(error, context);
@@ -847,6 +848,17 @@ class ZapSDKService {
     return this.executeWithNetworkHandling(
       () => this.getSDK().bankAccounts.createBankAccount(params),
       "createBankAccount"
+    );
+  }
+
+  public async deleteBankAccount(bankAccountId: string) {
+    // Use HTTP client directly since SDK might not have delete method
+    return this.executeWithNetworkHandling(
+      async () => {
+        const response = await httpClient.delete(`/bank-accounts/${bankAccountId}`);
+        return response.data;
+      },
+      "deleteBankAccount"
     );
   }
 

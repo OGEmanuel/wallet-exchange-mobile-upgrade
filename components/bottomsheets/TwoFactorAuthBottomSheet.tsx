@@ -102,7 +102,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
     } finally {
       setIsLoading(false);
       // Reset the check flag immediately after completion to allow re-checking
-      hasCheckedRef.current = false;
+        hasCheckedRef.current = false;
     }
   }, []); // No dependencies needed since we're using SDK directly
 
@@ -114,15 +114,15 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       // Only check if user ID has changed or hasn't been checked yet
       if (userIdRef.current !== currentUserId) {
         console.log("🔄 User ID changed, checking 2FA status...");
-        userIdRef.current = currentUserId;
+      userIdRef.current = currentUserId;
         // Reset the check flag when user changes
         hasCheckedRef.current = false;
-        check2FAStatus();
+      check2FAStatus();
       } else if (!hasCheckedRef.current) {
         // User ID exists but hasn't been checked yet
         console.log("🔄 Initial 2FA status check...");
-        check2FAStatus();
-      }
+      check2FAStatus();
+    }
     } else {
       // No user ID, reset state
       setIs2FAEnabled(false);
@@ -653,7 +653,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         // Add a small delay to ensure SDK has picked up the token if it was just set
         if (index >= 0) {
           setTimeout(() => {
-            check2FAStatus();
+          check2FAStatus();
           }, 500);
         }
       }}

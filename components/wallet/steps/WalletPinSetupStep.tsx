@@ -131,7 +131,7 @@ export const WalletPinSetupStep: React.FC<WalletPinSetupStepProps> = ({
         if (newPin.length === 4) {
           // Use setTimeout to ensure state update is processed before validation
           setTimeout(() => {
-            handleContinue(newPin);
+          handleContinue(newPin);
           }, 100);
           return;
         }

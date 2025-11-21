@@ -2571,7 +2571,7 @@
 
 "@zap/blockchain-sdk@git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git":
   version "1.0.1"
-  resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#5668ddafd47e6721bf01aae1f4d7b3353a6ca5c5"
+  resolved "git+https://x-token-auth:ATCTT3xFfGN0m8PCUvYzPZLslIoqq2g_hwoxPDUJAYjAP5tj1mNK9EoV9vHT5IaDAcAYO3EjhNVuaNUlzwScyknukGsP6ZjRTzC9fCvoz3yWCDydq86ckNC127g-eGne0GXJY8ufemL5vzIoYb5-G2soXNJYGg8q6U70wvsjgi2iz0AgTxgbnDA%3D21025D81@bitbucket.org/zapspace/zap-blockchain-sdk.git#31b76efc1d7a6fa2433266b235de2e0f6277faff"
   dependencies:
     "@noble/ed25519" "^2.0.0"
     "@noble/hashes" "^1.3.0"

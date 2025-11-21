@@ -730,7 +730,7 @@ const Swap = () => {
                         numberOfLines={1}
                         flex={1}
                       >
-                        {bankAccountSelected?.name.trim() || "Select Account"}
+                        {bankAccountSelected?.holderName.trim() || bankAccountSelected?.name.trim() || "Select Account"}
                       </CustomText>
                     </Box>
                     <ArrowDown2

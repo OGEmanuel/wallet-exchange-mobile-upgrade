@@ -1,7 +1,7 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { UserBankAccount } from "@zap/blockchain-sdk";
-import { CheckCircle2 } from "lucide-react-native";
+import { CheckCircle2, MoreVertical } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { CustomText } from "../general";
 import BankIcon from "../general/BankIcon";
@@ -9,14 +9,20 @@ import Box from "../general/Box";
 
 interface BankAccountCardProps {
   bankAccount: UserBankAccount;
+  bankName?: string | null;
   selected: boolean;
   onPress?: () => void;
+  onDelete?: () => void;
+  showDeleteButton?: boolean;
 }
 
 const BankAccountCard = ({
   bankAccount,
+  bankName,
   selected,
   onPress = () => {},
+  onDelete,
+  showDeleteButton = false,
 }: BankAccountCardProps) => {
   const theme = useTheme<Theme>();
   return (
@@ -48,17 +54,32 @@ const BankAccountCard = ({
             fontSize={14}
             mb="s"
           >
-            {bankAccount.name}
+            {bankAccount.holderName || bankAccount.name}
           </CustomText>
-          <CustomText variant="body" color="placeholderTextColor" fontSize={13}>
+          <CustomText variant="body" color="placeholderTextColor" fontSize={13} marginBottom="s">
             {bankAccount.number}
           </CustomText>
+          {bankName && (
+            <CustomText variant="body" color="disabledTextColor" fontSize={12}>
+              {bankName}
+            </CustomText>
+          )}
         </Box>
-        {selected && (
+        {showDeleteButton && onDelete ? (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={{ padding: 8 }}
+          >
+            <MoreVertical size={20} color={theme.colors.bodyTextColor} />
+          </Pressable>
+        ) : selected ? (
           <Box alignItems="center" justifyContent="center">
             <CheckCircle2 size={25} color={theme.colors.secondaryColor} />
           </Box>
-        )}
+        ) : null}
       </Box>
     </Pressable>
   );

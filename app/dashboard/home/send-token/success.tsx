@@ -6,6 +6,8 @@ import {
   CustomText,
   PageWrapper,
 } from "@/components/general";
+import { useAddressBookSDK } from "@/hooks/useAddressBookSDK";
+import { useChains } from "@/src/core/chains/chains-context";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
@@ -14,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Copy } from "iconsax-react-nativejs";
 import React, { useState } from "react";
-import { Dimensions, Linking, Pressable } from "react-native";
+import { Alert, Dimensions, Linking, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
@@ -31,11 +33,30 @@ export default function TransactionSuccessScreen() {
     txHash,
     amount,
     tokenSymbol,
-    recipientAddress,
+    recipientAddress: recipientAddressParam,
     networkFee,
-    networkName = "Ethereum",
+    networkName: networkNameParam = "Ethereum",
     fiatValue,
+    chainId: chainIdParam,
+    chainSymbol: chainSymbolParam,
   } = params;
+
+  // Normalize params (handle string | string[])
+  const recipientAddress = Array.isArray(recipientAddressParam) 
+    ? recipientAddressParam[0] 
+    : (recipientAddressParam as string) || "";
+  const networkName = Array.isArray(networkNameParam)
+    ? networkNameParam[0]
+    : (networkNameParam as string) || "Ethereum";
+  const chainId = Array.isArray(chainIdParam)
+    ? chainIdParam[0]
+    : (chainIdParam as string) || "";
+  const chainSymbol = Array.isArray(chainSymbolParam)
+    ? chainSymbolParam[0]
+    : (chainSymbolParam as string) || "";
+
+  const { createAddressBook } = useAddressBookSDK();
+  const { getChainById, getChainBySymbol } = useChains();
 
   const handleCopyTxHash = async () => {
     try {
@@ -57,18 +78,54 @@ export default function TransactionSuccessScreen() {
   };
 
   const handleSaveAddress = async (addressName: string) => {
+    if (!recipientAddress) {
+      Alert.alert("Error", "Recipient address is missing");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // TODO: Implement save address functionality
-      // This would typically save to local storage or send to backend
-      console.log("Saving address:", {
-        name: addressName,
-        address: recipientAddress,
+      // Get chain information - try chainId first, then chainSymbol, then networkName
+      let selectedChain = null;
+      
+      if (chainId) {
+        selectedChain = getChainById(chainId as string);
+      } else if (chainSymbol) {
+        selectedChain = getChainBySymbol(chainSymbol as string);
+      } else if (networkName) {
+        // Try to find chain by name (case-insensitive)
+        selectedChain = getChainBySymbol(networkName);
+      }
+
+      if (!selectedChain || !selectedChain._id) {
+        Alert.alert(
+          "Error",
+          "Could not determine chain information. Please save the address from the address book instead."
+        );
+        return;
+      }
+
+      // Save address using the address book SDK
+      await createAddressBook("wallet", {
+        name: addressName.trim(),
+        address: recipientAddress.trim(),
+        chainId: selectedChain._id,
       });
+
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      // You could show a success toast here
-    } catch (error) {
+      
+      Alert.alert("Success", "Address saved successfully", [
+        {
+          text: "OK",
+          onPress: () => setShowSaveModal(false),
+        },
+      ]);
+    } catch (error: any) {
       console.error("Failed to save address:", error);
+      Alert.alert(
+        "Error",
+        error?.message || "Failed to save address. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -76,10 +133,6 @@ export default function TransactionSuccessScreen() {
 
   const handleGoToHistory = () => {
     router.push("/dashboard/home/wallet-home/activity");
-  };
-
-  const handleClose = () => {
-    router.back();
   };
 
   return (
@@ -280,7 +333,7 @@ export default function TransactionSuccessScreen() {
         visible={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onSave={handleSaveAddress}
-        recipientAddress={recipientAddress as string}
+        recipientAddress={recipientAddress}
         isLoading={isSaving}
       />
     </PageWrapper>

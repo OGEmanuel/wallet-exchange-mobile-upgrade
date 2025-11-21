@@ -8,6 +8,7 @@ import {
   PageWrapper,
 } from "@/components/general";
 import KYCFlowManager from "@/components/kyc/KYCFlowManager";
+import DeleteBankAccountModal from "@/components/Modals/DeleteBankAccountModal";
 import BankAccountCard from "@/components/swap/BankAccountCard";
 import { useAppBottomSheet } from "@/hooks/useAppBottomSheet";
 import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
@@ -21,7 +22,7 @@ import { ISupportedCurrency, UserBankAccount } from "@zap/blockchain-sdk";
 import { router } from "expo-router";
 import { Search } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshControl, ScrollView, TextInput, TouchableOpacity } from "react-native";
+import { Alert, RefreshControl, ScrollView, TextInput } from "react-native";
 
 const BankAccountsScreen = () => {
   const theme = useTheme<Theme>();
@@ -29,6 +30,8 @@ const BankAccountsScreen = () => {
   const [selectedAccount, setSelectedAccount] = useState<UserBankAccount | null>(null);
   const [showAddAccountBottomSheet, setShowAddAccountBottomSheet] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<UserBankAccount | null>(null);
   
   const bankAccountsBottomSheetRef = useRef<BottomSheet>(null);
   const { supportedCurrenciesForSwap } = useSupportedCurrencies();
@@ -41,6 +44,8 @@ const BankAccountsScreen = () => {
     isLoadingBankAccounts,
     errorBankAccounts,
     fetchBankAccounts,
+    deleteBankAccount,
+    getBankById,
   } = useBankAccounts();
 
   // Fetch bank accounts on mount
@@ -126,7 +131,34 @@ const BankAccountsScreen = () => {
 
   const handleAccountSelect = (account: UserBankAccount) => {
     setSelectedAccount(account);
-    // You can add edit/delete functionality here if needed
+  };
+
+  const handleDelete = (account: UserBankAccount) => {
+    setAccountToDelete(account);
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!accountToDelete) return;
+
+    try {
+      await deleteBankAccount(accountToDelete._id || "");
+      setDeleteModalVisible(false);
+      setAccountToDelete(null);
+      // Clear selection if deleted account was selected
+      if (selectedAccount?._id === accountToDelete._id) {
+        setSelectedAccount(null);
+      }
+    } catch {
+      Alert.alert("Error", "Failed to delete bank account");
+      setDeleteModalVisible(false);
+      setAccountToDelete(null);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    setDeleteModalVisible(false);
+    setAccountToDelete(null);
   };
 
   const handleAccountAdded = () => {
@@ -164,19 +196,26 @@ const BankAccountsScreen = () => {
     <Box flex={1} width="100%">
       {renderSearchBar()}
       <Box>
-        {filteredBankAccounts.map((account) => (
-          <TouchableOpacity
-            key={account._id}
-            onPress={() => handleAccountSelect(account)}
-            activeOpacity={0.7}
-          >
+        {filteredBankAccounts.map((account) => {
+          // Get bank details for this account
+          const bankId = typeof account.bankId === 'string' 
+            ? account.bankId 
+            : (account.bankId as any)?._id;
+          const bank = bankId ? getBankById(bankId) : null;
+          const bankName = bank?.name || (account.bankId as any)?.name || null;
+          
+          return (
             <BankAccountCard
+              key={account._id}
               bankAccount={account}
+              bankName={bankName}
               selected={selectedAccount?._id === account._id}
               onPress={() => handleAccountSelect(account)}
+              onDelete={() => handleDelete(account)}
+              showDeleteButton={true}
             />
-          </TouchableOpacity>
-        ))}
+          );
+        })}
       </Box>
     </Box>
   );
@@ -291,6 +330,14 @@ const BankAccountsScreen = () => {
             bankAccountsBottomSheetRef.current?.close();
           }}
         />
+
+      <DeleteBankAccountModal
+        visible={deleteModalVisible}
+        accountName={accountToDelete?.holderName || accountToDelete?.name || ""}
+        accountNumber={accountToDelete?.number || ""}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+      />
     </PageWrapper>
   );
 };

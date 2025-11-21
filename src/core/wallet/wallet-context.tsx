@@ -2575,15 +2575,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       });
 
       // Ensure chains are loaded before processing portfolio
-      // Chains are needed for chain symbol lookups and chain metadata
-      // Only check once at the start - don't reload if they're already loading
+      // Chains are needed for chain symbol lookups, chain metadata, and address collection
       if (!walletChains.length || chainsMap.size === 0) {
         console.log("⚠️ Chains not loaded, fetching chains before portfolio refresh...");
-        // Call loadChainsNow but don't wait - it will update chainsMap asynchronously
-        // The portfolio processing will happen on the next render when chains are available
-        loadChainsNow();
-        // If chains are critical, we could wait, but for now just proceed
-        // The batch balance service will handle missing chains gracefully
+        // Wait for chains to load - they're needed for address collection
+        await loadChainsNow();
+        // Refresh walletChains from the hook after loading
+        // Note: This might not update walletChains immediately, so we'll check again below
+        console.log("✅ Chains loading initiated, proceeding with portfolio refresh...");
       }
 
       // IMPORTANT: Capture the current wallet ID at the start of the function
@@ -2757,22 +2756,28 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
         // STEP 2: Get wallet addresses for all chains
         const addressesByChain = new Map<string, string>();
+        console.log(`🔍 Address collection: walletChains=${walletChains?.length || 0}, walletIdToRefresh=${walletIdToRefresh}`);
+        
         if (walletChains && walletChains.length > 0) {
           console.log(
             `📍 Getting addresses for wallet: ${walletIdToRefresh} (captured wallet ID)`
           );
+          console.log(`📍 Wallet chains to process: ${walletChains.map(c => c.symbol).join(', ')}`);
+          
           for (const chain of walletChains) {
             try {
+              console.log(`  🔄 Fetching address for ${chain.symbol}...`);
               // Pass explicit walletIdToRefresh to getAddress to avoid stale state
               const address = await getAddress(chain.symbol, walletIdToRefresh);
               if (address) {
                 addressesByChain.set(chain.symbol, address);
+                console.log(`  ✅ Address found for ${chain.symbol}: ${address.slice(0, 8)}...${address.slice(-6)}`);
               } else {
                 console.warn(`  ⚠️ No address found for ${chain.symbol}`);
               }
             } catch (error) {
-              console.warn(
-                `Failed to get address for chain ${chain.symbol}:`,
+              console.error(
+                `❌ Failed to get address for chain ${chain.symbol}:`,
                 error
               );
             }
@@ -2780,6 +2785,11 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           console.log(
             `📍 Collected ${addressesByChain.size} addresses for wallet ${walletIdToRefresh}`
           );
+          if (addressesByChain.size > 0) {
+            console.log(`📍 Addresses collected: ${Array.from(addressesByChain.keys()).join(', ')}`);
+          }
+        } else {
+          console.warn(`⚠️ No wallet chains available for address collection. walletChains:`, walletChains);
         }
 
         // STEP 4: Extract tokens from portfolio and fetch batch balances

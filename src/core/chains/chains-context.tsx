@@ -24,7 +24,7 @@ interface ChainsContextType {
 
   // Actions
   refreshChains: () => Promise<void>;
-  loadChainsNow: () => void;
+  loadChainsNow: () => Promise<void>;
   getChainBySymbol: (symbol: string) => IChain | undefined;
   getChainById: (id: string) => IChain | undefined;
   getEVMChains: () => IChain[];
@@ -117,6 +117,9 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
     if (chain?.isEVM && nativeCurrency?.symbol !== chain?.symbol) {
       if (chain?.symbol?.toUpperCase() === "BASE") {
         return "https://res.cloudinary.com/dbkwvangu/image/upload/v1762418105/currencies/logos/base.svg";
+      }
+      if (chain?.symbol?.toUpperCase() === "BLAST") {
+        return "https://res.cloudinary.com/dbkwvangu/image/upload/v1763644818/65a6cee39aadb0fa7418aa77_Blast_Logo_Icon_Yellow_fm95n7.svg";
       }
       const currency = getSupportedCurrencyBySymbol(chain?.symbol);
 
@@ -212,9 +215,15 @@ export const ChainsProvider: React.FC<ChainsProviderProps> = ({ children }) => {
   };
 
   // Function to load chains immediately (for when user is authenticated)
-  const loadChainsNow = () => {
+  const loadChainsNow = async (): Promise<void> => {
     console.log("🚀 [CHAINS] loadChainsNow called");
-    refreshChains();
+    // If chains are already loaded, return immediately
+    if (walletChains.length > 0 && chainsMap.size > 0) {
+      console.log("⏭️ [CHAINS] Chains already loaded, skipping refresh");
+      return;
+    }
+    // Otherwise, wait for chains to load
+    await refreshChains();
   };
 
   const getChainBySymbol = (symbol: string): IChain | undefined => {

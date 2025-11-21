@@ -75,7 +75,7 @@ export default function IdentityVerification({
       // Only fetch if the country ID has actually changed
       if (lastCountryIdRef.current !== selectedCountry._id) {
         lastCountryIdRef.current = selectedCountry._id;
-        triggerFetchDocumentTypes();
+      triggerFetchDocumentTypes();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

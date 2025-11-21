@@ -674,6 +674,8 @@ const SendToken = () => {
             recipientAddress: recipientAddress,
             networkFee: networkFee?.fee || "0",
             networkName: selectedToken?.chainName || "Ethereum",
+            chainId: selectedToken?.chainId || "",
+            chainSymbol: selectedToken?.chainSymbol || "",
           },
         });
         return;
