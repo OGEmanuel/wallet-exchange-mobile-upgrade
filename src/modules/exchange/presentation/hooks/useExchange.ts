@@ -44,9 +44,6 @@ const useExchange = () => {
       },
     });
 
-    console.log("page 22222", page);
-    console.log("response 22222", response);
-
     // Update Redux store
     if (page === 1) {
       dispatch(exchangeActions.setExchangeActivities(response));
