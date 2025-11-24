@@ -6,7 +6,7 @@ import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilitie
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSelector } from "react-redux";
@@ -95,8 +95,14 @@ export default function IDVerification({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Use a ref to track the last country ID to prevent infinite loops
+  const lastCountryIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (selectedCountry) {
+    if (selectedCountry?._id) {
+      // Only fetch if the country ID has actually changed
+      if (lastCountryIdRef.current !== selectedCountry._id) {
+        lastCountryIdRef.current = selectedCountry._id;
       fetchDocumentTypes({
         body: selectedCountry || null,
         params: {},
@@ -106,9 +112,10 @@ export default function IDVerification({
           setDocumentTypes(response.data || null);
         }
       });
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCountry]);
+  }, [selectedCountry?._id]);
 
   const handleContinue = () => {
     if (isFormValid) {

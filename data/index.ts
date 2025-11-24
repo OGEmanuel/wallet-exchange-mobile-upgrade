@@ -1,4 +1,5 @@
 import { Currency } from "@/interfaces/account.interface";
+import { Dimensions } from "react-native";
 
 
 export const SIZES = {
@@ -22,8 +23,8 @@ export const SIZES = {
   body5: 12,
 
   // App dimensions
-  width: 0,
-  height: 0,
+  width: Dimensions.get("window").width,
+  height: Dimensions.get("window").height,
 };
 
 

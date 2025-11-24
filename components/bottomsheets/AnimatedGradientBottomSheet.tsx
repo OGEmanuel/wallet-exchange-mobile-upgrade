@@ -1,14 +1,11 @@
-import { Theme } from "@/theme";
-import { useTheme } from "@shopify/restyle";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
-import {
-  Dimensions,
-  StatusBar,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
+import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolate,
@@ -60,7 +57,6 @@ const AnimatedGradientBottomSheet = forwardRef<
     },
     ref
   ) => {
-    const theme = useTheme<Theme>();
     const translateY = useSharedValue(SCREEN_HEIGHT);
     const context = useSharedValue({ y: 0 });
     const isOpen = useSharedValue(false);
@@ -108,9 +104,11 @@ const AnimatedGradientBottomSheet = forwardRef<
         } else {
           const targetY = SCREEN_HEIGHT - snapPointsArray[index];
           translateY.value = withTiming(targetY, { duration: 300 });
+          backdropOpacity.value = withTiming(1, { duration: 300 });
+          isOpen.value = true;
         }
       },
-      [snapPointsArray, close]
+      [snapPointsArray, close, translateY, backdropOpacity, isOpen]
     );
 
     useImperativeHandle(ref, () => ({
@@ -153,14 +151,22 @@ const AnimatedGradientBottomSheet = forwardRef<
       });
 
     const animatedSheetStyle = useAnimatedStyle(() => {
+      const isVisible = translateY.value < SCREEN_HEIGHT - 10; // 10px threshold for closed
       return {
         transform: [{ translateY: translateY.value }],
+        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+        // Move completely off-screen when closed to prevent any interference
+        top: isVisible ? 0 : SCREEN_HEIGHT * 2,
       };
     });
 
     const animatedBackdropStyle = useAnimatedStyle(() => {
+      const isVisible = translateY.value < SCREEN_HEIGHT - 10; // 10px threshold for closed
       return {
         opacity: backdropOpacity.value,
+        pointerEvents: isVisible ? ("auto" as const) : ("none" as const),
+        // Move completely off-screen when closed to prevent any interference
+        top: isVisible ? 0 : SCREEN_HEIGHT * 2,
       };
     });
 
@@ -185,10 +191,9 @@ const AnimatedGradientBottomSheet = forwardRef<
 
     return (
       <>
-        <StatusBar barStyle="light-content" />
         <Animated.View
           style={[styles.backdrop, animatedBackdropStyle]}
-          pointerEvents={isInteractive ? "auto" : "none"}
+          collapsable={false}
         >
           <TouchableOpacity
             style={styles.backdropTouchable}
@@ -254,6 +259,8 @@ const AnimatedGradientBottomSheet = forwardRef<
   }
 );
 
+AnimatedGradientBottomSheet.displayName = "AnimatedGradientBottomSheet";
+
 const styles = StyleSheet.create({
   backdrop: {
     position: "absolute",
@@ -262,6 +269,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 999,
   },
   backdropTouchable: {
     flex: 1,
@@ -272,6 +280,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 1000,
   },
   gradientContainer: {
     borderTopLeftRadius: 24,

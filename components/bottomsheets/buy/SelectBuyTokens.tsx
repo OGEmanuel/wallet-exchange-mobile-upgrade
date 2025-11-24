@@ -9,7 +9,7 @@ import {
   selectBuyCreatedOrder,
   selectBuyStage,
   selectBuyToken,
-  setBuyStage
+  setBuyStage,
 } from "@/src/modules/buy/presentation/state/buy-slice";
 import OrderDetailsSheet, {
   OrderDetailsSheetRef,
@@ -18,11 +18,19 @@ import SwapProgressSheet from "@/src/modules/swap/presentation/components/SwapPr
 import { useOrderStatusUpdates } from "@/src/modules/swap/presentation/hooks/useOrderStatusUpdates";
 import { Theme } from "@/theme";
 import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import { usePathname } from "expo-router";
-import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Platform } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import SelectChainBottomSheet from "../SelectChainBottomSheet";
 import AmountStep from "./steps/AmountStep";
 import ChainsStep from "./steps/ChainsStep";
 import ConfirmedStep from "./steps/ConfirmedStep";
@@ -40,9 +48,14 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
   const dispatch = useDispatch();
   const { supportedCurrenciesForSwap } = useSupportedCurrencies();
   const zapLinkBottomSheetRef = useRef<BottomSheet>(null);
+  const chainBottomSheetRef = useRef<BottomSheetMethods | null>(null);
+  const chainSelectCallbackRef = useRef<((chainSymbol: string) => void) | null>(
+    null
+  );
   const { isUserLoggedIn, exchangeUserData } = useExchangeAuth();
   const { logoutFromExchange } = useWallet();
-  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] = useState(false);
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] =
+    useState(false);
   const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
   const orderDetailsSheetRef = useRef<OrderDetailsSheetRef>(null);
   const progressSheetRef = useRef<OrderDetailsSheetRef>(null);
@@ -129,22 +142,27 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
   // Auto-open order details when order is created and close main bottom sheet
   React.useEffect(() => {
     if (createdOrder) {
-      console.log("📦 Buy order created, opening order details sheet:", createdOrder._id);
-      
+      console.log(
+        "📦 Buy order created, opening order details sheet:",
+        createdOrder._id
+      );
+
       // Close the main bottom sheet first
-      if (ref && typeof ref !== 'function' && ref.current) {
+      if (ref && typeof ref !== "function" && ref.current) {
         ref.current.close();
       }
-      
+
       // Wait a bit longer to ensure main sheet and its backdrop are fully closed
       // before the order details sheet tries to open
       const timer = setTimeout(() => {
         if (orderDetailsSheetRef.current) {
-          console.log("✅ Manually opening order details sheet after main sheet closed");
+          console.log(
+            "✅ Manually opening order details sheet after main sheet closed"
+          );
           orderDetailsSheetRef.current.open();
         }
       }, 800); // Increased delay to ensure main sheet backdrop is gone
-      
+
       return () => clearTimeout(timer);
     }
   }, [createdOrder, ref]);
@@ -152,7 +170,13 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
   const renderComponent = React.useCallback(() => {
     switch (stage) {
       case "crypto_select":
-        return <SelectTokenStep />;
+        return (
+          <SelectTokenStep
+            chainBottomSheetRef={chainBottomSheetRef}
+            onChainSelectCallbackRef={chainSelectCallbackRef}
+            shouldAutoOpenChainSelector={false}
+          />
+        );
       case "currency_select":
         return <SelectCurrencyStep />;
       case "buy":
@@ -172,13 +196,13 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
 
   return (
     <>
-    <BottomSheet
-      ref={ref}
-      index={-1}
+      <BottomSheet
+        ref={ref}
+        index={-1}
         enableOverDrag={false}
         enableDynamicSizing={false}
-        snapPoints={["85%", "90%"]}
-      enablePanDownToClose
+        snapPoints={["85%", "85%"]}
+        enablePanDownToClose
         bottomInset={bottomInset}
         handleIndicatorStyle={{
           backgroundColor: theme.colors.secondaryBackgroundColor,
@@ -204,8 +228,8 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
         }}
       >
         {renderComponent()}
-    </BottomSheet>
-      
+      </BottomSheet>
+
       {isZapperBottomSheetVisible && (
         <ZapperSiginBottomSheet
           key="zapper-bottom-sheet"
@@ -249,8 +273,25 @@ const SelectBuyTokens = forwardRef<BottomSheet, {}>((props, ref) => {
         progress={progress}
         currentStep={getCurrentStep()}
       />
+
+      {/* Chain Selection Bottom Sheet - Rendered at same level as buy bottom sheet */}
+      {stage === "crypto_select" && (
+        <SelectChainBottomSheet
+          ref={chainBottomSheetRef}
+          onChainSelect={(chainSymbol: string) => {
+            // Call the callback from SelectTokenStep/TokenSelector
+            chainSelectCallbackRef.current?.(chainSymbol);
+            chainBottomSheetRef.current?.close();
+          }}
+          onClose={() => {
+            chainBottomSheetRef.current?.close();
+          }}
+          shouldAutoOpen={false}
+        />
+      )}
     </>
   );
 });
 
 export default SelectBuyTokens;
+SelectBuyTokens.displayName = "SelectBuyTokens";

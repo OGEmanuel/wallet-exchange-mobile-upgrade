@@ -9,7 +9,7 @@ import {
   SupportedCurrency,
   UserBankAccount
 } from "@zap/blockchain-sdk";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const useBankAccounts = () => {
   const [bankAccounts, setBankAccounts] = useState<UserBankAccount[]>([]);
@@ -32,8 +32,9 @@ export const useBankAccounts = () => {
   >(null);
 
   const { currentExchangeUser } = useWallet();
+  const isFetchingRef = useRef(false);
 
-  const fetchBanks = async () => {
+  const fetchBanks = useCallback(async () => {
     setIsLoadingBanks(true);
     try {
       const banks = await zapSDKService.getBanks();
@@ -43,37 +44,127 @@ export const useBankAccounts = () => {
     } finally {
       setIsLoadingBanks(false);
     }
+  }, []);
+
+  // Helper function to deduplicate bank accounts based on bankId and account number
+  const deduplicateBankAccounts = (accounts: UserBankAccount[]): UserBankAccount[] => {
+    const seen = new Map<string, UserBankAccount>();
+    
+    for (const account of accounts) {
+      // Extract bank ID - handle both string and object formats
+      const bankId = typeof account.bankId === 'string' 
+        ? account.bankId 
+        : (account.bankId as any)?._id || (account.bankId as any)?.id;
+      
+      // Create a unique key from bankId and account number
+      const key = `${bankId || 'unknown'}-${account.number || 'unknown'}`;
+      
+      // Only keep the first occurrence (or the one with the most recent _id if we want to keep the latest)
+      if (!seen.has(key)) {
+        seen.set(key, account);
+      } else {
+        // If duplicate found, keep the one with the most recent _id (assuming newer accounts have later IDs)
+        const existing = seen.get(key);
+        if (existing && account._id && existing._id) {
+          // Compare _id strings - keep the one that appears later (newer)
+          if (account._id > existing._id) {
+            seen.set(key, account);
+          }
+        }
+      }
+    }
+    
+    return Array.from(seen.values());
   };
 
-  const fetchBankAccounts = async () => {
+  const fetchBankAccounts = useCallback(async () => {
+    // Prevent multiple simultaneous calls
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    isFetchingRef.current = true;
     setIsLoadingBankAccounts(true);
+    setErrorBankAccounts(null); // Clear previous errors
     try {
       const bankAccounts = await zapSDKService.getBankAccounts(
         currentExchangeUser || ""
       );
-      setBankAccounts(bankAccounts);
+      
+      // Deduplicate bank accounts before setting state
+      const uniqueBankAccounts = deduplicateBankAccounts(bankAccounts);
+      
+      // Log if duplicates were found (only log once to avoid spam)
+      if (bankAccounts.length !== uniqueBankAccounts.length) {
+        console.log(
+          `🔄 Removed ${bankAccounts.length - uniqueBankAccounts.length} duplicate bank account(s)`
+        );
+      }
+      
+      // Only update state if the accounts actually changed
+      setBankAccounts((prevAccounts) => {
+        // Compare arrays to avoid unnecessary updates
+        if (prevAccounts.length !== uniqueBankAccounts.length) {
+          return uniqueBankAccounts;
+        }
+        
+        // Check if any account IDs changed
+        const prevIds = new Set(prevAccounts.map(a => a._id));
+        const newIds = new Set(uniqueBankAccounts.map(a => a._id));
+        
+        if (prevIds.size !== newIds.size) {
+          return uniqueBankAccounts;
+        }
+        
+        // Check if all IDs are the same
+        const idsChanged = Array.from(prevIds).some(id => !newIds.has(id));
+        if (idsChanged) {
+          return uniqueBankAccounts;
+        }
+        
+        // No changes, return previous to avoid re-render
+        return prevAccounts;
+      });
+      
+      setErrorBankAccounts(null); // Ensure error is cleared on success
     } catch (error: any) {
       setErrorBankAccounts(error?.message);
     } finally {
       setIsLoadingBankAccounts(false);
+      isFetchingRef.current = false;
     }
+  }, [currentExchangeUser]);
+
+  const getBankById = (bankId: string) => {
+    return banks.find((bank) => bank._id === bankId);
   };
 
   const resolveBankAccount = async (bankId: string, accountNumber: string) => {
     setIsResolvingAccount(true);
+    setErrorResolvingAccount(null); // Clear previous errors
     try {
       const resolvedAccount = await zapSDKService.resolveBankAccount(
         bankId,
         accountNumber
       );
-      console.log(resolvedAccount);
+      console.log("Resolved account response:", resolvedAccount);
 
-      const name = (resolvedAccount?.data as any)?.data;
+      // Try multiple possible response structures
+      // Structure 1: resolvedAccount.data.data (nested data)
+      // Structure 2: resolvedAccount.data (direct data)
+      // Structure 3: resolvedAccount.data.data.data (triple nested)
+      const name = 
+        (resolvedAccount?.data as any)?.data?.data || // Triple nested
+        (resolvedAccount?.data as any)?.data || // Double nested
+        (resolvedAccount?.data as any) || // Direct
+        resolvedAccount?.data; // Fallback
 
-      if (name) {
+      console.log("Extracted account name:", name);
+
+      if (name && typeof name === 'string' && name.trim().length > 0) {
         const account = {
-          name,
-          holderName: name,
+          name: name.trim(),
+          holderName: name.trim(),
           number: accountNumber,
           bankId,
         };
@@ -83,12 +174,12 @@ export const useBankAccounts = () => {
       } else {
         setResolvedAccount(null);
         setErrorResolvingAccount("Failed to resolve account");
+        console.warn("Account name not found in response:", resolvedAccount);
       }
     } catch (error: any) {
       setResolvedAccount(null);
-      console.log(error);
-      setErrorResolvingAccount(error?.message);
-      console.log(error, "error");
+      console.error("Error resolving account:", error);
+      setErrorResolvingAccount(error?.message || "Failed to resolve account");
     } finally {
       setIsResolvingAccount(false);
     }
@@ -118,11 +209,9 @@ export const useBankAccounts = () => {
         number,
       });
 
-      // Add the new account to the list
-      setBankAccounts((prev) => [...prev, newBankAccount]);
       setResolvedAccount(null);
 
-      setBankAccounts((prev) => [...prev, newBankAccount]);
+      // Refresh the list to get the updated accounts (this will also deduplicate)
       fetchBankAccounts();
 
       return newBankAccount;
@@ -136,11 +225,24 @@ export const useBankAccounts = () => {
     }
   };
 
+  const deleteBankAccount = useCallback(async (bankAccountId: string) => {
+    try {
+      await zapSDKService.deleteBankAccount(bankAccountId);
+      // Remove from local state immediately for better UX
+      setBankAccounts((prev) => prev.filter((account) => account._id !== bankAccountId));
+      // Refresh to ensure consistency
+      fetchBankAccounts();
+    } catch (error: any) {
+      console.error("Failed to delete bank account:", error);
+      throw error;
+    }
+  }, [fetchBankAccounts]);
+
   useEffect(() => {
     if (currentExchangeUser) {
       fetchBankAccounts();
     }
-  }, [currentExchangeUser]);
+  }, [currentExchangeUser, fetchBankAccounts]);
 
   useEffect(() => {
     fetchBanks();
@@ -162,5 +264,7 @@ export const useBankAccounts = () => {
     createBankAccount,
     isCreatingBankAccount,
     errorCreatingBankAccount,
+    deleteBankAccount,
+    getBankById,
   };
 };

@@ -27,7 +27,7 @@ const QRCodeBottomSheet: React.FC<QRCodeBottomSheetProps> = ({
 }) => {
   const theme = useTheme<Theme>();
 
-  const snapPoints = useMemo(() => ["50%", "75%"], []);
+  const snapPoints = useMemo(() => ["70%", "82%"], []);
 
   const renderBackdrop = useCallback(
     (props: any) => (

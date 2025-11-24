@@ -1,3 +1,4 @@
+import { useTabBarHeight } from "@/hooks/useTabBarHeight";
 import { useChains } from "@/src/core/chains/chains-context";
 import { Theme } from "@/theme";
 import BottomSheet, {
@@ -18,17 +19,18 @@ import CustomText from "../general/CustomText";
 interface SelectChainBottomSheetProps {
   onChainSelect?: (chainSymbol: string) => void;
   onClose?: () => void;
+  shouldAutoOpen?: boolean; // Control whether to auto-open on mount
 }
 
 const SelectChainBottomSheet = forwardRef<
   BottomSheetMethods,
   SelectChainBottomSheetProps
->(({ onChainSelect, onClose }, ref) => {
+>(({ onChainSelect, onClose, shouldAutoOpen = false }, ref) => {
   const theme = useTheme<Theme>();
   const { walletChains, isLoading, getChainImage } = useChains();
   const [activeChain, setActiveChain] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState<string>("");
-
+  const { tabBarHeight } = useTabBarHeight();
   // Filter chains based on search query
   const filteredChains = walletChains.filter(
     (chain) =>
@@ -50,15 +52,29 @@ const SelectChainBottomSheet = forwardRef<
     onChainSelect?.(chainSymbol);
   };
 
-  // Open the sheet when component mounts (only when conditionally rendered)
+  // Track previous value to detect when shouldAutoOpen changes from false to true
+  // Initialize to false to prevent auto-open on initial mount
+  const prevShouldAutoOpen = React.useRef(false);
+  
+  // Open the sheet when shouldAutoOpen becomes true (not on initial mount if false)
   useEffect(() => {
+    // Only open if shouldAutoOpen is true AND it changed from false to true
+    // This prevents opening on initial mount when shouldAutoOpen is false
+    if (shouldAutoOpen && !prevShouldAutoOpen.current) {
     const timer = setTimeout(() => {
       if (ref && typeof ref !== 'function' && ref.current) {
         ref.current.snapToIndex(0);
       }
-    }, 200);
+      }, 100);
+      prevShouldAutoOpen.current = shouldAutoOpen;
     return () => clearTimeout(timer);
-  }, [ref]);
+    }
+    
+    // Update the ref to track the current value (only if it actually changed)
+    if (prevShouldAutoOpen.current !== shouldAutoOpen) {
+      prevShouldAutoOpen.current = shouldAutoOpen;
+    }
+  }, [shouldAutoOpen, ref]); // Only run when shouldAutoOpen changes
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -113,14 +129,15 @@ const SelectChainBottomSheet = forwardRef<
         style={{
           flex: 1,
           backgroundColor: theme.colors.mainBackgroundColor,
-          minHeight: 400, // Ensure consistent minimum height
         }}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingVertical: 25,
-          paddingBottom: 100, // Add bottom padding for tab bar
-          flexGrow: 1, // Allow content to grow but maintain minimum height
+          paddingBottom: tabBarHeight + 20,
+          flexGrow: 1,
         }}
+        showsVerticalScrollIndicator={true}
+        nestedScrollEnabled={true}
       >
         <CustomInputWithoutForm
           value={searchQuery}
@@ -276,6 +293,7 @@ const SelectChainBottomSheet = forwardRef<
                 borderRadius={20}
                 paddingHorizontal="m"
                 mt="m"
+                style={{marginBottom: tabBarHeight + 10}}
               >
                 {otherChains.map((chain, index) => {
                   const chainImage = getChainImage

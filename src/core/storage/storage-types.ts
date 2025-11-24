@@ -59,6 +59,7 @@ export const StorageKeys = {
   HAPTICS_ENABLED: "hapticsEnabled", // "true" | "false"
   ANIMATIONS_ENABLED: "animationsEnabled", // "true" | "false"
   SELECTED_CURRENCY: "selected_Currency", // Selected currency for display
+  SDK_ENVIRONMENT: "sdk_environment", // Current SDK environment/baseURL for change detection
   // Note: Exchange user data is not cached locally; SDK caches it internally
 } as const;
 

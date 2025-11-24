@@ -6,4 +6,5 @@ export interface ISidebarItem {
   trailingItem?: React.ReactNode;
   disablClick?: boolean;
   onPress?: () => void;
+  disabled?: boolean;
 }

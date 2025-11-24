@@ -1,6 +1,7 @@
 import Box from "@/components/general/Box";
 import CustomText from "@/components/general/CustomText";
 import ZapLoader from "@/components/general/ZapLoader";
+import { useTabBarHeight } from "@/hooks/useTabBarHeight";
 import { ProcessedAsset } from "@/interfaces/portfolio.interface";
 import { formatNumber } from "@/src/core/utils/format-utils";
 import { useWallet } from "@/src/core/wallet/wallet-context";
@@ -29,7 +30,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
   const { mainUserWalletGroup, getAddress } = useWallet();
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-
+  const { tabBarHeight } = useTabBarHeight();
   useEffect(() => {
     const getWalletAddress = async () => {
       try {
@@ -171,13 +172,12 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
       </Box>
 
       {/* QR Code Section */}
-      <Box flex={1} alignItems="center" justifyContent="center">
+      <Box flex={1} alignItems="center" gap="m" marginTop="m" style={{ marginBottom: tabBarHeight }}>
         <CustomText
           variant="body"
           fontSize={16}
           color="headerTextColor"
           textAlign="center"
-          marginVertical="m"
         >
           Scan QR code to receive {selectedToken.symbol}
         </CustomText>
@@ -186,7 +186,7 @@ const ReceiveQRCode: React.FC<ReceiveQRCodeProps> = ({
           padding="l"
           backgroundColor="white"
           borderRadius={16}
-          marginBottom="l"
+          marginBottom="s"
           shadowColor="black"
           shadowOffset={{ width: 0, height: 2 }}
           shadowOpacity={0.1}

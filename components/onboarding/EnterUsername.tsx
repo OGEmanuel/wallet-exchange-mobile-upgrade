@@ -68,7 +68,7 @@ export default function EnterUsername({
   };
 
   return (
-    <Box style={{ paddingTop: 100 }}>
+    <Box style={{ paddingTop: 30 }}>
       <Box alignSelf="center" mb="m" marginBottom="m">
         <CustomText
           variant="header"
@@ -76,7 +76,7 @@ export default function EnterUsername({
           style={{
             textAlign: "center",
             fontWeight: "600",
-            marginVertical: 24,
+            marginVertical: 15,
           }}
         >
           Welcome to Zap

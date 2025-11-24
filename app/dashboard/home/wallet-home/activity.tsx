@@ -6,8 +6,8 @@ import SentBottomSheet from "@/components/bottomsheets/SentBottomSheet";
 import ActivityEmptyState from "@/components/dashboard/ActivityEmptyState";
 import ActivityItemCard from "@/components/dashboard/ActivityItemCard";
 import ActivitySearchBar from "@/components/dashboard/ActivitySearchBar";
+import { AppBar } from "@/components/general";
 // import ActivityTabar from "@/components/dashboard/ActivityTabar";
-import AppBar from "@/components/general/AppBar";
 import Box from "@/components/general/Box";
 import LoaderWrapper from "@/components/general/LoaderWrapper";
 import PageWrapper from "@/components/general/PageWrapper";
@@ -42,12 +42,16 @@ const Activity = () => {
   const { exchangeActivities, hasMore } = useSelector(
     (state: AppRootState) => state.exchange
   );
-  const { isExchangeAuthenticated, showExchangeLogin, ExchangeLoginBottomSheet } = useExchangeAuth();
+  const {
+    isExchangeAuthenticated,
+    showExchangeLogin,
+    ExchangeLoginBottomSheet,
+  } = useExchangeAuth();
 
   // Filter activities based on search query
   const filteredActivities = exchangeActivities.filter((activity) => {
     if (!searchQuery.trim()) return true;
-    
+
     const query = searchQuery.toLowerCase();
     const searchableText = [
       activity.buyCurrency?.currencyId?.name,
@@ -56,8 +60,11 @@ const Activity = () => {
       activity.sellCurrency?.currencyId?.code,
       activity.status,
       activity._id,
-    ].filter(Boolean).join(" ").toLowerCase();
-    
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
     return searchableText.includes(query);
   });
 
@@ -67,7 +74,7 @@ const Activity = () => {
     filteredActivitiesCount: filteredActivities.length,
     hasMore,
     currentPage,
-    searchQuery: searchQuery.trim()
+    searchQuery: searchQuery.trim(),
   });
 
   const { fetchExchangeActivities, fetchingExchangeActivities } = useExchange();
@@ -159,16 +166,16 @@ const Activity = () => {
       currentPage,
       searchQuery,
       filteredCount: filteredActivities.length,
-      totalCount: exchangeActivities.length
+      totalCount: exchangeActivities.length,
     });
-    
+
     // Check authentication first
     if (!isExchangeAuthenticated || !user?._id) {
       console.log("⚠️ User not authenticated, prompting login");
       showExchangeLogin();
       return;
     }
-    
+
     // Don't load more if already loading
     if (isLoadingMore || fetchingExchangeActivities) {
       console.log("Load more blocked: already loading");
@@ -184,21 +191,23 @@ const Activity = () => {
     // If we have a search query, only load more if we have no filtered results
     // This allows loading more data to potentially find search matches
     if (searchQuery.trim() && filteredActivities.length > 0) {
-      console.log("Load more blocked: search has results, no need to load more");
+      console.log(
+        "Load more blocked: search has results, no need to load more"
+      );
       return;
     }
 
     console.log("Loading more data for page:", currentPage + 1);
     setIsLoadingMore(true);
     const nextPage = currentPage + 1;
-    
+
     try {
       const response = await fetchExchangeActivities({
         user,
         page: initial ? 1 : nextPage,
         limit: LIMIT,
       });
-      
+
       // Check if we got data back
       const activitiesData = response.data as any;
       const activities = activitiesData?.activities || activitiesData || [];
@@ -206,7 +215,7 @@ const Activity = () => {
       // Only increment currentPage if we got data
       if (activities && activities.length > 0) {
         setCurrentPage(nextPage);
-        
+
         // Update hasMore based on server response
         if (activitiesData?.pagination) {
           const hasMore = activitiesData.pagination.hasMore || false;
@@ -225,7 +234,21 @@ const Activity = () => {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length, isExchangeAuthenticated, showExchangeLogin]);
+  }, [
+    currentPage,
+    hasMore,
+    isLoadingMore,
+    fetchingExchangeActivities,
+    fetchExchangeActivities,
+    user,
+    LIMIT,
+    dispatch,
+    searchQuery,
+    filteredActivities.length,
+    exchangeActivities.length,
+    isExchangeAuthenticated,
+    showExchangeLogin,
+  ]);
 
   const handleEndReached = useCallback(() => {
     handleLoadMore();
@@ -257,8 +280,7 @@ const Activity = () => {
   );
 
   const keyExtractor = useCallback(
-    (item: ExchangeActivityModel, index: number) =>
-      `activity-${index}`,
+    (item: ExchangeActivityModel, index: number) => `activity-${index}`,
     []
   );
 
@@ -267,16 +289,17 @@ const Activity = () => {
       <Box flex={1} bg="mainBackgroundColor">
         <AppBar
           title="Activity"
-          variant="bodySubheader"
+          variant="subheader"
           paddingHorizontal={0}
           height={30}
-          fontSize={18}
+          leading={null}
+          trailing={null}
         />
         <Box height={20} />
         <Box paddingHorizontal="m">
           {/* <ActivityTabar activeTab={activeTab} onPress={setActiveTab} /> */}
-          <ActivitySearchBar 
-            onFilterPress={() => handleFilterClick()} 
+          <ActivitySearchBar
+            onFilterPress={() => handleFilterClick()}
             searchQuery={searchQuery}
             onSearchChange={handleSearchChange}
           />
@@ -289,7 +312,9 @@ const Activity = () => {
           onRetry={handleRefresh}
           isEmpty={!isLoading && filteredActivities.length === 0}
           emptyComponent={<ActivityEmptyState />}
-          existingData={filteredActivities.length > 0 ? filteredActivities : undefined}
+          existingData={
+            filteredActivities.length > 0 ? filteredActivities : undefined
+          }
         >
           <FlatList
             contentContainerStyle={{
@@ -325,7 +350,7 @@ const Activity = () => {
         {ExchangeLoginBottomSheet && <ExchangeLoginBottomSheet />}
         <SentBottomSheet ref={sentActivityRef} />
         <RecieveBottomSheet ref={recieveActivityRef} />
-        <ApprovedBottomSheet ref={approvedActivityRef} />
+        <ApprovedBottomSheet ref={approvedActivityRef as any} />
       </Box>
     </PageWrapper>
   );

@@ -62,8 +62,10 @@ const ApprovedBottomSheet = forwardRef<
     const getTransactionType = () => {
       if (!selectedActivity) return "Transaction";
 
-      const sellIsCrypto = selectedActivity.sellCurrency?.currencyId?.isCrypto ?? false;
-      const buyIsCrypto = selectedActivity.buyCurrency?.currencyId?.isCrypto ?? false;
+      const sellIsCrypto =
+        selectedActivity.sellCurrency?.currencyId?.isCrypto ?? false;
+      const buyIsCrypto =
+        selectedActivity.buyCurrency?.currencyId?.isCrypto ?? false;
 
       // If both are crypto OR both are fiat → Swap
       if (sellIsCrypto === buyIsCrypto) {
@@ -418,6 +420,99 @@ const ApprovedBottomSheet = forwardRef<
                       </Box>
                     </Box>
                   )}
+
+                  {/* Provider Transaction ID / Transaction Hash */}
+                  {(() => {
+                    // Check multiple possible locations for provider transaction ID
+                    const buyProviderTxId = (selectedActivity as any)
+                      ?.transactionIds?.[0];
+
+                    const sellProviderTxId =
+                      selectedActivity?.childOrder?.transactionIds?.[0];
+
+                    if (buyProviderTxId || sellProviderTxId) {
+                      const abbreviateAddress = (address: string) => {
+                        if (!address || address.length <= 12) return address;
+                        return `${address.slice(0, 8)}...${address.slice(-8)}`;
+                      };
+
+                      return (
+                        <>
+                          <Box
+                            flexDirection="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            paddingVertical="m"
+                            borderBottomWidth={1}
+                            borderBottomColor="modalBackgroundColor"
+                          >
+                            <CustomText
+                              color="placeholderTextColor"
+                              fontSize={14}
+                            >
+                              Buy Transaction Hash
+                            </CustomText>
+                            <Box flexDirection="row" alignItems="center">
+                              <CustomText
+                                color="headerTextColor"
+                                fontSize={14}
+                                marginRight="s"
+                              >
+                                {abbreviateAddress(buyProviderTxId)}
+                              </CustomText>
+                              <Pressable
+                                onPress={() =>
+                                  copyToClipboard(buyProviderTxId || "")
+                                }
+                                disabled={!buyProviderTxId}
+                              >
+                                <Copy
+                                  size={16}
+                                  color={theme.colors.placeholderTextColor}
+                                />
+                              </Pressable>
+                            </Box>
+                          </Box>
+                          <Box
+                            flexDirection="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            paddingVertical="m"
+                            borderBottomWidth={1}
+                            borderBottomColor="modalBackgroundColor"
+                          >
+                            <CustomText
+                              color="placeholderTextColor"
+                              fontSize={14}
+                            >
+                              Sell Transaction Hash
+                            </CustomText>
+                            <Box flexDirection="row" alignItems="center">
+                              <CustomText
+                                color="headerTextColor"
+                                fontSize={14}
+                                marginRight="s"
+                              >
+                                {abbreviateAddress(sellProviderTxId || "")}
+                              </CustomText>
+                              <Pressable
+                                onPress={() =>
+                                  copyToClipboard(sellProviderTxId || "")
+                                }
+                                disabled={!sellProviderTxId}
+                              >
+                                <Copy
+                                  size={16}
+                                  color={theme.colors.placeholderTextColor}
+                                />
+                              </Pressable>
+                            </Box>
+                          </Box>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Amount Swapped */}
                   {selectedActivity?.buyAmount &&

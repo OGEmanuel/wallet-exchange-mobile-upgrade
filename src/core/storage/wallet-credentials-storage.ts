@@ -311,6 +311,45 @@ class WalletCredentialsStorage {
       return [];
     }
   }
+
+  /**
+   * Reset wallet for new environment
+   * When environment changes, wallets created in the old environment don't exist in the new one
+   * This resets the creation status so they can be recreated
+   */
+  static async resetWalletForNewEnvironment(walletStorageId: string): Promise<void> {
+    try {
+      const allCredentials = await this.getAllCredentials();
+      const wallet = allCredentials[walletStorageId];
+      
+      if (wallet) {
+        // Reset creation status but keep credentials (seed phrase, private key, etc.)
+        const updates: Partial<WalletCredential> = {
+          isCreated: false,
+          areAccountsCreated: false,
+          retryCount: 0, // Reset retry count for fresh start
+          isFailed: false, // Clear any previous failure state
+        };
+        
+        // Clear old wallet group ID (doesn't exist in new environment)
+        // Only set to undefined if it exists (to avoid TypeScript issues)
+        if (wallet.userWalletGroupId) {
+          updates.userWalletGroupId = undefined as any;
+        }
+        if (wallet.failureReason) {
+          updates.failureReason = undefined as any;
+        }
+        
+        await this.updateWalletCredentials(walletStorageId, updates);
+        console.log(`✅ Reset wallet ${walletStorageId} for new environment`);
+      } else {
+        console.warn(`⚠️ Wallet ${walletStorageId} not found for reset`);
+      }
+    } catch (error) {
+      console.error(`Failed to reset wallet ${walletStorageId} for new environment:`, error);
+      throw new Error(`Failed to reset wallet for new environment: ${error}`);
+    }
+  }
 }
 
 export default WalletCredentialsStorage;

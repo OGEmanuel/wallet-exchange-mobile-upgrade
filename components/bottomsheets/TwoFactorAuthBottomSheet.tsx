@@ -9,6 +9,7 @@ import BottomSheet, {
   BottomSheetScrollView,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
 import { Copy, X } from "lucide-react-native";
@@ -17,7 +18,7 @@ import { Alert, Image, Platform, Pressable, StyleSheet, Switch } from "react-nat
 import QRCode from "react-native-qrcode-svg";
 
 interface TwoFactorAuthBottomSheetProps {
-  bottomSheetRef: React.RefObject<BottomSheet>;
+  bottomSheetRef: React.RefObject<BottomSheetMethods | null>;
   onClose?: () => void;
 }
 
@@ -56,14 +57,17 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
 
   // Check 2FA status function - uses SDK's getTwoFaStatus
   const check2FAStatus = useCallback(async () => {
-    // Prevent multiple simultaneous calls
+    // Prevent multiple simultaneous calls (only block if currently checking)
     if (hasCheckedRef.current) {
+      console.log("⏸️ 2FA status check already in progress, skipping...");
       return;
     }
 
     try {
       setIsLoading(true);
       hasCheckedRef.current = true;
+      
+      console.log("🔍 Starting 2FA status check...");
       
       // Use SDK's getTwoFaStatus function
       const statusResult = await zapSDKService.getTwoFaStatus();
@@ -89,17 +93,16 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         console.log("ℹ️ No 2FA status found (user hasn't set up 2FA)");
       }
     } catch (error) {
-      console.error("Failed to get 2FA status from SDK:", error);
+      console.error("❌ Failed to get 2FA status from SDK:", error);
       // Fall back to existing user data on error
       const currentUserData = exchangeUserDataRef.current;
       const userHas2FA = currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
       setIs2FAEnabled(userHas2FA);
+      console.log("🔄 Falling back to user data 2FA status:", userHas2FA);
     } finally {
       setIsLoading(false);
-      // Reset the check flag after a delay to allow re-checking if needed
-      setTimeout(() => {
+      // Reset the check flag immediately after completion to allow re-checking
         hasCheckedRef.current = false;
-      }, 1000);
     }
   }, []); // No dependencies needed since we're using SDK directly
 
@@ -107,14 +110,27 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
   useEffect(() => {
     // Check 2FA status when component mounts or when user changes
     const currentUserId = exchangeUserData?._id;
-    if (currentUserId && userIdRef.current !== currentUserId) {
+    if (currentUserId) {
+      // Only check if user ID has changed or hasn't been checked yet
+      if (userIdRef.current !== currentUserId) {
+        console.log("🔄 User ID changed, checking 2FA status...");
       userIdRef.current = currentUserId;
+        // Reset the check flag when user changes
+        hasCheckedRef.current = false;
       check2FAStatus();
-    } else if (currentUserId) {
-      // User ID exists, check status using SDK
+      } else if (!hasCheckedRef.current) {
+        // User ID exists but hasn't been checked yet
+        console.log("🔄 Initial 2FA status check...");
       check2FAStatus();
     }
-  }, [exchangeUserData?._id, check2FAStatus]);
+    } else {
+      // No user ID, reset state
+      setIs2FAEnabled(false);
+      userIdRef.current = null;
+      hasCheckedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchangeUserData?._id]); // check2FAStatus is stable (empty deps), so we can safely exclude it
 
   const handleEnable2FA = async () => {
     try {
@@ -368,6 +384,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         alignItems="center"
         justifyContent="space-between"
         marginBottom="l"
+        marginTop="l"
       >
         <CustomText variant="header" fontSize={20} color="headerTextColor">
           Two Factor Authentication
@@ -633,8 +650,11 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       }}
       onChange={(index) => {
         // When sheet opens (index >= 0), refresh 2FA status
+        // Add a small delay to ensure SDK has picked up the token if it was just set
         if (index >= 0) {
+          setTimeout(() => {
           check2FAStatus();
+          }, 500);
         }
       }}
       onClose={() => {
