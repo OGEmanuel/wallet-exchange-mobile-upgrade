@@ -203,15 +203,8 @@ const Activity = () => {
       const activitiesData = response.data as any;
       const activities = activitiesData?.activities || activitiesData || [];
       
-      console.log("Load more response:", {
-        page: nextPage,
-        dataLength: activities.length,
-        responseStructure: response
-      });
-      
       // Only increment currentPage if we got data
       if (activities && activities.length > 0) {
-        console.log("Load more completed with data, incrementing page to:", nextPage);
         setCurrentPage(nextPage);
         
         // Update hasMore based on server response
@@ -225,7 +218,6 @@ const Activity = () => {
           dispatch(exchangeActions.setHasMore(hasMore));
         }
       } else {
-        console.log("Load more returned no data, page stays at:", currentPage);
         dispatch(exchangeActions.setHasMore(false));
       }
     } catch (error) {
@@ -236,7 +228,6 @@ const Activity = () => {
   }, [currentPage, hasMore, isLoadingMore, fetchingExchangeActivities, fetchExchangeActivities, user, LIMIT, dispatch, searchQuery, filteredActivities.length, exchangeActivities.length, isExchangeAuthenticated, showExchangeLogin]);
 
   const handleEndReached = useCallback(() => {
-    console.log("📱 onEndReached triggered by FlatList");
     handleLoadMore();
   }, [handleLoadMore]);
 

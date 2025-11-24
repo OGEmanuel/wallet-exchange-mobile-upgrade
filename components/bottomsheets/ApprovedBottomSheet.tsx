@@ -634,7 +634,6 @@ const ApprovedBottomSheet = forwardRef<
                       onPress={handleShowProgress}
                       width="100%"
                       borderRadius={50}
-                      bgColor="secondaryColor"
                     />
                   </Box>
                 )}
