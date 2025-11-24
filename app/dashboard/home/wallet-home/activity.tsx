@@ -108,7 +108,7 @@ const Activity = () => {
       // Update hasMore based on server response
       // The response.data is the ExchangeActivitiesResponse with activities and pagination
       const activitiesData = response.data as any;
-      console.log("Activities data structure:", activitiesData);
+      // console.log("Activities data structure:", activitiesData);
       
       if (activitiesData?.pagination) {
         const hasMore = activitiesData.pagination.hasMore || false;
@@ -151,7 +151,7 @@ const Activity = () => {
     setSearchQuery(query);
   };
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMore = useCallback(async (initial = false) => {
     console.log("🚀 handleLoadMore called", { 
       isLoadingMore, 
       hasMore, 
@@ -195,7 +195,7 @@ const Activity = () => {
     try {
       const response = await fetchExchangeActivities({
         user,
-        page: nextPage,
+        page: initial ? 1 : nextPage,
         limit: LIMIT,
       });
       
@@ -236,6 +236,7 @@ const Activity = () => {
     setSearchQuery(""); // Clear search on refresh
     // Clear existing activities before loading new ones
     dispatch(exchangeActions.clearExchangeActivities());
+    // Load page 1 data - isLoading will be set to true in loadActivities
     await loadActivities(1, true);
   }, [loadActivities, dispatch]);
 
@@ -305,8 +306,14 @@ const Activity = () => {
             ListFooterComponent={renderFooter}
             refreshControl={
               <RefreshControl
-                refreshing={fetchingExchangeActivities && currentPage === 1}
-                onRefresh={handleRefresh}
+                refreshing={(isLoading || fetchingExchangeActivities) && currentPage === 1}
+                // onRefresh={handleRefresh}
+                onRefresh={async () => {
+                  console.log("Pull to refresh triggered");
+                  // handleRefresh();
+                  // await loadActivities(1, true);
+                  await handleLoadMore(true);
+                }}
               />
             }
           />
