@@ -98,6 +98,9 @@ const ActivityLogs = () => {
     setSearchQuery(query);
   };
 
+  // console.log("✅Activity logs", logsData);
+  console.log("✅User", userData);
+
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />
