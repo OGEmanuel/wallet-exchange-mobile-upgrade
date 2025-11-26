@@ -3,7 +3,6 @@ import TokenImage from "@/components/dashboard/market/TokenImage";
 import { CustomText } from "@/components/general";
 import useAppUtilities from "@/hooks/useAppUtilities";
 import { Theme } from "@/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef } from "react";
 import {
@@ -132,7 +131,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({
         </Animated.View>
 
         {/* Transaction Time */}
-        <Animated.View
+        {/* <Animated.View
           style={[
             styles.flashContainer,
             {
@@ -145,7 +144,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({
           <Text style={styles.flashText}>
             Swapped in 1 min {transactionTime}
           </Text>
-        </Animated.View>
+        </Animated.View> */}
 
         {/* Withdraw Details */}
         <Animated.View

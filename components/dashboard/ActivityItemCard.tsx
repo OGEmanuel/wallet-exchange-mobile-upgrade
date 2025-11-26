@@ -1,5 +1,6 @@
 import useAppUtilities from "@/hooks/useAppUtilities";
 import useBottomSheetRefs from "@/hooks/useBottomSheetRefs";
+import { formatWalletAddress } from "@/src/core/utils/format-utils";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
