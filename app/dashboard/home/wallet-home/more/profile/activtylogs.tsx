@@ -1,20 +1,27 @@
 import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import { Box, CustomText, PageWrapper } from "@/components/general";
-import { useWallet } from "@/src/core/wallet/wallet-context";
+import {
+  Box,
+  CustomText,
+  LoaderWrapper,
+  PageWrapper,
+} from "@/components/general";
+import { queryKeys } from "@/src/core/api/query-keys";
+import { useGetExchangeUser } from "@/src/hooks/queries";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { ActivityLogModel } from "@/src/modules/settings/domain/entities/models/activity-log-model";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { UserActivity } from "@zap/blockchain-sdk";
 import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { FlatList } from "react-native";
 import ActivityLogsEmptyState from "./empty-logs";
 
-const ItemCard = (props: { logs: ActivityLogModel }) => {
+const ItemCard = (props: { logs: UserActivity }) => {
   const { logs } = props;
 
   function formatDateReadable(dateString: string): string {
@@ -56,82 +63,47 @@ const ItemCard = (props: { logs: ActivityLogModel }) => {
           {logs.description}
         </CustomText>
         <CustomText fontSize={10} color="disabledTextColor" mt="s">
-          {formatDateReadable(logs.createdAt.toISOString())}
+          {formatDateReadable(logs.createdAt)}
         </CustomText>
       </Box>
     </Box>
   );
 };
 
+const useGetActivityLogs = (page: number, limit: number, user?: UserModel) => {
+  const settings = useSettings();
+
+  return useQuery({
+    queryKey: queryKeys.activity.logs(page, limit),
+    queryFn: async () =>
+      await settings.getActivities({
+        userId: user?._id!!,
+        page: page,
+        limit: limit,
+      }),
+    enabled: user ? true : false,
+  });
+};
+
 const ActivityLogs = () => {
   const router = useRouter();
   const theme = useTheme<Theme>();
-  const settings = useSettings();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<ActivityLogModel[]>([]);
-  const [loadingUser, setLoadingUser] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const { getExchangeUser } = useWallet();
-  const [user, setUser] = useState<UserModel | undefined>(undefined);
+  const { data: userData } = useGetExchangeUser();
+  const user: UserModel | null | undefined = userData;
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      setLoadingUser(true);
-      setError(null);
-      try {
-        const userData = await getExchangeUser();
-        if (userData) {
-          setUser(userData);
-        }
-      } catch (err: any) {
-        console.error("Failed to fetch user profile:", err);
-        setError(err?.message || "Failed to load user profile");
-      } finally {
-        setLoadingUser(false);
-      }
-    };
-
-    fetchUser();
-  }, [getExchangeUser]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function fetchLogs() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await settings.getActivities({
-          user,
-          page: 1,
-          limit: 10,
-        });
-
-        if (!mounted) return;
-
-        const activities = response?.data || [];
-
-        console.log("✅ Fetched activities:", activities);
-        setLogs(activities);
-      } catch (err: any) {
-        if (mounted) {
-          setError(err?.message || "Failed to fetch activity logs");
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
-    fetchLogs();
-    return () => {
-      mounted = false;
-    };
-  }, [user?._id]);
+  const {
+    data: logsData,
+    isPending: loading,
+    isError: error,
+  } = useGetActivityLogs(1, 10, user!!);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
+  };
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.logs(1, 10) });
   };
 
   return (
@@ -168,16 +140,21 @@ const ActivityLogs = () => {
           />
         </Box>
       </Box>
-      {logs.length === 0 ? (
-        <ActivityLogsEmptyState />
-      ) : (
+      <LoaderWrapper
+        isLoading={loading}
+        isError={error}
+        errorMessage={"Failed to load activities"}
+        onRetry={handleRefresh}
+        isEmpty={!loading && logsData?.length === 0}
+        emptyComponent={<ActivityLogsEmptyState />}
+      >
         <FlatList
-          data={logs}
+          data={logsData}
           keyExtractor={(log) => log._id}
           renderItem={(logsData) => <ItemCard logs={logsData.item} />}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
-      )}
+      </LoaderWrapper>
     </PageWrapper>
   );
 };

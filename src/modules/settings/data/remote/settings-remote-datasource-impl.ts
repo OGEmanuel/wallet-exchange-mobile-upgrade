@@ -44,12 +44,13 @@ import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-us
 import { AccountModel } from "../../domain/entities/models/Account-model";
 import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
 import { SettingsRemoteDataSource } from "./settings-remote-datasource";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
   private sdk = zapSDKService.getSDK();
   async activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
+  ): Promise<UserActivity[]> {
     // const response = await httpClient.get(
     //   getActivityLogsEndpoint(payload?.params?.user),
     //   {
@@ -58,12 +59,24 @@ export class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
     //   }
     // );
 
-    const response = await this.sdk.exchangeActivities.getUserActivities({
-      userId: payload.params?.user?._id,
+    const response = await this.sdk.userActivities.getActivities({
+      userId: payload.params?.userId!!,
+      page: payload.params?.page,
+      limit: payload.params?.limit,
     });
 
-    return response.data as GeneralResponseModel<ActivityLogModel[]>;
+    return response as UserActivity[];
   }
+
+  // async userActivityLogs(
+  //   payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
+  // ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
+  //   const response = await this.sdk.exchangeActivities.getUserActivities({
+  //     userId: payload.params?.user?._id,
+  //   });
+
+  //   return response.data as GeneralResponseModel<ActivityLogModel[]>;
+  // }
 
   async getAvatars(
     payload: GeneralRequestModel<unknown, unknown, unknown>

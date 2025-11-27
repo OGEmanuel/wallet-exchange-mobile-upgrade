@@ -141,6 +141,7 @@
   "devDependencies": {
     "@types/lodash": "^4.17.20",
     "@types/react": "~19.1.0",
+    "@types/react-native": "^0.73.0",
     "@types/react-native-confetti": "^0.1.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",

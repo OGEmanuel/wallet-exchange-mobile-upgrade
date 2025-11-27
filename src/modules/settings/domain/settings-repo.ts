@@ -26,11 +26,12 @@ import { SettingsParams } from "./entities/params/settings-params";
 import { UpdateSettingsBody } from "./entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "./entities/params/update-user-details-params";
 import { Verify2faCodeBody } from "./entities/params/verify-2fa-code-body";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export abstract class SettingsRepo {
   abstract activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>>;
+  ): Promise<UserActivity[]>;
 
   abstract getAvatars(
     payload: GeneralRequestModel<unknown, unknown, unknown>

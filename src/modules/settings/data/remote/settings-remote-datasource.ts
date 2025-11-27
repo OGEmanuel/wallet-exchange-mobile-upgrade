@@ -6,7 +6,6 @@ import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "@/src/modules/utilities/domain/entities/models/currency-model";
 import { AccountModel } from "../../domain/entities/models/Account-model";
 import { SettingsModel } from "../../domain/entities/models/Settings-model";
-import { ActivityLogModel } from "../../domain/entities/models/activity-log-model";
 import { IAvatar } from "../../domain/entities/models/avatar-model";
 import { BankModel } from "../../domain/entities/models/bank-model";
 import { ChainModel } from "../../domain/entities/models/chain-model";
@@ -26,11 +25,12 @@ import { SettingsParams } from "../../domain/entities/params/settings-params";
 import { UpdateSettingsBody } from "../../domain/entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../../domain/entities/params/update-user-details-params";
 import { Verify2faCodeBody } from "../../domain/entities/params/verify-2fa-code-body";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export abstract class SettingsRemoteDataSource {
   abstract activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>>;
+  ): Promise<UserActivity[]>;
 
   abstract getAvatars(
     payload: GeneralRequestModel<unknown, unknown, unknown>
