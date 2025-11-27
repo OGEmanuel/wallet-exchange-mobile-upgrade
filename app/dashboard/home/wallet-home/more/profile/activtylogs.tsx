@@ -1,22 +1,27 @@
 import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import { Box, CustomText, PageWrapper } from "@/components/general";
+import {
+  Box,
+  CustomText,
+  LoaderWrapper,
+  PageWrapper,
+} from "@/components/general";
 import { queryKeys } from "@/src/core/api/query-keys";
 import { useGetExchangeUser } from "@/src/hooks/queries";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { ActivityLogModel } from "@/src/modules/settings/domain/entities/models/activity-log-model";
 import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { UserActivity } from "@zap/blockchain-sdk";
 import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
 import React, { useState } from "react";
 import { FlatList } from "react-native";
 import ActivityLogsEmptyState from "./empty-logs";
 
-const ItemCard = (props: { logs: ActivityLogModel }) => {
+const ItemCard = (props: { logs: UserActivity }) => {
   const { logs } = props;
 
   function formatDateReadable(dateString: string): string {
@@ -58,7 +63,7 @@ const ItemCard = (props: { logs: ActivityLogModel }) => {
           {logs.description}
         </CustomText>
         <CustomText fontSize={10} color="disabledTextColor" mt="s">
-          {formatDateReadable(logs.createdAt.toISOString())}
+          {formatDateReadable(logs.createdAt)}
         </CustomText>
       </Box>
     </Box>
@@ -72,7 +77,7 @@ const useGetActivityLogs = (page: number, limit: number, user?: UserModel) => {
     queryKey: queryKeys.activity.logs(page, limit),
     queryFn: async () =>
       await settings.getActivities({
-        user: user,
+        userId: user?._id!!,
         page: page,
         limit: limit,
       }),
@@ -86,20 +91,20 @@ const ActivityLogs = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: userData } = useGetExchangeUser();
   const user: UserModel | null | undefined = userData;
+  const queryClient = useQueryClient();
 
   const {
     data: logsData,
     isPending: loading,
     isError: error,
   } = useGetActivityLogs(1, 10, user!!);
-  const logs = logsData?.data || [];
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
   };
-
-  // console.log("✅Activity logs", logsData);
-  console.log("✅User", userData);
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.logs(1, 10) });
+  };
 
   return (
     <PageWrapper>
@@ -135,16 +140,21 @@ const ActivityLogs = () => {
           />
         </Box>
       </Box>
-      {logs?.length === 0 ? (
-        <ActivityLogsEmptyState />
-      ) : (
+      <LoaderWrapper
+        isLoading={loading}
+        isError={error}
+        errorMessage={"Failed to load activities"}
+        onRetry={handleRefresh}
+        isEmpty={!loading && logsData?.length === 0}
+        emptyComponent={<ActivityLogsEmptyState />}
+      >
         <FlatList
-          data={logs}
+          data={logsData}
           keyExtractor={(log) => log._id}
           renderItem={(logsData) => <ItemCard logs={logsData.item} />}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
-      )}
+      </LoaderWrapper>
     </PageWrapper>
   );
 };

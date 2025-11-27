@@ -29,6 +29,7 @@ import { GetBanksParams } from "../domain/entities/params/get-bank-param";
 import { BankModel } from "../domain/entities/models/bank-model";
 import { Verify2faCodeBody } from "../domain/entities/params/verify-2fa-code-body";
 import { SettingsParams } from "../domain/entities/params/settings-params";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
   private readonly remoteDatasource = new SettingsRemoteDataSourceImpl();
@@ -36,7 +37,7 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
 
   async activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
+  ): Promise<UserActivity[]> {
     return this.remoteDatasource.activity(payload);
   }
 
