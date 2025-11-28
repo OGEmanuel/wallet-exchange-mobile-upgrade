@@ -1,7 +1,8 @@
+import TokenImage from "@/components/dashboard/market/TokenImage";
 import { CustomText } from "@/components/general";
+import useAppUtilities from "@/hooks/useAppUtilities";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { Image } from "expo-image";
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import ProgressBar, { ProgressStep } from "./ProgressBar";
@@ -52,12 +53,7 @@ const ProgressView: React.FC<ProgressViewProps> = ({
   ];
 
   const theme = useTheme<Theme>();
-
-  const getCurrentStepIndex = () => {
-    if (status === "confirming") return 0;
-    if (status === "swapping") return 1;
-    return 2;
-  };
+  const { getApproximateAmount } = useAppUtilities();
 
   const cardScale = useRef(new Animated.Value(0.9)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
@@ -90,16 +86,28 @@ const ProgressView: React.FC<ProgressViewProps> = ({
         ]}
       >
         <Text style={[styles.subtitle, { color: theme.colors.bodyTextColor }]}>
-          Swap {orderDetails?.buyAmount} {fromCurrency} for
+          Swap {getApproximateAmount(
+            orderDetails?.buyAmount || (fromAmount ? parseFloat(fromAmount) : undefined),
+            true
+          )}{" "}
+          {buyCurrency?.name || fromCurrency} for
         </Text>
 
         <View style={styles.tokenRow}>
-          <Image />
+          <TokenImage
+            size={24}
+            uri={orderDetails?.sellCurrency?.image || sellCurrency?.image || ""}
+            name={orderDetails?.sellCurrency?.name || sellCurrency?.name || ""}
+          />
           <CustomText
             variant="header"
             style={{ color: theme.colors.bodyTextColor, fontWeight: "400" }}
           >
-            {orderDetails?.sellAmount} {sellCurrency?.name || toCurrency}
+            {getApproximateAmount(
+              orderDetails?.sellAmount || (toAmount ? parseFloat(toAmount) : undefined),
+              true
+            )}{" "}
+            {sellCurrency?.name || toCurrency}
           </CustomText>
         </View>
 
@@ -113,23 +121,24 @@ const ProgressView: React.FC<ProgressViewProps> = ({
           >
             To{"  "}
             {orderDetails?.withdrawalAccount?.holderName ||
+              orderDetails?.withdrawalAccount?.walletAddress ||
               recipient ||
               orderDetails?.withdrawalAccount?.walletAddress?.slice(0, 4) +
                 "..." +
                 orderDetails?.withdrawalAccount?.walletAddress?.slice(-4)}
           </Text>
 
-          {(orderDetails?.buyCurrency?.chainId || buyCurrency?.chainId) && (
+          {(orderDetails?.sellCurrency?.chainId || sellCurrency?.chainId) && (
             <View style={styles.networkBadge}>
               <View style={styles.networkIcon}>
-                {/* <TokenImage
+                <TokenImage
                   size={16}
-                  uri={buyCurrency?.image || ""}
-                  name={buyCurrency?.name || ""}
-                /> */}
+                  uri={orderDetails?.sellCurrency?.image || sellCurrency?.image || ""}
+                  name={orderDetails?.sellCurrency?.name || sellCurrency?.name || ""}
+                />
               </View>
               <Text style={styles.networkText}>
-                {buyCurrency?.chainId?.name || network}
+                {orderDetails?.sellCurrency?.chainId?.name || sellCurrency?.chainId?.name || network}
               </Text>
             </View>
           )}

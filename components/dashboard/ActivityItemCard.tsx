@@ -75,7 +75,7 @@ const ActivityItemCard = ({
       case "deposit_confirmed":
       case "overpaid":
       case "underpaid":
-        return { bg: "#EAB308", text: "#000000" }; // bg-yellow-500
+        return { bg: "#EAB308", text: "#FFFFFF" }; // bg-yellow-500
       case "withdrawal_confirming":
       case "withdrawal_confirmed":
       case "filled":
@@ -294,17 +294,20 @@ const ActivityItemCard = ({
                 displayCurrency}
             </CustomText>
           )}
-        <Box
-          width={53}
-          height={19}
-          borderRadius={19}
-          justifyContent="center"
-          alignItems="center"
-          marginLeft="s"
-          marginTop="s"
-          style={{ backgroundColor: statusColors.bg }}
-        >
-          <CustomText fontSize={10} style={{ color: statusColors.text }}>
+        <Box flexDirection="row" alignItems="center" marginLeft="s" marginTop="s">
+          <Box
+            width={8}
+            height={8}
+            borderRadius={4}
+            style={{
+              backgroundColor: statusColors.bg,
+            }}
+            marginRight="s"
+          />
+          <CustomText
+            fontSize={10}
+            style={{ color: statusColors.text }}
+          >
             {displayStatus.charAt(0).toUpperCase()}
             {displayStatus.slice(1).toLowerCase()}
           </CustomText>

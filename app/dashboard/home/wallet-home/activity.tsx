@@ -85,74 +85,58 @@ const Activity = () => {
   const [error, setError] = useState<Error | null>(null);
 
   // Fetch initial data
-  const loadActivities = useCallback(
-    async (page: number, reset = false) => {
-      // Check authentication first
-      if (!isExchangeAuthenticated || !user?._id) {
-        console.log("⚠️ User not authenticated, prompting login");
-        showExchangeLogin();
-        setIsLoading(false);
-        return;
+  const loadActivities = useCallback(async (page: number, reset = false) => {
+    // Check authentication first
+    if (!isExchangeAuthenticated || !user?._id) {
+      console.log("⚠️ User not authenticated, prompting login");
+      showExchangeLogin();
+      setIsLoading(false);
+      return;
+    }
+    
+    console.log("loadActivities called", { page, reset });
+    setIsLoading(true);
+    setIsError(false);
+    setError(null);
+    
+    try {
+      const response = await fetchExchangeActivities({
+        user,
+        page,
+        limit: LIMIT,
+      });
+      
+      console.log("API response received", { 
+        page, 
+        dataLength: response.data?.length,
+        responseStructure: response
+      });
+      
+      // Update hasMore based on server response
+      // The response.data is the ExchangeActivitiesResponse with activities and pagination
+      const activitiesData = response.data as any;
+      // console.log("Activities data structure:", activitiesData);
+      
+      if (activitiesData?.pagination) {
+        const hasMore = activitiesData.pagination.hasMore || false;
+        console.log("Using pagination metadata", { hasMore, pagination: activitiesData.pagination });
+        dispatch(exchangeActions.setHasMore(hasMore));
+      } else {
+        // Fallback: if no pagination metadata, check if we got less than limit
+        const activities = activitiesData?.activities || activitiesData || [];
+        const dataLength = activities.length;
+        const hasMore = dataLength >= LIMIT;
+        console.log("Using fallback logic", { dataLength, hasMore, limit: LIMIT });
+        dispatch(exchangeActions.setHasMore(hasMore));
       }
-
-      console.log("loadActivities called", { page, reset });
-      setIsLoading(true);
-      setIsError(false);
-      setError(null);
-
-      try {
-        const response = await fetchExchangeActivities({
-          user,
-          page,
-          limit: LIMIT,
-        });
-
-        console.log("API response received", {
-          page,
-          dataLength: response.data?.length,
-          responseStructure: response,
-        });
-
-        // Update hasMore based on server response
-        // The response.data is the ExchangeActivitiesResponse with activities and pagination
-        const activitiesData = response.data as any;
-        console.log("Activities data structure:", activitiesData);
-
-        if (activitiesData?.pagination) {
-          const hasMore = activitiesData.pagination.hasMore || false;
-          console.log("Using pagination metadata", {
-            hasMore,
-            pagination: activitiesData.pagination,
-          });
-          dispatch(exchangeActions.setHasMore(hasMore));
-        } else {
-          // Fallback: if no pagination metadata, check if we got less than limit
-          const activities = activitiesData?.activities || activitiesData || [];
-          const dataLength = activities.length;
-          const hasMore = dataLength >= LIMIT;
-          console.log("Using fallback logic", {
-            dataLength,
-            hasMore,
-            limit: LIMIT,
-          });
-          dispatch(exchangeActions.setHasMore(hasMore));
-        }
-      } catch (err) {
-        console.error("loadActivities error:", err);
-        setIsError(true);
-        setError(err as Error);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [
-      user,
-      fetchExchangeActivities,
-      dispatch,
-      isExchangeAuthenticated,
-      showExchangeLogin,
-    ]
-  );
+    } catch (err) {
+      console.error("loadActivities error:", err);
+      setIsError(true);
+      setError(err as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, fetchExchangeActivities, dispatch, isExchangeAuthenticated, showExchangeLogin]);
 
   // Load initial data
   useEffect(() => {
@@ -174,11 +158,11 @@ const Activity = () => {
     setSearchQuery(query);
   };
 
-  const handleLoadMore = useCallback(async () => {
-    console.log("🚀 handleLoadMore called", {
-      isLoadingMore,
-      hasMore,
-      fetchingExchangeActivities,
+  const handleLoadMore = useCallback(async (initial = false) => {
+    console.log("🚀 handleLoadMore called", { 
+      isLoadingMore, 
+      hasMore, 
+      fetchingExchangeActivities, 
       currentPage,
       searchQuery,
       filteredCount: filteredActivities.length,
@@ -220,26 +204,16 @@ const Activity = () => {
     try {
       const response = await fetchExchangeActivities({
         user,
-        page: nextPage,
+        page: initial ? 1 : nextPage,
         limit: LIMIT,
       });
 
       // Check if we got data back
       const activitiesData = response.data as any;
       const activities = activitiesData?.activities || activitiesData || [];
-
-      console.log("Load more response:", {
-        page: nextPage,
-        dataLength: activities.length,
-        responseStructure: response,
-      });
-
+      
       // Only increment currentPage if we got data
       if (activities && activities.length > 0) {
-        console.log(
-          "Load more completed with data, incrementing page to:",
-          nextPage
-        );
         setCurrentPage(nextPage);
 
         // Update hasMore based on server response
@@ -253,7 +227,6 @@ const Activity = () => {
           dispatch(exchangeActions.setHasMore(hasMore));
         }
       } else {
-        console.log("Load more returned no data, page stays at:", currentPage);
         dispatch(exchangeActions.setHasMore(false));
       }
     } catch (error) {
@@ -278,7 +251,6 @@ const Activity = () => {
   ]);
 
   const handleEndReached = useCallback(() => {
-    console.log("📱 onEndReached triggered by FlatList");
     handleLoadMore();
   }, [handleLoadMore]);
 
@@ -287,6 +259,7 @@ const Activity = () => {
     setSearchQuery(""); // Clear search on refresh
     // Clear existing activities before loading new ones
     dispatch(exchangeActions.clearExchangeActivities());
+    // Load page 1 data - isLoading will be set to true in loadActivities
     await loadActivities(1, true);
   }, [loadActivities, dispatch]);
 
@@ -358,8 +331,14 @@ const Activity = () => {
             ListFooterComponent={renderFooter}
             refreshControl={
               <RefreshControl
-                refreshing={fetchingExchangeActivities && currentPage === 1}
-                onRefresh={handleRefresh}
+                refreshing={(isLoading || fetchingExchangeActivities) && currentPage === 1}
+                // onRefresh={handleRefresh}
+                onRefresh={async () => {
+                  console.log("Pull to refresh triggered");
+                  // handleRefresh();
+                  // await loadActivities(1, true);
+                  await handleLoadMore(true);
+                }}
               />
             }
           />
