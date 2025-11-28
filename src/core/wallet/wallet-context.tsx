@@ -157,7 +157,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setupWebSocketListeners();
         setupAppStateListener();
         setIsInitialized(true);
-        
+
         // IMPORTANT: If data was cleared (environment changed), retry pending wallets
         // This ensures wallets are recreated in the new environment
         // We do this here because retryPendingWallets in home.tsx only runs when a wallet is selected
@@ -193,7 +193,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const setExchangeAndRoute = (
+  const setExchangeAndRoute = async (
     exchangeUserId: string,
     isExchangeAuth: boolean,
     shouldRoute: boolean,
@@ -213,6 +213,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     // Set exchangeUserData if provided
     if (exchangeUser) {
       setExchangeUserData(exchangeUser);
+    }
+
+    // Sync SDK tokens to httpClient storage for non-SDK API calls
+    try {
+      const { ensureTokensAreSynced } = await import('../utils/sync-sdk-tokens');
+      await ensureTokensAreSynced();
+    } catch (error) {
+      console.warn('⚠️ Failed to sync SDK tokens:', error);
     }
 
     console.log("✅ Exchange authentication found, routing to exchange");
@@ -297,7 +305,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       console.log(isExchangeAuth, exchangeUserId, exchangeUser, "yeahhh");
 
       if (isExchangeAuth && exchangeUserId) {
-        result = setExchangeAndRoute(
+        result = await setExchangeAndRoute(
           exchangeUserId,
           isExchangeAuth,
           shouldRoute,
@@ -351,14 +359,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         isWalletAuthenticated,
         hasCurrentWalletUser: !!currentWalletUser,
       });
-      
+
       if (!walletChains.length) {
         console.log("🚀 [WALLET] Loading chains (walletChains.length is 0)");
         loadChainsNow();
       } else {
         console.log("⏭️ [WALLET] Skipping chain load (already have chains)");
       }
-      
+
       if (!defaultTokens.length) refreshDefaultTokens();
       if (!supportedCurrenciesForSwap.length)
         refreshSupportedCurrenciesForSwap();
@@ -512,24 +520,21 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       } else if (age < CACHE_DURATION.MEDIUM) {
         // Portfolio cache is getting stale - use it but refresh in background
         console.log(
-          `  ✅ Cache is STALE but valid (< ${
-            CACHE_DURATION.MEDIUM / (60 * 1000)
+          `  ✅ Cache is STALE but valid (< ${CACHE_DURATION.MEDIUM / (60 * 1000)
           } min)`
         );
         return { isValid: true, shouldRefreshInBackground: true };
       } else if (age < CACHE_DURATION.LONG) {
         // Old portfolio cache - use it but definitely refresh
         console.log(
-          `  ✅ Cache is OLD but valid (< ${
-            CACHE_DURATION.LONG / (60 * 1000)
+          `  ✅ Cache is OLD but valid (< ${CACHE_DURATION.LONG / (60 * 1000)
           } min)`
         );
         return { isValid: true, shouldRefreshInBackground: true };
       } else {
         // Portfolio cache is too old - invalidate
         console.log(
-          `  ❌ Cache is TOO OLD (> ${
-            CACHE_DURATION.LONG / (60 * 1000)
+          `  ❌ Cache is TOO OLD (> ${CACHE_DURATION.LONG / (60 * 1000)
           } min) - invalid`
         );
         return { isValid: false, shouldRefreshInBackground: false };
@@ -782,7 +787,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     try {
       const cacheTimestamp = await SecureStore.getItemAsync(StorageKeys.USER_WALLET_GROUPS_TIMESTAMP);
       const cachedData = await SecureStore.getItemAsync(StorageKeys.USER_WALLET_GROUPS);
-      
+
       // If there's no timestamp or no cached data, we just cleared - skip cache
       if (!cacheTimestamp || !cachedData) {
         shouldSkipCache = true;
@@ -793,7 +798,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       shouldSkipCache = true;
       console.log("🔄 Cannot read cache (likely cleared), skipping cache and fetching fresh wallet groups from API");
     }
-    
+
     if (shouldSkipCache) {
       return await fetchAndProcessWalletGroups(
         walletUserId,
@@ -802,14 +807,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         result
       );
     }
-    
+
     // First, try to load from cache for instant routing
     const cachedWalletGroups: IUserWalletGroup[] | null =
       await loadWalletGroupsFromCache();
-    
+
     // Check if cache is valid
     const cacheStatus = await isCacheValid();
-    
+
     if (cachedWalletGroups && cachedWalletGroups.length > 0 && cacheStatus.isValid) {
       console.log("✅ Using cached wallet groups for instant routing");
       // Use cached data immediately and set up wallet
@@ -817,7 +822,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       setIsUserWalletGroups(true);
       await saveWalletGroupsToCache(cachedWalletGroups);
       await setupMainWalletGroup(cachedWalletGroups);
-      
+
       // Refresh in background if needed
       if (cacheStatus.shouldRefreshInBackground) {
         console.log("🔄 Refreshing wallet groups in background...");
@@ -831,10 +836,10 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           console.error("Background wallet groups refresh failed:", err);
         });
       }
-      
+
       return cachedWalletGroups;
     }
-    
+
     // No valid cache - fetch from API
     console.log("🔄 No valid cache, fetching fresh wallet groups from API");
     return await fetchAndProcessWalletGroups(
@@ -1149,7 +1154,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // Use the advanced SDK service with network handling and circuit breaker
       const result = await zapSDKService.sendExchangeOtp(email);
-      
+
       console.log("📦 sendExchangeOtp result:", result);
       console.log("📦 result type:", typeof result);
       if (result && typeof result === 'object') {
@@ -1184,7 +1189,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       console.error("❌ Exchange login error:", error);
-      
+
       // Provide more specific error messages based on error type
       let errorMessage = "Failed to send OTP";
       if (error?.message) {
@@ -1196,7 +1201,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
           errorMessage = error.message;
         }
       }
-      
+
       setError(errorMessage);
       return false;
     } finally {
@@ -1265,7 +1270,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (!user) {
         try {
           user = await zapSDKService.getExchangeUser();
-        } catch {}
+        } catch { }
       }
 
       if (user && user._id) {
@@ -1297,7 +1302,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   // Helper function to normalize seed phrase (trim, lowercase, normalize whitespace)
   const normalizeSeedPhrase = (seedPhrase: string): string => {
     if (!seedPhrase) return seedPhrase;
-    
+
     // Trim and normalize whitespace (multiple spaces/newlines to single space)
     // Convert to lowercase as BIP39 words are case-insensitive but SDK expects lowercase
     return seedPhrase
@@ -1317,7 +1322,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       const normalized = normalizeSeedPhrase(seedPhrase);
       const words = normalized.split(' ');
-      
+
       // Check word count (must be 12, 15, 18, 21, or 24)
       const validWordCounts = [12, 15, 18, 21, 24];
       if (!validWordCounts.includes(words.length)) {
@@ -1329,7 +1334,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
       // Validate using BIP39 library
       const isValid = bip39.validateMnemonic(normalized);
-      
+
       if (!isValid) {
         // Check if words are valid BIP39 words
         const invalidWords: string[] = [];
@@ -1338,14 +1343,14 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             invalidWords.push(word);
           }
         }
-        
+
         if (invalidWords.length > 0) {
           return {
             isValid: false,
             error: `Invalid BIP39 words found: ${invalidWords.join(', ')}. Please check for typos.`,
           };
         }
-        
+
         return {
           isValid: false,
           error: "Invalid seed phrase checksum. Please verify the seed phrase is correct.",
@@ -1397,7 +1402,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       if (seedPhraseToUse) {
         const originalSeedPhrase = seedPhraseToUse;
         seedPhraseToUse = normalizeSeedPhrase(seedPhraseToUse);
-        
+
         console.log("🔍 Normalized seed phrase:", {
           original: originalSeedPhrase.substring(0, 50) + "...",
           normalized: seedPhraseToUse.substring(0, 50) + "...",
@@ -1477,7 +1482,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       };
     } catch (error: any) {
       console.error("Wallet creation error:", error);
-      
+
       // Provide more specific error messages
       let errorMessage = "Failed to create wallet";
       if (error?.message?.includes("Invalid seed phrase")) {
@@ -1485,7 +1490,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       setError(errorMessage);
       return {
         walletStorageId: "",
@@ -1590,10 +1595,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         } else if (existingAddresses && existingAddresses.length > 0) {
           // If we have addresses but no private keys, log a warning but still return what we have
           console.log(
-            `⚠️ Found existing addresses (${
-              existingAddresses.length
-            }) but no private keys (${
-              existingPrivateKeys?.length || 0
+            `⚠️ Found existing addresses (${existingAddresses.length
+            }) but no private keys (${existingPrivateKeys?.length || 0
             }). Returning addresses only.`
           );
           return {
@@ -1619,8 +1622,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             class: seedPhrase
               ? WALLET_GROUP_CLASS.SEEDPHRASE
               : privateKey
-              ? WALLET_GROUP_CLASS.PRIVATE_KEY
-              : WALLET_GROUP_CLASS.WATCH,
+                ? WALLET_GROUP_CLASS.PRIVATE_KEY
+                : WALLET_GROUP_CLASS.WATCH,
             chain: searchChain,
             credential: seedPhrase || privateKey || watchAddress || "",
             derivationIndex,
@@ -1820,10 +1823,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
             userWalletGroupId
           );
           console.log(
-            `✅ Storage verification: ${
-              verifyAddresses?.length || 0
-            } addresses and ${
-              verifyPrivateKeys?.length || 0
+            `✅ Storage verification: ${verifyAddresses?.length || 0
+            } addresses and ${verifyPrivateKeys?.length || 0
             } private keys stored for wallet: ${userWalletGroupId}`
           );
         }
@@ -1908,12 +1909,12 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
                       userWalletGroupId: walletId,
                       seedPhrase:
                         walletCredentials.class ===
-                        WALLET_GROUP_CLASS.SEEDPHRASE
+                          WALLET_GROUP_CLASS.SEEDPHRASE
                           ? walletCredentials.credential
                           : undefined,
                       privateKey:
                         walletCredentials.class ===
-                        WALLET_GROUP_CLASS.PRIVATE_KEY
+                          WALLET_GROUP_CLASS.PRIVATE_KEY
                           ? walletCredentials.credential
                           : undefined,
                       watchAddress:
@@ -2546,7 +2547,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       hasMainWalletGroup: !!mainUserWalletGroup,
       mainWalletId: mainUserWalletGroup?._id,
     });
-    
+
     try {
       // Handle race condition when switching wallets quickly
       if (isRefreshingPortfolio && portfolioAbortController) {
@@ -2569,7 +2570,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         setIsRefreshingPortfolio(false);
         return;
       }
-      
+
       console.log("✅ [PORTFOLIO] User authenticated", {
         walletUserId: currentWalletUser,
       });
@@ -2677,9 +2678,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         // Use the captured walletIdToRefresh to ensure we refresh the correct wallet
         const portfolioOptions = walletIdToRefresh
           ? {
-              mainUserWalletGroupId: walletIdToRefresh,
-              bypassCache: true,
-            }
+            mainUserWalletGroupId: walletIdToRefresh,
+            bypassCache: true,
+          }
           : {};
 
         // Check if request was aborted before making the call
@@ -2757,13 +2758,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         // STEP 2: Get wallet addresses for all chains
         const addressesByChain = new Map<string, string>();
         console.log(`🔍 Address collection: walletChains=${walletChains?.length || 0}, walletIdToRefresh=${walletIdToRefresh}`);
-        
+
         if (walletChains && walletChains.length > 0) {
           console.log(
             `📍 Getting addresses for wallet: ${walletIdToRefresh} (captured wallet ID)`
           );
           console.log(`📍 Wallet chains to process: ${walletChains.map(c => c.symbol).join(', ')}`);
-          
+
           for (const chain of walletChains) {
             try {
               console.log(`  🔄 Fetching address for ${chain.symbol}...`);
@@ -2794,7 +2795,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
         // STEP 4: Extract tokens from portfolio and fetch batch balances
         console.log(`🔍 Batch balance check: addressesByChain.size=${addressesByChain.size}, userTokenList=${!!portfolioData.userTokenList}`);
-        
+
         if (addressesByChain.size > 0 && portfolioData.userTokenList) {
           try {
             const tokens = BatchBalanceService.extractTokensFromPortfolio(
@@ -2904,22 +2905,22 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         const accounts = portfolioData?.mainWalletGroupPortfolio?.mainWalletPortfolio?.accounts || [];
         if (accounts.length === 0 && walletIdToRefresh) {
           console.log("⚠️ Portfolio has empty accounts array - checking if we should retry account creation...");
-          
+
           try {
             // Check if we have wallet credentials for this wallet
             const walletCredential = await WalletCredentialsStorage.getCredentialsByUserWalletGroupId(walletIdToRefresh);
-            
+
             if (walletCredential) {
               console.log("✅ Found wallet credentials - wallet exists but accounts are missing");
               console.log("🔄 Marking wallet as needing accounts and triggering retry...");
-              
+
               // Mark wallet as needing accounts (even if it was marked as accounts created before)
               // This ensures retryPendingWallets will process it
               await WalletCredentialsStorage.updateWalletCredentials(walletCredential.id, {
                 areAccountsCreated: false, // Mark as needing accounts
                 isCreated: true, // Wallet is created, just missing accounts
               });
-              
+
               // Trigger retry for accounts pending wallets
               // Use setTimeout to avoid blocking the portfolio refresh
               setTimeout(async () => {
@@ -3140,7 +3141,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
                 normalizedLength: normalizedSeedPhrase.length,
                 wordCount: normalizedSeedPhrase.split(' ').length,
               });
-              
+
               // Validate seed phrase using BIP39 before retrying
               const validation = validateSeedPhraseBIP39(normalizedSeedPhrase);
               if (!validation.isValid) {
@@ -3155,13 +3156,13 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
                 continue; // Skip to next wallet
               }
               console.log("✅ Seed phrase passed BIP39 validation during retry");
-              
+
               // Determine wallet type: if credential exists, it's likely an IMPORT
               // GENERATED wallets would have been created successfully on first try
               // If we're retrying, it's more likely an IMPORT that failed
               const walletType = wallet.credential ? WALLET_GROUP_TYPE.IMPORT : WALLET_GROUP_TYPE.GENERATED;
               console.log("🔍 Using walletType:", walletType, "for retry");
-              
+
               result = await sdk.createWalletGroupMultipurpose({
                 name: wallet.name,
                 seedPhrase: normalizedSeedPhrase,

@@ -26,13 +26,15 @@ import { SettingsParams } from "../entities/params/settings-params";
 import { UpdateSettingsBody } from "../entities/params/update-settings-body";
 import { IUpdateUserDetailsParams } from "../entities/params/update-user-details-params";
 import { Verify2faCodeBody } from "../entities/params/verify-2fa-code-body";
+import { Use } from "react-native-svg";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export class SettingsUsecases {
   private readonly repo = new SettingsRepoImpl();
 
   async getActivityLogs(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
+  ): Promise<UserActivity[]> {
     return this.repo.activity(payload);
   }
 
