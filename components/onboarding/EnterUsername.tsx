@@ -68,7 +68,7 @@ export default function EnterUsername({
   };
 
   return (
-    <Box style={{ paddingTop: 30 }}>
+    <Box style={{ paddingTop: 30, paddingBottom: 150 }}>
       <Box alignSelf="center" mb="m" marginBottom="m">
         <CustomText
           variant="header"

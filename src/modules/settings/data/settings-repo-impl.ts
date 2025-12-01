@@ -4,31 +4,32 @@ import {
 } from "@/src/core/api/http-types";
 import { UserModel } from "../../kyc/domain/entities/models/user-model";
 import { CurrencyModel } from "../../utilities/domain/entities/models/currency-model";
-import { SettingsModel } from "../domain/entities/models/Settings-model";
 import { ActivityLogModel } from "../domain/entities/models/activity-log-model";
-import { IAvatar } from "../domain/entities/models/avatar-model";
-import { BankModel } from "../domain/entities/models/bank-model";
-import { ChainModel } from "../domain/entities/models/chain-model";
-import { CountryModel } from "../domain/entities/models/country-model";
-import { FAQModel } from "../domain/entities/models/faq-model";
-import { CreateAccountBody } from "../domain/entities/params/create-account-body";
-import { ICreateAddressBook } from "../domain/entities/params/create-addressbook-body";
-import { IDeleteaddressParam } from "../domain/entities/params/delete-address-param";
-import { EditAddressParam } from "../domain/entities/params/edit-address-params";
-import { IGetAccount } from "../domain/entities/params/get-account-param";
+import { SettingsModel } from "../domain/entities/models/Settings-model";
 import { IActivityLogsParams } from "../domain/entities/params/get-activity-logs-data-params";
-import { IGetAddressParam } from "../domain/entities/params/get-address-param";
-import { GetBanksParams } from "../domain/entities/params/get-bank-param";
-import { GetCountryParam } from "../domain/entities/params/get-country-param";
-import { GetCurrencyParam } from "../domain/entities/params/get-currency-param";
-import { SettingsParams } from "../domain/entities/params/settings-params";
 import { UpdateSettingsBody } from "../domain/entities/params/update-settings-body";
-import { IUpdateUserDetailsParams } from "../domain/entities/params/update-user-details-params";
-import { Verify2faCodeBody } from "../domain/entities/params/verify-2fa-code-body";
 import { SettingsRepo } from "../domain/settings-repo";
+import { SettingsRemoteDataSourceImpl } from "./remote/settings-remote-datasource-impl";
 import { SettingsLocalDataSource } from "./local/settings-local-datasource";
 import { SettingsLocalDataSourceImpl } from "./local/settings-local-datasource-impl";
-import { SettingsRemoteDataSourceImpl } from "./remote/settings-remote-datasource-impl";
+import { IAvatar } from "../domain/entities/models/avatar-model";
+import { IUpdateUserDetailsParams } from "../domain/entities/params/update-user-details-params";
+import { FAQModel } from "../domain/entities/models/faq-model";
+import { CreateAccountBody } from "../domain/entities/params/create-account-body";
+import { IGetAddressParam } from "../domain/entities/params/get-address-param";
+import { ICreateAddressBook } from "../domain/entities/params/create-addressbook-body";
+import { EditAddressParam } from "../domain/entities/params/edit-address-params";
+import { IGetAccount } from "../domain/entities/params/get-account-param";
+import { IDeleteaddressParam } from "../domain/entities/params/delete-address-param";
+import { ChainModel } from "../domain/entities/models/chain-model";
+import { GetCurrencyParam } from "../domain/entities/params/get-currency-param";
+import { GetCountryParam } from "../domain/entities/params/get-country-param";
+import { CountryModel } from "../domain/entities/models/country-model";
+import { GetBanksParams } from "../domain/entities/params/get-bank-param";
+import { BankModel } from "../domain/entities/models/bank-model";
+import { Verify2faCodeBody } from "../domain/entities/params/verify-2fa-code-body";
+import { SettingsParams } from "../domain/entities/params/settings-params";
+import { UserActivitiesResponse, UserActivity } from "@zap/blockchain-sdk";
 
 export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
   private readonly remoteDatasource = new SettingsRemoteDataSourceImpl();
@@ -36,7 +37,7 @@ export class SettingsRepoImpl implements SettingsRepo, SettingsLocalDataSource {
 
   async activity(
     payload: GeneralRequestModel<unknown, IActivityLogsParams, unknown>
-  ): Promise<GeneralResponseModel<ActivityLogModel[]>> {
+  ): Promise<UserActivity[]> {
     return this.remoteDatasource.activity(payload);
   }
 

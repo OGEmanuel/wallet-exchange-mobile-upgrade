@@ -1,5 +1,6 @@
 import { CustomText } from "@/components/general";
-import { formatNumber, formatWalletAddress } from "@/src/core/utils/format-utils";
+import useAppUtilities from "@/hooks/useAppUtilities";
+import { formatWalletAddress } from "@/src/core/utils/format-utils";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
@@ -15,6 +16,7 @@ const OverviewDetails = ({
   orderDetails: CreateOrderResponse;
 }) => {
   const theme = useTheme<Theme>();
+  const { getApproximateAmount } = useAppUtilities();
 
   const sellSymbol = orderDetails?.sellCurrency?.currencyId?.symbol || "";
   const isSellCrypto =
@@ -33,16 +35,16 @@ const OverviewDetails = ({
             style={[styles.walletText, { color: theme.colors.bodyTextColor }]}
           >
             {isSellCrypto
-              ? formatNumber(orderDetails.sellAmount) + " " + sellSymbol
-              : sellSymbol + formatNumber(orderDetails.sellAmount, 2)}
+              ? getApproximateAmount(orderDetails.sellAmount, true) + " " + sellSymbol
+              : sellSymbol + getApproximateAmount(orderDetails.sellAmount, false)}
           </CustomText>
         </DetailRow>
 
         <DetailRow label="LP Fee:">
           <CustomText fontSize={14}>
             {isSellCrypto
-              ? formatNumber(orderDetails.lpFee ?? 0) + " " + sellSymbol
-              : sellSymbol + formatNumber(orderDetails.lpFee ?? 0, 2)}
+              ? getApproximateAmount(orderDetails.lpFee ?? 0, true) + " " + sellSymbol
+              : sellSymbol + getApproximateAmount(orderDetails.lpFee ?? 0, false)}
           </CustomText>
         </DetailRow>
 

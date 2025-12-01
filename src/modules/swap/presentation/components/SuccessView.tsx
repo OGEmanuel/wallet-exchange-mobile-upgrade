@@ -1,7 +1,8 @@
 import icons from "@/assets/icons";
+import TokenImage from "@/components/dashboard/market/TokenImage";
 import { CustomText } from "@/components/general";
+import useAppUtilities from "@/hooks/useAppUtilities";
 import { Theme } from "@/theme";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef } from "react";
 import {
@@ -12,8 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Order } from "../../domain/entities/order.types";
 // import { Text, TokenImage } from "..";
-// import { Order } from "zap-frontend-swap-module/lib/types/types";
 // import { formatCurrencyAmount } from "../../utils/cryptoHelpers";
 // import icons from "../../assets/icons";
 // import { useToast } from "../../contexts/ToastContext";
@@ -54,6 +55,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({
   const checkmarkOpacity = useRef(new Animated.Value(0)).current;
   const copyButtonScale = useRef(new Animated.Value(1)).current;
   const theme = useTheme<Theme>();
+  const { getApproximateAmount } = useAppUtilities();
 
   useEffect(() => {
     Animated.parallel([
@@ -129,7 +131,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({
         </Animated.View>
 
         {/* Transaction Time */}
-        <Animated.View
+        {/* <Animated.View
           style={[
             styles.flashContainer,
             {
@@ -142,7 +144,7 @@ const SuccessView: React.FC<SuccessViewProps> = ({
           <Text style={styles.flashText}>
             Swapped in 1 min {transactionTime}
           </Text>
-        </Animated.View>
+        </Animated.View> */}
 
         {/* Withdraw Details */}
         <Animated.View
@@ -174,11 +176,11 @@ const SuccessView: React.FC<SuccessViewProps> = ({
               variant="header"
               style={[styles.amountText, { color: theme.colors.bodyTextColor }]}
             >
-              {/* {formatCurrencyAmount(
-                orderDetails?.sellAmount || toAmount,
-                sellCurrency?.displayTicker || toCurrency
-              )}{" "} */}
-              1 {sellCurrency?.name || toCurrency}
+              {getApproximateAmount(
+                orderDetails?.sellAmount || (toAmount ? parseFloat(toAmount) : undefined),
+                true
+              )}{" "}
+              {sellCurrency?.name || toCurrency}
             </CustomText>
           </View>
 
@@ -209,17 +211,17 @@ const SuccessView: React.FC<SuccessViewProps> = ({
 
             <View style={styles.divider} />
 
-            {(orderDetails?.buyCurrency?.chainId || buyCurrency?.chainId) && (
+            {(orderDetails?.sellCurrency?.chainId) && (
               <View style={styles.networkTag}>
                 <View style={styles.networkIconWrapper}>
-                  {/* <TokenImage
+                  <TokenImage
                     size={16}
-                    uri={buyCurrency?.image || ""}
-                    name={buyCurrency?.name || ""}
-                  /> */}
+                    uri={orderDetails?.sellCurrency?.image || ""}
+                    name={orderDetails?.sellCurrency?.name || ""}
+                  />
                 </View>
                 <Text style={styles.networkText}>
-                  {buyCurrency?.chainId?.name || network}
+                  {orderDetails?.sellCurrency?.chainId?.name || network}
                 </Text>
               </View>
             )}

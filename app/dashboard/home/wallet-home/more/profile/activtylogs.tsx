@@ -1,15 +1,45 @@
 import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
-import { Box, CustomText, PageWrapper } from "@/components/general";
+import {
+  Box,
+  CustomText,
+  LoaderWrapper,
+  PageWrapper,
+} from "@/components/general";
+import { queryKeys } from "@/src/core/api/query-keys";
+import { useGetExchangeUser } from "@/src/hooks/queries";
+import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
+import useSettings from "@/src/modules/settings/presentation/hooks/useSettings";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { router } from "expo-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { UserActivity } from "@zap/blockchain-sdk";
+import { useRouter } from "expo-router";
 import { Search } from "lucide-react-native";
-import React from "react";
-import { ScrollView } from "react-native-gesture-handler";
+import React, { useState } from "react";
+import { FlatList } from "react-native";
+import ActivityLogsEmptyState from "./empty-logs";
 
-const ItemCard = () => {
+const ItemCard = (props: { logs: UserActivity }) => {
+  const { logs } = props;
+
+  function formatDateReadable(dateString: string): string {
+    const date = new Date(dateString);
+
+    const day = date.getDate();
+    const month = date.toLocaleString("en-US", { month: "short" });
+    const year = date.getFullYear();
+
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12 || 12; // convert to 12-hour format
+
+    return `${day} ${month} ${year}, ${hours}:${minutes}${ampm}`;
+  }
+
   return (
     <Box
       width={"100%"}
@@ -28,20 +58,54 @@ const ItemCard = () => {
         position="relative"
       ></Box>
       <Box ml="m">
-        <CustomText fontSize={14}>Login</CustomText>
+        <CustomText fontSize={14}>{logs.type}</CustomText>
         <CustomText fontSize={12} mt="s">
-          You transaction from 40 ETH To20 BTC was completed successfully{" "}
+          {logs.description}
         </CustomText>
         <CustomText fontSize={10} color="disabledTextColor" mt="s">
-          27 Dec 2022, 11:58AM
+          {formatDateReadable(logs.createdAt)}
         </CustomText>
       </Box>
     </Box>
   );
 };
 
+const useGetActivityLogs = (page: number, limit: number, user?: UserModel) => {
+  const settings = useSettings();
+
+  return useQuery({
+    queryKey: queryKeys.activity.logs(page, limit),
+    queryFn: async () =>
+      await settings.getActivities({
+        userId: user?._id!!,
+        page: page,
+        limit: limit,
+      }),
+    enabled: user ? true : false,
+  });
+};
+
 const ActivityLogs = () => {
+  const router = useRouter();
   const theme = useTheme<Theme>();
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: userData } = useGetExchangeUser();
+  const user: UserModel | null | undefined = userData;
+  const queryClient = useQueryClient();
+
+  const {
+    data: logsData,
+    isPending: loading,
+    isError: error,
+  } = useGetActivityLogs(1, 10, user!!);
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.logs(1, 10) });
+  };
+
   return (
     <PageWrapper>
       <SettingsHeader title="Activty Logs" onBackPress={() => router.back()} />
@@ -63,8 +127,8 @@ const ActivityLogs = () => {
             <CustomInputWithoutForm
               placeholder="Search"
               placeholderTextColor={theme.colors.disabledTextColor}
-              value=""
-              onChange={() => {}}
+              value={searchQuery}
+              onChange={handleSearchChange}
               iconLeft={<Search size={20} color={theme.colors.bodyTextColor} />}
             />
           </Box>
@@ -76,14 +140,21 @@ const ActivityLogs = () => {
           />
         </Box>
       </Box>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        {Array.from([
-          1, 2, 3, 4, 5, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        ]).map((item, index) => (
-          <ItemCard key={index.toString()} />
-        ))}
-      </ScrollView>
+      <LoaderWrapper
+        isLoading={loading}
+        isError={error}
+        errorMessage={"Failed to load activities"}
+        onRetry={handleRefresh}
+        isEmpty={!loading && logsData?.length === 0}
+        emptyComponent={<ActivityLogsEmptyState />}
+      >
+        <FlatList
+          data={logsData}
+          keyExtractor={(log) => log._id}
+          renderItem={(logsData) => <ItemCard logs={logsData.item} />}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        />
+      </LoaderWrapper>
     </PageWrapper>
   );
 };
