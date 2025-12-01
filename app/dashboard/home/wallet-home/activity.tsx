@@ -87,7 +87,7 @@ const Activity = () => {
   // Fetch initial data
   const loadActivities = useCallback(async (page: number, reset = false) => {
     // Check authentication first
-    if (!isExchangeAuthenticated || !user?._id) {
+    if (!isExchangeAuthenticated) {
       console.log("⚠️ User not authenticated, prompting login");
       showExchangeLogin();
       setIsLoading(false);
@@ -140,13 +140,13 @@ const Activity = () => {
 
   // Load initial data
   useEffect(() => {
-    if (isExchangeAuthenticated && user?._id) {
+    if (isExchangeAuthenticated) {
       loadActivities(1, true);
     } else if (!isExchangeAuthenticated) {
       // Show login prompt if not authenticated
       showExchangeLogin();
     }
-  }, [user?._id, isExchangeAuthenticated, loadActivities, showExchangeLogin]); // Include loadActivities but it's stable due to useCallback
+  }, [isExchangeAuthenticated, loadActivities, showExchangeLogin]); // Include loadActivities but it's stable due to useCallback
 
   const handleFilterClick = () => {
     if (activityFilterRef.current) {
@@ -170,7 +170,7 @@ const Activity = () => {
     });
 
     // Check authentication first
-    if (!isExchangeAuthenticated || !user?._id) {
+    if (!isExchangeAuthenticated) {
       console.log("⚠️ User not authenticated, prompting login");
       showExchangeLogin();
       return;
