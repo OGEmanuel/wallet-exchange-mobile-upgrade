@@ -90,14 +90,17 @@ export const useBankAccounts = () => {
       const bankAccounts = await zapSDKService.getBankAccounts(
         currentExchangeUser || ""
       );
+
+      /** Remove accounts with deletedAt date */
+      const activeBankAccounts = bankAccounts.filter((account) => !account.deletedAt);
       
       // Deduplicate bank accounts before setting state
-      const uniqueBankAccounts = deduplicateBankAccounts(bankAccounts);
+      let uniqueBankAccounts = deduplicateBankAccounts(activeBankAccounts);
       
       // Log if duplicates were found (only log once to avoid spam)
-      if (bankAccounts.length !== uniqueBankAccounts.length) {
+      if (activeBankAccounts.length !== uniqueBankAccounts.length) {
         console.log(
-          `🔄 Removed ${bankAccounts.length - uniqueBankAccounts.length} duplicate bank account(s)`
+          `🔄 Removed ${activeBankAccounts.length - uniqueBankAccounts.length} duplicate bank account(s)`
         );
       }
       
