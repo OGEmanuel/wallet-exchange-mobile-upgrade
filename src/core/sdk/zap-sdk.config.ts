@@ -36,16 +36,17 @@ export const getSDKConfig = (): SDKConfig => {
     };
   }
   
-  if (isDev) {
-    return {
-      baseURL: developmentBaseURL,
-      environment: 'local',
-      platform: 'react-native',
-      enableLogging: true,
-      timeout: 30000,
-      retryAttempts: 3,
-    };
-  }
+  /** comment out on testflight so it point to staging url for UAT */
+  // if (!isDev) {
+  //   return {
+  //     baseURL: developmentBaseURL,
+  //     environment: 'local',
+  //     platform: 'react-native',
+  //     enableLogging: true,
+  //     timeout: 30000,
+  //     retryAttempts: 3,
+  //   };
+  // }
   
   return {
     baseURL: stagingBaseURL,
