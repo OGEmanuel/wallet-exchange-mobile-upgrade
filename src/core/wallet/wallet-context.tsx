@@ -99,6 +99,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Other states
   const [error, setError] = useState<string | null>(null);
+  const [walletGroupsFetchError, setWalletGroupsFetchError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [hasNavigatedToWallet, setHasNavigatedToWallet] = useState(false);
@@ -668,6 +669,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       );
       // Don't set isUserWalletGroups to false for this temporary error
       // The SDK service will retry automatically
+      // Don't set error state for temporary auth errors
       return {
         ...result,
         userWalletGroups: result.userWalletGroups || null,
@@ -684,12 +686,17 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         "ℹ️ No wallet groups found (404) - user needs to create wallets"
       );
       setIsUserWalletGroups(false);
+      // Don't set error state for 404 - this is expected when user has no wallets
+      setWalletGroupsFetchError(null);
       return {
         ...result,
         userWalletGroups: null,
         isUserWalletGroups: false,
       };
     } else {
+      // This is a real error - set error state for UI indicator
+      const errorMessage = error?.message || error?.toString() || "Failed to load wallet groups";
+      setWalletGroupsFetchError(errorMessage);
       setIsUserWalletGroups(false);
       return {
         ...result,
@@ -731,6 +738,9 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     shouldRoute: boolean,
     result: any
   ) => {
+    // Clear any previous error on successful fetch
+    setWalletGroupsFetchError(null);
+    
     setUserWalletGroups(uWalletGroups.userWalletGroups);
     setIsUserWalletGroups(true);
 
@@ -858,6 +868,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     result: any
   ) => {
     try {
+      console.log("🔄 Fetching wallet groups from API for user:", walletUserId);
+      // throw new Error("test");
       const uWalletGroups = await zapSDKService.getUserWalletGroups(
         walletUserId,
         { useCache: false }
@@ -2477,6 +2489,7 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
   // Wallet Groups methods
   const refreshUserWalletGroups = async (): Promise<any> => {
+    console.log("🔄 Refreshing user wallet groups...");
     try {
       if (!isWalletAuthenticated || !currentWalletUser) {
         console.log("⚠️ Cannot refresh wallet groups - not authenticated");
@@ -2490,40 +2503,39 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       console.log("🔄 Refreshing user wallet groups...");
-      const uWalletGroups = await zapSDKService.getUserWalletGroups(
-        currentWalletUser,
-        { useCache: false }
-      );
+      throw new Error("test");
 
-      // Handle both direct array and object with userWalletGroups property
-      let walletGroupsArray: IUserWalletGroup[] = [];
-      if (Array.isArray(uWalletGroups)) {
-        walletGroupsArray = uWalletGroups;
-      } else if (
-        uWalletGroups &&
-        uWalletGroups.userWalletGroups &&
-        Array.isArray(uWalletGroups.userWalletGroups)
-      ) {
-        walletGroupsArray = uWalletGroups.userWalletGroups;
-      } else {
-        console.warn("⚠️ Invalid user wallet groups response:", uWalletGroups);
-        setUserWalletGroups([]);
-        return [];
-      }
-
-      console.log("✅ User wallet groups refreshed:", walletGroupsArray.length);
-
-      await clearWalletGroupsCache();
-      await clearPortfolioCache(mainUserWalletGroup?._id);
-      if (walletGroupsArray.length > 0) {
-        await saveWalletGroupsToCache(walletGroupsArray);
-      }
-
-      setUserWalletGroups(walletGroupsArray);
-      return walletGroupsArray;
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Failed to refresh user wallet groups:", error);
+      // Set error state for UI indicator
+      const errorMessage = error?.message || error?.toString() || "Failed to refresh wallet groups";
+      setWalletGroupsFetchError(errorMessage);
       return [];
+    }
+  };
+
+  // Retry function for wallet groups fetch - can be called from UI
+  const retryWalletGroupsFetch = async (): Promise<void> => {
+    if (!currentWalletUser) {
+      console.warn("⚠️ Cannot retry wallet groups fetch - no wallet user");
+      return;
+    }
+
+    console.log("🔄 Retrying wallet groups fetch...");
+    setWalletGroupsFetchError(null); // Clear error before retry
+    
+    try {
+      const result = createBaseResult();
+      // Call fetchAndProcessWalletGroups directly
+      await fetchAndProcessWalletGroups(
+        currentWalletUser,
+        isExchangeAuthenticated,
+        false, // Don't route, just refresh
+        result
+      );
+    } catch (error) {
+      console.error("❌ Retry failed:", error);
+      // Error will be set by handleWalletGroupsError
     }
   };
 
@@ -3594,6 +3606,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
 
     // Wallet Groups
     refreshUserWalletGroups,
+    walletGroupsFetchError,
+    retryWalletGroupsFetch,
 
     // Transactions
     getTransactionHistory,
