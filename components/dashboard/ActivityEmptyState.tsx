@@ -1,15 +1,17 @@
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import { useRouter } from "expo-router";
 import React from "react";
 import { Image } from "react-native";
 import Box from "../general/Box";
 import CustomButton from "../general/CustomButton";
 import CustomText from "../general/CustomText";
 
-const ActivityEmptyState = () => {
+interface ActivityEmptyStateProps {
+  onRefresh?: () => void;
+}
+
+const ActivityEmptyState = ({ onRefresh }: ActivityEmptyStateProps) => {
   const theme = useTheme<Theme>();
-  const router = useRouter();
   return (
     <Box width={"100%"} height="auto" alignItems="center">
       <Image
@@ -21,7 +23,7 @@ const ActivityEmptyState = () => {
         No history
       </CustomText>
       <CustomText variant="body" fontSize={14} mb="l" mt="s">
-        You haven’t made any transactions yet
+        You haven&apos;t made any transactions yet
       </CustomText>
 
       <CustomButton
@@ -29,11 +31,11 @@ const ActivityEmptyState = () => {
         height={42}
         borderRadius={40}
         bgColor={theme.colors.primaryColor}
-        text="Buy crypto"
+        text="Refresh"
         variant="bodySubheader"
         fontSize={12}
         onPress={() => {
-          router.push("/dashboard/home/wallet-home/swap");
+          onRefresh?.();
         }}
       />
     </Box>
