@@ -2497,13 +2497,29 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       const sdk = zapSDKService.getSDK();
+      console.log("sdk", sdk);
       if (!sdk) {
         console.log("⚠️ Cannot refresh wallet groups - SDK not available");
         return [];
       }
 
       console.log("🔄 Refreshing user wallet groups...");
-      throw new Error("test");
+
+      const uWalletGroups = await zapSDKService.getUserWalletGroups(
+        currentWalletUser,
+        { useCache: false }
+      );
+
+      if (uWalletGroups?.userWalletGroups && uWalletGroups.userWalletGroups.length > 0) {
+        setWalletGroupsFetchError(null);
+        setUserWalletGroups(uWalletGroups.userWalletGroups);
+        setIsUserWalletGroups(true);
+        console.log("✅ Wallet groups refreshed:", uWalletGroups.userWalletGroups.length);
+        return uWalletGroups.userWalletGroups;
+      }
+
+      console.log("⚠️ No wallet groups found after refresh");
+      return [];
 
     } catch (error: any) {
       console.error("❌ Failed to refresh user wallet groups:", error);
