@@ -2497,7 +2497,6 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
 
       const sdk = zapSDKService.getSDK();
-      console.log("sdk", sdk);
       if (!sdk) {
         console.log("⚠️ Cannot refresh wallet groups - SDK not available");
         return [];
