@@ -1,5 +1,6 @@
 import { useTabBarHeight } from "@/hooks/useTabBarHeight";
 import { useBankAccounts } from "@/src/modules/swap/presentation/hooks/useBankAccounts";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -27,6 +28,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
+import { useSelector } from "react-redux";
 import EmptyState from "../dashboard/market/EmptyState";
 import BankIcon from "../general/BankIcon";
 import Box from "../general/Box";
@@ -69,6 +71,7 @@ const BankAccountsBottomSheet = forwardRef<
     const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
     const [showBankSelector, setShowBankSelector] = useState(false);
     const [banksSearchQuery, setBanksSearchQuery] = useState("");
+    const sCurrencyList = useSelector((state: AppRootState) => state.swap.supportedCurrencies);
 
     // Animation for account name input glow
     const glowAnimation = useRef(new Animated.Value(0)).current;
@@ -401,10 +404,18 @@ const BankAccountsBottomSheet = forwardRef<
                     if (!selectedBank || !resolvedAccount?.name) return;
 
                     try {
+                      console.log('selected bank', selectedBank)
+                      let supportedCurrency;
+                      if(!targetCurrency) {
+                        const sBank: any = selectedBank;
+                        console.log('supported currency list', sCurrencyList)
+
+                        supportedCurrency = sCurrencyList?.find((currency) => currency.currencyId?._id === sBank?.nativeCurrencyId?._id || currency.currencyId?._id === sBank?.nativeCurrencyId );
+                      }
                       await createBankAccount(
                         selectedBank._id,
                         resolvedAccount.name,
-                        targetCurrency,
+                        targetCurrency || supportedCurrency as ISupportedCurrency,
                         accountNumber
                       );
 
