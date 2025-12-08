@@ -1,4 +1,10 @@
-import { ThemedFilterIcon } from "@/assets/svg/wallet-icons-components";
+import {
+  ThemedFilterIcon,
+  ThemedLockPasswordIcon,
+  ThemedProfileFilled2Icon,
+  ThemedSignOutIcon,
+  ThemedSwap1Icon,
+} from "@/assets/svg/wallet-icons-components";
 import SettingsHeader from "@/components/dashboard/SettingsHeader";
 import CustomInputWithoutForm from "@/components/form/CustomInputWithoutForm";
 import {
@@ -56,7 +62,14 @@ const ItemCard = (props: { logs: UserActivity }) => {
         justifyContent="center"
         alignItems="center"
         position="relative"
-      ></Box>
+      >
+        {(logs.type === "LOGOUT" || logs.type === "LOGIN") && (
+          <ThemedSignOutIcon />
+        )}
+        {logs.type === "TRANSACTION" && <ThemedSwap1Icon />}
+        {logs.type === "OTP" && <ThemedLockPasswordIcon />}
+        {logs.type === "ACCOUNT" && <ThemedProfileFilled2Icon />}
+      </Box>
       <Box ml="m">
         <CustomText fontSize={14}>{logs.type}</CustomText>
         <CustomText fontSize={12} mt="s">
