@@ -140,6 +140,7 @@ const Activity = () => {
 
   // Load initial data
   useEffect(() => {
+    console.log("isExchangeAuthenticated", isExchangeAuthenticated);
     if (isExchangeAuthenticated) {
       loadActivities(1, true);
     } else if (!isExchangeAuthenticated) {
@@ -311,7 +312,7 @@ const Activity = () => {
           errorMessage={error?.message || "Failed to load activities"}
           onRetry={handleRefresh}
           isEmpty={!isLoading && filteredActivities.length === 0}
-          emptyComponent={<ActivityEmptyState />}
+          emptyComponent={<ActivityEmptyState onRefresh={handleRefresh} />}
           existingData={
             filteredActivities.length > 0 ? filteredActivities : undefined
           }

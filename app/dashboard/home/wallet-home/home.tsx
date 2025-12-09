@@ -10,7 +10,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { LinearGradient } from "expo-linear-gradient";
-import { ChevronLeft } from "lucide-react-native";
+import { AlertCircle, ChevronLeft, RefreshCw } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, BackHandler, Platform, Pressable, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -96,6 +96,8 @@ const Home = () => {
     loadAllDataFromCache,
     userWalletGroups,
     isUserWalletGroups,
+    walletGroupsFetchError,
+    retryWalletGroupsFetch,
   } = useWallet();
 
   const { getCurrentWalletEnabledBalance } = useAggregatedBalances();
@@ -793,6 +795,52 @@ const Home = () => {
           />
         }
       >
+        {/* Error Indicator Banner */}
+        {walletGroupsFetchError && (
+          <Box
+            backgroundColor="error"
+            paddingHorizontal="m"
+            paddingVertical="s"
+            marginHorizontal="m"
+            marginTop="s"
+            borderRadius={8}
+            flexDirection="row"
+            alignItems="center"
+            justifyContent="space-between"
+            gap="s"
+          >
+            <Box flex={1} flexDirection="row" alignItems="center" gap="s">
+              <AlertCircle size={18} color={theme.colors.white} />
+              <CustomText
+                variant="body"
+                color="white"
+                fontSize={12}
+                flex={1}
+              >
+                Failed to load wallet data. Please refresh.
+              </CustomText>
+            </Box>
+            <Pressable
+              onPress={retryWalletGroupsFetch}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                borderRadius: 6,
+              })}
+            >
+              <RefreshCw size={16} color={theme.colors.white} />
+              <CustomText variant="body" color="white" fontSize={12}>
+                Refresh
+              </CustomText>
+            </Pressable>
+          </Box>
+        )}
+
         <LinearGradient
           colors={["rgba(96, 69, 255, 0)", "rgba(96, 69, 255, 1)"]}
           start={{ x: 0, y: 0.45 }}

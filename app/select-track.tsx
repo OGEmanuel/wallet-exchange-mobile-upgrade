@@ -1,16 +1,17 @@
+import { AnimatedGradientBottomSheetRef } from "@/components/bottomsheets/AnimatedGradientBottomSheet";
+import ZapperSiginBottomSheet from "@/components/bottomsheets/ZapperSiginBottomSheet";
 import { Box, PageWrapper } from "@/components/general";
 import ThemedText from "@/components/general/ThemedText";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import useActiveTheme from "@/hooks/useTheme";
-import { useZapperSignBottomSheet } from "@/hooks/useZapperSignBottomSheet";
-import { useWallet, WalletProvider } from "@/src/core/wallet/wallet-context";
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { WalletProvider } from "@/src/core/wallet/wallet-context";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { PropsWithChildren, useCallback, useRef } from "react";
+import React, { PropsWithChildren, useCallback, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import { ScrollView } from "react-native-gesture-handler";
 import { useSelector } from "react-redux";
@@ -93,28 +94,20 @@ const Card = ({
 };
 
 const SelectTrack = () => {
-  const { fetchUserById, loginAsGuest } = useKyc();
-  const { showZapperSignBottomSheet } = useZapperSignBottomSheet();
-  
   // Get exchange authentication state from wallet context
-  const { isExchangeAuthenticated, currentExchangeUser } = useWallet();
+  const { isUserLoggedIn } = useExchangeAuth();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   
-  // Ref to track if login has been initiated
-  const loginInitiatedRef = useRef<boolean>(false);
+  // Bottom sheet refs and state
+  const zapperBottomSheetRef = useRef<AnimatedGradientBottomSheetRef>(null);
+  const [isZapperBottomSheetVisible, setIsZapperBottomSheetVisible] = useState(false);
 
-  // Check if user is exchange authenticated
-  const isUserLoggedIn = isExchangeAuthenticated;
-
-  const triggerFetchUserData = useCallback(() => {
-    if (user?._id || currentExchangeUser) {
-      fetchUserById({
-        _id: currentExchangeUser || user?._id || undefined
-      });
-    }
-  }, [user?._id, currentExchangeUser, fetchUserById]);
-
-  // Removed automatic guest login - guest login now happens only when needed for crypto-to-crypto trades
+  const handleOpenOnboarding = useCallback(() => {
+    setIsZapperBottomSheetVisible(true);
+    setTimeout(() => {
+      zapperBottomSheetRef.current?.snapToIndex(0);
+    }, 100);
+  }, []);
 
   const theme = useTheme<Theme>();
 
@@ -148,16 +141,8 @@ const SelectTrack = () => {
             router.push("/dashboard/home/wallet-home/home");
           }
         } else {
-          // Show exchange login bottom sheet for non-authenticated users
-          showZapperSignBottomSheet({
-            onContinue: () => {
-              // Navigate to dashboard after successful exchange authentication
-              router.push("/dashboard/home/wallet-home/swap");
-            },
-            onClose: () => {
-              // Handle close if needed
-            },
-          });
+          // Directly open onboarding flow for non-authenticated users
+          handleOpenOnboarding();
         }
       },
     },
@@ -204,6 +189,25 @@ const SelectTrack = () => {
           ))}
         </ScrollView>
       </Box>
+      {isZapperBottomSheetVisible && (
+        <ZapperSiginBottomSheet
+          key="zapper-bottom-select-track"
+          ref={zapperBottomSheetRef}
+          onContinue={() => {
+            zapperBottomSheetRef.current?.close();
+            setIsZapperBottomSheetVisible(false);
+            // Navigate to dashboard after successful exchange authentication
+            if (user?.isGuest) {
+              router.push("/dashboard/home/wallet-home/swap");
+            } else {
+              router.push("/dashboard/home/wallet-home/home");
+            }
+          }}
+          onClose={() => {
+            setIsZapperBottomSheetVisible(false);
+          }}
+        />
+      )}
     </Wrapper>
   );
 };
