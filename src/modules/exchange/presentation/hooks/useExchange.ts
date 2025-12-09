@@ -28,6 +28,8 @@ const useExchange = () => {
     limit,
   }: FetchExchangeActivitiesParams): Promise<GeneralResponseModel<ExchangeActivityModel[]>> => {
     setFetchingExchangeActivities(true);
+
+    console.log("fetchExchangeActivities user", user);
     
     if (!user?._id) {
       setFetchingExchangeActivities(false);

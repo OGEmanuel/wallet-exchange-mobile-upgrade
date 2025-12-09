@@ -529,6 +529,8 @@ export const useAggregatedBalances = () => {
       return enabledBalance;
     }
 
+    console.log("💰 Enabled balance not found, using total portfolio value:", processedPortfolio.totalUsdValue);
+
     return processedPortfolio.totalUsdValue;
   };
 

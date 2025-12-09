@@ -76,6 +76,8 @@ export interface WalletContextType {
 
   // Wallet Groups
   refreshUserWalletGroups: () => Promise<void>;
+  walletGroupsFetchError: string | null;
+  retryWalletGroupsFetch: () => Promise<void>;
 
   getTransactionHistory: (accountId?: string) => Promise<any[]>;
 

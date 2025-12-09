@@ -22,6 +22,7 @@ const localBaseURL = 'http://localhost:3005';
 
 export const getSDKConfig = (): SDKConfig => {
   const isDev = __DEV__;
+  const staging = true;
   // let isLocal = Constants.expoConfig?.extra?.environment === 'local';
   let isLocal = false;
   
@@ -47,9 +48,20 @@ export const getSDKConfig = (): SDKConfig => {
   //     retryAttempts: 3,
   //   };
   // }
+
+  if (staging) {
+    return {
+      baseURL: stagingBaseURL,
+      environment: 'staging',
+      platform: 'react-native',
+      enableLogging: true,
+      timeout: 30000,
+      retryAttempts: 3,
+    };
+  }
   
   return {
-    baseURL: stagingBaseURL,
+    baseURL: productionBaseURL,
     environment: 'production',
     platform: 'react-native',
     enableLogging: false,
