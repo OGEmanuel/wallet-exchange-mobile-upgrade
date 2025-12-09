@@ -37,7 +37,7 @@ const TwoFactorAuthInputBottomSheet = forwardRef<
   const tabBarHeight = Platform.OS === "ios" ? 90 : 70;
   const bottomInset = tabBarHeight;
 
-  const snapPoints = useMemo(() => ["50%"], []);
+  const snapPoints = useMemo(() => ["65%"], []);
 
   // Expose methods via ref
   React.useImperativeHandle(ref, () => ({
@@ -113,6 +113,8 @@ const TwoFactorAuthInputBottomSheet = forwardRef<
       enablePanDownToClose={false} // Don't allow closing by dragging for 2FA
       enableOverDrag={false}
       enableDynamicSizing={false}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
       bottomInset={bottomInset}
       backdropComponent={renderBackdrop}
       style={{
@@ -193,7 +195,12 @@ const TwoFactorAuthInputBottomSheet = forwardRef<
         {/* Error Message */}
         {error && (
           <Box marginBottom="m">
-            <CustomText color="error" variant="body" textAlign="center" fontSize={14}>
+            <CustomText
+              color="error"
+              variant="body"
+              textAlign="center"
+              fontSize={14}
+            >
               {error}
             </CustomText>
           </Box>
@@ -207,7 +214,11 @@ const TwoFactorAuthInputBottomSheet = forwardRef<
           isLoading={isVerifying}
           width="100%"
           borderRadius={50}
-          bgColor={code.length === 6 && !isVerifying ? "primaryColor" : "inActiveBtnColor"}
+          bgColor={
+            code.length === 6 && !isVerifying
+              ? "primaryColor"
+              : "inActiveBtnColor"
+          }
         />
       </BottomSheetView>
     </BottomSheet>
@@ -226,4 +237,3 @@ const styles = StyleSheet.create({
 });
 
 export default TwoFactorAuthInputBottomSheet;
-

@@ -13,8 +13,21 @@ import { BottomSheetMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useTheme } from "@shopify/restyle";
 import * as Clipboard from "expo-clipboard";
 import { Copy, X } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Image, Platform, Pressable, StyleSheet, Switch } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Switch,
+} from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
 interface TwoFactorAuthBottomSheetProps {
@@ -66,26 +79,26 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
     try {
       setIsLoading(true);
       hasCheckedRef.current = true;
-      
+
       console.log("🔍 Starting 2FA status check...");
-      
+
       // Use SDK's getTwoFaStatus function
       const statusResult = await zapSDKService.getTwoFaStatus();
-      
+
       console.log("🔍 2FA Status Check (from SDK):", statusResult);
-      
+
       // The SDK returns the 2FA status - check the response structure
       // It might return { enabled: boolean } or { isEnabled: boolean } or just a boolean
       if (statusResult) {
-        const isEnabled = 
+        const isEnabled =
           (statusResult as any)?.enabled === true ||
           (statusResult as any)?.isEnabled === true ||
           (statusResult as any)?.isTwoFAenabled === true ||
           (statusResult as any)?.twoFA === true ||
           statusResult === true;
-        
+
         setIs2FAEnabled(isEnabled);
-        
+
         console.log("✅ 2FA Status from SDK:", { statusResult, isEnabled });
       } else {
         // No status returned (likely 404 - user hasn't set up 2FA)
@@ -96,13 +109,14 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       console.error("❌ Failed to get 2FA status from SDK:", error);
       // Fall back to existing user data on error
       const currentUserData = exchangeUserDataRef.current;
-      const userHas2FA = currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
+      const userHas2FA =
+        currentUserData?.isTwoFAenabled || currentUserData?.twoFA || false;
       setIs2FAEnabled(userHas2FA);
       console.log("🔄 Falling back to user data 2FA status:", userHas2FA);
     } finally {
       setIsLoading(false);
       // Reset the check flag immediately after completion to allow re-checking
-        hasCheckedRef.current = false;
+      hasCheckedRef.current = false;
     }
   }, []); // No dependencies needed since we're using SDK directly
 
@@ -114,15 +128,15 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       // Only check if user ID has changed or hasn't been checked yet
       if (userIdRef.current !== currentUserId) {
         console.log("🔄 User ID changed, checking 2FA status...");
-      userIdRef.current = currentUserId;
+        userIdRef.current = currentUserId;
         // Reset the check flag when user changes
         hasCheckedRef.current = false;
-      check2FAStatus();
+        check2FAStatus();
       } else if (!hasCheckedRef.current) {
         // User ID exists but hasn't been checked yet
         console.log("🔄 Initial 2FA status check...");
-      check2FAStatus();
-    }
+        check2FAStatus();
+      }
     } else {
       // No user ID, reset state
       setIs2FAEnabled(false);
@@ -136,21 +150,24 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // Check if 2FA is already enabled from user data
-      const userHas2FA = exchangeUserData?.isTwoFAenabled || exchangeUserData?.twoFA || false;
-      
+      const userHas2FA =
+        exchangeUserData?.isTwoFAenabled || exchangeUserData?.twoFA || false;
+
       console.log("🔍 Attempting to enable 2FA - Current state:", {
-        exchangeUserData: exchangeUserData ? {
-          _id: exchangeUserData._id,
-          isTwoFAenabled: exchangeUserData.isTwoFAenabled,
-          twoFA: exchangeUserData.twoFA,
-        } : null,
+        exchangeUserData: exchangeUserData
+          ? {
+              _id: exchangeUserData._id,
+              isTwoFAenabled: exchangeUserData.isTwoFAenabled,
+              twoFA: exchangeUserData.twoFA,
+            }
+          : null,
         userHas2FA,
         is2FAEnabled,
         willPrevent: userHas2FA || is2FAEnabled,
       });
-      
+
       if (userHas2FA || is2FAEnabled) {
         Alert.alert(
           "2FA Already Enabled",
@@ -160,7 +177,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         setIsLoading(false);
         return;
       }
-      
+
       const result = await zapSDKService.enableTwoFa({
         userId: exchangeUserData?._id || "",
       });
@@ -169,7 +186,11 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
 
       // Handle different response structures
       const secretValue = result?.secret || result?.data?.secret;
-      const qrCodeValue = result?.secretQrCode || result?.qrCode || result?.data?.secretQrCode || result?.data?.qrCode;
+      const qrCodeValue =
+        result?.secretQrCode ||
+        result?.qrCode ||
+        result?.data?.secretQrCode ||
+        result?.data?.qrCode;
 
       if (result && secretValue && qrCodeValue) {
         setSecret(secretValue);
@@ -181,12 +202,13 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       }
     } catch (err: any) {
       console.error("Failed to enable 2FA:", err);
-      
+
       // Check if it's a validation error (likely means 2FA is already enabled)
-      const isValidationError = err?.response?.status === 400 || 
-                                err?.status === 400 ||
-                                (err?.message && err.message.includes('Validation failed'));
-      
+      const isValidationError =
+        err?.response?.status === 400 ||
+        err?.status === 400 ||
+        (err?.message && err.message.includes("Validation failed"));
+
       if (isValidationError) {
         Alert.alert(
           "2FA Already Enabled",
@@ -239,18 +261,24 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
 
       // Handle different response structures
       // SDK returns { verified: boolean } or the full API response
-      const isVerified = 
-        result?.verified === true || 
-        (result && typeof result === 'object' && 'success' in result && (result as any).success === true) ||
-        (result && typeof result === 'object' && 'data' in result && (result as any).data?.userId?.isTwoFAenabled === true);
+      const isVerified =
+        result?.verified === true ||
+        (result &&
+          typeof result === "object" &&
+          "success" in result &&
+          (result as any).success === true) ||
+        (result &&
+          typeof result === "object" &&
+          "data" in result &&
+          (result as any).data?.userId?.isTwoFAenabled === true);
 
       if (isVerified) {
         // Update local state immediately
         setIs2FAEnabled(true);
-        
+
         // Refresh user data to get latest 2FA status
         await check2FAStatus();
-        
+
         Alert.alert("Success", "Two-factor authentication has been enabled", [
           {
             text: "OK",
@@ -268,7 +296,10 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       }
     } catch (error: any) {
       console.error("Failed to verify 2FA code:", error);
-      const errorMessage = error?.message || error?.response?.data?.message || "Invalid code. Please try again.";
+      const errorMessage =
+        error?.message ||
+        error?.response?.data?.message ||
+        "Invalid code. Please try again.";
       setError(errorMessage);
     } finally {
       setIsVerifying(false);
@@ -307,17 +338,20 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       console.log("2FA disable result:", result);
 
       // SDK returns boolean or the full API response
-      const isDisabled = 
-        result === true || 
-        (result && typeof result === 'object' && 'success' in result && (result as any).success === true);
+      const isDisabled =
+        result === true ||
+        (result &&
+          typeof result === "object" &&
+          "success" in result &&
+          (result as any).success === true);
 
       if (isDisabled) {
         // Update local state immediately
         setIs2FAEnabled(false);
-        
+
         // Refresh user data to get latest 2FA status
         await check2FAStatus();
-        
+
         Alert.alert("Success", "Two-factor authentication has been disabled", [
           {
             text: "OK",
@@ -333,7 +367,10 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       }
     } catch (error: any) {
       console.error("Failed to disable 2FA:", error);
-      const errorMessage = error?.message || error?.response?.data?.message || "Invalid code. Please try again.";
+      const errorMessage =
+        error?.message ||
+        error?.response?.data?.message ||
+        "Invalid code. Please try again.";
       setError(errorMessage);
     } finally {
       setIsVerifying(false);
@@ -410,11 +447,17 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         marginBottom="m"
       >
         <Box flex={1}>
-          <CustomText variant="bodyBold" fontSize={16} color="headerTextColor" marginBottom="s">
+          <CustomText
+            variant="bodyBold"
+            fontSize={16}
+            color="headerTextColor"
+            marginBottom="s"
+          >
             Enable 2FA
           </CustomText>
           <CustomText variant="body" fontSize={14} color="bodyTextColor">
-            Use a mobile authentication app to get an auth code to log in every time you sign in to Zap
+            Use a mobile authentication app to get an auth code to log in every
+            time you sign in to Zap
           </CustomText>
         </Box>
         <Switch
@@ -425,7 +468,9 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
             false: theme.colors.secondaryBackgroundColor,
             true: theme.colors.secondaryColor,
           }}
-          thumbColor={is2FAEnabled ? theme.colors.white : theme.colors.bodyTextColor}
+          thumbColor={
+            is2FAEnabled ? theme.colors.white : theme.colors.bodyTextColor
+          }
         />
       </Box>
     </BottomSheetView>
@@ -448,9 +493,10 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         justifyContent="space-between"
         marginBottom="l"
       >
-        <Pressable onPress={handleBack} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-          
-        </Pressable>
+        <Pressable
+          onPress={handleBack}
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        ></Pressable>
         <CustomText variant="header" fontSize={20} color="headerTextColor">
           Two Factor Authentication
         </CustomText>
@@ -464,7 +510,8 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         textAlign="center"
         marginBottom="l"
       >
-        Scan the QR code below with the Authenticator app on your phone. If you can&apos;t scan, copy and paste the code.
+        Scan the QR code below with the Authenticator app on your phone. If you
+        can&apos;t scan, copy and paste the code.
       </CustomText>
 
       {/* QR Code */}
@@ -484,7 +531,12 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
               resizeMode="contain"
             />
           ) : (
-            <QRCode value={qrCodeData} size={200} color="black" backgroundColor="white" />
+            <QRCode
+              value={qrCodeData}
+              size={200}
+              color="black"
+              backgroundColor="white"
+            />
           )}
         </Box>
       )}
@@ -502,7 +554,12 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
               },
             ]}
           >
-            <CustomText variant="body" fontSize={14} color="bodyTextColor" marginRight="s">
+            <CustomText
+              variant="body"
+              fontSize={14}
+              color="bodyTextColor"
+              marginRight="s"
+            >
               Click to copy
             </CustomText>
             <Copy size={16} color={theme.colors.bodyTextColor} />
@@ -540,7 +597,9 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       {/* Enable Button */}
       <CustomButton
         text="Enable 2FA"
-        onPress={() => verificationCode.length === 6 && handleVerifyCode(verificationCode)}
+        onPress={() =>
+          verificationCode.length === 6 && handleVerifyCode(verificationCode)
+        }
         disabled={verificationCode.length !== 6 || isVerifying}
         isLoading={isVerifying}
         width="100%"
@@ -567,7 +626,10 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         justifyContent="space-between"
         marginBottom="l"
       >
-        <Pressable onPress={handleBack} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+        <Pressable
+          onPress={handleBack}
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
           <X size={24} color={theme.colors.headerTextColor} />
         </Pressable>
         <CustomText variant="header" fontSize={20} color="headerTextColor">
@@ -583,19 +645,20 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         textAlign="center"
         marginBottom="l"
       >
-        Enter the 6-digit code from your authenticator app to disable two-factor authentication.
+        Enter the 6-digit code from your authenticator app to disable two-factor
+        authentication.
       </CustomText>
 
       {/* Code Input */}
       <Box marginBottom="l">
-        <CustomText
+        {/* <CustomText
           variant="body"
           fontSize={14}
           color="bodyTextColor"
           marginBottom="m"
         >
           Enter the 6-digit code from the app
-        </CustomText>
+        </CustomText> */}
         <CodeInput
           length={6}
           onCodeChange={(code) => setVerificationCode(code)}
@@ -616,7 +679,10 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
       {/* Disable Button */}
       <CustomButton
         text="Disable 2FA"
-        onPress={() => verificationCode.length === 6 && handleDisableWithCode(verificationCode)}
+        onPress={() =>
+          verificationCode.length === 6 &&
+          handleDisableWithCode(verificationCode)
+        }
         disabled={verificationCode.length !== 6 || isVerifying}
         isLoading={isVerifying}
         width="100%"
@@ -653,7 +719,7 @@ const TwoFactorAuthBottomSheet: React.FC<TwoFactorAuthBottomSheetProps> = ({
         // Add a small delay to ensure SDK has picked up the token if it was just set
         if (index >= 0) {
           setTimeout(() => {
-          check2FAStatus();
+            check2FAStatus();
           }, 500);
         }
       }}
@@ -693,4 +759,3 @@ const styles = StyleSheet.create({
 });
 
 export default TwoFactorAuthBottomSheet;
-

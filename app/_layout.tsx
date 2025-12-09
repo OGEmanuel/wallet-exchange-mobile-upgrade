@@ -77,7 +77,7 @@ export default function RootLayout() {
       },
     },
   });
-  
+
   // Prevent auto-hide and track initialization state
   SplashScreen.preventAutoHideAsync();
   const [isAppReady, setIsAppReady] = useState(false);
@@ -116,17 +116,17 @@ export default function RootLayout() {
         if (fontsLoaded || error) {
           // Wait for app initialization
           if (isAppReady) {
-            console.log('Hiding splash screen - all ready');
+            console.log("Hiding splash screen - all ready");
             await SplashScreen.hideAsync();
           }
         }
       } catch (e) {
-        console.warn('Error hiding splash screen:', e);
+        console.warn("Error hiding splash screen:", e);
         // Force hide splash screen even if there's an error
         try {
           await SplashScreen.hideAsync();
         } catch (hideError) {
-          console.error('Failed to hide splash screen:', hideError);
+          console.error("Failed to hide splash screen:", hideError);
         }
       }
     }
@@ -138,10 +138,10 @@ export default function RootLayout() {
   useEffect(() => {
     const safetyTimeout = setTimeout(async () => {
       try {
-        console.log('Safety timeout - forcing splash screen hide');
+        console.log("Safety timeout - forcing splash screen hide");
         await SplashScreen.hideAsync();
       } catch (e) {
-        console.error('Safety timeout failed to hide splash screen:', e);
+        console.error("Safety timeout failed to hide splash screen:", e);
       }
     }, 5000);
 
@@ -152,7 +152,7 @@ export default function RootLayout() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!isAppReady) {
-        console.warn('App initialization timeout, forcing app ready state');
+        console.warn("App initialization timeout, forcing app ready state");
         setIsAppReady(true);
       }
     }, 3000); // 3 seconds timeout
@@ -237,26 +237,28 @@ export default function RootLayout() {
                                 <TwoFactorAuthProvider>
                                   <BottomSheetProvider>
                                     <StatusBar
-                                    barStyle={
-                                      colorTheme === "dark"
-                                        ? "light-content"
-                                        : "dark-content"
-                                    }
-                                  />
-                                  <PinGuard />
-                                  <Stack screenOptions={{ headerShown: false }}>
-                                    <Stack.Screen
-                                      name="index"
-                                      options={{ title: "Home" }}
+                                      barStyle={
+                                        colorTheme === "dark"
+                                          ? "light-content"
+                                          : "dark-content"
+                                      }
                                     />
-                                    <Stack.Screen
-                                      name="(modal)"
-                                      options={{ presentation: "modal" }}
-                                    />
-                                  </Stack>
-                                  <BottomSheetManager />
-                                  <AppLoadingModal />
-                                </BottomSheetProvider>
+                                    <PinGuard />
+                                    <Stack
+                                      screenOptions={{ headerShown: false }}
+                                    >
+                                      <Stack.Screen
+                                        name="index"
+                                        options={{ title: "Home" }}
+                                      />
+                                      <Stack.Screen
+                                        name="(modal)"
+                                        options={{ presentation: "modal" }}
+                                      />
+                                    </Stack>
+                                    <BottomSheetManager />
+                                    <AppLoadingModal />
+                                  </BottomSheetProvider>
                                 </TwoFactorAuthProvider>
                               </OnboardingProvider>
                             </WebSocketProvider>
