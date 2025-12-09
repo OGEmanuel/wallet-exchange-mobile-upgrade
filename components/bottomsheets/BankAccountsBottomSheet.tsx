@@ -1,6 +1,6 @@
 import { useTabBarHeight } from "@/hooks/useTabBarHeight";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useBankAccounts } from "@/src/modules/swap/presentation/hooks/useBankAccounts";
-import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -28,7 +28,6 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from "react-native";
-import { useSelector } from "react-redux";
 import EmptyState from "../dashboard/market/EmptyState";
 import BankIcon from "../general/BankIcon";
 import Box from "../general/Box";
@@ -71,7 +70,8 @@ const BankAccountsBottomSheet = forwardRef<
     const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
     const [showBankSelector, setShowBankSelector] = useState(false);
     const [banksSearchQuery, setBanksSearchQuery] = useState("");
-    const sCurrencyList = useSelector((state: AppRootState) => state.swap.supportedCurrencies);
+    // const sCurrencyList = useSelector((state: AppRootState) => state.swap.supportedCurrencies);
+    const { supportedCurrenciesForSwap: sCurrencyList } = useSupportedCurrencies();
 
     // Animation for account name input glow
     const glowAnimation = useRef(new Animated.Value(0)).current;
@@ -408,8 +408,6 @@ const BankAccountsBottomSheet = forwardRef<
                       let supportedCurrency;
                       if(!targetCurrency) {
                         const sBank: any = selectedBank;
-                        console.log('supported currency list', sCurrencyList)
-
                         supportedCurrency = sCurrencyList?.find((currency) => currency.currencyId?._id === sBank?.nativeCurrencyId?._id || currency.currencyId?._id === sBank?.nativeCurrencyId );
                       }
                       await createBankAccount(
