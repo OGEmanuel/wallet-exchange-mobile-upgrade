@@ -1,4 +1,5 @@
 import { useTabBarHeight } from "@/hooks/useTabBarHeight";
+import { useSupportedCurrencies } from "@/src/core/supported-currencies/supported-currencies-context";
 import { useBankAccounts } from "@/src/modules/swap/presentation/hooks/useBankAccounts";
 import { Theme } from "@/theme";
 import BottomSheet, {
@@ -69,6 +70,8 @@ const BankAccountsBottomSheet = forwardRef<
     const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
     const [showBankSelector, setShowBankSelector] = useState(false);
     const [banksSearchQuery, setBanksSearchQuery] = useState("");
+    // const sCurrencyList = useSelector((state: AppRootState) => state.swap.supportedCurrencies);
+    const { supportedCurrenciesForSwap: sCurrencyList } = useSupportedCurrencies();
 
     // Animation for account name input glow
     const glowAnimation = useRef(new Animated.Value(0)).current;
@@ -401,10 +404,16 @@ const BankAccountsBottomSheet = forwardRef<
                     if (!selectedBank || !resolvedAccount?.name) return;
 
                     try {
+                      console.log('selected bank', selectedBank)
+                      let supportedCurrency;
+                      if(!targetCurrency) {
+                        const sBank: any = selectedBank;
+                        supportedCurrency = sCurrencyList?.find((currency) => currency.currencyId?._id === sBank?.nativeCurrencyId?._id || currency.currencyId?._id === sBank?.nativeCurrencyId );
+                      }
                       await createBankAccount(
                         selectedBank._id,
                         resolvedAccount.name,
-                        targetCurrency,
+                        targetCurrency || supportedCurrency as ISupportedCurrency,
                         accountNumber
                       );
 
