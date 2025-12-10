@@ -3,6 +3,7 @@ import ApprovedBottomSheet from "@/components/bottomsheets/ApprovedBottomSheet";
 import BuyActivityBottomSheet from "@/components/bottomsheets/BuyActivityBottomSheet";
 import RecieveBottomSheet from "@/components/bottomsheets/ReceiveBottomSheet";
 import SentBottomSheet from "@/components/bottomsheets/SentBottomSheet";
+import CustomLink from "@/components/custom-link";
 import ActivityEmptyState from "@/components/dashboard/ActivityEmptyState";
 import ActivityItemCard from "@/components/dashboard/ActivityItemCard";
 import ActivitySearchBar from "@/components/dashboard/ActivitySearchBar";
@@ -17,11 +18,13 @@ import useExchange from "@/src/modules/exchange/presentation/hooks/useExchange";
 import { exchangeActions } from "@/src/modules/exchange/presentation/state/exchange-slice";
 import { AppRootState } from "@/state";
 import { ExchangeActivityModel } from "@zap/blockchain-sdk";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, RefreshControl } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 
 const Activity = () => {
+  const [openKyc, setOpenKyc] = useState(false);
   const dispatch = useDispatch();
   const {
     activityFilterRef,
@@ -85,58 +88,74 @@ const Activity = () => {
   const [error, setError] = useState<Error | null>(null);
 
   // Fetch initial data
-  const loadActivities = useCallback(async (page: number, reset = false) => {
-    // Check authentication first
-    if (!isExchangeAuthenticated) {
-      console.log("⚠️ User not authenticated, prompting login");
-      showExchangeLogin();
-      setIsLoading(false);
-      return;
-    }
-    
-    console.log("loadActivities called", { page, reset });
-    setIsLoading(true);
-    setIsError(false);
-    setError(null);
-    
-    try {
-      const response = await fetchExchangeActivities({
-        user,
-        page,
-        limit: LIMIT,
-      });
-      
-      console.log("API response received", { 
-        page, 
-        dataLength: response.data?.length,
-        responseStructure: response
-      });
-      
-      // Update hasMore based on server response
-      // The response.data is the ExchangeActivitiesResponse with activities and pagination
-      const activitiesData = response.data as any;
-      // console.log("Activities data structure:", activitiesData);
-      
-      if (activitiesData?.pagination) {
-        const hasMore = activitiesData.pagination.hasMore || false;
-        console.log("Using pagination metadata", { hasMore, pagination: activitiesData.pagination });
-        dispatch(exchangeActions.setHasMore(hasMore));
-      } else {
-        // Fallback: if no pagination metadata, check if we got less than limit
-        const activities = activitiesData?.activities || activitiesData || [];
-        const dataLength = activities.length;
-        const hasMore = dataLength >= LIMIT;
-        console.log("Using fallback logic", { dataLength, hasMore, limit: LIMIT });
-        dispatch(exchangeActions.setHasMore(hasMore));
+  const loadActivities = useCallback(
+    async (page: number, reset = false) => {
+      // Check authentication first
+      if (!isExchangeAuthenticated) {
+        console.log("⚠️ User not authenticated, prompting login");
+        showExchangeLogin();
+        setIsLoading(false);
+        return;
       }
-    } catch (err) {
-      console.error("loadActivities error:", err);
-      setIsError(true);
-      setError(err as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, fetchExchangeActivities, dispatch, isExchangeAuthenticated, showExchangeLogin]);
+
+      console.log("loadActivities called", { page, reset });
+      setIsLoading(true);
+      setIsError(false);
+      setError(null);
+
+      try {
+        const response = await fetchExchangeActivities({
+          user,
+          page,
+          limit: LIMIT,
+        });
+
+        console.log("API response received", {
+          page,
+          dataLength: response.data?.length,
+          responseStructure: response,
+        });
+
+        // Update hasMore based on server response
+        // The response.data is the ExchangeActivitiesResponse with activities and pagination
+        const activitiesData = response.data as any;
+        // console.log("Activities data structure:", activitiesData);
+
+        if (activitiesData?.pagination) {
+          const hasMore = activitiesData.pagination.hasMore || false;
+          console.log("Using pagination metadata", {
+            hasMore,
+            pagination: activitiesData.pagination,
+          });
+          dispatch(exchangeActions.setHasMore(hasMore));
+        } else {
+          // Fallback: if no pagination metadata, check if we got less than limit
+          const activities = activitiesData?.activities || activitiesData || [];
+          const dataLength = activities.length;
+          const hasMore = dataLength >= LIMIT;
+          console.log("Using fallback logic", {
+            dataLength,
+            hasMore,
+            limit: LIMIT,
+          });
+          dispatch(exchangeActions.setHasMore(hasMore));
+        }
+      } catch (err) {
+        console.error("loadActivities error:", err);
+        setIsError(true);
+        setError(err as Error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      user,
+      fetchExchangeActivities,
+      dispatch,
+      isExchangeAuthenticated,
+      showExchangeLogin,
+    ]
+  );
 
   // Load initial data
   useEffect(() => {
@@ -159,97 +178,100 @@ const Activity = () => {
     setSearchQuery(query);
   };
 
-  const handleLoadMore = useCallback(async (initial = false) => {
-    console.log("🚀 handleLoadMore called", { 
-      isLoadingMore, 
-      hasMore, 
-      fetchingExchangeActivities, 
-      currentPage,
-      searchQuery,
-      filteredCount: filteredActivities.length,
-      totalCount: exchangeActivities.length,
-    });
-
-    // Check authentication first
-    if (!isExchangeAuthenticated) {
-      console.log("⚠️ User not authenticated, prompting login");
-      showExchangeLogin();
-      return;
-    }
-
-    // Don't load more if already loading
-    if (isLoadingMore || fetchingExchangeActivities) {
-      console.log("Load more blocked: already loading");
-      return;
-    }
-
-    // If no more data from server, don't load more
-    if (!hasMore) {
-      console.log("Load more blocked: no more data from server");
-      return;
-    }
-
-    // If we have a search query, only load more if we have no filtered results
-    // This allows loading more data to potentially find search matches
-    if (searchQuery.trim() && filteredActivities.length > 0) {
-      console.log(
-        "Load more blocked: search has results, no need to load more"
-      );
-      return;
-    }
-
-    console.log("Loading more data for page:", currentPage + 1);
-    setIsLoadingMore(true);
-    const nextPage = currentPage + 1;
-
-    try {
-      const response = await fetchExchangeActivities({
-        user,
-        page: initial ? 1 : nextPage,
-        limit: LIMIT,
+  const handleLoadMore = useCallback(
+    async (initial = false) => {
+      console.log("🚀 handleLoadMore called", {
+        isLoadingMore,
+        hasMore,
+        fetchingExchangeActivities,
+        currentPage,
+        searchQuery,
+        filteredCount: filteredActivities.length,
+        totalCount: exchangeActivities.length,
       });
 
-      // Check if we got data back
-      const activitiesData = response.data as any;
-      const activities = activitiesData?.activities || activitiesData || [];
-      
-      // Only increment currentPage if we got data
-      if (activities && activities.length > 0) {
-        setCurrentPage(nextPage);
-
-        // Update hasMore based on server response
-        if (activitiesData?.pagination) {
-          const hasMore = activitiesData.pagination.hasMore || false;
-          dispatch(exchangeActions.setHasMore(hasMore));
-        } else {
-          // Fallback: if no pagination metadata, check if we got less than limit
-          const dataLength = activities.length;
-          const hasMore = dataLength >= LIMIT;
-          dispatch(exchangeActions.setHasMore(hasMore));
-        }
-      } else {
-        dispatch(exchangeActions.setHasMore(false));
+      // Check authentication first
+      if (!isExchangeAuthenticated) {
+        console.log("⚠️ User not authenticated, prompting login");
+        showExchangeLogin();
+        return;
       }
-    } catch (error) {
-      console.error("Load more failed:", error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [
-    currentPage,
-    hasMore,
-    isLoadingMore,
-    fetchingExchangeActivities,
-    fetchExchangeActivities,
-    user,
-    LIMIT,
-    dispatch,
-    searchQuery,
-    filteredActivities.length,
-    exchangeActivities.length,
-    isExchangeAuthenticated,
-    showExchangeLogin,
-  ]);
+
+      // Don't load more if already loading
+      if (isLoadingMore || fetchingExchangeActivities) {
+        console.log("Load more blocked: already loading");
+        return;
+      }
+
+      // If no more data from server, don't load more
+      if (!hasMore) {
+        console.log("Load more blocked: no more data from server");
+        return;
+      }
+
+      // If we have a search query, only load more if we have no filtered results
+      // This allows loading more data to potentially find search matches
+      if (searchQuery.trim() && filteredActivities.length > 0) {
+        console.log(
+          "Load more blocked: search has results, no need to load more"
+        );
+        return;
+      }
+
+      console.log("Loading more data for page:", currentPage + 1);
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+
+      try {
+        const response = await fetchExchangeActivities({
+          user,
+          page: initial ? 1 : nextPage,
+          limit: LIMIT,
+        });
+
+        // Check if we got data back
+        const activitiesData = response.data as any;
+        const activities = activitiesData?.activities || activitiesData || [];
+
+        // Only increment currentPage if we got data
+        if (activities && activities.length > 0) {
+          setCurrentPage(nextPage);
+
+          // Update hasMore based on server response
+          if (activitiesData?.pagination) {
+            const hasMore = activitiesData.pagination.hasMore || false;
+            dispatch(exchangeActions.setHasMore(hasMore));
+          } else {
+            // Fallback: if no pagination metadata, check if we got less than limit
+            const dataLength = activities.length;
+            const hasMore = dataLength >= LIMIT;
+            dispatch(exchangeActions.setHasMore(hasMore));
+          }
+        } else {
+          dispatch(exchangeActions.setHasMore(false));
+        }
+      } catch (error) {
+        console.error("Load more failed:", error);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    },
+    [
+      currentPage,
+      hasMore,
+      isLoadingMore,
+      fetchingExchangeActivities,
+      fetchExchangeActivities,
+      user,
+      LIMIT,
+      dispatch,
+      searchQuery,
+      filteredActivities.length,
+      exchangeActivities.length,
+      isExchangeAuthenticated,
+      showExchangeLogin,
+    ]
+  );
 
   const handleEndReached = useCallback(() => {
     handleLoadMore();
@@ -285,6 +307,12 @@ const Activity = () => {
     []
   );
 
+  const router = useRouter();
+
+  const handleKyc = () => {
+    router.push("/(modal)/kyc-v2");
+  };
+
   return (
     <PageWrapper>
       <Box flex={1} bg="mainBackgroundColor">
@@ -305,6 +333,7 @@ const Activity = () => {
             onSearchChange={handleSearchChange}
           />
         </Box>
+        <CustomLink label="KYC" onPress={handleKyc} />
 
         <LoaderWrapper
           isLoading={isLoading && currentPage === 1}
@@ -332,7 +361,9 @@ const Activity = () => {
             ListFooterComponent={renderFooter}
             refreshControl={
               <RefreshControl
-                refreshing={(isLoading || fetchingExchangeActivities) && currentPage === 1}
+                refreshing={
+                  (isLoading || fetchingExchangeActivities) && currentPage === 1
+                }
                 // onRefresh={handleRefresh}
                 onRefresh={async () => {
                   console.log("Pull to refresh triggered");
