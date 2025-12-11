@@ -7,8 +7,9 @@ import { Theme } from "@/theme";
 import { SCREEN_WIDTH } from "@gorhom/bottom-sheet";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSelector } from "react-redux";
+import SkipButton from "./skip-btn";
 
 interface PhoneVerificationProps {
   phoneNumber?: string;
@@ -189,9 +190,7 @@ export default function PhoneVerification({
       {/* Verify button */}
       <View style={styles.buttonContainer}>
         <CustomLink label="Verify" onPress={handleVerify} />
-        <Pressable style={styles.skipButton} onPress={handleSkip}>
-          <Text>Skip</Text>
-        </Pressable>
+        <SkipButton onSkip={handleSkip} />
       </View>
     </View>
   );

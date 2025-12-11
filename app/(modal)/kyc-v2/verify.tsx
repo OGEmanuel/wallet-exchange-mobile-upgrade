@@ -1,10 +1,11 @@
+import KYCIcon from "@/assets/svg/wallet-icons-components/kyc-icon";
 import CustomLink from "@/components/custom-link";
 import HeaderText from "@/components/kyc/v2/header-text";
 import { Stack, useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-const Login = () => {
+const Verify = () => {
   const router = useRouter();
 
   const handleBack = () => {
@@ -12,14 +13,14 @@ const Login = () => {
   };
 
   const handleGetStarted = () => {
-    router.push("/(modal)/kyc-v2/verify");
+    router.push("/(modal)/kyc-v2/verify-phone");
   };
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: "Log in",
+          title: "ID Verification",
           headerLeft: () => (
             <Pressable
               onPress={handleBack}
@@ -37,20 +38,22 @@ const Login = () => {
       />
       <View style={styles.container}>
         <View style={styles.content}>
-          <HeaderText>Log In</HeaderText>
-          <TextInput
-            style={styles.input}
-            keyboardType="email-address"
-            placeholder="Email/username"
-          />
-          <CustomLink onPress={handleGetStarted} label="Continue" />
+          <HeaderText>Verify Your Identity</HeaderText>
+          <View>
+            <KYCIcon />
+          </View>
+          <Text style={styles.desc}>
+            To conduct swaps on Zap, you will need to complete KYC with BVN and
+            government ID
+          </Text>
         </View>
+        <CustomLink onPress={handleGetStarted} label="Get Started" />
       </View>
     </>
   );
 };
 
-export default Login;
+export default Verify;
 
 const styles = StyleSheet.create({
   container: {
@@ -63,8 +66,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
-    width: "100%",
-    // alignItems: "center",
+    alignItems: "center",
   },
   desc: {
     lineHeight: 24,
@@ -72,16 +74,5 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontWeight: 500,
     color: "#FFFFFF",
-  },
-  input: {
-    width: "100%",
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: "#2f333d",
-    color: "#FFFFFF",
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderColor: "#6045FF",
-    marginTop: 16,
   },
 });

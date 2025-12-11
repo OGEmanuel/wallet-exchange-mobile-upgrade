@@ -1,10 +1,12 @@
 import CustomLink from "@/components/custom-link";
 import CountrySelect from "@/components/kyc/v2/country-select";
+import HeaderText from "@/components/kyc/v2/header-text";
 import PhoneVerification from "@/components/kyc/v2/phone-verification";
+import SkipButton from "@/components/kyc/v2/skip-btn";
 import { CountryData } from "@/src/core/utils/countryData";
 import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 const VerifyPhone = () => {
   const [country, setCountry] = useState<CountryData | null>(null);
@@ -20,6 +22,9 @@ const VerifyPhone = () => {
       <Stack.Screen
         options={{
           title: "Phone Number Verification",
+          contentStyle: {
+            backgroundColor: "#1f232d",
+          },
         }}
       />
       <View style={styles.container}>
@@ -34,7 +39,7 @@ const VerifyPhone = () => {
           <>
             <View style={styles.content}>
               <View>
-                <Text style={styles.header}>Verify Phone Number</Text>
+                <HeaderText>Verify Phone Number</HeaderText>
                 <Text style={styles.desc}>
                   Enter and verify your phone number for your account security
                 </Text>
@@ -49,9 +54,7 @@ const VerifyPhone = () => {
               </View>
             </View>
             <CustomLink label="Continue" onPress={() => setSendOTP(true)} />
-            <Pressable style={styles.skipButton} onPress={handleSkip}>
-              <Text>Skip</Text>
-            </Pressable>
+            <SkipButton onSkip={handleSkip} />
           </>
         )}
       </View>
@@ -75,14 +78,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
   },
-  header: {
-    fontSize: 22,
-    fontWeight: 600,
-  },
   desc: {
     textAlign: "center",
     marginTop: 16,
     fontWeight: 500,
+    color: "#FFFFFF",
   },
   formContainer: {
     width: "100%",
@@ -93,14 +93,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 56,
     borderRadius: 8,
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#2f333d",
+    color: "#FFFFFF",
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderColor: "#6045FF",
     marginTop: 16,
-  },
-  skipButton: {
-    marginTop: 16,
-    paddingVertical: 20,
   },
 });

@@ -75,7 +75,7 @@ export default function IdentityVerification({
       // Only fetch if the country ID has actually changed
       if (lastCountryIdRef.current !== selectedCountry._id) {
         lastCountryIdRef.current = selectedCountry._id;
-      triggerFetchDocumentTypes();
+        triggerFetchDocumentTypes();
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,36 +211,38 @@ export default function IdentityVerification({
   const userHasSubmittedIdentityDocument =
     userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
 
-  const steps = (filteredVerificationClasses || []).map((verificationClass) =>
-    verificationClass.toLocaleLowerCase() === "credit"
-      ? {
-          title: "Bank Verification",
-          description:
-            "This is a unqiue set of numbers that is tied to your bank account.",
-          status: userSubmittedCreditDocumentIsApproved
-            ? "completed"
-            : "pending",
-          isCompleted: !!userSubmittedCreditDocumentIsApproved,
-          isActionable: true,
-          icon: images.accounts,
-          limit: "",
-          onPress: handleBvnPress,
-        }
-      : verificationClass.toLocaleLowerCase() === "identity"
-      ? {
-          title: "ID Verification",
-          description:
-            "Kindly take clear a picture of your government issued document.",
-          status: userHasSubmittedIdentityDocument ? "completed" : "pending",
-          isCompleted: !!userHasSubmittedIdentityDocument,
-          // isActionable: bvnCompleted, // Only actionable after BVN is completed
-          isActionable: true, // Only actionable after BVN is completed
-          limit: "Unlimited",
-          icon: images.idCard,
-          onPress: handleIdPress,
-        }
-      : {}
-  ).filter(step => step && Object.keys(step).length > 0); // Filter out empty objects
+  const steps = (filteredVerificationClasses || [])
+    .map((verificationClass) =>
+      verificationClass.toLocaleLowerCase() === "credit"
+        ? {
+            title: "Bank Verification",
+            description:
+              "This is a unqiue set of numbers that is tied to your bank account.",
+            status: userSubmittedCreditDocumentIsApproved
+              ? "completed"
+              : "pending",
+            isCompleted: !!userSubmittedCreditDocumentIsApproved,
+            isActionable: true,
+            icon: images.accounts,
+            limit: "",
+            onPress: handleBvnPress,
+          }
+        : verificationClass.toLocaleLowerCase() === "identity"
+        ? {
+            title: "ID Verification",
+            description:
+              "Kindly take clear a picture of your government issued document.",
+            status: userHasSubmittedIdentityDocument ? "completed" : "pending",
+            isCompleted: !!userHasSubmittedIdentityDocument,
+            // isActionable: bvnCompleted, // Only actionable after BVN is completed
+            isActionable: true, // Only actionable after BVN is completed
+            limit: "Unlimited",
+            icon: images.idCard,
+            onPress: handleIdPress,
+          }
+        : {}
+    )
+    .filter((step) => step && Object.keys(step).length > 0); // Filter out empty objects
 
   return (
     <View style={styles.container}>
