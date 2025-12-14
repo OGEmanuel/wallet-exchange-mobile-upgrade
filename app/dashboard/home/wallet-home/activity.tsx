@@ -1,3 +1,4 @@
+import { useExchangeOnboarding } from "@/app/V2/exchange/onboarding";
 import ActivityFilterBottomSheet from "@/components/bottomsheets/ActivityFilterBottomSheet";
 import ApprovedBottomSheet from "@/components/bottomsheets/ApprovedBottomSheet";
 import BuyActivityBottomSheet from "@/components/bottomsheets/BuyActivityBottomSheet";
@@ -40,6 +41,10 @@ const Activity = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const {
+    handleOpenOnboardingBottomSheet,
+  } = useExchangeOnboarding();
 
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { exchangeActivities, hasMore } = useSelector(
@@ -333,7 +338,8 @@ const Activity = () => {
             onSearchChange={handleSearchChange}
           />
         </Box>
-        <CustomLink label="KYC" onPress={handleKyc} />
+        {/* <CustomLink label="KYC" onPress={handleKyc} /> */}
+        <CustomLink label="KYC" onPress={handleOpenOnboardingBottomSheet} />
 
         <LoaderWrapper
           isLoading={isLoading && currentPage === 1}

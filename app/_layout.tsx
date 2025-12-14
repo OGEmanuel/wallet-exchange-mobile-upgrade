@@ -36,6 +36,7 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
+import { AppBottomSheetManager, AppBottomSheetProvider, ExchangeOnboardingProvider } from "./V2/exchange/onboarding";
 
 // Set Buffer as global for Node.js compatibility
 global.Buffer = Buffer;
@@ -233,34 +234,39 @@ export default function RootLayout() {
                         <ChainsProvider>
                           <WalletProvider>
                             <WebSocketProvider>
-                              <OnboardingProvider>
-                                <TwoFactorAuthProvider>
-                                  <BottomSheetProvider>
-                                    <StatusBar
-                                      barStyle={
-                                        colorTheme === "dark"
-                                          ? "light-content"
-                                          : "dark-content"
-                                      }
-                                    />
-                                    <PinGuard />
-                                    <Stack
-                                      screenOptions={{ headerShown: false }}
-                                    >
-                                      <Stack.Screen
-                                        name="index"
-                                        options={{ title: "Home" }}
-                                      />
-                                      <Stack.Screen
-                                        name="(modal)"
-                                        options={{ presentation: "modal" }}
-                                      />
-                                    </Stack>
-                                    <BottomSheetManager />
-                                    <AppLoadingModal />
-                                  </BottomSheetProvider>
-                                </TwoFactorAuthProvider>
-                              </OnboardingProvider>
+                              <ExchangeOnboardingProvider>
+                                <AppBottomSheetProvider>
+                                  <OnboardingProvider>
+                                    <TwoFactorAuthProvider>
+                                      <BottomSheetProvider>
+                                        <StatusBar
+                                          barStyle={
+                                            colorTheme === "dark"
+                                              ? "light-content"
+                                              : "dark-content"
+                                          }
+                                        />
+                                        <PinGuard />
+                                        <Stack
+                                          screenOptions={{ headerShown: false }}
+                                        >
+                                          <Stack.Screen
+                                            name="index"
+                                            options={{ title: "Home" }}
+                                          />
+                                          <Stack.Screen
+                                            name="(modal)"
+                                            options={{ presentation: "modal" }}
+                                          />
+                                        </Stack>
+                                        <BottomSheetManager />
+                                        <AppBottomSheetManager />
+                                        <AppLoadingModal />
+                                      </BottomSheetProvider>
+                                    </TwoFactorAuthProvider>
+                                  </OnboardingProvider>
+                                </AppBottomSheetProvider>
+                              </ExchangeOnboardingProvider>
                             </WebSocketProvider>
                           </WalletProvider>
                         </ChainsProvider>
