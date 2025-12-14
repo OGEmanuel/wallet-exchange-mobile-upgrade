@@ -225,7 +225,6 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-            <AppInitializer>
               <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
                 <QueryClientProvider client={queryClient}>
                   <InternetConnectionProvider>
@@ -233,6 +232,7 @@ export default function RootLayout() {
                       <SupportedCurrenciesProvider>
                         <ChainsProvider>
                           <WalletProvider>
+                          <AppInitializer>
                             <WebSocketProvider>
                               <ExchangeOnboardingProvider>
                                 <AppBottomSheetProvider>
@@ -268,6 +268,7 @@ export default function RootLayout() {
                                 </AppBottomSheetProvider>
                               </ExchangeOnboardingProvider>
                             </WebSocketProvider>
+                            </AppInitializer>
                           </WalletProvider>
                         </ChainsProvider>
                       </SupportedCurrenciesProvider>
@@ -275,7 +276,6 @@ export default function RootLayout() {
                   </InternetConnectionProvider>
                 </QueryClientProvider>
               </ThemeProvider>
-            </AppInitializer>
           </Provider>
         </GestureHandlerRootView>
       </View>
