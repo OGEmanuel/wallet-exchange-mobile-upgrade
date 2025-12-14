@@ -25,7 +25,7 @@ import {
 } from "./utils";
 
 export const useExchangeOnboarding = () => {
-  const { currentOnboardingStep, setCurrentOnboardingStep } = useExchangeOnboardingContext();
+  const { currentOnboardingStep, setCurrentOnboardingStep, resetOnboarding } = useExchangeOnboardingContext();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { openBottomSheet, closeBottomSheet, setBottomSheetContent } =
     useAppBottomSheetContext();
@@ -85,13 +85,15 @@ export const useExchangeOnboarding = () => {
         console.log("Bottom sheet closed");
         setIsOnboarding(false);
         setCurrentBottomSheetId(null);
+        // Reset onboarding to start from the correct step next time
+        resetOnboarding();
       },
     });
 
     console.log("Bottom sheet ID:", bottomSheetId);
     setIsOnboarding(true);
     setCurrentBottomSheetId(bottomSheetId);
-  }, [currentOnboardingStep, stepComponentMap, openBottomSheet]);
+  }, [currentOnboardingStep, stepComponentMap, openBottomSheet, resetOnboarding]);
 
   // Update bottom sheet content when step changes
   useEffect(() => {
@@ -122,6 +124,8 @@ export const useExchangeOnboarding = () => {
         closeBottomSheet(currentBottomSheetId);
         setIsOnboarding(false);
         setCurrentBottomSheetId(null);
+        // Reset onboarding to start from the correct step next time
+        resetOnboarding();
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -132,6 +136,7 @@ export const useExchangeOnboarding = () => {
     currentOnboardingStep,
     user,
     closeBottomSheet,
+    resetOnboarding,
   ]);
 
   // Calculate verification status
