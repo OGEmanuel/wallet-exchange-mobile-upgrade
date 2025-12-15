@@ -66,7 +66,7 @@ const ReferralStep: React.FC = () => {
     setUsernameError("");
 
     try {
-      const response = await addUsername({
+      await addUsername({
         username: username.trim(),
         userSource: userSource || null,
         referralCode: referralCode.trim(),
