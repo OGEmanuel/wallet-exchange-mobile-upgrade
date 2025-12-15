@@ -209,33 +209,33 @@ export const useExchangeOnboarding = () => {
     setBottomSheetContent,
   ]);
 
-  // Close bottom sheet when user is fully verified and on final step
-  useEffect(() => {
-    if (
-      isOnboarding &&
-      currentBottomSheetId !== null &&
-      currentOnboardingStep === Onboarding.AuthVerificationSubmitted &&
-      isUserFullyOnboarded(kycUser)
-    ) {
-      // Small delay to show the success message
-      const timer = setTimeout(() => {
-        closeBottomSheet(currentBottomSheetId);
-        setIsOnboarding(false);
-        setCurrentBottomSheetId(null);
-        // Reset onboarding to start from the correct step next time
-        resetOnboarding();
-      }, 2000);
+  // // Close bottom sheet when user is fully verified and on final step
+  // useEffect(() => {
+  //   if (
+  //     isOnboarding &&
+  //     currentBottomSheetId !== null &&
+  //     currentOnboardingStep === Onboarding.AuthVerificationSubmitted &&
+  //     isUserFullyOnboarded(kycUser)
+  //   ) {
+  //     // Small delay to show the success message
+  //     const timer = setTimeout(() => {
+  //       closeBottomSheet(currentBottomSheetId);
+  //       setIsOnboarding(false);
+  //       setCurrentBottomSheetId(null);
+  //       // Reset onboarding to start from the correct step next time
+  //       resetOnboarding();
+  //     }, 2000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [
-    isOnboarding,
-    currentBottomSheetId,
-    currentOnboardingStep,
-    kycUser,
-    closeBottomSheet,
-    resetOnboarding,
-  ]);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [
+  //   isOnboarding,
+  //   currentBottomSheetId,
+  //   currentOnboardingStep,
+  //   kycUser,
+  //   closeBottomSheet,
+  //   resetOnboarding,
+  // ]);
 
   // Calculate verification status
   const userIsFullyVerified = useMemo(
