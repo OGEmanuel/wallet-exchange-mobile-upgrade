@@ -1,12 +1,20 @@
-import images from "@/assets/images";
-import countryData, { CountryData, getCountryFlagUrl } from "@/src/core/utils/countryData";
+import {
+  CountryVerificationDocumentModel,
+  groupByVerificationClass,
+  userSubmittedDocumentIsApprovedOrPending,
+} from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { VerifiedCountryModel } from "@/src/modules/utilities/domain/entities/models/verified-country-model";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
-import React, { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppErrorIndicator, AppLoading, AppSelect, AppStepper } from "../../../components/ui";
+import { filterVerificationClasses } from "../../models/document-type-model";
+import { TileCredit, TileIdentity } from "../components";
 import { Onboarding } from "../types";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
@@ -14,124 +22,214 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { updateUser } = useKyc();
+  const { fetchVerifiedCountries, fetchDocumentTypes } = useUtilities();
+  const { verifiedCountries } = useSelector((state: AppRootState) => state.utilities);
+  
+  const [selectedVerifiedCountry, setSelectedVerifiedCountry] = useState<VerifiedCountryModel | null>(
+    user?.metaData?.documentVerification?.selectedVerifiedCountry || null
+  );
+  const [selectedVerifiedCountryDocuments, setSelectedVerifiedCountryDocuments] = useState<CountryVerificationDocumentModel[] | null>(null);
+  const [fetchingverifiedCountryDocuments, setFetchingverifiedCountryDocuments] = useState(false);
+  const [documentTypesError, setDocumentTypesError] = useState(false);
+  const [fetchVerifiedCountriesLoading, setFetchVerifiedCountriesLoading] = useState(false);
+  const [fetchVerifiedCountriesError, setFetchVerifiedCountriesError] = useState<string | null>(null);
 
-  // Check verification status (mock - replace with actual user data)
-  const bvnCompleted = user?.metaData?.documentVerification?.creditVerification?.status === "approved";
-  const idCompleted = user?.metaData?.documentVerification?.identityVerification?.status === "approved";
+  // Fetch verified countries on mount
+  const loadVerifiedCountries = useCallback(async () => {
+    setFetchVerifiedCountriesLoading(true);
+    setFetchVerifiedCountriesError(null);
+    try {
+      await fetchVerifiedCountries({
+        body: null,
+        params: {},
+        extra: {},
+      });
+      
+      // Find user's country from response or use selectedVerifiedCountry from user metadata
+      if (verifiedCountries && verifiedCountries.length > 0) {
+        const userCountry = selectedVerifiedCountry || 
+          verifiedCountries.find((c) => c._id === user?.countryId?._id) ||
+          verifiedCountries.find((c) => c._id === user?.metaData?.documentVerification?.selectedVerifiedCountry?._id) ||
+          verifiedCountries[0];
+        
+        if (userCountry && !selectedVerifiedCountry) {
+          setSelectedVerifiedCountry(userCountry);
+          // Don't update user metadata here to avoid triggering step recalculation
+          // The country will be saved when user proceeds to next step (BVN or ID verification)
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch verified countries:", error);
+      setFetchVerifiedCountriesError(error?.message || "Failed to load countries");
+    } finally {
+      setFetchVerifiedCountriesLoading(false);
+    }
+  }, [fetchVerifiedCountries, verifiedCountries, selectedVerifiedCountry, user]);
 
-  const countryOptions = countryData.map((country) => ({
-    label: country.label,
-    value: country.value,
-    prefix: (
+  // Get document types for selected country
+  const getDocumentTypes = useCallback(async (country: VerifiedCountryModel | null) => {
+    if (!country?._id) return;
+    
+    setFetchingverifiedCountryDocuments(true);
+    setDocumentTypesError(false);
+    try {
+      const response = await fetchDocumentTypes({
+        body: country,
+        params: {},
+        extra: {},
+      });
+      
+      if (response?.data) {
+        setSelectedVerifiedCountryDocuments(response.data);
+      } else {
+        setDocumentTypesError(true);
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch document types:", error);
+      setDocumentTypesError(true);
+    } finally {
+      setFetchingverifiedCountryDocuments(false);
+    }
+  }, [fetchDocumentTypes]);
+
+  // Handle country selection
+  const handleCountrySelect = useCallback((country: VerifiedCountryModel | null) => {
+    if (country) {
+      setSelectedVerifiedCountry(country);
+      // Get document types for new country (don't update user metadata here to avoid step recalculation)
+      getDocumentTypes(country);
+    }
+  }, [getDocumentTypes]);
+
+  // Group documents by verification class
+  const countryDocuments = groupByVerificationClass(selectedVerifiedCountryDocuments);
+  const creditDocuments = countryDocuments.credit || [];
+  const identityDocuments = countryDocuments.identity || [];
+
+  // Check verification status using utility functions
+  const userSubmittedCreditDocument = userSubmittedDocumentIsApprovedOrPending(creditDocuments, user);
+  const userSubmittedIdentityDocument = userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
+  const bvnCompleted = !!userSubmittedCreditDocument;
+  const idCompleted = !!userSubmittedIdentityDocument;
+
+  // Fetch countries on mount
+  useEffect(() => {
+    if (!verifiedCountries || verifiedCountries.length === 0) {
+      loadVerifiedCountries();
+    }
+  }, [loadVerifiedCountries, verifiedCountries]);
+
+  // Get document types when country is selected
+  useEffect(() => {
+    if (selectedVerifiedCountry?._id && !selectedVerifiedCountryDocuments) {
+      getDocumentTypes(selectedVerifiedCountry);
+    }
+  }, [selectedVerifiedCountry?._id, selectedVerifiedCountryDocuments, getDocumentTypes, selectedVerifiedCountry]);
+
+  const countryOptions = verifiedCountries?.map((country) => ({
+    label: country.name || "",
+    value: country as VerifiedCountryModel,
+    prefix: country.flagUrl ? (
       <Image
-        source={{ uri: getCountryFlagUrl(country.value) }}
+        source={{ uri: country.flagUrl }}
         style={{ width: 24, height: 16, marginRight: 8 }}
         resizeMode="contain"
       />
-    ),
-  }));
-
-  const handleCountrySelect = (value: string) => {
-    const country = countryData.find((c) => c.value === value);
-    setSelectedCountry(country || null);
-  };
+    ) : undefined,
+  })) || [];
 
   const handleBvnPress = () => {
+    // Set the step FIRST to prevent recalculation from overriding it
     setCurrentOnboardingStep(Onboarding.AuthBvnVerificationInput);
+    
+    // Then update metadata (this will trigger recalculation, but step is already set and tracked)
+    if (selectedVerifiedCountry) {
+      updateUser({
+        ...user,
+        metaData: {
+          ...user?.metaData,
+          shownIdentificationOverviewOnboardingIntro: true,
+          documentVerification: {
+            ...user?.metaData?.documentVerification,
+            selectedVerifiedCountry: selectedVerifiedCountry,
+          },
+        },
+      });
+    } else {
+      // If no country selected, just update the intro flag
+      updateUser({
+        ...user,
+        metaData: {
+          ...user?.metaData,
+          shownIdentificationOverviewOnboardingIntro: true,
+        },
+      });
+    }
   };
 
   const handleIdPress = () => {
+    // Set the step FIRST to prevent recalculation from overriding it
     setCurrentOnboardingStep(Onboarding.AuthIdVerificationInput);
+    
+    // Then update metadata (this will trigger recalculation, but step is already set and tracked)
+    if (selectedVerifiedCountry) {
+      updateUser({
+        ...user,
+        metaData: {
+          ...user?.metaData,
+          shownIdentificationOverviewOnboardingIntro: true,
+          skippedBvnVerification: true,
+          authBvnVerificationSuccessShown: true,
+          documentVerification: {
+            ...user?.metaData?.documentVerification,
+            selectedVerifiedCountry: selectedVerifiedCountry,
+          },
+          idVerificationData: {
+            ...user?.metaData?.idVerificationData,
+            shownAuthIdVerificationInput: false,
+          },
+        },
+      });
+    } else {
+      // If no country selected, just update the flags
+      updateUser({
+        ...user,
+        metaData: {
+          ...user?.metaData,
+          shownIdentificationOverviewOnboardingIntro: true,
+          skippedBvnVerification: true,
+          authBvnVerificationSuccessShown: true,
+          idVerificationData: {
+            ...user?.metaData?.idVerificationData,
+            shownAuthIdVerificationInput: false,
+          },
+        },
+      });
+    }
   };
 
-  const steps = [
-    {
-      display: (
-        <View style={styles.stepContent}>
-          <View style={styles.stepHeader}>
-            <Image source={images.accounts} style={styles.stepIcon} />
-            <View style={styles.stepTitleContainer}>
-              <Text style={[styles.stepTitle, { color: theme.colors.headerTextColor }]}>
-                Credit Verification
-              </Text>
-              <View style={styles.badgeContainer}>
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: bvnCompleted
-                        ? theme.colors.success || "#10B981"
-                        : theme.colors.warning || "#F59E0B",
-                    },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {bvnCompleted ? "Complete" : "Incomplete"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <Text style={[styles.stepDescription, { color: theme.colors.placeholderTextColor }]}>
-            Verify your Bank Verification Number (BVN) to enable transactions up to $150 over 3
-            transactions.
-          </Text>
-          {!bvnCompleted && (
-            <TouchableOpacity onPress={handleBvnPress} style={styles.actionButton}>
-              <Text style={[styles.actionButtonText, { color: theme.colors.primaryColor }]}>
-                Verify BVN
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ),
-      completed: bvnCompleted,
-    },
-    {
-      display: (
-        <View style={styles.stepContent}>
-          <View style={styles.stepHeader}>
-            <Image source={images.idCard} style={styles.stepIcon} />
-            <View style={styles.stepTitleContainer}>
-              <Text style={[styles.stepTitle, { color: theme.colors.headerTextColor }]}>
-                Identity Verification
-              </Text>
-              <View style={styles.badgeContainer}>
-                <View
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor: idCompleted
-                        ? theme.colors.success || "#10B981"
-                        : theme.colors.warning || "#F59E0B",
-                    },
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {idCompleted ? "Complete" : "Incomplete"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-          <Text style={[styles.stepDescription, { color: theme.colors.placeholderTextColor }]}>
-            Upload a government-issued ID to increase your transaction limit to unlimited.
-          </Text>
-          {!idCompleted && (
-            <TouchableOpacity onPress={handleIdPress} style={styles.actionButton}>
-              <Text style={[styles.actionButtonText, { color: theme.colors.primaryColor }]}>
-                Verify ID
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ),
-      completed: idCompleted,
-    },
-  ];
+  const filteredVerificationClasses = filterVerificationClasses(selectedVerifiedCountryDocuments);
+
+  const steps: { display: React.ReactNode; completed: boolean }[] = [];
+
+  filteredVerificationClasses.forEach((verificationClass) => {
+    const classLower = verificationClass.toLowerCase();
+    
+    if (classLower === "credit") {
+      steps.push({
+        display: <TileCredit completed={bvnCompleted} onPress={handleBvnPress} />,
+        completed: bvnCompleted,
+      });
+    }
+    
+    if (classLower === "identity") {
+      steps.push({
+        display: <TileIdentity completed={idCompleted} onPress={handleIdPress} />,
+        completed: idCompleted,
+      });
+    }
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -143,22 +241,58 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
         Before you can buy BTC we will need to verify who you are. Be sure you data is safe.
       </Text>
 
-      <AppSelect
-        options={countryOptions}
-        value={selectedCountry?.value}
-        onChange={handleCountrySelect}
-        placeholder="Select country"
-        searchable={true}
-        label="Country"
-        style={styles.countrySelect}
-      />
+      <View style={styles.countrySelect}>
+        <AppSelect<VerifiedCountryModel | null>
+          options={countryOptions.map((country) => ({
+            label: country.label,
+            value: country.value,
+            prefix: country.prefix,
+          }))}
+          value={selectedVerifiedCountry}
+          onChange={handleCountrySelect}
+          placeholder="Select country"
+          searchable={true}
+          label="Country"
+          disabled={!!user?.countryId || fetchVerifiedCountriesLoading}
+          isLoading={fetchVerifiedCountriesLoading}
+          prefix={
+            selectedVerifiedCountry?.flagUrl ? (
+              <Image
+                source={{ uri: selectedVerifiedCountry.flagUrl }}
+                style={{ width: 24, height: 16, marginRight: 8 }}
+                resizeMode="contain"
+              />
+            ) : "undefined"
+          }
+          getOptionValue={(opt) => opt.value?._id || ""}
+          getOptionLabel={(opt) => opt.label}
+        />
+      </View>
 
-      {error && (
-        <AppErrorIndicator error={error} retry={() => setError(null)} style={styles.error} />
+      {fetchVerifiedCountriesError && (
+        <View style={styles.error}>
+          <AppErrorIndicator 
+            error={fetchVerifiedCountriesError} 
+            retry={loadVerifiedCountries} 
+          />
+        </View>
       )}
 
-      {isLoading ? (
+      {(fetchingverifiedCountryDocuments || fetchVerifiedCountriesLoading) ? (
         <AppLoading isLoading={true} size="lg" />
+      ) : documentTypesError ? (
+        <View style={styles.error}>
+          <AppErrorIndicator 
+            error="Failed to load document types. Please try again." 
+            retry={() => selectedVerifiedCountry && getDocumentTypes(selectedVerifiedCountry)} 
+          />
+        </View>
+      ) : !selectedVerifiedCountryDocuments || selectedVerifiedCountryDocuments.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: theme.colors.placeholderTextColor }]}>
+            No document types available for selected country
+          </Text>
+        </View>
       ) : (
         <AppStepper steps={steps} orientation="vertical" currentStep={bvnCompleted ? 1 : 0} />
       )}
@@ -191,61 +325,16 @@ const styles = StyleSheet.create({
   error: {
     marginBottom: 16,
   },
-  stepContent: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  stepHeader: {
-    flexDirection: "row",
+  emptyContainer: {
+    padding: 24,
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    minHeight: 200,
   },
-  stepIcon: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
-  },
-  stepTitleContainer: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    fontFamily: "PlusJakartaSans_SemiBold",
-  },
-  badgeContainer: {
-    marginLeft: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#FFFFFF",
-    fontFamily: "PlusJakartaSans_SemiBold",
-  },
-  stepDescription: {
+  emptyText: {
     fontSize: 14,
-    marginBottom: 12,
     fontFamily: "PlusJakartaSans_Regular",
-  },
-  actionButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    fontFamily: "PlusJakartaSans_SemiBold",
+    textAlign: "center",
   },
 });
 

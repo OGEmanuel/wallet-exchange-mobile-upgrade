@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AppButton } from "./AppButton";
 
 export type FileType = "image" | "pdf";
 
@@ -98,7 +97,7 @@ export const AppImageUpload: React.FC<AppImageUploadProps> = ({
       {selectedFile && fileType === "image" ? (
         <View style={styles.previewContainer}>
           <Image source={{ uri: selectedFile }} style={styles.previewImage} />
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={[
               styles.replaceButton,
               { backgroundColor: theme.colors.secondaryBackgroundColor },
@@ -118,7 +117,7 @@ export const AppImageUpload: React.FC<AppImageUploadProps> = ({
                 Replace photo
               </Text>
             )}
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       ) : selectedFile && fileType === "pdf" ? (
         <View style={styles.previewContainer}>

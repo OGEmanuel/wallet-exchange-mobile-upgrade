@@ -86,14 +86,14 @@ const useKyc = () => {
         const userChanged = JSON.stringify(user) !== JSON.stringify(updatedUser);
         if (userChanged) {
           // Update Redux store - this will trigger re-renders in all components using useSelector
-          dispatch(kycActions.setUser(updatedUser));
-          
+        dispatch(kycActions.setUser(updatedUser));
+        
           // Update wallet context - this will update exchangeUserData used by useExchangeAuth and other components
-          if (response.data._id) {
-            setCurrentExchangeUser(response.data._id);
-            setIsExchangeAuthenticated(true);
-          }
-          setExchangeUserData(updatedUser);
+        if (response.data._id) {
+          setCurrentExchangeUser(response.data._id);
+          setIsExchangeAuthenticated(true);
+        }
+        setExchangeUserData(updatedUser);
         }
       }
 
@@ -128,10 +128,15 @@ const useKyc = () => {
       // Clear from Redux store
       dispatch(kycActions.setUser(null as any));
 
+      // Clear from wallet context
+      setCurrentExchangeUser(null);
+      setIsExchangeAuthenticated(false);
+      setExchangeUserData(null);
+
       // Clear from storage
       await storageService.remove(StorageKeys.USER_PROFILE);
 
-      console.log("User data cleared successfully");
+      console.log("✅ User data cleared successfully from Redux, wallet context, and storage");
     } catch (error) {
       console.error("Failed to clear user data:", error);
     }
@@ -194,22 +199,22 @@ const useKyc = () => {
         setTimeout(() => {
           // Check again if we're still not fetching (in case another call happened)
           if (!fetchingUserDetails) {
-            fetchUserById(updatedUser).then((response) => {
-              if (response?.data) {
-                const fetchedUserData = {
-                  ...userDataWithoutTheMetaData,
-                  ...response.data,
-                  metaData: {
-                    ...metaData,
-                    ...response.data?.metaData,
-                  },
-                };
+        fetchUserById(updatedUser).then((response) => {
+          if (response?.data) {
+            const fetchedUserData = {
+              ...userDataWithoutTheMetaData,
+              ...response.data,
+              metaData: {
+                ...metaData,
+                ...response.data?.metaData,
+              },
+            };
 
                 // Only update if data actually changed to prevent loops
                 const dataChanged = JSON.stringify(updatedUser) !== JSON.stringify(fetchedUserData);
                 if (dataChanged) {
                   // Update Redux
-                  dispatch(kycActions.setUser({ ...fetchedUserData }));
+            dispatch(kycActions.setUser({ ...fetchedUserData }));
 
                   // Update wallet context
                   if (fetchedUserData?._id) {
@@ -218,18 +223,18 @@ const useKyc = () => {
                   }
                   setExchangeUserData(fetchedUserData);
 
-                  if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
-                    if (userDataWithoutTheMetaData?.phone)
-                      delete userDataWithoutTheMetaData.phone;
-                  }
+            if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
+              if (userDataWithoutTheMetaData?.phone)
+                delete userDataWithoutTheMetaData.phone;
+            }
 
-                  storageService.save(
-                    StorageKeys.USER_PROFILE,
-                    userDataWithoutTheMetaData
-                  );
+            storageService.save(
+              StorageKeys.USER_PROFILE,
+              userDataWithoutTheMetaData
+            );
                 }
-              }
-            });
+          }
+        });
           }
         }, 300); // 300ms debounce
       }

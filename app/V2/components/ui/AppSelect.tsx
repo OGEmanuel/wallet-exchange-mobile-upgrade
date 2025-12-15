@@ -11,26 +11,28 @@ import {
   View,
 } from "react-native";
 
-export interface SelectOption {
+export interface SelectOption<T = string> {
   label: string;
-  value: string;
+  value: T;
   prefix?: React.ReactNode;
   suffix?: React.ReactNode;
 }
 
-export interface AppSelectProps {
-  options: SelectOption[];
-  value?: string;
-  onChange: (value: string) => void;
+export interface AppSelectProps<T = string> {
+  options: SelectOption<T>[];
+  value?: T;
+  onChange: (value: T) => void;
   placeholder?: string;
   searchable?: boolean;
   isLoading?: boolean;
   disabled?: boolean;
   prefix?: React.ReactNode;
   label?: string;
+  getOptionValue?: (option: SelectOption<T>) => string; // For comparison when T is an object
+  getOptionLabel?: (option: SelectOption<T>) => string; // For display when T is an object
 }
 
-export const AppSelect: React.FC<AppSelectProps> = ({
+export const AppSelect = <T = string,>({
   options,
   value,
   onChange,
@@ -40,19 +42,49 @@ export const AppSelect: React.FC<AppSelectProps> = ({
   disabled = false,
   prefix,
   label,
-}) => {
+  getOptionValue = (opt) => String(opt.value),
+  getOptionLabel = (opt) => opt.label,
+}: AppSelectProps<T>): React.ReactElement => {
   const theme = useTheme<Theme>();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  // Helper to compare values (works for both primitives and objects)
+  const isValueEqual = (a: T | undefined, b: T): boolean => {
+    if (a === undefined) return false;
+    if (typeof a === "object" && a !== null && typeof b === "object" && b !== null) {
+      // For objects, compare by _id if available, otherwise use JSON comparison
+      if ("_id" in a && "_id" in b) {
+        return (a as any)._id === (b as any)._id;
+      }
+      return JSON.stringify(a) === JSON.stringify(b);
+    }
+    return a === b;
+  };
+
+  const selectedOption = options.find((opt) => isValueEqual(value, opt.value));
   const filteredOptions = searchable
     ? options.filter((opt) =>
-        opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+        getOptionLabel(opt).toLowerCase().includes(searchQuery.toLowerCase())
       )
     : options;
 
-  const handleSelect = (optionValue: string) => {
+  // Helper to extract a unique key for FlatList
+  const getUniqueKey = (item: SelectOption<T>, index: number): string => {
+    const value = item.value;
+    // If value is an object with _id, use that
+    if (typeof value === "object" && value !== null && "_id" in value) {
+      return String((value as any)._id);
+    }
+    // If value is a primitive, use it directly
+    if (typeof value !== "object" && value !== null && value !== undefined) {
+      return String(value);
+    }
+    // Fallback to index with a prefix to ensure uniqueness
+    return `option-${index}`;
+  };
+
+  const handleSelect = (optionValue: T) => {
     onChange(optionValue);
     setIsOpen(false);
     setSearchQuery("");
@@ -89,17 +121,18 @@ export const AppSelect: React.FC<AppSelectProps> = ({
       >
         {selectedOption ? (
           <View style={styles.selectedContent}>
-            {selectedOption.prefix && (
+            {/* Show prefix prop first (for selected value), then option prefix (for dropdown items) */}
+            {prefix && <View style={styles.prefixContainer}>{prefix}</View>}
+            {!prefix && selectedOption.prefix && (
               <View style={styles.prefixContainer}>{selectedOption.prefix}</View>
             )}
-            {prefix && <View style={styles.prefixContainer}>{prefix}</View>}
             <Text
               style={[
                 styles.selectedText,
                 { color: theme.colors.bodyTextColor },
               ]}
             >
-              {selectedOption.label}
+              {getOptionLabel(selectedOption)}
             </Text>
           </View>
         ) : (
@@ -163,14 +196,15 @@ export const AppSelect: React.FC<AppSelectProps> = ({
             ) : (
               <FlatList
                 data={filteredOptions}
-                keyExtractor={(item) => item.value}
-                renderItem={({ item }) => (
+                keyExtractor={(item, index) => getUniqueKey(item, index)}
+                renderItem={({ item }) => {
+                  const isSelected = isValueEqual(value, item.value);
+                  return (
                   <TouchableOpacity
                     style={[
                       styles.optionItem,
                       {
-                        backgroundColor:
-                          item.value === value
+                          backgroundColor: isSelected
                             ? theme.colors.primaryColor + "20"
                             : "transparent",
                       },
@@ -185,22 +219,20 @@ export const AppSelect: React.FC<AppSelectProps> = ({
                         style={[
                           styles.optionText,
                           {
-                            color:
-                              item.value === value
+                              color: isSelected
                                 ? theme.colors.primaryColor
                                 : theme.colors.bodyTextColor,
-                            fontWeight:
-                              item.value === value ? "600" : "400",
+                              fontWeight: isSelected ? "600" : "400",
                           },
                         ]}
                       >
-                        {item.label}
+                          {getOptionLabel(item)}
                       </Text>
                     </View>
                     {item.suffix && (
                       <View style={styles.optionSuffix}>{item.suffix}</View>
                     )}
-                    {item.value === value && (
+                      {isSelected && (
                       <Text
                         style={[
                           styles.checkmark,
@@ -211,7 +243,8 @@ export const AppSelect: React.FC<AppSelectProps> = ({
                       </Text>
                     )}
                   </TouchableOpacity>
-                )}
+                  );
+                }}
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
                     <Text style={{ color: theme.colors.bodyTextColor }}>

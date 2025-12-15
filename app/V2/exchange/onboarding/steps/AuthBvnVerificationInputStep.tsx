@@ -6,8 +6,8 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppButton, AppInput } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthBvnVerificationInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
@@ -98,7 +98,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
         });
 
         // Fetch updated user data
-        await fetchUserById(user);
+        fetchUserById(user);
         setCurrentOnboardingStep(Onboarding.AuthBvnVerificationSuccess);
       } else {
         setBvnError(response?.message || "Failed to verify BVN. Please try again.");
@@ -144,7 +144,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
             placeholder="First Name"
             error={firstNameError}
             touched={touched.firstName}
-            style={styles.input}
+            // style={styles.input}
           />
         </View>
         <View style={styles.nameInput}>
@@ -155,7 +155,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
             placeholder="Last Name"
             error={lastNameError}
             touched={touched.lastName}
-            style={styles.input}
+            // style={styles.input}
           />
         </View>
       </View>
@@ -169,15 +169,15 @@ const AuthBvnVerificationInputStep: React.FC = () => {
         maxLength={11}
         error={bvnError}
         touched={touched.bvn}
-        style={styles.input}
+        // style={styles.input}
       />
 
       <View
         style={[
           styles.infoBox,
           {
-            backgroundColor: theme.colors.warningBackground || "#FFF7D9",
-            borderLeftColor: theme.colors.warning || "#FEDB24",
+            backgroundColor: theme.colors.warningBackgroundColor || "#FFF7D9",
+            borderLeftColor: theme.colors.warningColor || "#FEDB24",
           },
         ]}
       >
