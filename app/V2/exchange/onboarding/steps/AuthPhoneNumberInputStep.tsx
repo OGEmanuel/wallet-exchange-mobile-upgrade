@@ -16,7 +16,8 @@ import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthPhoneNumberInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
-  const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
+  const { setCurrentOnboardingStep, currentOnboardingStep } =
+    useExchangeOnboardingContext();
   const { authPhoneNumber, updateUser, fetchUserById } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(
@@ -149,6 +150,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
                 placeholder="Country"
                 searchable={true}
                 label="Country"
+                currentOnboardingStep={currentOnboardingStep}
               />
             </View>
 
@@ -217,11 +219,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "600",
+    textAlign: "center",
     marginBottom: 8,
     fontFamily: "NewScience_SemiBold",
   },
   subtitle: {
     fontSize: 14,
+    textAlign: "center",
     marginBottom: 20,
     fontFamily: "PlusJakartaSans_Regular",
   },

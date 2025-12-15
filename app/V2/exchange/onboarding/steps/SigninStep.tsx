@@ -2,6 +2,7 @@ import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { kycActions } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useDispatch } from "react-redux";
@@ -27,7 +28,9 @@ const SigninStep: React.FC = () => {
   const handleEmailChange = (text: string) => {
     setEmail(text);
     if (touched) {
-      setEmailError(validateEmail(text) ? "" : "Please enter a valid email address");
+      setEmailError(
+        validateEmail(text) ? "" : "Please enter a valid email address"
+      );
     }
   };
 
@@ -60,12 +63,16 @@ const SigninStep: React.FC = () => {
         email: email.trim(),
       });
       if (response?.success) {
-        dispatch(kycActions.setUser({
-          email: email.trim(),
-        }));
+        dispatch(
+          kycActions.setUser({
+            email: email.trim(),
+          })
+        );
         setCurrentOnboardingStep(Onboarding.AuthOtp);
       } else {
-        setEmailError(response?.message || "Failed to send OTP. Please try again.");
+        setEmailError(
+          response?.message || "Failed to send OTP. Please try again."
+        );
       }
     } catch (error: any) {
       console.error("Auth email error:", error);
@@ -90,7 +97,6 @@ const SigninStep: React.FC = () => {
       <Text style={[styles.title, { color: theme.colors.headerTextColor }]}>
         Login to Zap
       </Text>
-
       <AppInput
         value={email}
         onChangeText={handleEmailChange}
@@ -99,7 +105,6 @@ const SigninStep: React.FC = () => {
         type="email"
         error={emailError}
         touched={touched}
-        // style={styles.input}
       />
 
       <AppButton

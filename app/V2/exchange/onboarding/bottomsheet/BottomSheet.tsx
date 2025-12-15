@@ -1,11 +1,15 @@
+import { Theme } from "@/theme";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import { useTheme } from "@shopify/restyle";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
 } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet } from "react-native";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -42,6 +46,7 @@ export const AppBottomSheet = React.forwardRef<
     ref
   ) => {
     const bottomSheetRef = useRef<BottomSheet>(null);
+    const { colors } = useTheme<Theme>();
 
     useEffect(() => {
       if (isOpen) {
@@ -94,37 +99,31 @@ export const AppBottomSheet = React.forwardRef<
         backgroundStyle={styles.background}
         handleIndicatorStyle={styles.handleIndicator}
       >
-        <BottomSheetView style={styles.contentContainer}>
-          {showCloseButton && (
-            <View style={styles.closeButtonContainer}>
-              <TouchableOpacity
-                onPress={() => {
-                  onClose();
-                }}
-                style={styles.closeButton}
-              >
-                <View style={styles.closeIconContainer}>
-                  <View
-                    style={[
-                      styles.closeIcon,
-                      { transform: [{ rotate: "45deg" }] },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.closeIcon,
-                      {
-                        transform: [{ rotate: "-45deg" }],
-                        position: "absolute",
-                      },
-                    ]}
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
-          {children}
-        </BottomSheetView>
+        <LinearGradient
+          colors={[
+            colors.primaryColor,
+            colors.mainBackgroundColor,
+            colors.mainBackgroundColor,
+          ]}
+          locations={[0, 0.25, 1] as any}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientContainer}
+        >
+          <BottomSheetView style={styles.contentContainer}>
+            <Image
+              source={require("@/assets/images/zapLogoDark.png")}
+              style={{
+                height: 40,
+                width: 120,
+                alignSelf: "center",
+                marginTop: 16,
+              }}
+            />
+            {children}
+          </BottomSheetView>
+          {/* </AnimatedGradientBottomSheet> */}
+        </LinearGradient>
       </BottomSheet>
     );
   }
@@ -140,12 +139,14 @@ const styles = StyleSheet.create({
   },
   handleIndicator: {
     backgroundColor: "#666",
+    padding: 0,
   },
   contentContainer: {
     flexDirection: "column",
-    paddingHorizontal: 12,
-    paddingVertical: 20,
-    height: "75%",
+    paddingTop: 40,
+    paddingBottom: 20,
+    gap: 8,
+    height: "100%",
   },
   closeButtonContainer: {
     alignItems: "flex-end",
@@ -164,6 +165,11 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+  gradientContainer: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    flex: 1,
   },
   closeIcon: {
     width: 20,

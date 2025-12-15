@@ -385,10 +385,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     marginBottom: 8,
+    textAlign: "center",
     fontFamily: "NewScience_SemiBold",
   },
   subtitle: {
     fontSize: 14,
+    textAlign: "center",
     marginBottom: 24,
     fontFamily: "PlusJakartaSans_Regular",
   },

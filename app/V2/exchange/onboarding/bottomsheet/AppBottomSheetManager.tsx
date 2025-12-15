@@ -10,7 +10,10 @@ export const AppBottomSheetManager: React.FC = () => {
 
   // Debug: log when bottom sheets change
   React.useEffect(() => {
-    console.log("AppBottomSheetManager: bottomSheets changed", bottomSheets.length);
+    console.log(
+      "AppBottomSheetManager: bottomSheets changed",
+      bottomSheets.length
+    );
   }, [bottomSheets.length]);
 
   const handleClose = (id: number) => {
@@ -36,7 +39,8 @@ export const AppBottomSheetManager: React.FC = () => {
   };
 
   // Only show the topmost bottom sheet
-  const topSheet = bottomSheets.length > 0 ? bottomSheets[bottomSheets.length - 1] : null;
+  const topSheet =
+    bottomSheets.length > 0 ? bottomSheets[bottomSheets.length - 1] : null;
 
   if (!topSheet) {
     return null;
@@ -70,4 +74,3 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
 });
-

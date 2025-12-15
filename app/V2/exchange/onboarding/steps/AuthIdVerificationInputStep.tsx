@@ -1,6 +1,4 @@
-import {
-  CountryVerificationDocumentModel,
-} from "@/src/modules/kyc/domain/entities/models/document-type-model";
+import { CountryVerificationDocumentModel } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
@@ -8,9 +6,20 @@ import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSelector } from "react-redux";
-import { AppButton, AppDatePicker, AppInput, AppSelect } from "../../../components/ui";
+import {
+  AppButton,
+  AppDatePicker,
+  AppInput,
+  AppSelect,
+} from "../../../components/ui";
 import { Onboarding } from "../types";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
@@ -23,8 +32,12 @@ const AuthIdVerificationInputStep: React.FC = () => {
   const [selectedCountry] = useState<VerifiedCountryModel | undefined>(
     user?.metaData?.documentVerification?.selectedVerifiedCountry || undefined
   );
-  const [documentType, setDocumentType] = useState<CountryVerificationDocumentModel | undefined>();
-  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[] | null | undefined>(null);
+  const [documentType, setDocumentType] = useState<
+    CountryVerificationDocumentModel | undefined
+  >();
+  const [documentTypes, setDocumentTypes] = useState<
+    CountryVerificationDocumentModel[] | null | undefined
+  >(null);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -58,12 +71,17 @@ const AuthIdVerificationInputStep: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const documentTypeOptions = documentTypes?.filter((doc) => doc.verificationClass?.toLowerCase() === "identity").map((doc) => ({
-    label: doc.verificationType?.toUpperCase() || "",
-    value: doc,
-  })) || [];
+  const documentTypeOptions =
+    documentTypes
+      ?.filter((doc) => doc.verificationClass?.toLowerCase() === "identity")
+      .map((doc) => ({
+        label: doc.verificationType?.toUpperCase() || "",
+        value: doc,
+      })) || [];
 
-  const selectedDocType = documentTypes?.find((doc) => doc._id === documentType?._id);
+  const selectedDocType = documentTypes?.find(
+    (doc) => doc._id === documentType?._id
+  );
 
   const isExternal = selectedDocType?.isExternal?.token;
 
@@ -105,7 +123,9 @@ const AuthIdVerificationInputStep: React.FC = () => {
     }
 
     // Store form data in user metadata for use in upload step
-    const dateOfBirthString = dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : "";
+    const dateOfBirthString = dateOfBirth
+      ? dateOfBirth.toISOString().split("T")[0]
+      : "";
     updateUser({
       ...user,
       metaData: {
@@ -140,9 +160,14 @@ const AuthIdVerificationInputStep: React.FC = () => {
   // }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-        <Text style={[styles.backIcon, { color: theme.colors.bodyTextColor }]}>←</Text>
+        <Text style={[styles.backIcon, { color: theme.colors.bodyTextColor }]}>
+          ←
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.badge}>
@@ -155,7 +180,9 @@ const AuthIdVerificationInputStep: React.FC = () => {
         ID Verification
       </Text>
 
-      <Text style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}>
+      <Text
+        style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}
+      >
         We require a photo of a government issued ID to verify your identity.
       </Text>
 
@@ -188,69 +215,73 @@ const AuthIdVerificationInputStep: React.FC = () => {
         </View>
       </View>
 
-      {documentType && (isExternal ? <>
-         <View style={styles.container}>
-          <Text>External verification not implemented</Text>
-        </View>
-        </> : (
-        <>
-          <View style={styles.nameRow}>
-            <View style={styles.nameInput}>
-              <AppInput
-                value={firstName}
-                onChangeText={(text) => {
-                  setFirstName(text);
-                  setErrors({ ...errors, firstName: "" });
-                }}
-                onBlur={() => setTouched({ ...touched, firstName: true })}
-                placeholder="First Name"
-                error={errors.firstName}
-                touched={touched.firstName}
-              />
+      {documentType &&
+        (isExternal ? (
+          <>
+            <View style={styles.container}>
+              <Text>External verification not implemented</Text>
             </View>
-            <View style={styles.nameInput}>
-              <AppInput
-                value={lastName}
-                onChangeText={(text) => {
-                  setLastName(text);
-                  setErrors({ ...errors, lastName: "" });
-                }}
-                onBlur={() => setTouched({ ...touched, lastName: true })}
-                placeholder="Last Name"
-                error={errors.lastName}
-                touched={touched.lastName}
-              />
+          </>
+        ) : (
+          <>
+            <View style={styles.nameRow}>
+              <View style={styles.nameInput}>
+                <AppInput
+                  value={firstName}
+                  onChangeText={(text) => {
+                    setFirstName(text);
+                    setErrors({ ...errors, firstName: "" });
+                  }}
+                  onBlur={() => setTouched({ ...touched, firstName: true })}
+                  placeholder="First Name"
+                  error={errors.firstName}
+                  touched={touched.firstName}
+                />
+              </View>
+              <View style={styles.nameInput}>
+                <AppInput
+                  value={lastName}
+                  onChangeText={(text) => {
+                    setLastName(text);
+                    setErrors({ ...errors, lastName: "" });
+                  }}
+                  onBlur={() => setTouched({ ...touched, lastName: true })}
+                  placeholder="Last Name"
+                  error={errors.lastName}
+                  touched={touched.lastName}
+                />
+              </View>
             </View>
-          </View>
 
-          <AppInput
-            value={documentId}
-            onChangeText={(text) => {
-              const maxLength = selectedDocType?.verificationNumberLength || 50;
-              setDocumentId(text.slice(0, maxLength));
-              setErrors({ ...errors, documentId: "" });
-            }}
-            onBlur={() => setTouched({ ...touched, documentId: true })}
-            placeholder="Document ID"
-            error={errors.documentId}
-            touched={touched.documentId}
-            maxLength={selectedDocType?.verificationNumberLength}
-          />
+            <AppInput
+              value={documentId}
+              onChangeText={(text) => {
+                const maxLength =
+                  selectedDocType?.verificationNumberLength || 50;
+                setDocumentId(text.slice(0, maxLength));
+                setErrors({ ...errors, documentId: "" });
+              }}
+              onBlur={() => setTouched({ ...touched, documentId: true })}
+              placeholder="Document ID"
+              error={errors.documentId}
+              touched={touched.documentId}
+              maxLength={selectedDocType?.verificationNumberLength}
+            />
 
-          <AppDatePicker
-            value={dateOfBirth}
-            onChange={(date) => {
-              setDateOfBirth(date);
-              setErrors({ ...errors, dateOfBirth: "" });
-            }}
-            placeholder="Date of Birth"
-            maxDate={new Date()}
-            error={errors.dateOfBirth}
-            touched={touched.dateOfBirth}
-            label="Date of Birth"
-          />
-        </>
-      ))}
+            <AppDatePicker
+              value={dateOfBirth}
+              onChange={(date) => {
+                setDateOfBirth(date);
+                setErrors({ ...errors, dateOfBirth: "" });
+              }}
+              placeholder="Date of Birth"
+              maxDate={new Date()}
+              error={errors.dateOfBirth}
+              touched={touched.dateOfBirth}
+              label="Date of Birth"
+            />
+          </>
+        ))}
 
       {documentType && !isExternal && (
         <AppButton
@@ -306,11 +337,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     marginBottom: 8,
+    textAlign: "center",
     fontFamily: "NewScience_SemiBold",
   },
   subtitle: {
     fontSize: 14,
     marginBottom: 24,
+    textAlign: "center",
     fontFamily: "PlusJakartaSans_Regular",
   },
   selectorsRow: {

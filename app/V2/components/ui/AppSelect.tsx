@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Onboarding } from "../../exchange/onboarding";
 
 export interface SelectOption<T = string> {
   label: string;
@@ -29,6 +30,7 @@ export interface AppSelectProps<T = string> {
   disabled?: boolean;
   prefix?: React.ReactNode;
   label?: string;
+  currentOnboardingStep?: Onboarding;
   getOptionValue?: (option: SelectOption<T>) => string; // For comparison when T is an object
   getOptionLabel?: (option: SelectOption<T>) => string; // For display when T is an object
 }
@@ -38,6 +40,7 @@ export const AppSelect = <T = string,>({
   value,
   onChange,
   placeholder = "Select an option",
+  currentOnboardingStep,
   searchable = false,
   isLoading = false,
   disabled = false,
@@ -133,7 +136,9 @@ export const AppSelect = <T = string,>({
                 { color: theme.colors.bodyTextColor },
               ]}
             >
-              {selectedOption.label.split("+")[0].trim().slice(0, 4)}
+              {currentOnboardingStep === Onboarding.AuthPhoneNumberInput
+                ? selectedOption.label.split("+")[0].trim().slice(0, 4)
+                : selectedOption.label}
             </Text>
           </View>
         ) : (
