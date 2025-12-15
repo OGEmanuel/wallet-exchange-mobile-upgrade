@@ -164,6 +164,7 @@ const styles = StyleSheet.create({
   },
   prefix: {
     marginRight: 12,
+    alignSelf: "flex-end",
   },
   suffix: {
     marginLeft: 12,
@@ -174,4 +175,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-

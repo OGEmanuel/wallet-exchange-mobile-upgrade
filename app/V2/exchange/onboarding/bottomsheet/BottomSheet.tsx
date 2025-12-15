@@ -143,11 +143,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexDirection: "column",
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#666",
-    padding: 20,
-    // height: "100%",
+    paddingHorizontal: 12,
+    paddingVertical: 20,
   },
   closeButtonContainer: {
     alignItems: "flex-end",

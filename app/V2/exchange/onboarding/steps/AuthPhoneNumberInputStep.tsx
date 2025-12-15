@@ -1,3 +1,4 @@
+import { AppInput } from "@/app/V2/components/ui/Input";
 import countryData, {
   CountryData,
   getCountryFlagUrl,
@@ -9,7 +10,7 @@ import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
-import { AppButton, AppInput, AppSelect } from "../../../components/ui";
+import { AppButton, AppSelect } from "../../../components/ui";
 import { Onboarding } from "../types";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
@@ -124,10 +125,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        // style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-      >
+      <ScrollView contentContainerStyle={styles.contentContainer}>
         <View>
           <Text style={[styles.title, { color: theme.colors.headerTextColor }]}>
             Verify Phone Number
@@ -209,13 +207,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     borderStyle: "solid",
-    borderWidth: 1,
-    borderColor: "#6045FF",
   },
   contentContainer: {
-    // flex: 1,
     padding: 24,
-    // minHeight: 400,
     justifyContent: "space-between",
   },
   title: {
@@ -231,6 +225,7 @@ const styles = StyleSheet.create({
   },
   phoneRow: {
     flexDirection: "row",
+    alignContent: "flex-start",
     gap: 16,
     marginBottom: 24,
   },
@@ -239,6 +234,7 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
+    alignSelf: "flex-end",
   },
   countryCode: {
     fontSize: 16,

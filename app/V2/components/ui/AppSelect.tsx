@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   FlatList,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -73,7 +74,7 @@ export const AppSelect: React.FC<AppSelectProps> = ({
           {label}
         </Text>
       )}
-      <TouchableOpacity
+      <Pressable
         onPress={() => !disabled && setIsOpen(true)}
         disabled={disabled}
         style={[
@@ -89,17 +90,15 @@ export const AppSelect: React.FC<AppSelectProps> = ({
       >
         {selectedOption ? (
           <View style={styles.selectedContent}>
-            {selectedOption.prefix && (
-              <View style={styles.prefixContainer}>{selectedOption.prefix}</View>
-            )}
-            {prefix && <View style={styles.prefixContainer}>{prefix}</View>}
+            {selectedOption.prefix && <View>{selectedOption.prefix}</View>}
+            {prefix && <View>{prefix}</View>}
             <Text
               style={[
                 styles.selectedText,
                 { color: theme.colors.bodyTextColor },
               ]}
             >
-              {selectedOption.label}
+              {selectedOption.label.split("+")[0].trim().slice(0, 4)}
             </Text>
           </View>
         ) : (
@@ -115,7 +114,7 @@ export const AppSelect: React.FC<AppSelectProps> = ({
         <Text style={[styles.arrow, { color: theme.colors.bodyTextColor }]}>
           ▼
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <Modal
         visible={isOpen}
@@ -189,8 +188,7 @@ export const AppSelect: React.FC<AppSelectProps> = ({
                               item.value === value
                                 ? theme.colors.primaryColor
                                 : theme.colors.bodyTextColor,
-                            fontWeight:
-                              item.value === value ? "600" : "400",
+                            fontWeight: item.value === value ? "600" : "400",
                           },
                         ]}
                       >
@@ -252,11 +250,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
   },
-  prefixContainer: {
-    marginRight: 8,
-  },
   selectedText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: "PlusJakartaSans_Regular",
     flex: 1,
   },
@@ -267,7 +262,6 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 12,
-    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -331,4 +325,3 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
-
