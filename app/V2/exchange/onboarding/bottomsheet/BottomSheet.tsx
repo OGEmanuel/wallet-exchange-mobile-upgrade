@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     paddingHorizontal: 12,
     paddingVertical: 20,
+    height: "75%",
   },
   closeButtonContainer: {
     alignItems: "flex-end",

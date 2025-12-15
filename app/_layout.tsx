@@ -36,7 +36,11 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Provider } from "react-redux";
-import { AppBottomSheetManager, AppBottomSheetProvider, ExchangeOnboardingProvider } from "./V2/exchange/onboarding";
+import {
+  AppBottomSheetManager,
+  AppBottomSheetProvider,
+  ExchangeOnboardingProvider,
+} from "./V2/exchange/onboarding";
 
 // Set Buffer as global for Node.js compatibility
 global.Buffer = Buffer;
@@ -225,13 +229,13 @@ export default function RootLayout() {
       <View style={{ flex: 1, position: "relative" }}>
         <GestureHandlerRootView>
           <Provider store={store}>
-              <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
-                <QueryClientProvider client={queryClient}>
-                  <InternetConnectionProvider>
-                    <NetworkProvider>
-                      <SupportedCurrenciesProvider>
-                        <ChainsProvider>
-                          <WalletProvider>
+            <ThemeProvider theme={colorTheme === "dark" ? darkTheme : theme}>
+              <QueryClientProvider client={queryClient}>
+                <InternetConnectionProvider>
+                  <NetworkProvider>
+                    <SupportedCurrenciesProvider>
+                      <ChainsProvider>
+                        <WalletProvider>
                           <AppInitializer>
                             <WebSocketProvider>
                               <ExchangeOnboardingProvider>
@@ -268,14 +272,14 @@ export default function RootLayout() {
                                 </AppBottomSheetProvider>
                               </ExchangeOnboardingProvider>
                             </WebSocketProvider>
-                            </AppInitializer>
-                          </WalletProvider>
-                        </ChainsProvider>
-                      </SupportedCurrenciesProvider>
-                    </NetworkProvider>
-                  </InternetConnectionProvider>
-                </QueryClientProvider>
-              </ThemeProvider>
+                          </AppInitializer>
+                        </WalletProvider>
+                      </ChainsProvider>
+                    </SupportedCurrenciesProvider>
+                  </NetworkProvider>
+                </InternetConnectionProvider>
+              </QueryClientProvider>
+            </ThemeProvider>
           </Provider>
         </GestureHandlerRootView>
       </View>

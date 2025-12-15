@@ -206,11 +206,13 @@ const AuthPhoneNumberInputStep: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    borderStyle: "solid",
+    height: "100%",
   },
   contentContainer: {
     padding: 24,
     justifyContent: "space-between",
+    flex: 1,
+    height: "100%",
   },
   title: {
     fontSize: 20,

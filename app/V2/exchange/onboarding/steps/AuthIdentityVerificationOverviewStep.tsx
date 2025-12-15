@@ -12,7 +12,12 @@ import { useTheme } from "@shopify/restyle";
 import React, { useCallback, useEffect, useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
-import { AppErrorIndicator, AppLoading, AppSelect, AppStepper } from "../../../components/ui";
+import {
+  AppErrorIndicator,
+  AppLoading,
+  AppSelect,
+  AppStepper,
+} from "../../../components/ui";
 import { filterVerificationClasses } from "../../models/document-type-model";
 import { TileCredit, TileIdentity } from "../components";
 import { Onboarding } from "../types";
@@ -24,16 +29,27 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { updateUser } = useKyc();
   const { fetchVerifiedCountries, fetchDocumentTypes } = useUtilities();
-  const { verifiedCountries } = useSelector((state: AppRootState) => state.utilities);
-  
-  const [selectedVerifiedCountry, setSelectedVerifiedCountry] = useState<VerifiedCountryModel | null>(
-    user?.metaData?.documentVerification?.selectedVerifiedCountry || null
+  const { verifiedCountries } = useSelector(
+    (state: AppRootState) => state.utilities
   );
-  const [selectedVerifiedCountryDocuments, setSelectedVerifiedCountryDocuments] = useState<CountryVerificationDocumentModel[] | null>(null);
-  const [fetchingverifiedCountryDocuments, setFetchingverifiedCountryDocuments] = useState(false);
+
+  const [selectedVerifiedCountry, setSelectedVerifiedCountry] =
+    useState<VerifiedCountryModel | null>(
+      user?.metaData?.documentVerification?.selectedVerifiedCountry || null
+    );
+  const [
+    selectedVerifiedCountryDocuments,
+    setSelectedVerifiedCountryDocuments,
+  ] = useState<CountryVerificationDocumentModel[] | null>(null);
+  const [
+    fetchingverifiedCountryDocuments,
+    setFetchingverifiedCountryDocuments,
+  ] = useState(false);
   const [documentTypesError, setDocumentTypesError] = useState(false);
-  const [fetchVerifiedCountriesLoading, setFetchVerifiedCountriesLoading] = useState(false);
-  const [fetchVerifiedCountriesError, setFetchVerifiedCountriesError] = useState<string | null>(null);
+  const [fetchVerifiedCountriesLoading, setFetchVerifiedCountriesLoading] =
+    useState(false);
+  const [fetchVerifiedCountriesError, setFetchVerifiedCountriesError] =
+    useState<string | null>(null);
 
   // Fetch verified countries on mount
   const loadVerifiedCountries = useCallback(async () => {
@@ -45,14 +61,19 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
         params: {},
         extra: {},
       });
-      
+
       // Find user's country from response or use selectedVerifiedCountry from user metadata
       if (verifiedCountries && verifiedCountries.length > 0) {
-        const userCountry = selectedVerifiedCountry || 
+        const userCountry =
+          selectedVerifiedCountry ||
           verifiedCountries.find((c) => c._id === user?.countryId?._id) ||
-          verifiedCountries.find((c) => c._id === user?.metaData?.documentVerification?.selectedVerifiedCountry?._id) ||
+          verifiedCountries.find(
+            (c) =>
+              c._id ===
+              user?.metaData?.documentVerification?.selectedVerifiedCountry?._id
+          ) ||
           verifiedCountries[0];
-        
+
         if (userCountry && !selectedVerifiedCountry) {
           setSelectedVerifiedCountry(userCountry);
           // Don't update user metadata here to avoid triggering step recalculation
@@ -61,55 +82,74 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
       }
     } catch (error: any) {
       console.error("Failed to fetch verified countries:", error);
-      setFetchVerifiedCountriesError(error?.message || "Failed to load countries");
+      setFetchVerifiedCountriesError(
+        error?.message || "Failed to load countries"
+      );
     } finally {
       setFetchVerifiedCountriesLoading(false);
     }
-  }, [fetchVerifiedCountries, verifiedCountries, selectedVerifiedCountry, user]);
+  }, [
+    fetchVerifiedCountries,
+    verifiedCountries,
+    selectedVerifiedCountry,
+    user,
+  ]);
 
   // Get document types for selected country
-  const getDocumentTypes = useCallback(async (country: VerifiedCountryModel | null) => {
-    if (!country?._id) return;
-    
-    setFetchingverifiedCountryDocuments(true);
-    setDocumentTypesError(false);
-    try {
-      const response = await fetchDocumentTypes({
-        body: country,
-        params: {},
-        extra: {},
-      });
-      
-      if (response?.data) {
-        setSelectedVerifiedCountryDocuments(response.data);
-      } else {
+  const getDocumentTypes = useCallback(
+    async (country: VerifiedCountryModel | null) => {
+      if (!country?._id) return;
+
+      setFetchingverifiedCountryDocuments(true);
+      setDocumentTypesError(false);
+      try {
+        const response = await fetchDocumentTypes({
+          body: country,
+          params: {},
+          extra: {},
+        });
+
+        if (response?.data) {
+          setSelectedVerifiedCountryDocuments(response.data);
+        } else {
+          setDocumentTypesError(true);
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch document types:", error);
         setDocumentTypesError(true);
+      } finally {
+        setFetchingverifiedCountryDocuments(false);
       }
-    } catch (error: any) {
-      console.error("Failed to fetch document types:", error);
-      setDocumentTypesError(true);
-    } finally {
-      setFetchingverifiedCountryDocuments(false);
-    }
-  }, [fetchDocumentTypes]);
+    },
+    [fetchDocumentTypes]
+  );
 
   // Handle country selection
-  const handleCountrySelect = useCallback((country: VerifiedCountryModel | null) => {
-    if (country) {
-      setSelectedVerifiedCountry(country);
-      // Get document types for new country (don't update user metadata here to avoid step recalculation)
-      getDocumentTypes(country);
-    }
-  }, [getDocumentTypes]);
+  const handleCountrySelect = useCallback(
+    (country: VerifiedCountryModel | null) => {
+      if (country) {
+        setSelectedVerifiedCountry(country);
+        // Get document types for new country (don't update user metadata here to avoid step recalculation)
+        getDocumentTypes(country);
+      }
+    },
+    [getDocumentTypes]
+  );
 
   // Group documents by verification class
-  const countryDocuments = groupByVerificationClass(selectedVerifiedCountryDocuments);
+  const countryDocuments = groupByVerificationClass(
+    selectedVerifiedCountryDocuments
+  );
   const creditDocuments = countryDocuments.credit || [];
   const identityDocuments = countryDocuments.identity || [];
 
   // Check verification status using utility functions
-  const userSubmittedCreditDocument = userSubmittedDocumentIsApprovedOrPending(creditDocuments, user);
-  const userSubmittedIdentityDocument = userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
+  const userSubmittedCreditDocument = userSubmittedDocumentIsApprovedOrPending(
+    creditDocuments,
+    user
+  );
+  const userSubmittedIdentityDocument =
+    userSubmittedDocumentIsApprovedOrPending(identityDocuments, user);
   const bvnCompleted = !!userSubmittedCreditDocument;
   const idCompleted = !!userSubmittedIdentityDocument;
 
@@ -125,24 +165,30 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
     if (selectedVerifiedCountry?._id && !selectedVerifiedCountryDocuments) {
       getDocumentTypes(selectedVerifiedCountry);
     }
-  }, [selectedVerifiedCountry?._id, selectedVerifiedCountryDocuments, getDocumentTypes, selectedVerifiedCountry]);
+  }, [
+    selectedVerifiedCountry?._id,
+    selectedVerifiedCountryDocuments,
+    getDocumentTypes,
+    selectedVerifiedCountry,
+  ]);
 
-  const countryOptions = verifiedCountries?.map((country) => ({
-    label: country.name || "",
-    value: country as VerifiedCountryModel,
-    prefix: country.flagUrl ? (
-      <Image
-        source={{ uri: country.flagUrl }}
-        style={{ width: 24, height: 16, marginRight: 8 }}
-        resizeMode="contain"
-      />
-    ) : undefined,
-  })) || [];
+  const countryOptions =
+    verifiedCountries?.map((country) => ({
+      label: country.name || "",
+      value: country as VerifiedCountryModel,
+      prefix: country.flagUrl ? (
+        <Image
+          source={{ uri: country.flagUrl }}
+          style={{ width: 24, height: 16, marginRight: 8 }}
+          resizeMode="contain"
+        />
+      ) : undefined,
+    })) || [];
 
   const handleBvnPress = () => {
     // Set the step FIRST to prevent recalculation from overriding it
     setCurrentOnboardingStep(Onboarding.AuthBvnVerificationInput);
-    
+
     // Then update metadata (this will trigger recalculation, but step is already set and tracked)
     if (selectedVerifiedCountry) {
       updateUser({
@@ -171,7 +217,7 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
   const handleIdPress = () => {
     // Set the step FIRST to prevent recalculation from overriding it
     setCurrentOnboardingStep(Onboarding.AuthIdVerificationInput);
-    
+
     // Then update metadata (this will trigger recalculation, but step is already set and tracked)
     if (selectedVerifiedCountry) {
       updateUser({
@@ -209,36 +255,48 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
     }
   };
 
-  const filteredVerificationClasses = filterVerificationClasses(selectedVerifiedCountryDocuments);
+  const filteredVerificationClasses = filterVerificationClasses(
+    selectedVerifiedCountryDocuments
+  );
 
   const steps: { display: React.ReactNode; completed: boolean }[] = [];
 
   filteredVerificationClasses.forEach((verificationClass) => {
     const classLower = verificationClass.toLowerCase();
-    
+
     if (classLower === "credit") {
       steps.push({
-        display: <TileCredit completed={bvnCompleted} onPress={handleBvnPress} />,
+        display: (
+          <TileCredit completed={bvnCompleted} onPress={handleBvnPress} />
+        ),
         completed: bvnCompleted,
       });
     }
-    
+
     if (classLower === "identity") {
       steps.push({
-        display: <TileIdentity completed={idCompleted} onPress={handleIdPress} />,
+        display: (
+          <TileIdentity completed={idCompleted} onPress={handleIdPress} />
+        ),
         completed: idCompleted,
       });
     }
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <Text style={[styles.title, { color: theme.colors.headerTextColor }]}>
         Identity verification
       </Text>
 
-      <Text style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}>
-        Before you can buy BTC we will need to verify who you are. Be sure you data is safe.
+      <Text
+        style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}
+      >
+        Before you can buy BTC we will need to verify who you are. Be sure you
+        data is safe.
       </Text>
 
       <View style={styles.countrySelect}>
@@ -262,7 +320,9 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
                 style={{ width: 24, height: 16, marginRight: 8 }}
                 resizeMode="contain"
               />
-            ) : "undefined"
+            ) : (
+              "undefined"
+            )
           }
           getOptionValue={(opt) => opt.value?._id || ""}
           getOptionLabel={(opt) => opt.label}
@@ -271,30 +331,43 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
 
       {fetchVerifiedCountriesError && (
         <View style={styles.error}>
-          <AppErrorIndicator 
-            error={fetchVerifiedCountriesError} 
-            retry={loadVerifiedCountries} 
+          <AppErrorIndicator
+            error={fetchVerifiedCountriesError}
+            retry={loadVerifiedCountries}
           />
         </View>
       )}
 
-      {(fetchingverifiedCountryDocuments || fetchVerifiedCountriesLoading) ? (
+      {fetchingverifiedCountryDocuments || fetchVerifiedCountriesLoading ? (
         <AppLoading isLoading={true} size="lg" />
       ) : documentTypesError ? (
         <View style={styles.error}>
-          <AppErrorIndicator 
-            error="Failed to load document types. Please try again." 
-            retry={() => selectedVerifiedCountry && getDocumentTypes(selectedVerifiedCountry)} 
+          <AppErrorIndicator
+            error="Failed to load document types. Please try again."
+            retry={() =>
+              selectedVerifiedCountry &&
+              getDocumentTypes(selectedVerifiedCountry)
+            }
           />
         </View>
-      ) : !selectedVerifiedCountryDocuments || selectedVerifiedCountryDocuments.length === 0 ? (
+      ) : !selectedVerifiedCountryDocuments ||
+        selectedVerifiedCountryDocuments.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: theme.colors.placeholderTextColor }]}>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: theme.colors.placeholderTextColor },
+            ]}
+          >
             No document types available for selected country
           </Text>
         </View>
       ) : (
-        <AppStepper steps={steps} orientation="vertical" currentStep={bvnCompleted ? 1 : 0} />
+        <AppStepper
+          steps={steps}
+          orientation="vertical"
+          currentStep={bvnCompleted ? 1 : 0}
+        />
       )}
     </ScrollView>
   );

@@ -142,10 +142,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 12,
-    paddingHorizontal: 12,
+    overflow: "hidden",
+    // paddingHorizontal: 12,
     // minHeight: 48,
     paddingTop: 0,
-    paddingBottom: 16,
+    // paddingBottom: 16,
   },
   input: {
     fontSize: 16,
@@ -155,12 +156,12 @@ const styles = StyleSheet.create({
     width: "100%",
     // height: 56,
     borderRadius: 8,
-    // backgroundColor: "#2f333d",
+    backgroundColor: "#2f333d",
     color: "#FFFFFF",
     // paddingVertical: 16,
     paddingHorizontal: 12,
     borderColor: "#6045FF",
-    marginTop: 16,
+    paddingVertical: 16,
   },
   prefix: {
     marginRight: 12,
@@ -174,4 +175,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-

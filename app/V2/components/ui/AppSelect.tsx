@@ -50,7 +50,13 @@ export const AppSelect = <T = string,>({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  // Helper to generate a comparable key for a raw value
+  const getValueKey = (val?: T) =>
+    getOptionValue({ label: "", value: val as T } as SelectOption<T>);
+
+  const selectedOption = options.find(
+    (opt) => getOptionValue(opt) === getValueKey(value)
+  );
   const filteredOptions = searchable
     ? options.filter((opt) =>
         getOptionLabel(opt).toLowerCase().includes(searchQuery.toLowerCase())
@@ -59,15 +65,25 @@ export const AppSelect = <T = string,>({
 
   // Helper to extract a unique key for FlatList
   const getUniqueKey = (item: SelectOption<T>, index: number): string => {
-    const value = item.value;
+    // Prefer custom getOptionValue if provided
+    try {
+      const optionKey = getOptionValue(item);
+      if (optionKey) return optionKey;
+    } catch (e) {
+      // ignore and fallback
+    }
+
+    const value = item.value as any;
     // If value is an object with _id, use that
-    if (typeof value === "object" && value !== null && "_id" in value) {
+    if (value && typeof value === "object" && (value as any)._id) {
       return String((value as any)._id);
     }
+
     // If value is a primitive, use it directly
-    if (typeof value !== "object" && value !== null && value !== undefined) {
+    if (value !== null && value !== undefined && typeof value !== "object") {
       return String(value);
     }
+
     // Fallback to index with a prefix to ensure uniqueness
     return `option-${index}`;
   };
@@ -181,14 +197,14 @@ export const AppSelect = <T = string,>({
             ) : (
               <FlatList
                 data={filteredOptions}
-                keyExtractor={(item) => item.value}
+                keyExtractor={(item, index) => getUniqueKey(item, index)}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={[
                       styles.optionItem,
                       {
                         backgroundColor:
-                          item.value === value
+                          getOptionValue(item) === getValueKey(value)
                             ? theme.colors.primaryColor + "20"
                             : "transparent",
                       },
@@ -204,10 +220,13 @@ export const AppSelect = <T = string,>({
                           styles.optionText,
                           {
                             color:
-                              item.value === value
+                              getOptionValue(item) === getValueKey(value)
                                 ? theme.colors.primaryColor
                                 : theme.colors.bodyTextColor,
-                            fontWeight: item.value === value ? "600" : "400",
+                            fontWeight:
+                              getOptionValue(item) === getValueKey(value)
+                                ? "600"
+                                : "400",
                           },
                         ]}
                       >
@@ -217,7 +236,7 @@ export const AppSelect = <T = string,>({
                     {item.suffix && (
                       <View style={styles.optionSuffix}>{item.suffix}</View>
                     )}
-                    {item.value === value && (
+                    {getOptionValue(item) === getValueKey(value) && (
                       <Text
                         style={[
                           styles.checkmark,
@@ -290,7 +309,7 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: "80%",
+    height: "80%",
     paddingTop: 20,
   },
   searchContainer: {
