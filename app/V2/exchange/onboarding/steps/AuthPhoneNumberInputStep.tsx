@@ -1,22 +1,26 @@
+import countryData, {
+  CountryData,
+  getCountryFlagUrl,
+} from "@/src/core/utils/countryData";
 import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
-import { CountryData, getCountryFlagUrl } from "@/src/core/utils/countryData";
-import countryData from "@/src/core/utils/countryData";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppButton, AppInput, AppSelect } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthPhoneNumberInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
   const { authPhoneNumber, updateUser, fetchUserById } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
-  const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(
+    null
+  );
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [touched, setTouched] = useState(false);
@@ -81,7 +85,9 @@ const AuthPhoneNumberInputStep: React.FC = () => {
       if (response?.success) {
         // Update user metadata to indicate phone input has been shown
         // Store phone number in user object for OTP verification
-        const fullPhoneNumber = `${selectedCountry.phoneCode}${phoneNumber.trim()}`;
+        const fullPhoneNumber = `${
+          selectedCountry.phoneCode
+        }${phoneNumber.trim()}`;
         updateUser({
           ...user,
           phone: fullPhoneNumber,
@@ -100,7 +106,9 @@ const AuthPhoneNumberInputStep: React.FC = () => {
         await fetchUserById(user);
         setCurrentOnboardingStep(Onboarding.AuthPhoneNumberOtpVerification);
       } else {
-        setPhoneError(response?.message || "Failed to send OTP. Please try again.");
+        setPhoneError(
+          response?.message || "Failed to send OTP. Please try again."
+        );
       }
     } catch (error: any) {
       console.error("Auth phone number error:", error);
@@ -115,77 +123,100 @@ const AuthPhoneNumberInputStep: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={[styles.title, { color: theme.colors.headerTextColor }]}>
-        Verify Phone Number
-      </Text>
+    <View style={styles.container}>
+      <ScrollView
+        // style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <View>
+          <Text style={[styles.title, { color: theme.colors.headerTextColor }]}>
+            Verify Phone Number
+          </Text>
 
-      <Text style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}>
-        Enter your country code and phone number.
-      </Text>
+          <Text
+            style={[
+              styles.subtitle,
+              { color: theme.colors.placeholderTextColor },
+            ]}
+          >
+            Enter your country code and phone number.
+          </Text>
 
-      <View style={styles.phoneRow}>
-        <View style={styles.countrySelector}>
-          <AppSelect
-            options={countryOptions}
-            value={selectedCountry?.value}
-            onChange={handleCountrySelect}
-            placeholder="Country"
-            searchable={true}
-            label="Country"
-          />
+          <View style={styles.phoneRow}>
+            <View style={styles.countrySelector}>
+              <AppSelect
+                options={countryOptions}
+                value={selectedCountry?.value}
+                onChange={handleCountrySelect}
+                placeholder="Country"
+                searchable={true}
+                label="Country"
+              />
+            </View>
+
+            <View style={styles.phoneInput}>
+              <AppInput
+                value={phoneNumber}
+                onChangeText={handlePhoneChange}
+                onBlur={() => setTouched(true)}
+                placeholder={selectedCountry?.inputFormat || "Phone number"}
+                type="tel"
+                prefix={
+                  selectedCountry ? (
+                    <Text
+                      style={[
+                        styles.countryCode,
+                        { color: theme.colors.bodyTextColor },
+                      ]}
+                    >
+                      {selectedCountry.phoneCode}
+                    </Text>
+                  ) : undefined
+                }
+                error={phoneError}
+                touched={touched}
+                disabled={!selectedCountry}
+              />
+            </View>
+          </View>
         </View>
 
-        <View style={styles.phoneInput}>
-          <AppInput
-            value={phoneNumber}
-            onChangeText={handlePhoneChange}
-            onBlur={() => setTouched(true)}
-            placeholder={selectedCountry?.inputFormat || "Phone number"}
-            type="tel"
-            prefix={
-              selectedCountry ? (
-                <Text style={[styles.countryCode, { color: theme.colors.bodyTextColor }]}>
-                  {selectedCountry.phoneCode}
-                </Text>
-              ) : undefined
-            }
-            error={phoneError}
-            touched={touched}
-            disabled={!selectedCountry}
-            style={styles.input}
+        <View>
+          <AppButton
+            title="Continue"
+            onPress={handleContinue}
+            isLoading={isLoading}
+            disabled={!selectedCountry || !phoneNumber.trim() || isLoading}
+            variant="primary"
+            size="lg"
+            style={styles.button}
+          />
+
+          <AppButton
+            title="Skip"
+            onPress={handleSkip}
+            variant="text"
+            size="md"
+            style={styles.skipButton}
           />
         </View>
-      </View>
-
-      <AppButton
-        title="Continue"
-        onPress={handleContinue}
-        isLoading={isLoading}
-        disabled={!selectedCountry || !phoneNumber.trim() || isLoading}
-        variant="primary"
-        size="lg"
-        style={styles.button}
-      />
-
-      <AppButton
-        title="Skip"
-        onPress={handleSkip}
-        variant="text"
-        size="md"
-        style={styles.skipButton}
-      />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    borderStyle: "solid",
+    borderWidth: 1,
+    borderColor: "#6045FF",
   },
   contentContainer: {
+    // flex: 1,
     padding: 24,
-    minHeight: 400,
+    // minHeight: 400,
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 20,

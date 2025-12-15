@@ -1,5 +1,10 @@
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import React, { useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 interface BottomSheetProps {
@@ -19,7 +24,10 @@ export interface BottomSheetRef {
   snapToIndex: (index: number) => void;
 }
 
-export const AppBottomSheet = React.forwardRef<BottomSheetRef, BottomSheetProps>(
+export const AppBottomSheet = React.forwardRef<
+  BottomSheetRef,
+  BottomSheetProps
+>(
   (
     {
       isOpen,
@@ -96,8 +104,21 @@ export const AppBottomSheet = React.forwardRef<BottomSheetRef, BottomSheetProps>
                 style={styles.closeButton}
               >
                 <View style={styles.closeIconContainer}>
-                  <View style={[styles.closeIcon, { transform: [{ rotate: "45deg" }] }]} />
-                  <View style={[styles.closeIcon, { transform: [{ rotate: "-45deg" }], position: "absolute" }]} />
+                  <View
+                    style={[
+                      styles.closeIcon,
+                      { transform: [{ rotate: "45deg" }] },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.closeIcon,
+                      {
+                        transform: [{ rotate: "-45deg" }],
+                        position: "absolute",
+                      },
+                    ]}
+                  />
                 </View>
               </TouchableOpacity>
             </View>
@@ -114,13 +135,19 @@ AppBottomSheet.displayName = "AppBottomSheet";
 const styles = StyleSheet.create({
   background: {
     backgroundColor: "#1f232d",
+    flexDirection: "column",
+    flex: 1,
   },
   handleIndicator: {
     backgroundColor: "#666",
   },
   contentContainer: {
+    flexDirection: "column",
     flex: 1,
+    borderWidth: 1,
+    borderColor: "#666",
     padding: 20,
+    // height: "100%",
   },
   closeButtonContainer: {
     alignItems: "flex-end",
@@ -147,4 +174,3 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
 });
-
