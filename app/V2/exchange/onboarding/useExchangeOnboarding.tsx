@@ -1,8 +1,6 @@
 import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
-import { AppRootState } from "@/state";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSelector } from "react-redux";
 import { useAppBottomSheetContext } from "./bottomsheet";
 import {
   AuthBvnVerificationInputStep,
@@ -30,13 +28,13 @@ export const useExchangeOnboarding = () => {
   const onboardingContext = useExchangeOnboardingContext();
   const { currentOnboardingStep, setCurrentOnboardingStep, resetOnboarding } = onboardingContext;
   // const { user } = useSelector((state: AppRootState) => state.kyc);
-  const { user: kycUserData } = useSelector((state: AppRootState) => state.kyc);
+  // const { user: kycUserData } = useSelector((state: AppRootState) => state.kyc);
   const { exchangeUserData } = useExchangeAuth();
 
   const { openBottomSheet, closeBottomSheet, setBottomSheetContent } =
     useAppBottomSheetContext();
 
-    const kycUser = exchangeUserData || kycUserData;
+    const kycUser = exchangeUserData;
 
   // Track the latest user data with a ref
   const userRef = useRef<UserModel | null>(kycUser);

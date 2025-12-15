@@ -85,15 +85,16 @@ const useKyc = () => {
         // Check if user data actually changed before dispatching
         const userChanged = JSON.stringify(user) !== JSON.stringify(updatedUser);
         if (userChanged) {
+          // Update Redux store - this will trigger re-renders in all components using useSelector
           dispatch(kycActions.setUser(updatedUser));
+          
+          // Update wallet context - this will update exchangeUserData used by useExchangeAuth and other components
+          if (response.data._id) {
+            setCurrentExchangeUser(response.data._id);
+            setIsExchangeAuthenticated(true);
+          }
+          setExchangeUserData(updatedUser);
         }
-        
-        // Update wallet context to keep exchange user data in sync
-        if (response.data._id) {
-          setCurrentExchangeUser(response.data._id);
-          setIsExchangeAuthenticated(true);
-        }
-        setExchangeUserData(updatedUser);
       }
 
       setFetchingUserDetails(false);
@@ -168,7 +169,15 @@ const useKyc = () => {
         ...(payload || {}),
       };
 
+      // Update Redux store
       dispatch(kycActions.setUser(updatedUser));
+
+      // Update wallet context to keep exchangeUserData in sync
+      if (updatedUser?._id) {
+        setCurrentExchangeUser(updatedUser._id);
+        setIsExchangeAuthenticated(true);
+      }
+      setExchangeUserData(updatedUser);
 
       // Persist user data immediately to storage
       try {
@@ -199,7 +208,15 @@ const useKyc = () => {
                 // Only update if data actually changed to prevent loops
                 const dataChanged = JSON.stringify(updatedUser) !== JSON.stringify(fetchedUserData);
                 if (dataChanged) {
+                  // Update Redux
                   dispatch(kycActions.setUser({ ...fetchedUserData }));
+
+                  // Update wallet context
+                  if (fetchedUserData?._id) {
+                    setCurrentExchangeUser(fetchedUserData._id);
+                    setIsExchangeAuthenticated(true);
+                  }
+                  setExchangeUserData(fetchedUserData);
 
                   if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
                     if (userDataWithoutTheMetaData?.phone)
@@ -277,7 +294,16 @@ const useKyc = () => {
       // Update user state if username was successfully added and user data is returned
       if (response.success && response.data) {
         const updatedUser = response.data as UserModel;
+        
+        // Update Redux store
         dispatch(kycActions.setUser(updatedUser));
+
+        // Update wallet context to keep exchangeUserData in sync
+        if (updatedUser?._id) {
+          setCurrentExchangeUser(updatedUser._id);
+          setIsExchangeAuthenticated(true);
+        }
+        setExchangeUserData(updatedUser);
 
         // Persist the updated user data
         try {
