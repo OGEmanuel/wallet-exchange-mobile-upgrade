@@ -1,6 +1,5 @@
 import images from "@/assets/images";
-import { CountryData, getCountryFlagUrl } from "@/src/core/utils/countryData";
-import countryData from "@/src/core/utils/countryData";
+import countryData, { CountryData, getCountryFlagUrl } from "@/src/core/utils/countryData";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -8,8 +7,8 @@ import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppErrorIndicator, AppLoading, AppSelect, AppStepper } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthIdentityVerificationOverviewStep: React.FC = () => {
   const theme = useTheme<Theme>();

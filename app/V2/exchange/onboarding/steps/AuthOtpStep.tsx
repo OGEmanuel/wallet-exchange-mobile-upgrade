@@ -6,11 +6,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppButton, AppOTPInput } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthOtpStep: React.FC = () => {
   const theme = useTheme<Theme>();
-  const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
   const { verifyEmail, authEmail, fetchUserById, updateUser } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [otp, setOtp] = useState("");
@@ -41,21 +39,36 @@ const AuthOtpStep: React.FC = () => {
         otp: code,
       });
 
-      
-      
-      updateUser({
-        ...user,
-        ...response.data?.user,
-      });
-
-      if (response.data?.user) {
-        await fetchUserById(response.data?.user);
-      }
-
-
       if (response?.success) {
-        // Fetch updated user data after successful verification
-        // setCurrentOnboardingStep(Onboarding.Referral);
+        // Get user data from response (response.data contains AuthVerificationModel which has user)
+        const responseUser = response.data?.user;
+        
+        if (responseUser) {
+          // Update user data in Redux and wallet context
+          // This will sync user data throughout the app
+          const updatedUser = {
+            ...user,
+            ...responseUser,
+            emailVerified: true, // Mark email as verified
+          };
+
+          // Update user in Redux and wallet context (updateUser handles both)
+          await updateUser(updatedUser);
+
+          // Fetch fresh user data from backend to ensure everything is in sync
+          await fetchUserById(updatedUser);
+        } else {
+          // If no user data in response, just mark email as verified locally
+          await updateUser({
+            ...user,
+            emailVerified: true,
+          });
+          
+          // Fetch updated user data from backend
+          if (user?._id) {
+            await fetchUserById(user);
+          }
+        }
       } else {
         setError(true);
         otpInputRef.current?.clear();
