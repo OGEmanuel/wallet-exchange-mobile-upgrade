@@ -7,8 +7,8 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppButton, AppImageUpload } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthIdVerificationUploadStep: React.FC = () => {
   const theme = useTheme<Theme>();
@@ -23,7 +23,8 @@ const AuthIdVerificationUploadStep: React.FC = () => {
 
   // Get document type and form data from user metadata (stored in previous step)
   const idVerificationData = user?.metaData?.idVerificationData;
-  const documentTypeName = idVerificationData?.documentTypeName || "PASSPORT";
+  const documentType = idVerificationData?.documentType;
+  const documentTypeName = documentType?.verificationType;
 
   const handleFileSelect = (file: { uri: string; type: string; name?: string }) => {
     setSelectedFile(file);
@@ -64,11 +65,11 @@ const AuthIdVerificationUploadStep: React.FC = () => {
       // Submit identity document
       const response = await uploadIdentityDocument({
         body: {
-          countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
+          countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id || idVerificationData?.selectedVerifiedCountry?._id,
           lastName: idVerificationData.lastName || "",
           firstName: idVerificationData.firstName || "",
           idNumber: idVerificationData.documentId || "",
-          verificationType: idVerificationData.verificationType || "",
+          verificationType: documentType?.verificationType || idVerificationData?.documentType?.verificationType || "",
           docUrl: photoUrl,
           dateOfBirth: idVerificationData.dateOfBirth || "",
         },
@@ -82,9 +83,10 @@ const AuthIdVerificationUploadStep: React.FC = () => {
           ...user,
           metaData: {
             ...user?.metaData,
+            manuallySetAllIdenityDocumentToSubmitted: true,
             idVerificationData: {
               ...idVerificationData,
-              submitted: true,
+              // submitted: true,
             },
           },
         });
@@ -119,7 +121,7 @@ const AuthIdVerificationUploadStep: React.FC = () => {
       </Text>
 
       <Text style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}>
-        Please provide a clear photo of the your entire {documentTypeName.toLowerCase()} page
+        Please provide a clear photo of the your entire {documentTypeName?.toLowerCase()} page
       </Text>
 
       <View style={styles.uploadContainer}>

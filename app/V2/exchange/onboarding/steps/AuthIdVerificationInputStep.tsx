@@ -1,10 +1,9 @@
-import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
-import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import {
   CountryVerificationDocumentModel,
-  filterVerificationClasses,
 } from "@/src/modules/kyc/domain/entities/models/document-type-model";
 import { VerifiedCountryModel } from "@/src/modules/kyc/domain/entities/models/verified-country-model";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import useUtilities from "@/src/modules/utilities/presentation/hooks/useUtilities";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
@@ -12,8 +11,8 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
 import { AppButton, AppDatePicker, AppInput, AppSelect } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthIdVerificationInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
@@ -21,18 +20,18 @@ const AuthIdVerificationInputStep: React.FC = () => {
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { fetchDocumentTypes } = useUtilities();
   const { updateUser } = useKyc();
-  const [selectedCountry, setSelectedCountry] = useState<VerifiedCountryModel | null>(
-    user?.metaData?.documentVerification?.selectedVerifiedCountry || null
+  const [selectedCountry] = useState<VerifiedCountryModel | undefined>(
+    user?.metaData?.documentVerification?.selectedVerifiedCountry || undefined
   );
-  const [documentType, setDocumentType] = useState<CountryVerificationDocumentModel | null>(null);
-  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[]>([]);
+  const [documentType, setDocumentType] = useState<CountryVerificationDocumentModel | undefined>();
+  const [documentTypes, setDocumentTypes] = useState<CountryVerificationDocumentModel[] | null | undefined>(null);
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [documentId, setDocumentId] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
   useEffect(() => {
@@ -45,8 +44,8 @@ const AuthIdVerificationInputStep: React.FC = () => {
       })
         .then((response) => {
           if (response?.data) {
-            const identityDocs = filterVerificationClasses(response.data).identity || [];
-            setDocumentTypes(identityDocs);
+            // const identityDocs = filterVerificationClasses(response.data) || [];
+            setDocumentTypes(response.data);
           }
         })
         .catch(() => {
@@ -56,14 +55,15 @@ const AuthIdVerificationInputStep: React.FC = () => {
           setIsLoadingDocuments(false);
         });
     }
-  }, [selectedCountry?._id, fetchDocumentTypes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const documentTypeOptions = documentTypes.map((doc) => ({
-    label: doc.name || doc.verificationType || "",
-    value: doc._id || "",
-  }));
+  const documentTypeOptions = documentTypes?.filter((doc) => doc.verificationClass?.toLowerCase() === "identity").map((doc) => ({
+    label: doc.verificationType?.toUpperCase() || "",
+    value: doc,
+  })) || [];
 
-  const selectedDocType = documentTypes.find((doc) => doc._id === documentType?._id);
+  const selectedDocType = documentTypes?.find((doc) => doc._id === documentType?._id);
 
   const isExternal = selectedDocType?.isExternal?.token;
 
@@ -117,8 +117,8 @@ const AuthIdVerificationInputStep: React.FC = () => {
           lastName: lastName.trim(),
           documentId: documentId.trim(),
           dateOfBirth: dateOfBirthString,
-          verificationType: selectedDocType?.verificationType || "",
-          documentTypeName: selectedDocType?.name || "",
+          documentType: documentType, // Store the full documentType object
+          selectedVerifiedCountry: selectedCountry, // Store the country object
         },
       },
     });
@@ -130,14 +130,14 @@ const AuthIdVerificationInputStep: React.FC = () => {
     setCurrentOnboardingStep(Onboarding.AuthIdentityVerificationOverview);
   };
 
-  if (isExternal) {
-    // TODO: Show external verification component (e.g., SumSub)
-    return (
-      <View style={styles.container}>
-        <Text>External verification not implemented</Text>
-      </View>
-    );
-  }
+  // if (isExternal) {
+  //   // TODO: Show external verification component (e.g., SumSub)
+  //   return (
+  //     <View style={styles.container}>
+  //       <Text>External verification not implemented</Text>
+  //     </View>
+  //   );
+  // }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -171,23 +171,28 @@ const AuthIdVerificationInputStep: React.FC = () => {
           />
         </View>
         <View style={styles.documentSelector}>
-          <AppSelect
+          <AppSelect<CountryVerificationDocumentModel>
             options={documentTypeOptions}
-            value={documentType?._id}
+            value={documentType}
             onChange={(value) => {
-              const doc = documentTypes.find((d) => d._id === value);
-              setDocumentType(doc || null);
+              setDocumentType(value);
               setErrors({ ...errors, documentType: "" });
             }}
             placeholder="Document Type"
             searchable={true}
             isLoading={isLoadingDocuments}
             label="Document Type"
+            getOptionValue={(opt) => opt.value?._id || ""}
+            getOptionLabel={(opt) => opt.label}
           />
         </View>
       </View>
 
-      {documentType && !isExternal && (
+      {documentType && (isExternal ? <>
+         <View style={styles.container}>
+          <Text>External verification not implemented</Text>
+        </View>
+        </> : (
         <>
           <View style={styles.nameRow}>
             <View style={styles.nameInput}>
@@ -201,7 +206,6 @@ const AuthIdVerificationInputStep: React.FC = () => {
                 placeholder="First Name"
                 error={errors.firstName}
                 touched={touched.firstName}
-                style={styles.input}
               />
             </View>
             <View style={styles.nameInput}>
@@ -215,7 +219,6 @@ const AuthIdVerificationInputStep: React.FC = () => {
                 placeholder="Last Name"
                 error={errors.lastName}
                 touched={touched.lastName}
-                style={styles.input}
               />
             </View>
           </View>
@@ -232,7 +235,6 @@ const AuthIdVerificationInputStep: React.FC = () => {
             error={errors.documentId}
             touched={touched.documentId}
             maxLength={selectedDocType?.verificationNumberLength}
-            style={styles.input}
           />
 
           <AppDatePicker
@@ -248,19 +250,17 @@ const AuthIdVerificationInputStep: React.FC = () => {
             label="Date of Birth"
           />
         </>
-      )}
+      ))}
 
       {documentType && !isExternal && (
         <AppButton
           title="Continue"
           onPress={handleContinue}
-          isLoading={isLoading}
           disabled={
             !firstName.trim() ||
             !lastName.trim() ||
             !documentId.trim() ||
-            !dateOfBirth ||
-            isLoading
+            !dateOfBirth
           }
           variant="primary"
           size="lg"

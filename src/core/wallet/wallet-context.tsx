@@ -8,6 +8,8 @@
 import { WALLET_GROUP_CLASS, WALLET_GROUP_TYPE } from "@/configs/constants";
 import { BatchBalanceService } from "@/services/batch-balance.service";
 import useMarket from "@/src/modules/market/presentation/hooks/useMarket";
+import { store } from "@/state";
+import { kycActions } from "@/state/reducers/kyc-reducer";
 import { IUserWalletGroup, WalletContextType } from "@/types/main";
 import {
   ExchangeValidateOtpResponse,
@@ -1142,18 +1144,24 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       // Use the advanced SDK service with network handling
       await zapSDKService.logoutFromExchange();
 
-      // Clear exchange authentication state
+      // Clear exchange authentication state in wallet context
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
 
-      console.log("✅ Exchange logout successful");
+      // Clear Redux store to reset user data throughout the app
+      store.dispatch(kycActions.setUser(null as any));
+
+      console.log("✅ Exchange logout successful - wallet context and Redux cleared");
     } catch (error) {
       console.error("Logout error:", error);
       // Even if SDK logout fails, clear local state
       setIsExchangeAuthenticated(false);
       setCurrentExchangeUser(null);
       setExchangeUserData(null);
+      
+      // Still clear Redux even on error
+      store.dispatch(kycActions.setUser(null as any));
     }
   };
 

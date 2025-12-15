@@ -95,11 +95,31 @@ export const ExchangeOnboardingProvider: React.FC<ExchangeOnboardingProviderProp
   const [currentOnboardingStep, setCurrentOnboardingStep] = useState<Onboarding>(
     determineInitialStep()
   );
+  
+  // Track if step was manually set to prevent auto-recalculation from overriding it
+  const manuallySetStepRef = React.useRef<Onboarding | null>(null);
 
-  // Update step when user data changes
+  // Update step when user data changes, but only if step wasn't manually set
   useEffect(() => {
-    setCurrentOnboardingStep(determineInitialStep());
+    const calculatedStep = determineInitialStep();
+    
+    // If step was manually set and matches calculated step, clear the manual flag
+    if (manuallySetStepRef.current === calculatedStep) {
+      manuallySetStepRef.current = null;
+      return;
+    }
+    
+    // Only update if step wasn't manually set to a different value
+    if (manuallySetStepRef.current === null) {
+      setCurrentOnboardingStep(calculatedStep);
+    }
   }, [determineInitialStep]);
+
+  // Wrapper for setCurrentOnboardingStep that tracks manual changes
+  const setCurrentOnboardingStepWithTracking = React.useCallback((step: Onboarding) => {
+    manuallySetStepRef.current = step;
+    setCurrentOnboardingStep(step);
+  }, []);
 
   // Reset to initial state based on current user
   const resetOnboarding = useCallback((): void => {
@@ -110,7 +130,7 @@ export const ExchangeOnboardingProvider: React.FC<ExchangeOnboardingProviderProp
     <ExchangeOnboardingContext.Provider
       value={{
         currentOnboardingStep,
-        setCurrentOnboardingStep,
+        setCurrentOnboardingStep: setCurrentOnboardingStepWithTracking,
         resetOnboarding,
       }}
     >

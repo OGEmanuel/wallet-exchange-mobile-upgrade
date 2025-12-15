@@ -1,8 +1,11 @@
 import images from "@/assets/images";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { useSelector } from "react-redux";
 import { AppButton } from "../../../components/ui";
 import { Onboarding } from "../types";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
@@ -10,8 +13,19 @@ import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 const AuthBvnVerificationSuccessStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { updateUser } = useKyc();
 
   const handleVerifyId = () => {
+    // Update user metadata to indicate BVN success has been shown
+    updateUser({
+      ...user,
+      metaData: {
+        ...user?.metaData,
+        authBvnVerificationSuccessShown: true,
+        bvnMarkedAsVerified: true,
+      },
+    });
     setCurrentOnboardingStep(Onboarding.AuthIdVerificationInput);
   };
 

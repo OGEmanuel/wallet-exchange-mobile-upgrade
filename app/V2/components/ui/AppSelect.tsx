@@ -12,26 +12,28 @@ import {
   View,
 } from "react-native";
 
-export interface SelectOption {
+export interface SelectOption<T = string> {
   label: string;
-  value: string;
+  value: T;
   prefix?: React.ReactNode;
   suffix?: React.ReactNode;
 }
 
-export interface AppSelectProps {
-  options: SelectOption[];
-  value?: string;
-  onChange: (value: string) => void;
+export interface AppSelectProps<T = string> {
+  options: SelectOption<T>[];
+  value?: T;
+  onChange: (value: T) => void;
   placeholder?: string;
   searchable?: boolean;
   isLoading?: boolean;
   disabled?: boolean;
   prefix?: React.ReactNode;
   label?: string;
+  getOptionValue?: (option: SelectOption<T>) => string; // For comparison when T is an object
+  getOptionLabel?: (option: SelectOption<T>) => string; // For display when T is an object
 }
 
-export const AppSelect: React.FC<AppSelectProps> = ({
+export const AppSelect = <T = string,>({
   options,
   value,
   onChange,
@@ -41,7 +43,9 @@ export const AppSelect: React.FC<AppSelectProps> = ({
   disabled = false,
   prefix,
   label,
-}) => {
+  getOptionValue = (opt) => String(opt.value),
+  getOptionLabel = (opt) => opt.label,
+}: AppSelectProps<T>): React.ReactElement => {
   const theme = useTheme<Theme>();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,11 +53,26 @@ export const AppSelect: React.FC<AppSelectProps> = ({
   const selectedOption = options.find((opt) => opt.value === value);
   const filteredOptions = searchable
     ? options.filter((opt) =>
-        opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+        getOptionLabel(opt).toLowerCase().includes(searchQuery.toLowerCase())
       )
     : options;
 
-  const handleSelect = (optionValue: string) => {
+  // Helper to extract a unique key for FlatList
+  const getUniqueKey = (item: SelectOption<T>, index: number): string => {
+    const value = item.value;
+    // If value is an object with _id, use that
+    if (typeof value === "object" && value !== null && "_id" in value) {
+      return String((value as any)._id);
+    }
+    // If value is a primitive, use it directly
+    if (typeof value !== "object" && value !== null && value !== undefined) {
+      return String(value);
+    }
+    // Fallback to index with a prefix to ensure uniqueness
+    return `option-${index}`;
+  };
+
+  const handleSelect = (optionValue: T) => {
     onChange(optionValue);
     setIsOpen(false);
     setSearchQuery("");

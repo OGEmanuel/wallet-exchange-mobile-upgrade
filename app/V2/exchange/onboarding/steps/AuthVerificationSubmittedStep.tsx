@@ -23,7 +23,7 @@ const AuthVerificationSubmittedStep: React.FC = () => {
       </Text>
 
       <Text style={[styles.description, { color: theme.colors.placeholderTextColor }]}>
-        We've received your documents and they are under review. We'll let you know once it is
+        We&apos;ve received your documents and they are under review. We&apos;ll let you know once it is
         successful.
       </Text>
 
@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     width: "33%",
+    height: "43%",
     aspectRatio: 1,
     marginBottom: 32,
   },
