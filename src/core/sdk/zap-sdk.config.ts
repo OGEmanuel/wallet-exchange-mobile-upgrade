@@ -51,7 +51,8 @@ export const getSDKConfig = (): SDKConfig => {
 
   if (staging) {
     return {
-      baseURL: stagingBaseURL,
+      baseURL: developmentBaseURL,
+      // baseURL: stagingBaseURL,
       environment: 'staging',
       platform: 'react-native',
       enableLogging: true,

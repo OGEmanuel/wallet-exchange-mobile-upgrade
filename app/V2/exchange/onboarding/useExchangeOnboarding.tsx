@@ -1,3 +1,4 @@
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import { UserModel } from "@/src/modules/kyc/domain/entities/models/user-model";
 import { AppRootState } from "@/state";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,19 +23,26 @@ import { useExchangeOnboardingContext } from "./useExchangeOnboardingContext";
 import {
   isUserFullyOnboarded,
   submittedAllVerificationDocuments,
+  userHasSubmittedCreditTypeVerification,
 } from "./utils";
 
 export const useExchangeOnboarding = () => {
-  const { currentOnboardingStep, setCurrentOnboardingStep, resetOnboarding } = useExchangeOnboardingContext();
-  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const onboardingContext = useExchangeOnboardingContext();
+  const { currentOnboardingStep, setCurrentOnboardingStep, resetOnboarding } = onboardingContext;
+  // const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { user: kycUserData } = useSelector((state: AppRootState) => state.kyc);
+  const { exchangeUserData } = useExchangeAuth();
+
   const { openBottomSheet, closeBottomSheet, setBottomSheetContent } =
     useAppBottomSheetContext();
 
+    const kycUser = exchangeUserData || kycUserData;
+
   // Track the latest user data with a ref
-  const userRef = useRef<UserModel | null>(user);
+  const userRef = useRef<UserModel | null>(kycUser);
   useEffect(() => {
-    userRef.current = user;
-  }, [user]);
+    userRef.current = kycUser;
+  }, [kycUser]);
 
   // Create mapping of onboarding steps to their components
   const stepComponentMap = useMemo(
@@ -63,17 +71,109 @@ export const useExchangeOnboarding = () => {
     null
   );
 
+  // Calculate the correct onboarding step based on current user state
+  // This mirrors the logic in ExchangeOnboardingProvider to ensure consistency
+  const calculateOnboardingStep = useCallback((user: UserModel | null): Onboarding => {
+    if (!user) return Onboarding.Signin;
+
+    const { emailVerified, username, phoneNumberVerified, metaData } = user;
+
+    // Guest user without email should start at signin
+    if (user.isGuest && !user?.email && !emailVerified) return Onboarding.Signin;
+
+    // PHASE 1: Email verification and username setup
+    if (!emailVerified && user.email) return Onboarding.AuthOtp;
+    if (!username && emailVerified) return Onboarding.Referral;
+
+    // PHASE 2: Phone verification
+    const phoneSkipped = metaData?.userPhoneNumberData?.userskippedPhoneNumberOnboarding;
+    const showPhoneIntro =
+      username && emailVerified && !phoneNumberVerified && !phoneSkipped;
+    const showPhoneInput =
+      metaData?.userPhoneNumberData?.shownPhoneNumberOnboardingIntro &&
+      !metaData?.userPhoneNumberData?.shownPhoneNumberInput &&
+      !phoneNumberVerified &&
+      !phoneSkipped;
+    const showPhoneOtp =
+      metaData?.userPhoneNumberData?.shownPhoneNumberInput &&
+      !phoneNumberVerified &&
+      !phoneSkipped;
+
+    if (showPhoneIntro) {
+      if (showPhoneInput) return Onboarding.AuthPhoneNumberInput;
+      if (showPhoneOtp) return Onboarding.AuthPhoneNumberOtpVerification;
+      return Onboarding.AuthVerificationIntro;
+    }
+
+    // PHASE 3 & 4: Identity verification
+    const phoneVerifiedOrSkipped = phoneNumberVerified || phoneSkipped;
+    const identityVerificationSubmitted =
+      submittedAllVerificationDocuments(user) ||
+      (user?.metaData?.manuallySetAllIdenityDocumentToSubmitted &&
+        userHasSubmittedCreditTypeVerification(user));
+
+    if (phoneVerifiedOrSkipped && !identityVerificationSubmitted) {
+      const { shownIdentificationOverviewOnboardingIntro } = metaData || {};
+      const bvnVerified =
+        user.metaData?.bvnMarkedAsVerified ||
+        user.metaData?.skippedBvnVerification ||
+        user.verificationIds
+          ?.filter((verificationId) => verificationId.documentClass === "Credit")
+          .find((verificationId) => verificationId.status === "approved");
+
+      if (shownIdentificationOverviewOnboardingIntro) {
+        // BVN verification
+        if (!bvnVerified) return Onboarding.AuthBvnVerificationInput;
+        if (bvnVerified && !metaData?.authBvnVerificationSuccessShown) {
+          return Onboarding.AuthBvnVerificationSuccess;
+        }
+
+        // ID verification
+        if (!metaData?.idVerificationData?.shownAuthIdVerificationInput) {
+          return Onboarding.AuthIdVerificationInput;
+        }
+        if (metaData?.idVerificationData?.shownAuthIdVerificationInput) {
+          return Onboarding.AuthIdVerificationUpload;
+        }
+      }
+
+      return Onboarding.AuthIdentityVerificationOverview;
+    }
+
+    // Verification submitted
+    if (identityVerificationSubmitted) return Onboarding.AuthVerificationSubmitted;
+
+    // Default fallback
+    return Onboarding.Signin;
+  }, []);
+
   // Handle opening onboarding bottom sheet
   const handleOpenOnboardingBottomSheet = useCallback(() => {
-    console.log("handleOpenOnboardingBottomSheet called", { currentOnboardingStep });
-    const currentStepComponent = stepComponentMap[currentOnboardingStep];
+    console.log("User state:", { ...kycUser });
+    
+    // Calculate the correct step based on current user state
+    // This ensures we always show the correct step even if user data was loaded after provider mount
+    const calculatedStep = calculateOnboardingStep(kycUser);
+    console.log("handleOpenOnboardingBottomSheet called", { 
+      calculatedStep,
+      currentOnboardingStep,
+      user: kycUser 
+    });
+    
+    // Update the step in context if it's different
+    if (calculatedStep !== currentOnboardingStep) {
+      console.log("Updating step from", currentOnboardingStep, "to", calculatedStep);
+      setCurrentOnboardingStep(calculatedStep);
+    }
+    
+    const currentStepComponent = stepComponentMap[calculatedStep];
 
     if (!currentStepComponent) {
-      console.warn(`No component found for step: ${currentOnboardingStep}`);
+      console.warn(`No component found for step: ${calculatedStep}`);
       return;
     }
 
-    console.log("Opening bottom sheet with step:", currentOnboardingStep);
+    console.log("Opening bottom sheet with step:", calculatedStep);
     const bottomSheetId = openBottomSheet(currentStepComponent, {
       isDismissible: true,
       showCloseButton: true,
@@ -93,7 +193,7 @@ export const useExchangeOnboarding = () => {
     console.log("Bottom sheet ID:", bottomSheetId);
     setIsOnboarding(true);
     setCurrentBottomSheetId(bottomSheetId);
-  }, [currentOnboardingStep, stepComponentMap, openBottomSheet, resetOnboarding]);
+  }, [kycUser, stepComponentMap, openBottomSheet, resetOnboarding, calculateOnboardingStep, currentOnboardingStep, setCurrentOnboardingStep]);
 
   // Update bottom sheet content when step changes
   useEffect(() => {
@@ -117,7 +217,7 @@ export const useExchangeOnboarding = () => {
       isOnboarding &&
       currentBottomSheetId !== null &&
       currentOnboardingStep === Onboarding.AuthVerificationSubmitted &&
-      isUserFullyOnboarded(user)
+      isUserFullyOnboarded(kycUser)
     ) {
       // Small delay to show the success message
       const timer = setTimeout(() => {
@@ -134,20 +234,20 @@ export const useExchangeOnboarding = () => {
     isOnboarding,
     currentBottomSheetId,
     currentOnboardingStep,
-    user,
+    kycUser,
     closeBottomSheet,
     resetOnboarding,
   ]);
 
   // Calculate verification status
   const userIsFullyVerified = useMemo(
-    () => isUserFullyOnboarded(user),
-    [user]
+    () => isUserFullyOnboarded(kycUser),
+    [kycUser]
   );
 
   const userSubmittedAllVerificationDocuments = useMemo(
-    () => submittedAllVerificationDocuments(user),
-    [user]
+    () => submittedAllVerificationDocuments(kycUser),
+    [kycUser]
   );
 
   return {

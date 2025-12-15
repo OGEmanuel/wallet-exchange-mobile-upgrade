@@ -1,3 +1,4 @@
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
 import {
   GeneralRequestModel,
   GeneralResponseModel,
@@ -5,11 +6,11 @@ import {
 import { StorageKeys } from "@/src/core/api/models";
 import { storageService } from "@/src/core/storage/app-storage";
 import { useWallet } from "@/src/core/wallet/wallet-context";
-import { AppDispatch, AppRootState } from "@/state";
+import { AppDispatch } from "@/state";
 import { kycActions } from "@/state/reducers/kyc-reducer";
-import { SubmitVerificationParams } from "@zap/blockchain-sdk";
+import { AuthVerificationModel, SubmitVerificationParams } from "@zap/blockchain-sdk";
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { UserModel } from "../../domain/entities/models/user-model";
 import { AddUsernameParams } from "../../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../../domain/entities/params/auth-email-params";
@@ -22,18 +23,22 @@ import { KycUsecases } from "../../domain/usecases/kyc-usecase";
 
 const useKyc = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user } = useSelector((state: AppRootState) => state.kyc);
+  // const { user } = useSelector((state: AppRootState) => state.kyc);
   const [fetchingUserDetails, setFetchingUserDetails] =
     useState<boolean>(false);
 
   const { 
     currentExchangeUser, 
-    exchangeUserData,
     isExchangeAuthenticated,
     setCurrentExchangeUser,
     setExchangeUserData,
     setIsExchangeAuthenticated 
   } = useWallet();
+
+  const { exchangeUserData } =
+  useExchangeAuth();
+
+  const user = exchangeUserData;
 
   const fetchUserById = async (
     payload: UserModel | null
@@ -49,6 +54,12 @@ const useKyc = () => {
       return null;
     }
 
+    // Prevent multiple simultaneous fetches
+    if (fetchingUserDetails) {
+      console.log("⚠️ Already fetching user details, skipping duplicate call");
+      return null;
+    }
+
     setFetchingUserDetails(true);
     try {
       const usecase = new KycUsecases();
@@ -61,15 +72,21 @@ const useKyc = () => {
       });
 
       if (response.data) {
+        // Only update if the data actually changed to prevent infinite loops
         const updatedUser = {
           ...user,
           ...response.data,
           metaData: { 
             ...user?.metaData,
+            ...response.data?.metaData,
           },
         };
         
-        dispatch(kycActions.setUser(updatedUser));
+        // Check if user data actually changed before dispatching
+        const userChanged = JSON.stringify(user) !== JSON.stringify(updatedUser);
+        if (userChanged) {
+          dispatch(kycActions.setUser(updatedUser));
+        }
         
         // Update wallet context to keep exchange user data in sync
         if (response.data._id) {
@@ -89,21 +106,21 @@ const useKyc = () => {
     }
   };
 
-  const loadUserFromStorage = async (): Promise<UserModel | null> => {
-    try {
-      const persistedUser = await storageService.get<UserModel>(
-        StorageKeys.USER_PROFILE
-      );
-      if (persistedUser) {
-        dispatch(kycActions.setUser(persistedUser));
-        return persistedUser;
-      }
-      return null;
-    } catch (error) {
-      console.error("Failed to load user from storage:", error);
-      return null;
-    }
-  };
+  // const loadUserFromStorage = async (): Promise<UserModel | null> => {
+  //   try {
+  //     const persistedUser = await storageService.get<UserModel>(
+  //       StorageKeys.USER_PROFILE
+  //     );
+  //     if (persistedUser) {
+  //       dispatch(kycActions.setUser(persistedUser));
+  //       return persistedUser;
+  //     }
+  //     return null;
+  //   } catch (error) {
+  //     console.error("Failed to load user from storage:", error);
+  //     return null;
+  //   }
+  // };
 
   const clearUserData = async (): Promise<void> => {
     try {
@@ -133,7 +150,7 @@ const useKyc = () => {
 
   return {
     fetchUserById,
-    loadUserFromStorage,
+    // loadUserFromStorage,
     clearUserData,
     hasPersistedUserData,
     updateUser: async (payload: UserModel | null) => {
@@ -160,31 +177,44 @@ const useKyc = () => {
         console.error("Failed to persist user data:", error);
       }
 
-      if (user?._id || !user?.isGuest || !fetchingUserDetails) {
-        fetchUserById(updatedUser).then((response) => {
-          if (response?.data) {
-            const fetchedUserData = {
-              ...userDataWithoutTheMetaData,
-              ...response.data,
-              metaData: {
-                ...metaData,
-                ...response.data?.metaData,
-              },
-            };
+      // Only fetch from backend if user has ID and we're not already fetching
+      // Skip if user is guest and we just updated locally
+      // Add debouncing to prevent rapid successive calls
+      if (user?._id && !user?.isGuest && !fetchingUserDetails) {
+        // Use a small delay to debounce rapid updates
+        setTimeout(() => {
+          // Check again if we're still not fetching (in case another call happened)
+          if (!fetchingUserDetails) {
+            fetchUserById(updatedUser).then((response) => {
+              if (response?.data) {
+                const fetchedUserData = {
+                  ...userDataWithoutTheMetaData,
+                  ...response.data,
+                  metaData: {
+                    ...metaData,
+                    ...response.data?.metaData,
+                  },
+                };
 
-            dispatch(kycActions.setUser({ ...fetchedUserData }));
+                // Only update if data actually changed to prevent loops
+                const dataChanged = JSON.stringify(updatedUser) !== JSON.stringify(fetchedUserData);
+                if (dataChanged) {
+                  dispatch(kycActions.setUser({ ...fetchedUserData }));
 
-            if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
-              if (userDataWithoutTheMetaData?.phone)
-                delete userDataWithoutTheMetaData.phone;
-            }
+                  if (!userDataWithoutTheMetaData?.phoneNumberVerified) {
+                    if (userDataWithoutTheMetaData?.phone)
+                      delete userDataWithoutTheMetaData.phone;
+                  }
 
-            storageService.save(
-              StorageKeys.USER_PROFILE,
-              userDataWithoutTheMetaData
-            );
+                  storageService.save(
+                    StorageKeys.USER_PROFILE,
+                    userDataWithoutTheMetaData
+                  );
+                }
+              }
+            });
           }
-        });
+        }, 300); // 300ms debounce
       }
     },
 
@@ -203,7 +233,7 @@ const useKyc = () => {
 
     verifyEmail: async (
       payload: VerifyEmailParams
-    ): Promise<GeneralResponseModel<unknown>> => {
+    ): Promise<GeneralResponseModel<AuthVerificationModel>> => {
       const usecase = new KycUsecases();
       const response = await usecase.executeVerifyEmail({
         body: payload,

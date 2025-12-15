@@ -1,16 +1,21 @@
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { CountryData, getCountryFlagUrl } from "@/src/core/utils/countryData";
 import countryData from "@/src/core/utils/countryData";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Button, Input, Select } from "../../../components/ui";
+import { useSelector } from "react-redux";
+import { AppButton, AppInput, AppSelect } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
 const AuthPhoneNumberInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
+  const { authPhoneNumber, updateUser, fetchUserById } = useKyc();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
   const [selectedCountry, setSelectedCountry] = useState<CountryData | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -64,10 +69,45 @@ const AuthPhoneNumberInputStep: React.FC = () => {
     }
 
     setIsLoading(true);
-    // TODO: Implement phone number verification API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setCurrentOnboardingStep(Onboarding.AuthPhoneNumberOtpVerification);
+    setPhoneError("");
+    try {
+      const countryCode = selectedCountry.phoneCode.replace("+", "");
+      const response = await authPhoneNumber({
+        phone: phoneNumber.trim(),
+        countryCode: countryCode,
+        isWhatsApp: false,
+      });
+
+      if (response?.success) {
+        // Update user metadata to indicate phone input has been shown
+        // Store phone number in user object for OTP verification
+        const fullPhoneNumber = `${selectedCountry.phoneCode}${phoneNumber.trim()}`;
+        updateUser({
+          ...user,
+          phone: fullPhoneNumber,
+          metaData: {
+            ...user?.metaData,
+            userPhoneNumberData: {
+              ...user?.metaData?.userPhoneNumberData,
+              countryData: selectedCountry,
+              shownPhoneNumberOnboardingIntro: true,
+              shownPhoneNumberInput: true,
+            },
+          },
+        });
+
+        // Fetch updated user data
+        await fetchUserById(user);
+        setCurrentOnboardingStep(Onboarding.AuthPhoneNumberOtpVerification);
+      } else {
+        setPhoneError(response?.message || "Failed to send OTP. Please try again.");
+      }
+    } catch (error: any) {
+      console.error("Auth phone number error:", error);
+      setPhoneError(error?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -86,7 +126,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
 
       <View style={styles.phoneRow}>
         <View style={styles.countrySelector}>
-          <Select
+          <AppSelect
             options={countryOptions}
             value={selectedCountry?.value}
             onChange={handleCountrySelect}
@@ -97,7 +137,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
         </View>
 
         <View style={styles.phoneInput}>
-          <Input
+          <AppInput
             value={phoneNumber}
             onChangeText={handlePhoneChange}
             onBlur={() => setTouched(true)}
@@ -118,7 +158,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
         </View>
       </View>
 
-      <Button
+      <AppButton
         title="Continue"
         onPress={handleContinue}
         isLoading={isLoading}
@@ -128,7 +168,7 @@ const AuthPhoneNumberInputStep: React.FC = () => {
         style={styles.button}
       />
 
-      <Button
+      <AppButton
         title="Skip"
         onPress={handleSkip}
         variant="text"

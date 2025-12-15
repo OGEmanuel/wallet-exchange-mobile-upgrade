@@ -1,8 +1,11 @@
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Button, OTPInput } from "../../../components/ui";
+import { useSelector } from "react-redux";
+import { AppButton, AppOTPInput } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
@@ -11,15 +14,37 @@ interface AuthPhoneNumberOtpStepProps {
 }
 
 const AuthPhoneNumberOtpStep: React.FC<AuthPhoneNumberOtpStepProps> = ({
-  phoneNumber = "+234 800 000 0000",
+  phoneNumber: propPhoneNumber,
 }) => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
+  const { verifyPhoneNumberOtp, authPhoneNumber, fetchUserById, updateUser } = useKyc();
+  const { user } = useSelector((state: AppRootState) => state.kyc);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(90);
   const otpInputRef = useRef<any>(null);
+
+  // Get phone number and country code from user metadata
+  const countryData = user?.metaData?.userPhoneNumberData?.countryData;
+  const countryCode = countryData?.phoneCode || "";
+  
+  // Get phone number - user.phone should already include country code from previous step
+  const fullPhoneNumber = user?.phone || "";
+  const phoneNumberOnly = fullPhoneNumber.replace(/^\+\d{1,4}/, "") || "";
+  
+  // Get phone number for display
+  const displayPhoneNumber = propPhoneNumber || 
+    (countryCode && phoneNumberOnly 
+      ? `${countryCode} ${phoneNumberOnly}`
+      : fullPhoneNumber || "+234 800 000 0000");
+  
+  // Get phone identifier for OTP verification (format: +countryCode+phoneNumber)
+  // Use fullPhoneNumber if available, otherwise construct from countryCode + phoneNumberOnly
+  const phoneIdentifier = fullPhoneNumber || (countryCode && phoneNumberOnly 
+    ? `${countryCode}${phoneNumberOnly}`
+    : null);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -35,17 +60,75 @@ const AuthPhoneNumberOtpStep: React.FC<AuthPhoneNumberOtpStepProps> = ({
     setError(false);
     setIsLoading(true);
 
-    // TODO: Implement phone OTP verification API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setCurrentOnboardingStep(Onboarding.AuthIdentityVerificationOverview);
+    try {
+      if (!phoneIdentifier) {
+        setError(true);
+        otpInputRef.current?.clear();
+        return;
+      }
+
+      const response = await verifyPhoneNumberOtp({
+        identifier: phoneIdentifier,
+        otp: code,
+        isOnboarding: true,
+      });
+
+      if (response?.success) {
+        // Update user metadata to indicate phone verification is complete
+        updateUser({
+          ...user,
+          phoneNumberVerified: true,
+          metaData: {
+            ...user?.metaData,
+            userPhoneNumberData: {
+              ...user?.metaData?.userPhoneNumberData,
+              phoneNumberVerified: true,
+            },
+          },
+        });
+
+        // Fetch updated user data
+        await fetchUserById(user);
+        setCurrentOnboardingStep(Onboarding.AuthIdentityVerificationOverview);
+      } else {
+        setError(true);
+        otpInputRef.current?.clear();
+      }
+    } catch (error: any) {
+      console.error("Verify phone OTP error:", error);
+      setError(true);
+      otpInputRef.current?.clear();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResend = async () => {
     if (resendTimer > 0) return;
-    // TODO: Implement resend OTP
-    setResendTimer(90);
-    setError(false);
+    
+    setIsLoading(true);
+    try {
+      if (!countryData || !phoneNumberOnly) {
+        return;
+      }
+
+      const countryCodeWithoutPlus = countryCode.replace("+", "");
+      
+      const response = await authPhoneNumber({
+        phone: phoneNumberOnly,
+        countryCode: countryCodeWithoutPlus,
+        isWhatsApp: false,
+      });
+
+      if (response?.success) {
+        setResendTimer(90);
+        setError(false);
+      }
+    } catch (error: any) {
+      console.error("Resend phone OTP error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -67,11 +150,11 @@ const AuthPhoneNumberOtpStep: React.FC<AuthPhoneNumberOtpStepProps> = ({
       </Text>
 
       <Text style={[styles.subtitle, { color: theme.colors.placeholderTextColor }]}>
-        Please enter the 6-digit OTP sent to {phoneNumber}
+        Please enter the 6-digit OTP sent to {displayPhoneNumber}
       </Text>
 
       <View style={styles.otpContainer}>
-        <OTPInput
+        <AppOTPInput
           ref={otpInputRef}
           length={6}
           onComplete={handleOTPComplete}
@@ -121,7 +204,7 @@ const AuthPhoneNumberOtpStep: React.FC<AuthPhoneNumberOtpStepProps> = ({
         </View>
       )}
 
-      <Button
+      <AppButton
         title="Continue"
         onPress={() => handleOTPComplete(otp)}
         isLoading={isLoading}
@@ -131,7 +214,7 @@ const AuthPhoneNumberOtpStep: React.FC<AuthPhoneNumberOtpStepProps> = ({
         style={styles.button}
       />
 
-      <Button
+      <AppButton
         title="Skip"
         onPress={handleSkip}
         variant="text"

@@ -5,14 +5,14 @@ import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
-import { Button, Input } from "../../../components/ui";
+import { AppButton, AppInput } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
 const AuthBvnVerificationInputStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
-  const { uploadCreditDocument } = useKyc();
+  const { uploadCreditDocument, updateUser, fetchUserById } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -75,8 +75,9 @@ const AuthBvnVerificationInputStep: React.FC = () => {
     if (hasError) return;
 
     setIsLoading(true);
+    setBvnError("");
     try {
-      await uploadCreditDocument({
+      const response = await uploadCreditDocument({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         verificationType: "BVN",
@@ -85,8 +86,25 @@ const AuthBvnVerificationInputStep: React.FC = () => {
         countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
       });
 
-      setCurrentOnboardingStep(Onboarding.AuthBvnVerificationSuccess);
+      if (response?.success) {
+        // Update user metadata to indicate BVN verification is complete
+        updateUser({
+          ...user,
+          metaData: {
+            ...user?.metaData,
+            bvnMarkedAsVerified: true,
+            shownIdentificationOverviewOnboardingIntro: true,
+          },
+        });
+
+        // Fetch updated user data
+        await fetchUserById(user);
+        setCurrentOnboardingStep(Onboarding.AuthBvnVerificationSuccess);
+      } else {
+        setBvnError(response?.message || "Failed to verify BVN. Please try again.");
+      }
     } catch (error: any) {
+      console.error("Upload credit document error:", error);
       setBvnError(error?.message || "Failed to verify BVN. Please try again.");
     } finally {
       setIsLoading(false);
@@ -119,7 +137,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
 
       <View style={styles.nameRow}>
         <View style={styles.nameInput}>
-          <Input
+          <AppInput
             value={firstName}
             onChangeText={handleFirstNameChange}
             onBlur={() => setTouched({ ...touched, firstName: true })}
@@ -130,7 +148,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
           />
         </View>
         <View style={styles.nameInput}>
-          <Input
+          <AppInput
             value={lastName}
             onChangeText={handleLastNameChange}
             onBlur={() => setTouched({ ...touched, lastName: true })}
@@ -142,7 +160,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
         </View>
       </View>
 
-      <Input
+      <AppInput
         value={bvn}
         onChangeText={handleBvnChange}
         onBlur={() => setTouched({ ...touched, bvn: true })}
@@ -169,7 +187,7 @@ const AuthBvnVerificationInputStep: React.FC = () => {
         </Text>
       </View>
 
-      <Button
+      <AppButton
         title="Verify"
         onPress={handleVerify}
         isLoading={isLoading}

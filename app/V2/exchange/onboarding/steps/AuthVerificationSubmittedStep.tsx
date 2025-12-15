@@ -3,7 +3,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { Button } from "../../../components/ui";
+import { AppButton } from "../../../components/ui";
 import { useAppBottomSheetContext } from "../bottomsheet/AppBottomSheetContext";
 
 const AuthVerificationSubmittedStep: React.FC = () => {
@@ -27,7 +27,7 @@ const AuthVerificationSubmittedStep: React.FC = () => {
         successful.
       </Text>
 
-      <Button
+      <AppButton
         title="Got it"
         onPress={handleGotIt}
         variant="primary"

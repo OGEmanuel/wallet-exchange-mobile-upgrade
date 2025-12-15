@@ -1,18 +1,17 @@
-import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { AppRootState } from "@/state";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
-import { Button, OTPInput } from "../../../components/ui";
+import { AppButton, AppOTPInput } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
-import { Onboarding } from "../types";
 
 const AuthOtpStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
-  const { handleExchangeValidateOtp } = useExchangeAuth();
+  const { verifyEmail, authEmail, fetchUserById, updateUser } = useKyc();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState(false);
@@ -37,14 +36,32 @@ const AuthOtpStep: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const result = await handleExchangeValidateOtp(email, code);
-      if (result) {
-        setCurrentOnboardingStep(Onboarding.Referral);
+      const response = await verifyEmail({
+        email: email,
+        otp: code,
+      });
+
+      
+      
+      updateUser({
+        ...user,
+        ...response.data?.user,
+      });
+
+      if (response.data?.user) {
+        await fetchUserById(response.data?.user);
+      }
+
+
+      if (response?.success) {
+        // Fetch updated user data after successful verification
+        // setCurrentOnboardingStep(Onboarding.Referral);
       } else {
         setError(true);
         otpInputRef.current?.clear();
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Verify email error:", error);
       setError(true);
       otpInputRef.current?.clear();
     } finally {
@@ -54,9 +71,21 @@ const AuthOtpStep: React.FC = () => {
 
   const handleResend = async () => {
     if (resendTimer > 0) return;
-    // TODO: Implement resend OTP
-    setResendTimer(90);
-    setError(false);
+    
+    setIsLoading(true);
+    try {
+      const response = await authEmail({
+        email: email,
+      });
+      if (response?.success) {
+        setResendTimer(90);
+        setError(false);
+      }
+    } catch (error: any) {
+      console.error("Resend OTP error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -74,7 +103,7 @@ const AuthOtpStep: React.FC = () => {
       </Text>
 
       <View style={styles.otpContainer}>
-        <OTPInput
+        <AppOTPInput
           ref={otpInputRef}
           length={6}
           onComplete={handleOTPComplete}
@@ -91,7 +120,7 @@ const AuthOtpStep: React.FC = () => {
 
       <View style={styles.resendContainer}>
         <Text style={[styles.resendText, { color: theme.colors.bodyTextColor }]}>
-          Didn't receive a code?{" "}
+          Didn&apos;t receive a code?{" "}
         </Text>
         <TouchableOpacity
           onPress={handleResend}
@@ -113,7 +142,7 @@ const AuthOtpStep: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <Button
+      <AppButton
         title={isLoading ? "Verifying..." : "Verify"}
         onPress={() => handleOTPComplete(otp)}
         isLoading={isLoading}

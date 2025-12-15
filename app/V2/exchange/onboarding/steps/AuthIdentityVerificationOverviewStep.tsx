@@ -7,7 +7,7 @@ import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
-import { ErrorIndicator, Loading, Select, Stepper } from "../../../components/ui";
+import { AppErrorIndicator, AppLoading, AppSelect, AppStepper } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
@@ -144,7 +144,7 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
         Before you can buy BTC we will need to verify who you are. Be sure you data is safe.
       </Text>
 
-      <Select
+      <AppSelect
         options={countryOptions}
         value={selectedCountry?.value}
         onChange={handleCountrySelect}
@@ -155,13 +155,13 @@ const AuthIdentityVerificationOverviewStep: React.FC = () => {
       />
 
       {error && (
-        <ErrorIndicator error={error} retry={() => setError(null)} style={styles.error} />
+        <AppErrorIndicator error={error} retry={() => setError(null)} style={styles.error} />
       )}
 
       {isLoading ? (
-        <Loading size="lg" />
+        <AppLoading isLoading={true} size="lg" />
       ) : (
-        <Stepper steps={steps} orientation="vertical" currentStep={bvnCompleted ? 1 : 0} />
+        <AppStepper steps={steps} orientation="vertical" currentStep={bvnCompleted ? 1 : 0} />
       )}
     </ScrollView>
   );

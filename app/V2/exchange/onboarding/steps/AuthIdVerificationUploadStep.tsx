@@ -6,22 +6,24 @@ import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
-import { Button, ImageUpload } from "../../../components/ui";
+import { AppButton, AppImageUpload } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
 const AuthIdVerificationUploadStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
-  const { uploadIdentityDocument } = useKyc();
+  const { uploadIdentityDocument, fetchUserById, updateUser } = useKyc();
   const { uploadFile } = useUtilities();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const [selectedFile, setSelectedFile] = useState<{ uri: string; type: string; name?: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
-  // TODO: Get document type from previous step or context
-  const documentTypeName = "PASSPORT"; // This should come from previous step
+  // Get document type and form data from user metadata (stored in previous step)
+  const idVerificationData = user?.metaData?.idVerificationData;
+  const documentTypeName = idVerificationData?.documentTypeName || "PASSPORT";
 
   const handleFileSelect = (file: { uri: string; type: string; name?: string }) => {
     setSelectedFile(file);
@@ -30,7 +32,14 @@ const AuthIdVerificationUploadStep: React.FC = () => {
   const handleUpload = async () => {
     if (!selectedFile) return;
 
+    if (!idVerificationData) {
+      setUploadError("Please complete the previous step first");
+      return;
+    }
+
     setIsLoading(true);
+    setIsUploading(true);
+    setUploadError("");
     try {
       // Upload file first
       const formData = new FormData();
@@ -53,26 +62,45 @@ const AuthIdVerificationUploadStep: React.FC = () => {
       }
 
       // Submit identity document
-      await uploadIdentityDocument({
+      const response = await uploadIdentityDocument({
         body: {
           countryId: user?.metaData?.documentVerification?.selectedVerifiedCountry?._id,
-          lastName: "", // TODO: Get from previous step
-          firstName: "", // TODO: Get from previous step
-          idNumber: "", // TODO: Get from previous step
-          verificationType: "", // TODO: Get from previous step
+          lastName: idVerificationData.lastName || "",
+          firstName: idVerificationData.firstName || "",
+          idNumber: idVerificationData.documentId || "",
+          verificationType: idVerificationData.verificationType || "",
           docUrl: photoUrl,
-          dateOfBirth: "", // TODO: Get from previous step
+          dateOfBirth: idVerificationData.dateOfBirth || "",
         },
         params: {},
         extra: {},
       });
 
-      setCurrentOnboardingStep(Onboarding.AuthVerificationSubmitted);
+      if (response?.success) {
+        // Update user metadata to indicate ID verification is submitted
+        updateUser({
+          ...user,
+          metaData: {
+            ...user?.metaData,
+            idVerificationData: {
+              ...idVerificationData,
+              submitted: true,
+            },
+          },
+        });
+
+        // Fetch updated user data
+        await fetchUserById(user);
+        setCurrentOnboardingStep(Onboarding.AuthVerificationSubmitted);
+      } else {
+        setUploadError(response?.message || "Failed to submit document. Please try again.");
+      }
     } catch (error: any) {
       console.error("Upload error:", error);
-      // TODO: Show error message
+      setUploadError(error?.message || "Failed to upload document. Please try again.");
     } finally {
       setIsLoading(false);
+      setIsUploading(false);
     }
   };
 
@@ -95,7 +123,7 @@ const AuthIdVerificationUploadStep: React.FC = () => {
       </Text>
 
       <View style={styles.uploadContainer}>
-        <ImageUpload
+        <AppImageUpload
           onFileSelect={handleFileSelect}
           fileType="image"
           preview={selectedFile?.uri}
@@ -103,22 +131,28 @@ const AuthIdVerificationUploadStep: React.FC = () => {
         />
       </View>
 
+      {uploadError && (
+        <Text style={[styles.errorText, { color: theme.colors.error }]}>
+          {uploadError}
+        </Text>
+      )}
+
       {selectedFile && (
-        <Button
+        <AppButton
           title="Use this photo"
           onPress={handleUpload}
           isLoading={isLoading}
-          disabled={isLoading}
+          disabled={isLoading || !idVerificationData}
           variant="primary"
           size="lg"
           style={styles.button}
         />
       )}
 
-      <Button
+      <AppButton
         title={selectedFile ? "Replace photo" : "Upload a Picture"}
         onPress={() => {
-          // ImageUpload component handles the file selection
+          // AppImageUpload component handles the file selection
         }}
         variant={selectedFile ? "outline" : "primary"}
         size="lg"
@@ -163,6 +197,12 @@ const styles = StyleSheet.create({
   },
   uploadContainer: {
     marginBottom: 32,
+  },
+  errorText: {
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 16,
+    fontFamily: "PlusJakartaSans_Regular",
   },
   button: {
     width: "100%",

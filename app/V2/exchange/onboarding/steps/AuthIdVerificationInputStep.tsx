@@ -11,7 +11,7 @@ import { useTheme } from "@shopify/restyle";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSelector } from "react-redux";
-import { Button, DatePicker, Input, Select } from "../../../components/ui";
+import { AppButton, AppDatePicker, AppInput, AppSelect } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 import { Onboarding } from "../types";
 
@@ -20,6 +20,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
   const { user } = useSelector((state: AppRootState) => state.kyc);
   const { fetchDocumentTypes } = useUtilities();
+  const { updateUser } = useKyc();
   const [selectedCountry, setSelectedCountry] = useState<VerifiedCountryModel | null>(
     user?.metaData?.documentVerification?.selectedVerifiedCountry || null
   );
@@ -103,6 +104,25 @@ const AuthIdVerificationInputStep: React.FC = () => {
       return;
     }
 
+    // Store form data in user metadata for use in upload step
+    const dateOfBirthString = dateOfBirth ? dateOfBirth.toISOString().split('T')[0] : "";
+    updateUser({
+      ...user,
+      metaData: {
+        ...user?.metaData,
+        idVerificationData: {
+          ...user?.metaData?.idVerificationData,
+          shownAuthIdVerificationInput: true,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          documentId: documentId.trim(),
+          dateOfBirth: dateOfBirthString,
+          verificationType: selectedDocType?.verificationType || "",
+          documentTypeName: selectedDocType?.name || "",
+        },
+      },
+    });
+
     setCurrentOnboardingStep(Onboarding.AuthIdVerificationUpload);
   };
 
@@ -141,7 +161,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
 
       <View style={styles.selectorsRow}>
         <View style={styles.countrySelector}>
-          <Select
+          <AppSelect
             options={[]} // TODO: Add country options
             value={selectedCountry?._id}
             onChange={() => {}}
@@ -151,7 +171,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
           />
         </View>
         <View style={styles.documentSelector}>
-          <Select
+          <AppSelect
             options={documentTypeOptions}
             value={documentType?._id}
             onChange={(value) => {
@@ -171,7 +191,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
         <>
           <View style={styles.nameRow}>
             <View style={styles.nameInput}>
-              <Input
+              <AppInput
                 value={firstName}
                 onChangeText={(text) => {
                   setFirstName(text);
@@ -185,7 +205,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
               />
             </View>
             <View style={styles.nameInput}>
-              <Input
+              <AppInput
                 value={lastName}
                 onChangeText={(text) => {
                   setLastName(text);
@@ -200,7 +220,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
             </View>
           </View>
 
-          <Input
+          <AppInput
             value={documentId}
             onChangeText={(text) => {
               const maxLength = selectedDocType?.verificationNumberLength || 50;
@@ -215,7 +235,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
             style={styles.input}
           />
 
-          <DatePicker
+          <AppDatePicker
             value={dateOfBirth}
             onChange={(date) => {
               setDateOfBirth(date);
@@ -231,7 +251,7 @@ const AuthIdVerificationInputStep: React.FC = () => {
       )}
 
       {documentType && !isExternal && (
-        <Button
+        <AppButton
           title="Continue"
           onPress={handleContinue}
           isLoading={isLoading}

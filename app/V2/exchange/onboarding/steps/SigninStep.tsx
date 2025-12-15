@@ -1,16 +1,19 @@
-import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
+import { kycActions } from "@/state/reducers/kyc-reducer";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Button, Input } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
+import { useDispatch } from "react-redux";
+import { AppButton, AppInput } from "../../../components/ui";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const SigninStep: React.FC = () => {
   const theme = useTheme<Theme>();
+  const dispatch = useDispatch();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
-  const { handleExchangeLogin } = useExchangeAuth();
+  const { authEmail } = useKyc();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [touched, setTouched] = useState(false);
@@ -53,28 +56,34 @@ const SigninStep: React.FC = () => {
     setIsLoading(true);
     setEmailError("");
     try {
-      const result = await handleExchangeLogin(email);
-      if (result) {
+      const response = await authEmail({
+        email: email.trim(),
+      });
+      if (response?.success) {
+        dispatch(kycActions.setUser({
+          email: email.trim(),
+        }));
         setCurrentOnboardingStep(Onboarding.AuthOtp);
       } else {
-        setEmailError("Failed to send OTP. Please try again.");
+        setEmailError(response?.message || "Failed to send OTP. Please try again.");
       }
-    } catch (error) {
-      setEmailError("Failed to send OTP. Please try again.");
+    } catch (error: any) {
+      console.error("Auth email error:", error);
+      setEmailError(error?.message || "Failed to send OTP. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    // TODO: Implement Google sign in
-    console.log("Google sign in");
-  };
+  // const handleGoogleSignIn = () => {
+  //   // TODO: Implement Google sign in
+  //   console.log("Google sign in");
+  // };
 
-  const handleAppleSignIn = () => {
-    // TODO: Implement Apple sign in
-    console.log("Apple sign in");
-  };
+  // const handleAppleSignIn = () => {
+  //   // TODO: Implement Apple sign in
+  //   console.log("Apple sign in");
+  // };
 
   return (
     <View style={styles.container}>
@@ -82,7 +91,7 @@ const SigninStep: React.FC = () => {
         Login to Zap
       </Text>
 
-      <Input
+      <AppInput
         value={email}
         onChangeText={handleEmailChange}
         onBlur={handleBlur}
@@ -90,10 +99,10 @@ const SigninStep: React.FC = () => {
         type="email"
         error={emailError}
         touched={touched}
-        style={styles.input}
+        // style={styles.input}
       />
 
-      <Button
+      <AppButton
         title="Continue"
         onPress={handleContinue}
         isLoading={isLoading}
@@ -103,7 +112,7 @@ const SigninStep: React.FC = () => {
         style={styles.button}
       />
 
-      <View style={styles.dividerContainer}>
+      {/* <View style={styles.dividerContainer}>
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.borderColor }]} />
         <Text style={[styles.dividerText, { color: theme.colors.placeholderTextColor }]}>
           OR
@@ -111,7 +120,7 @@ const SigninStep: React.FC = () => {
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.borderColor }]} />
       </View>
 
-      <Button
+      <AppButton
         title="Sign in with Google"
         onPress={handleGoogleSignIn}
         variant="outline"
@@ -122,7 +131,7 @@ const SigninStep: React.FC = () => {
         }
       />
 
-      <Button
+      <AppButton
         title="Sign in with Apple"
         onPress={handleAppleSignIn}
         variant="primary"
@@ -131,7 +140,7 @@ const SigninStep: React.FC = () => {
         icon={
           <Text style={[styles.socialIcon, { color: theme.colors.white }]}>🍎</Text>
         }
-      />
+      /> */}
     </View>
   );
 };

@@ -2,7 +2,7 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
+import { AuthPhoneNumberParams, AuthVerificationModel, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
 import { KycRepoImpl } from "../../data/kyc-repo-impl";
 import { UserModel } from "../entities/models/user-model";
 import { AddUsernameParams } from "../entities/params/add-username-params";
@@ -21,7 +21,7 @@ export class KycUsecases {
 
   async executeVerifyEmail(
     payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>
-  ): Promise<GeneralResponseModel<unknown>> {
+  ): Promise<GeneralResponseModel<AuthVerificationModel>> {
     return this.repo.verifyEmail(payload);
   }
 

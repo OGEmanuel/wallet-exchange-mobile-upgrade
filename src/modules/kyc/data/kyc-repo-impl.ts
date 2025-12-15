@@ -2,7 +2,7 @@ import {
   GeneralRequestModel,
   GeneralResponseModel,
 } from "@/src/core/api/http-types";
-import { AuthPhoneNumberParams, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
+import { AuthPhoneNumberParams, AuthVerificationModel, CreditDocumentDataParam, SubmitVerificationParams, VerifyPhoneNumberOtpParams } from "@zap/blockchain-sdk";
 import { UserModel } from "../domain/entities/models/user-model";
 import { AddUsernameParams } from "../domain/entities/params/add-username-params";
 import { AuthEmailParams } from "../domain/entities/params/auth-email-params";
@@ -23,7 +23,7 @@ export class KycRepoImpl implements KycRepo {
 
   async verifyEmail(
     payload: GeneralRequestModel<VerifyEmailParams, unknown, unknown>
-  ): Promise<GeneralResponseModel<unknown>> {
+  ): Promise<GeneralResponseModel<AuthVerificationModel>> {
     return this.remoteDatasource.verifyEmail(payload);
   }
 

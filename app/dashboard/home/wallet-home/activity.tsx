@@ -46,7 +46,7 @@ const Activity = () => {
     handleOpenOnboardingBottomSheet,
   } = useExchangeOnboarding();
 
-  const { user } = useSelector((state: AppRootState) => state.kyc);
+  const { user: kycUser } = useSelector((state: AppRootState) => state.kyc);
   const { exchangeActivities, hasMore } = useSelector(
     (state: AppRootState) => state.exchange
   );
@@ -54,7 +54,10 @@ const Activity = () => {
     isExchangeAuthenticated,
     showExchangeLogin,
     ExchangeLoginBottomSheet,
+    exchangeUserData
   } = useExchangeAuth();
+
+  const user = exchangeUserData || kycUser;
 
   // Filter activities based on search query
   const filteredActivities = exchangeActivities.filter((activity) => {
@@ -169,9 +172,11 @@ const Activity = () => {
       loadActivities(1, true);
     } else if (!isExchangeAuthenticated) {
       // Show login prompt if not authenticated
-      showExchangeLogin();
+      // showExchangeLogin();
+      handleOpenOnboardingBottomSheet();
     }
-  }, [isExchangeAuthenticated, loadActivities, showExchangeLogin]); // Include loadActivities but it's stable due to useCallback
+  }, []); // Include loadActivities but it's stable due to useCallback
+  // }, [isExchangeAuthenticated, loadActivities, showExchangeLogin]); // Include loadActivities but it's stable due to useCallback
 
   const handleFilterClick = () => {
     if (activityFilterRef.current) {

@@ -23,7 +23,7 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     payload: GeneralRequestModel<AuthEmailParams, unknown, unknown>
   ): Promise<GeneralResponseModel<unknown>> {
     const sdk = zapSDKService.getSDK();
-    const result = await sdk.exchangeAuth.sendOtp(payload.body?.email || "");
+    const result = await sdk.exchangeAuth.sendOtp(payload.body);
 
     return {
       success: result.success,
@@ -41,6 +41,8 @@ export class KycZapSdkDataSourceImpl implements KycRemoteDatasource {
     try {
       const sdk = zapSDKService.getSDK();
       // const result = await sdk.exchangeAuth.getUser();
+
+      console.log("Fetch User Profile:", payload);
 
       const result = await sdk.users.getProfile(payload.body?._id || "");
       console.log("Resultssss:", result);

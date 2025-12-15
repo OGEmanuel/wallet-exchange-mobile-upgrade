@@ -1,11 +1,11 @@
-import { useWallet } from "@/src/core/wallet/wallet-context";
+import { useExchangeAuth } from "@/hooks/useExchangeAuth";
+import useKyc from "@/src/modules/kyc/presentation/hooks/useKyc";
 import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button, Input, Radio } from "../../../components/ui";
+import { AppButton, AppInput, AppRadio } from "../../../components/ui";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
-import { Onboarding } from "../types";
 
 const USER_SOURCE_OPTIONS = [
   "Snapchat",
@@ -21,13 +21,18 @@ const USER_SOURCE_OPTIONS = [
 const ReferralStep: React.FC = () => {
   const theme = useTheme<Theme>();
   const { setCurrentOnboardingStep } = useExchangeOnboardingContext();
-  const { completeOnboarding, currentExchangeUser, exchangeUserData } = useWallet();
+  const { exchangeUserData } =
+  useExchangeAuth();
+  const { addUsername, updateUser } = useKyc();
+  // const { user } = useSelector((state: AppRootState) => state.kyc);
   const [username, setUsername] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [userSource, setUserSource] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [touched, setTouched] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  console.log("user in referral step", exchangeUserData);
 
   const handleUsernameChange = (text: string) => {
     setUsername(text);
@@ -52,8 +57,7 @@ const ReferralStep: React.FC = () => {
       return;
     }
 
-    const userId = currentExchangeUser || exchangeUserData?._id || null;
-    if (!userId) {
+    if (!exchangeUserData?._id) {
       setUsernameError("User ID is required. Please verify your email first.");
       return;
     }
@@ -62,19 +66,25 @@ const ReferralStep: React.FC = () => {
     setUsernameError("");
 
     try {
-      const result = await completeOnboarding({
+      const response = await addUsername({
         username: username.trim(),
         userSource: userSource || null,
-        referralCode: referralCode.trim() || null,
-        userId: userId,
+        referralCode: referralCode.trim(),
       });
 
-      if (result.success) {
-        setCurrentOnboardingStep(Onboarding.AuthVerificationIntro);
-      } else {
-        setUsernameError(result.message || "Failed to complete onboarding");
-      }
+      // Fetch updated user data after successful username addition
+      // await fetchUserById(exchangeUserData);
+      updateUser({
+        ...exchangeUserData,
+        username: username.trim(),
+      });
+      // setCurrentOnboardingStep(Onboarding.AuthVerificationIntro);
+      // if (response?.success) {
+      // } else {
+      //   setUsernameError(response?.message || "Failed to complete onboarding");
+      // }
     } catch (error: any) {
+      console.error("Add username error:", error);
       setUsernameError(error?.message || "Username is already taken or an error occurred");
     } finally {
       setIsLoading(false);
@@ -87,21 +97,21 @@ const ReferralStep: React.FC = () => {
         One more step!
       </Text>
 
-      <Input
+      <AppInput
         value={username}
         onChangeText={handleUsernameChange}
         onBlur={handleUsernameBlur}
         placeholder="Choose a username"
         error={usernameError}
         touched={touched}
-        style={styles.input}
+        // style={styles.input}
       />
 
-      <Input
+      <AppInput
         value={referralCode}
         onChangeText={setReferralCode}
         placeholder="Referral Code (Optional)"
-        style={styles.input}
+        // style={styles.input}
       />
 
       <Text style={[styles.label, { color: theme.colors.bodyTextColor }]}>
@@ -111,7 +121,7 @@ const ReferralStep: React.FC = () => {
       <View style={styles.radioGrid}>
         {USER_SOURCE_OPTIONS.map((option) => (
           <View key={option} style={styles.radioItem}>
-            <Radio
+            <AppRadio
               label={option}
               checked={userSource === option}
               onChange={() => setUserSource(option)}
@@ -120,7 +130,7 @@ const ReferralStep: React.FC = () => {
         ))}
       </View>
 
-      <Button
+      <AppButton
         title="Complete"
         onPress={handleComplete}
         isLoading={isLoading}

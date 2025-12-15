@@ -3,7 +3,7 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { Button } from "../../../components/ui";
+import { AppButton } from "../../../components/ui";
 import { Onboarding } from "../types";
 import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
@@ -31,7 +31,7 @@ const AuthVerificationIntroStep: React.FC = () => {
         To conduct swaps on Zap, you will need to complete KYC with BVN and government ID
       </Text>
 
-      <Button
+      <AppButton
         title="Get Started"
         onPress={handleGetStarted}
         variant="primary"

@@ -57,13 +57,15 @@ const Sidebar = () => {
   const { isExchangeAuthenticated, isUserLoggedIn, exchangeUserData } =
     useExchangeAuth();
   const { user: kycUser } = useSelector((state: AppRootState) => state.kyc);
-  const { loadUserFromStorage, fetchUserById } = useKyc();
+  const { fetchUserById } = useKyc();
 
   // Use exchangeUserData if available, otherwise fall back to KYC user
   const userData = exchangeUserData || kycUser;
   const displayUsername = userData?.username;
   const displayAvatar = userData?.avatar;
   // User is logged in if they have a username OR if they have an exchange user ID
+
+  console.log("User data in sidebar:", userData);
 
   // Load user data from storage or fetch if we have a user ID but no user data
   // IMPORTANT: Only load if we don't have user data - don't overwrite existing data
@@ -72,14 +74,6 @@ const Sidebar = () => {
       // If we have user data with avatar, don't reload (prevents flickering)
       if (userData?.username || (userData?._id && userData?.avatar)) {
         return;
-      }
-
-      // Try to load from storage first
-      if (!kycUser?._id && !kycUser?.username) {
-        const storedUser = await loadUserFromStorage();
-        if (storedUser) {
-          return; // User loaded from storage, will update Redux state
-        }
       }
 
       // If we have a user ID but no user data, try to fetch
@@ -105,16 +99,17 @@ const Sidebar = () => {
     };
 
     loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    currentExchangeUser,
-    exchangeUserData,
-    kycUser,
-    isExchangeAuthenticated,
-    loadUserFromStorage,
-    getExchangeUser,
-    setExchangeUserData,
-    fetchUserById,
-    userData,
+    // currentExchangeUser,
+    // exchangeUserData,
+    // kycUser,
+    // isExchangeAuthenticated,
+    // loadUserFromStorage,
+    // getExchangeUser,
+    // setExchangeUserData,
+    // fetchUserById,
+    // userData,
   ]);
 
   // Refresh user data when exchangeUserData changes (e.g., after avatar update)
@@ -698,7 +693,7 @@ const Sidebar = () => {
             {isUserLoggedIn ? (
               <>
                 <CustomText variant="bodySubheader" fontSize={16}>
-                  {displayUsername}
+                  {displayUsername || 'No username'}
                 </CustomText>
                 <Box flexDirection="row" alignItems="center">
                   <CustomText variant="light" fontSize={12}>

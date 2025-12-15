@@ -3,9 +3,9 @@ import { Theme } from "@/theme";
 import { useTheme } from "@shopify/restyle";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { Button } from "../../../components/ui";
-import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
+import { AppButton } from "../../../components/ui";
 import { Onboarding } from "../types";
+import { useExchangeOnboardingContext } from "../useExchangeOnboardingContext";
 
 const AuthBvnVerificationSuccessStep: React.FC = () => {
   const theme = useTheme<Theme>();
@@ -28,7 +28,7 @@ const AuthBvnVerificationSuccessStep: React.FC = () => {
         transaction limit.
       </Text>
 
-      <Button
+      <AppButton
         title="Verify ID"
         onPress={handleVerifyId}
         variant="primary"
@@ -47,7 +47,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   successIcon: {
-    width: "33%",
+    width: "50%",
+    height: "60%",
     aspectRatio: 1,
     marginBottom: 32,
   },
